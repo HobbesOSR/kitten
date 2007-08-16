@@ -1,0 +1,79 @@
+mainmenu "Kitten Kernel Configuration"
+
+config x86_64
+	bool
+	default y
+	help
+	  Support for the x86-64 architecture.
+
+
+menu "Processor type and features"
+
+choice
+	prompt "Subarchitecture Type"
+	default X86_PC
+
+config X86_PC
+        bool "PC-compatible"
+        help
+	  Support for standard PC compatible systems.
+
+config X86_RED_STORM
+        bool "Red Storm (Cray XT3/XT4)"
+         help
+	  Support for Cray XT3 and XT4 systems.
+
+endchoice
+
+
+choice
+	prompt "Processor Family"
+	default MK8
+
+config MK8
+	bool "AMD-Opteron/Athlon64"
+	help
+	  Optimize for AMD Opteron/Athlon64/Hammer/K8 CPUs.
+
+config MPSC
+	bool "Intel-64/Core2"
+	help
+	  Optimize for Intel 64 architecture.
+
+config GENERIC_CPU
+	bool "Generic-x86-64"
+	help
+	  Generic x86-64 CPU.
+
+endchoice
+
+
+#
+# Define implied options from the CPU selection
+#
+
+config X86_L1_CACHE_BYTES
+        int
+        default "128" if GENERIC_CPU || MPSC
+        default "64" if MK8
+
+config X86_L1_CACHE_SHIFT
+        int
+        default "7" if GENERIC_CPU || MPSC
+        default "6" if MK8
+
+config NR_CPUS
+        int "Maximum number of CPUs (2-256)"
+        range 2 255
+        default "8"
+        help
+          This allows you to specify the maximum number of CPUs which this
+          kernel will support. Current maximum is 256 CPUs due to
+          APIC addressing limits. Less depending on the hardware.
+
+          This is purely to save memory - each supported CPU requires
+          memory in the static kernel configuration.
+
+endmenu
+
+
