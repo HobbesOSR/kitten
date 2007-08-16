@@ -1,4 +1,3 @@
-#
 # x86_64/Makefile
 #
 # This file is included by the global makefile so that you can add your own
@@ -18,8 +17,9 @@
 #	    Converted for x86_64 architecture
 # 20010105  Andi Kleen, add IA32 compiler.
 #           ....and later removed it again....
+# 20070816  Kevin Pedretti <ktpedre@sandia.gov>
+#           Simplify slightly for Kitten
 #
-# $Id: Makefile,v 1.31 2002/03/22 15:56:07 ak Exp $
 
 LDFLAGS		:= -m elf_x86_64
 OBJCOPYFLAGS	:= -O binary -R .note -R .comment -S
@@ -35,19 +35,11 @@ cflags-y += -m64
 cflags-y += -mno-red-zone
 cflags-y += -mcmodel=kernel
 cflags-y += -pipe
-cflags-$(CONFIG_REORDER) += -ffunction-sections
+cflags-y += -ffunction-sections
 # this makes reading assembly source easier, but produces worse code
 # actually it makes the kernel smaller too.
 cflags-y += -fno-reorder-blocks
 cflags-y += -Wno-sign-compare
-ifneq ($(CONFIG_UNWIND_INFO),y)
-cflags-y += -fno-asynchronous-unwind-tables
-endif
-ifneq ($(CONFIG_DEBUG_INFO),y)
-# -fweb shrinks the kernel a bit, but the difference is very small
-# it also messes up debugging, so don't use it for now.
-#cflags-y += $(call cc-option,-fweb)
-endif
 # -funit-at-a-time shrinks the kernel .text considerably
 # unfortunately it makes reading oopses harder.
 cflags-y += $(call cc-option,-funit-at-a-time)
@@ -58,12 +50,11 @@ CFLAGS += $(cflags-y)
 AFLAGS += -m64
 
 head-y := arch/x86_64/kernel/head.o arch/x86_64/kernel/head64.o arch/x86_64/kernel/init_task.o
-core-y					+= arch/x86_64/kernel/
+core-y += arch/x86_64/kernel/
 
 boot := arch/x86_64/boot
 
-PHONY += bzImage bzlilo install archmrproper \
-	 fdimage fdimage144 fdimage288 isoimage archclean
+PHONY += bzImage archmrproper isoimage archclean
 
 #Default target when executing "make"
 all: bzImage
@@ -71,37 +62,20 @@ all: bzImage
 BOOTIMAGE                     := arch/x86_64/boot/bzImage
 KBUILD_IMAGE                  := $(BOOTIMAGE)
 
-bzImage: vmlinux
+bzImage: lwk
 	$(Q)$(MAKE) $(build)=$(boot) $(BOOTIMAGE)
 
-bzlilo: vmlinux
-	$(Q)$(MAKE) $(build)=$(boot) BOOTIMAGE=$(BOOTIMAGE) zlilo
-
-bzdisk: vmlinux
-	$(Q)$(MAKE) $(build)=$(boot) BOOTIMAGE=$(BOOTIMAGE) zdisk
-
-fdimage fdimage144 fdimage288 isoimage: vmlinux
+isoimage: lwk
 	$(Q)$(MAKE) $(build)=$(boot) BOOTIMAGE=$(BOOTIMAGE) $@
-
-install:
-	$(Q)$(MAKE) $(build)=$(boot) BOOTIMAGE=$(BOOTIMAGE) $@ 
 
 archclean:
 	$(Q)$(MAKE) $(clean)=$(boot)
 
 define archhelp
   echo  '* bzImage	- Compressed kernel image (arch/$(ARCH)/boot/bzImage)'
-  echo  '  install	- Install kernel using'
-  echo  '		   (your) ~/bin/installkernel or'
-  echo  '		   (distribution) /sbin/installkernel or'
-  echo  '		   install to $$(INSTALL_PATH) and run lilo'
-  echo  '  bzdisk       - Create a boot floppy in /dev/fd0'
-  echo  '  fdimage      - Create a boot floppy image'
   echo  '  isoimage     - Create a boot CD-ROM image'
 endef
 
-CLEAN_FILES += arch/$(ARCH)/boot/fdimage \
-	       arch/$(ARCH)/boot/image.iso \
-	       arch/$(ARCH)/boot/mtools.conf
+CLEAN_FILES += arch/$(ARCH)/boot/image.iso
 
 
