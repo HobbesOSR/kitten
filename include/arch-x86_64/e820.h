@@ -8,10 +8,8 @@
  * and in init.c/numa.c, that new information is used to mark pages
  * reserved or not.
  */
-#ifndef __E820_HEADER
-#define __E820_HEADER
-
-#include <linux/mmzone.h>
+#ifndef _ARCH_E820_H
+#define _ARCH_E820_H
 
 #define E820MAP	0x2d0		/* our map */
 #define E820MAX	128		/* number of entries in E820MAP */
@@ -34,7 +32,7 @@ struct e820entry {
 } __attribute__((packed));
 
 struct e820map {
-    int nr_map;
+	int nr_map;
 	struct e820entry map[E820MAX];
 };
 
@@ -61,6 +59,6 @@ extern void __init parse_memmapopt(char *p, char **end);
 extern struct e820map e820;
 
 extern unsigned ebda_addr, ebda_size;
-#endif/*!__ASSEMBLY__*/
+#endif /* !__ASSEMBLY__ */
 
-#endif/*__E820_HEADER*/
+#endif /* _ARCH_E820_H */

@@ -1,7 +1,7 @@
-#ifndef _LINUX_LINKAGE_H
-#define _LINUX_LINKAGE_H
+#ifndef _LWK_LINKAGE_H
+#define _LWK_LINKAGE_H
 
-#include <asm/linkage.h>
+#include <arch/linkage.h>
 
 #ifdef __cplusplus
 #define CPP_ASMLINKAGE extern "C"

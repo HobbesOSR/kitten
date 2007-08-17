@@ -1,7 +1,7 @@
-#ifndef _ASM_SEGMENT_H
-#define _ASM_SEGMENT_H
+#ifndef _ARCH_SEGMENT_H
+#define _ARCH_SEGMENT_H
 
-#include <asm/cache.h>
+#include <arch/cache.h>
 
 #define __KERNEL_CS	0x10
 #define __KERNEL_DS	0x18

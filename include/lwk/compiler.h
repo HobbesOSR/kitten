@@ -1,5 +1,5 @@
-#ifndef __LINUX_COMPILER_H
-#define __LINUX_COMPILER_H
+#ifndef _LWK_COMPILER_H
+#define _LWK_COMPILER_H
 
 #ifndef __ASSEMBLY__
 
@@ -40,17 +40,8 @@ extern void __chk_io_ptr(void __iomem *);
 #error no compiler-gcc.h file for this gcc version
 #elif __GNUC__ == 4
 # include <linux/compiler-gcc4.h>
-#elif __GNUC__ == 3
-# include <linux/compiler-gcc3.h>
 #else
 # error Sorry, your compiler is too old/not recognized.
-#endif
-
-/* Intel compiler defines __GNUC__. So we will overwrite implementations
- * coming from above header files here
- */
-#ifdef __INTEL_COMPILER
-# include <linux/compiler-intel.h>
 #endif
 
 /*
@@ -87,12 +78,6 @@ extern void __chk_io_ptr(void __iomem *);
  */
 #ifndef __deprecated
 # define __deprecated		/* unimplemented */
-#endif
-
-#ifdef MODULE
-#define __deprecated_for_modules __deprecated
-#else
-#define __deprecated_for_modules
 #endif
 
 #ifndef __must_check
@@ -156,4 +141,4 @@ extern void __chk_io_ptr(void __iomem *);
 # define __attribute_const__	/* unimplemented */
 #endif
 
-#endif /* __LINUX_COMPILER_H */
+#endif /* _LWK_COMPILER_H */

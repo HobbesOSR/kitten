@@ -1,7 +1,7 @@
-/* Never include this file directly.  Include <linux/compiler.h> instead.  */
+/* Never include this file directly.  Include <lwk/compiler.h> instead.  */
 
 /* These definitions are for GCC v4.x.  */
-#include <linux/compiler-gcc.h>
+#include <lwk/compiler-gcc.h>
 
 #ifdef CONFIG_FORCED_INLINING
 # undef inline

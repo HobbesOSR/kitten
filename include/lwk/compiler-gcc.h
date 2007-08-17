@@ -1,4 +1,4 @@
-/* Never include this file directly.  Include <linux/compiler.h> instead.  */
+/* Never include this file directly.  Include <lwk/compiler.h> instead.  */
 
 /*
  * Common definitions for all gcc versions go here.
@@ -19,7 +19,7 @@
  */
 #define RELOC_HIDE(ptr, off)					\
   ({ unsigned long __ptr;					\
-    __asm__ ("" : "=r"(__ptr) : "0"(ptr));		\
+    __asm__ ("" : "=r"(__ptr) : "0"(ptr));			\
     (typeof(ptr)) (__ptr + (off)); })
 
 
