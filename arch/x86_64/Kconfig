@@ -57,6 +57,10 @@ config X86_L1_CACHE_BYTES
         default "128" if GENERIC_CPU || MPSC
         default "64" if MK8
 
+config X86_INTERNODE_CACHE_BYTES
+	int
+	default X86_L1_CACHE_BYTES
+
 config X86_L1_CACHE_SHIFT
         int
         default "7" if GENERIC_CPU || MPSC
@@ -74,6 +78,14 @@ config NR_CPUS
           This is purely to save memory - each supported CPU requires
           memory in the static kernel configuration.
 
+#
+# Physical address where the kernel is loaded
+#
+config PHYSICAL_START
+	hex
+	default "0x100000"
+
 endmenu
 
 
+source "arch/x86_64/Kconfig.debug"

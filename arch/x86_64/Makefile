@@ -18,7 +18,7 @@
 # 20010105  Andi Kleen, add IA32 compiler.
 #           ....and later removed it again....
 # 20070816  Kevin Pedretti <ktpedre@sandia.gov>
-#           Simplify slightly for Kitten
+#           Modifications for Kitten. Remove unneeded stuff.
 #
 
 LDFLAGS		:= -m elf_x86_64
@@ -62,10 +62,10 @@ all: bzImage
 BOOTIMAGE                     := arch/x86_64/boot/bzImage
 KBUILD_IMAGE                  := $(BOOTIMAGE)
 
-bzImage: lwk
+bzImage: vmlwk
 	$(Q)$(MAKE) $(build)=$(boot) $(BOOTIMAGE)
 
-isoimage: lwk
+isoimage: vmlwk
 	$(Q)$(MAKE) $(build)=$(boot) BOOTIMAGE=$(BOOTIMAGE) $@
 
 archclean:

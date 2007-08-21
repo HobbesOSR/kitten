@@ -1,7 +1,7 @@
-#ifndef _LINUX_POSIX_TYPES_H
-#define _LINUX_POSIX_TYPES_H
+#ifndef _LWK_POSIX_TYPES_H
+#define _LWK_POSIX_TYPES_H
 
-#include <linux/stddef.h>
+#include <lwk/stddef.h>
 
 /*
  * This allows for 1024 file descriptors: if NR_OPEN is ever grown
@@ -44,6 +44,6 @@ typedef void (*__kernel_sighandler_t)(int);
 typedef int __kernel_key_t;
 typedef int __kernel_mqd_t;
 
-#include <asm/posix_types.h>
+#include <arch/posix_types.h>
 
-#endif /* _LINUX_POSIX_TYPES_H */
+#endif /* _LWK_POSIX_TYPES_H */

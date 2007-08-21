@@ -1,8 +1,8 @@
-#ifndef _LINUX_BYTEORDER_GENERIC_H
-#define _LINUX_BYTEORDER_GENERIC_H
+#ifndef _LWK_BYTEORDER_GENERIC_H
+#define _LWK_BYTEORDER_GENERIC_H
 
 /*
- * linux/byteorder_generic.h
+ * lwk/byteorder/generic.h
  * Generic Byte-reordering support
  *
  * The "... p" macros, like le64_to_cpup, can be used with pointers
@@ -173,4 +173,4 @@ extern __be16			htons(__u16);
 #endif /* KERNEL */
 
 
-#endif /* _LINUX_BYTEORDER_GENERIC_H */
+#endif /* _LWK_BYTEORDER_GENERIC_H */

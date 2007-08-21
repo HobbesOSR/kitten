@@ -1,23 +1,20 @@
 /*
- *  linux/arch/x86_64/kernel/head.S -- start in 32bit and switch to 64bit
+ *  arch/x86_64/kernel/head.S -- start in 32bit and switch to 64bit
  *
  *  Copyright (C) 2000 Andrea Arcangeli <andrea@suse.de> SuSE
  *  Copyright (C) 2000 Pavel Machek <pavel@suse.cz>
  *  Copyright (C) 2000 Karsten Keil <kkeil@suse.de>
  *  Copyright (C) 2001,2002 Andi Kleen <ak@suse.de>
- *
- *  $Id: head.S,v 1.49 2002/03/19 17:39:25 ak Exp $
  */
 
 
-#include <linux/linkage.h>
-#include <linux/threads.h>
-#include <linux/init.h>
-#include <asm/desc.h>
-#include <asm/segment.h>
-#include <asm/page.h>
-#include <asm/msr.h>
-#include <asm/cache.h>
+#include <lwk/linkage.h>
+#include <lwk/init.h>
+//#include <arch/desc.h>
+#include <arch/segment.h>
+#include <arch/page.h>
+#include <arch/msr.h>
+#include <arch/cache.h>
 	
 /* we are not able to switch in one step to the final KERNEL ADRESS SPACE
  * because we need identity-mapped pages on setup so define __START_KERNEL to
@@ -35,7 +32,7 @@ startup_32:
 	/*
 	 * At this point the CPU runs in 32bit protected mode (CS.D = 1) with
 	 * paging disabled and the point of this file is to switch to 64bit
-	 * long mode with a kernel mapping for kerneland to jump into the
+	 * long mode with a kernel mapping for kernel and to jump into the
 	 * kernel virtual addresses.
  	 * There is no stack until we set one up.
 	 */
@@ -200,7 +197,7 @@ initial_code:
 	.quad	x86_64_start_kernel
 	.globl init_rsp
 init_rsp:
-	.quad  init_thread_union+THREAD_SIZE-8
+	.quad  init_task_union+TASK_SIZE-8
 
 ENTRY(early_idt_handler)
 	cmpl $2,early_recursion_flag(%rip)
@@ -211,10 +208,10 @@ ENTRY(early_idt_handler)
 	movq (%rsp),%rdx
 	movq %cr2,%rcx
 	leaq early_idt_msg(%rip),%rdi
-	call early_printk
+//	call early_printk
 	cmpl $2,early_recursion_flag(%rip)
 	jz  1f
-	call dump_stack
+//	call dump_stack
 #ifdef CONFIG_KALLSYMS	
 	leaq early_idt_ripmsg(%rip),%rdi
 	movq 8(%rsp),%rsi	# get rip again
@@ -254,7 +251,7 @@ ENTRY(_stext)
 #define NEXT_PAGE(name) \
 	$page = $page + 1; \
 	.org $page * 0x1000; \
-	phys_/**/name = $page * 0x1000 + __PHYSICAL_START; \
+	phys_##name = $page * 0x1000 + __PHYSICAL_START; \
 ENTRY(name)
 
 NEXT_PAGE(init_level4_pgt)
@@ -314,9 +311,8 @@ ENTRY(wakeup_level4_pgt)
 	.quad	phys_level3_kernel_pgt | 0x007
 #endif
 
-#ifndef CONFIG_HOTPLUG_CPU
 	__INITDATA
-#endif
+
 	/*
 	 * This default setting generates an ident mapping at address 0x100000
 	 * and a mapping for the kernel that precisely maps virtual address
@@ -340,12 +336,10 @@ cpu_gdt_descr:
 	.word	gdt_end-cpu_gdt_table-1
 gdt:
 	.quad	cpu_gdt_table
-#ifdef CONFIG_SMP
-	.rept	NR_CPUS-1
+	.rept	CONFIG_NR_CPUS-1
 	.word	0
 	.quad	0
 	.endr
-#endif
 
 /* We need valid kernel segments for data and code in long mode too
  * IRET will check the segment types  kkeil 2000/10/28

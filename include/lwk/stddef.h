@@ -1,7 +1,7 @@
-#ifndef _LINUX_STDDEF_H
-#define _LINUX_STDDEF_H
+#ifndef _LWK_STDDEF_H
+#define _LWK_STDDEF_H
 
-#include <linux/compiler.h>
+#include <lwk/compiler.h>
 
 #undef NULL
 #if defined(__cplusplus)

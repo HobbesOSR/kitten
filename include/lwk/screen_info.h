@@ -1,7 +1,7 @@
 #ifndef _SCREEN_INFO_H
 #define _SCREEN_INFO_H
 
-#include <linux/types.h>
+#include <lwk/types.h>
 
 /*
  * These are set up by the setup-routine at boot-time:

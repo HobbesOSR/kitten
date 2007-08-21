@@ -2,8 +2,8 @@
 #define LOAD_OFFSET 0
 #endif
 
-#ifndef VMLINUX_SYMBOL
-#define VMLINUX_SYMBOL(_sym_) _sym_
+#ifndef VMLWK_SYMBOL
+#define VMLWK_SYMBOL(_sym_) _sym_
 #endif
 
 /* Align . to a 8 byte boundary equals to maximum function alignment. */
@@ -23,67 +23,67 @@
 									\
 	/* PCI quirks */						\
 	.pci_fixup        : AT(ADDR(.pci_fixup) - LOAD_OFFSET) {	\
-		VMLINUX_SYMBOL(__start_pci_fixups_early) = .;		\
+		VMLWK_SYMBOL(__start_pci_fixups_early) = .;		\
 		*(.pci_fixup_early)					\
-		VMLINUX_SYMBOL(__end_pci_fixups_early) = .;		\
-		VMLINUX_SYMBOL(__start_pci_fixups_header) = .;		\
+		VMLWK_SYMBOL(__end_pci_fixups_early) = .;		\
+		VMLWK_SYMBOL(__start_pci_fixups_header) = .;		\
 		*(.pci_fixup_header)					\
-		VMLINUX_SYMBOL(__end_pci_fixups_header) = .;		\
-		VMLINUX_SYMBOL(__start_pci_fixups_final) = .;		\
+		VMLWK_SYMBOL(__end_pci_fixups_header) = .;		\
+		VMLWK_SYMBOL(__start_pci_fixups_final) = .;		\
 		*(.pci_fixup_final)					\
-		VMLINUX_SYMBOL(__end_pci_fixups_final) = .;		\
-		VMLINUX_SYMBOL(__start_pci_fixups_enable) = .;		\
+		VMLWK_SYMBOL(__end_pci_fixups_final) = .;		\
+		VMLWK_SYMBOL(__start_pci_fixups_enable) = .;		\
 		*(.pci_fixup_enable)					\
-		VMLINUX_SYMBOL(__end_pci_fixups_enable) = .;		\
+		VMLWK_SYMBOL(__end_pci_fixups_enable) = .;		\
 	}								\
 									\
 	/* RapidIO route ops */						\
 	.rio_route        : AT(ADDR(.rio_route) - LOAD_OFFSET) {	\
-		VMLINUX_SYMBOL(__start_rio_route_ops) = .;		\
+		VMLWK_SYMBOL(__start_rio_route_ops) = .;		\
 		*(.rio_route_ops)					\
-		VMLINUX_SYMBOL(__end_rio_route_ops) = .;		\
+		VMLWK_SYMBOL(__end_rio_route_ops) = .;		\
 	}								\
 									\
 	/* Kernel symbol table: Normal symbols */			\
 	__ksymtab         : AT(ADDR(__ksymtab) - LOAD_OFFSET) {		\
-		VMLINUX_SYMBOL(__start___ksymtab) = .;			\
+		VMLWK_SYMBOL(__start___ksymtab) = .;			\
 		*(__ksymtab)						\
-		VMLINUX_SYMBOL(__stop___ksymtab) = .;			\
+		VMLWK_SYMBOL(__stop___ksymtab) = .;			\
 	}								\
 									\
 	/* Kernel symbol table: GPL-only symbols */			\
 	__ksymtab_gpl     : AT(ADDR(__ksymtab_gpl) - LOAD_OFFSET) {	\
-		VMLINUX_SYMBOL(__start___ksymtab_gpl) = .;		\
+		VMLWK_SYMBOL(__start___ksymtab_gpl) = .;		\
 		*(__ksymtab_gpl)					\
-		VMLINUX_SYMBOL(__stop___ksymtab_gpl) = .;		\
+		VMLWK_SYMBOL(__stop___ksymtab_gpl) = .;		\
 	}								\
 									\
 	/* Kernel symbol table: GPL-future-only symbols */		\
 	__ksymtab_gpl_future : AT(ADDR(__ksymtab_gpl_future) - LOAD_OFFSET) { \
-		VMLINUX_SYMBOL(__start___ksymtab_gpl_future) = .;	\
+		VMLWK_SYMBOL(__start___ksymtab_gpl_future) = .;	\
 		*(__ksymtab_gpl_future)					\
-		VMLINUX_SYMBOL(__stop___ksymtab_gpl_future) = .;	\
+		VMLWK_SYMBOL(__stop___ksymtab_gpl_future) = .;	\
 	}								\
 									\
 	/* Kernel symbol table: Normal symbols */			\
 	__kcrctab         : AT(ADDR(__kcrctab) - LOAD_OFFSET) {		\
-		VMLINUX_SYMBOL(__start___kcrctab) = .;			\
+		VMLWK_SYMBOL(__start___kcrctab) = .;			\
 		*(__kcrctab)						\
-		VMLINUX_SYMBOL(__stop___kcrctab) = .;			\
+		VMLWK_SYMBOL(__stop___kcrctab) = .;			\
 	}								\
 									\
 	/* Kernel symbol table: GPL-only symbols */			\
 	__kcrctab_gpl     : AT(ADDR(__kcrctab_gpl) - LOAD_OFFSET) {	\
-		VMLINUX_SYMBOL(__start___kcrctab_gpl) = .;		\
+		VMLWK_SYMBOL(__start___kcrctab_gpl) = .;		\
 		*(__kcrctab_gpl)					\
-		VMLINUX_SYMBOL(__stop___kcrctab_gpl) = .;		\
+		VMLWK_SYMBOL(__stop___kcrctab_gpl) = .;		\
 	}								\
 									\
 	/* Kernel symbol table: GPL-future-only symbols */		\
 	__kcrctab_gpl_future : AT(ADDR(__kcrctab_gpl_future) - LOAD_OFFSET) { \
-		VMLINUX_SYMBOL(__start___kcrctab_gpl_future) = .;	\
+		VMLWK_SYMBOL(__start___kcrctab_gpl_future) = .;	\
 		*(__kcrctab_gpl_future)					\
-		VMLINUX_SYMBOL(__stop___kcrctab_gpl_future) = .;	\
+		VMLWK_SYMBOL(__stop___kcrctab_gpl_future) = .;	\
 	}								\
 									\
 	/* Kernel symbol table: strings */				\
@@ -95,39 +95,39 @@
 									\
 	/* Built-in module parameters. */				\
 	__param : AT(ADDR(__param) - LOAD_OFFSET) {			\
-		VMLINUX_SYMBOL(__start___param) = .;			\
+		VMLWK_SYMBOL(__start___param) = .;			\
 		*(__param)						\
-		VMLINUX_SYMBOL(__stop___param) = .;			\
+		VMLWK_SYMBOL(__stop___param) = .;			\
 	}
 
 #define SECURITY_INIT							\
 	.security_initcall.init : AT(ADDR(.security_initcall.init) - LOAD_OFFSET) { \
-		VMLINUX_SYMBOL(__security_initcall_start) = .;		\
+		VMLWK_SYMBOL(__security_initcall_start) = .;		\
 		*(.security_initcall.init) 				\
-		VMLINUX_SYMBOL(__security_initcall_end) = .;		\
+		VMLWK_SYMBOL(__security_initcall_end) = .;		\
 	}
 
 /* sched.text is aling to function alignment to secure we have same
  * address even at second ld pass when generating System.map */
 #define SCHED_TEXT							\
 		ALIGN_FUNCTION();					\
-		VMLINUX_SYMBOL(__sched_text_start) = .;			\
+		VMLWK_SYMBOL(__sched_text_start) = .;			\
 		*(.sched.text)						\
-		VMLINUX_SYMBOL(__sched_text_end) = .;
+		VMLWK_SYMBOL(__sched_text_end) = .;
 
 /* spinlock.text is aling to function alignment to secure we have same
  * address even at second ld pass when generating System.map */
 #define LOCK_TEXT							\
 		ALIGN_FUNCTION();					\
-		VMLINUX_SYMBOL(__lock_text_start) = .;			\
+		VMLWK_SYMBOL(__lock_text_start) = .;			\
 		*(.spinlock.text)					\
-		VMLINUX_SYMBOL(__lock_text_end) = .;
+		VMLWK_SYMBOL(__lock_text_end) = .;
 
 #define KPROBES_TEXT							\
 		ALIGN_FUNCTION();					\
-		VMLINUX_SYMBOL(__kprobes_text_start) = .;		\
+		VMLWK_SYMBOL(__kprobes_text_start) = .;		\
 		*(.kprobes.text)					\
-		VMLINUX_SYMBOL(__kprobes_text_end) = .;
+		VMLWK_SYMBOL(__kprobes_text_end) = .;
 
 		/* DWARF debug sections.
 		Symbols in the DWARF debugging sections are relative to

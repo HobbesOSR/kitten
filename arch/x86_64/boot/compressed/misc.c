@@ -9,9 +9,9 @@
  * High loaded stuff by Hans Lermen & Werner Almesberger, Feb. 1996
  */
 
-#include <linux/screen_info.h>
-#include <asm/io.h>
-#include <asm/page.h>
+#include <lwk/screen_info.h>
+#include <arch/io.h>
+#include <arch/page.h>
 
 /*
  * gzip declarations

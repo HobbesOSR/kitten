@@ -1,5 +1,5 @@
 /*
- * include/asm-x8664/cache.h
+ * include/arch-x86_64/cache.h
  */
 #ifndef _ARCH_CACHE_H
 #define _ARCH_CACHE_H

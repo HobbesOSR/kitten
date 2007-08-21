@@ -1,5 +1,5 @@
-#ifndef X86_64_MSR_H
-#define X86_64_MSR_H 1
+#ifndef _X86_64_MSR_H
+#define _X86_64_MSR_H
 
 #ifndef __ASSEMBLY__
 /*

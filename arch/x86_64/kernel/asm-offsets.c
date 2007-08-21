@@ -4,6 +4,7 @@
  * and format the required data.
  */
 
+#if 0
 #include <linux/sched.h> 
 #include <linux/stddef.h>
 #include <linux/errno.h> 
@@ -13,7 +14,7 @@
 #include <asm/processor.h>
 #include <asm/segment.h>
 #include <asm/thread_info.h>
-#include <asm/ia32.h>
+#endif
 
 #define DEFINE(sym, val) \
         asm volatile("\n->" #sym " %0 " #val : : "i" (val))
@@ -22,6 +23,7 @@
 
 int main(void)
 {
+#if 0
 #define ENTRY(entry) DEFINE(tsk_ ## entry, offsetof(struct task_struct, entry))
 	ENTRY(state);
 	ENTRY(flags); 
@@ -46,27 +48,11 @@ int main(void)
 	ENTRY(data_offset);
 	BLANK();
 #undef ENTRY
-#ifdef CONFIG_IA32_EMULATION
-#define ENTRY(entry) DEFINE(IA32_SIGCONTEXT_ ## entry, offsetof(struct sigcontext_ia32, entry))
-	ENTRY(eax);
-	ENTRY(ebx);
-	ENTRY(ecx);
-	ENTRY(edx);
-	ENTRY(esi);
-	ENTRY(edi);
-	ENTRY(ebp);
-	ENTRY(esp);
-	ENTRY(eip);
-	BLANK();
-#undef ENTRY
-	DEFINE(IA32_RT_SIGFRAME_sigcontext,
-	       offsetof (struct rt_sigframe32, uc.uc_mcontext));
-	BLANK();
-#endif
 	DEFINE(pbe_address, offsetof(struct pbe, address));
 	DEFINE(pbe_orig_address, offsetof(struct pbe, orig_address));
 	DEFINE(pbe_next, offsetof(struct pbe, next));
 	BLANK();
 	DEFINE(TSS_ist, offsetof(struct tss_struct, ist));
+#endif
 	return 0;
 }

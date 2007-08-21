@@ -13,7 +13,7 @@
  *
  */
 
-#include <asm/boot.h>
+#include <arch/boot.h>
 
 SETUPSECTS	= 4			/* default nr of setup-sectors */
 BOOTSEG		= 0x07C0		/* original address of boot-sector */
@@ -25,9 +25,7 @@ SYSSIZE		= DEF_SYSSIZE		/* system size: # of 16-byte clicks */
 ROOT_DEV	= 0 			/* ROOT_DEV is now written by "build" */
 SWAP_DEV	= 0			/* SWAP_DEV is now written by "build" */
 
-#ifndef SVGA_MODE
-#define SVGA_MODE ASK_VGA
-#endif
+#define SVGA_MODE 0
 
 #ifndef RAMDISK
 #define RAMDISK 0

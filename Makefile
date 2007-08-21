@@ -431,10 +431,10 @@ scripts_basic: include/lwk/autoconf.h
 
 # Objects we will link into vmlwk / subdirs we need to visit
 init-y		:= init/
-drivers-y	:= drivers/ sound/
-net-y		:= net/
-libs-y		:= lib/
-core-y		:= usr/
+#drivers-y	:= drivers/ sound/
+#net-y		:= net/
+#libs-y		:= lib/
+#core-y		:= usr/
 endif # KBUILD_EXTMOD
 
 ifeq ($(dot-config),1)
@@ -524,7 +524,8 @@ export MODLIB
 
 
 ifeq ($(KBUILD_EXTMOD),)
-core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
+#core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
+core-y		+= kernel/
 
 vmlwk-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \

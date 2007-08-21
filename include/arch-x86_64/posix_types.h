@@ -1,5 +1,5 @@
-#ifndef _ASM_X86_64_POSIX_TYPES_H
-#define _ASM_X86_64_POSIX_TYPES_H
+#ifndef _X86_64_POSIX_TYPES_H
+#define _X86_64_POSIX_TYPES_H
 
 /*
  * This file is generally used by user-level software, so you need to
@@ -25,23 +25,11 @@ typedef int		__kernel_timer_t;
 typedef int		__kernel_clockid_t;
 typedef int		__kernel_daddr_t;
 typedef char *		__kernel_caddr_t;
-typedef unsigned short	__kernel_uid16_t;
-typedef unsigned short	__kernel_gid16_t;
-
-#ifdef __GNUC__
 typedef long long	__kernel_loff_t;
-#endif
 
 typedef struct {
 	int	val[2];
 } __kernel_fsid_t;
-
-typedef unsigned short __kernel_old_uid_t;
-typedef unsigned short __kernel_old_gid_t;
-typedef __kernel_uid_t __kernel_uid32_t;
-typedef __kernel_gid_t __kernel_gid32_t;
-
-typedef unsigned long	__kernel_old_dev_t;
 
 #ifdef __KERNEL__
 

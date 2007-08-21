@@ -1,8 +1,8 @@
 #ifndef _X86_64_BYTEORDER_H
 #define _X86_64_BYTEORDER_H
 
-#include <asm/types.h>
-#include <linux/compiler.h>
+#include <arch/types.h>
+#include <lwk/compiler.h>
 
 #ifdef __GNUC__
 
@@ -28,6 +28,6 @@ static __inline__ __attribute_const__ __u32 ___arch__swab32(__u32 x)
 
 #define __BYTEORDER_HAS_U64__
 
-#include <linux/byteorder/little_endian.h>
+#include <lwk/byteorder/little_endian.h>
 
 #endif /* _X86_64_BYTEORDER_H */

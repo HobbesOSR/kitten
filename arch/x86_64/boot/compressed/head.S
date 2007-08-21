@@ -1,5 +1,5 @@
 /*
- *  linux/boot/head.S
+ *  x86_64/boot/compressed/head.S
  *
  *  Copyright (C) 1991, 1992, 1993  Linus Torvalds
  */
@@ -24,9 +24,9 @@
 .code32
 .text
 
-#include <linux/linkage.h>
-#include <asm/segment.h>
-#include <asm/page.h>
+#include <lwk/linkage.h>
+#include <arch/segment.h>
+#include <arch/page.h>
 
 	.code32
 	.globl startup_32

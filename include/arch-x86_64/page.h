@@ -21,8 +21,8 @@
 #define __PAGE_OFFSET           0xffff810000000000
 #endif
 
-#define THREAD_ORDER 1 
-#define THREAD_SIZE  (PAGE_SIZE << THREAD_ORDER)
-#define CURRENT_MASK (~(THREAD_SIZE-1))
+#define TASK_ORDER 1 
+#define TASK_SIZE  (PAGE_SIZE << TASK_ORDER)
+#define CURRENT_MASK (~(TASK_SIZE-1))
 
 #endif

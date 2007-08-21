@@ -45,13 +45,12 @@
  * Added long mode checking and SSE force. March 2003, Andi Kleen.		
  */
 
-#include <linux/config.h>
-#include <asm/segment.h>
-#include <linux/version.h>
-#include <linux/compile.h>
-#include <asm/boot.h>
-#include <asm/e820.h>
-#include <asm/page.h>
+#include <arch/segment.h>
+#include <lwk/version.h>
+#include <lwk/compile.h>
+#include <arch/boot.h>
+#include <arch/e820.h>
+#include <arch/page.h>
 
 /* Signature words to ensure LILO loaded us right */
 #define SIG1	0xAA55
@@ -103,11 +102,7 @@ CAN_USE_HEAP	= 0x80			# If set, the loader also has set
 					# space behind setup.S can be used for
 					# heap purposes.
 					# Only the loader knows what is free
-#ifndef __BIG_KERNEL__
-		.byte	0
-#else
 		.byte	LOADED_HIGH
-#endif
 
 setup_move_size: .word  0x8000		# size to move, when setup is not
 					# loaded at 0x90000. We will move setup 
@@ -118,11 +113,7 @@ setup_move_size: .word  0x8000		# size to move, when setup is not
 
 code32_start:				# here loaders can put a different
 					# start address for 32-bit code.
-#ifndef __BIG_KERNEL__
-		.long	0x1000		#   0x1000 = default for zImage
-#else
 		.long	0x100000	# 0x100000 = default for big kernel
-#endif
 
 ramdisk_image:	.long	0		# address of loaded ramdisk image
 					# Here the loader puts the 32-bit
@@ -356,7 +347,7 @@ no_longmode:
 no_longmode_loop:		
 	jmp	no_longmode_loop
 long_mode_panic:
-	.string CONFIG_X86_64_NOLONG_MSG
+	.string "ERROR: long mode is not supported on this system."
 	.byte 0
 	
 sse_ok:
@@ -529,8 +520,6 @@ is_disk1:
 
 	movw	$0xAA, (0x1ff)			# device present
 no_psmouse:
-
-#include "../../i386/boot/edd.S"
 
 # Now we want to move to protected mode ...
 	cmpw	$0, %cs:realmode_swtch
@@ -740,9 +729,9 @@ code32:	.long	0x1000				# will be set to 0x100000
 # Here's a bunch of information about your current kernel..
 kernel_version:	.ascii	UTS_RELEASE
 		.ascii	" ("
-		.ascii	LINUX_COMPILE_BY
+		.ascii	LWK_COMPILE_BY
 		.ascii	"@"
-		.ascii	LINUX_COMPILE_HOST
+		.ascii	LWK_COMPILE_HOST
 		.ascii	") "
 		.ascii	UTS_VERSION
 		.byte	0
@@ -846,6 +835,10 @@ gdt_48:
 setup_sig1:	.word	SIG1
 setup_sig2:	.word	SIG2
 
+# After this point, there is some free space which is used by the video mode
+# handling code to store the temporary mode table (not used by the kernel).
+
+modelist:
 
 .text
 endtext:

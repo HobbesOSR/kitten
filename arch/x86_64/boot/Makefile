@@ -19,7 +19,7 @@
 
 ROOT_DEV := CURRENT
 
-targets		:= lwk.bin bootsect bootsect.o \
+targets		:= vmlwk.bin bootsect bootsect.o \
 		   setup setup.o bzImage
 
 EXTRA_CFLAGS := -m32
@@ -30,19 +30,19 @@ subdir-		:= compressed/	#Let make clean descend in compressed/
 # ---------------------------------------------------------------------------
 
 $(obj)/bzImage: IMAGE_OFFSET := 0x100000
-$(obj)/bzImage: EXTRA_AFLAGS := -traditional -D__BIG_KERNEL__
+$(obj)/bzImage: EXTRA_AFLAGS := -traditional
 $(obj)/bzImage: BUILDFLAGS   := -b
 
 quiet_cmd_image = BUILD   $@
 cmd_image = $(obj)/tools/build $(BUILDFLAGS) $(obj)/bootsect $(obj)/setup \
-	    $(obj)/lwk.bin $(ROOT_DEV) > $@
+	    $(obj)/vmlwk.bin $(ROOT_DEV) > $@
 
 $(obj)/bzImage: $(obj)/bootsect $(obj)/setup \
-			      $(obj)/lwk.bin $(obj)/tools/build FORCE
+			      $(obj)/vmlwk.bin $(obj)/tools/build FORCE
 	$(call if_changed,image)
 	@echo 'Kernel: $@ is ready' ' (#'`cat .version`')'
 
-$(obj)/lwk.bin: $(obj)/compressed/lwk FORCE
+$(obj)/vmlwk.bin: $(obj)/compressed/vmlwk FORCE
 	$(call if_changed,objcopy)
 
 LDFLAGS_bootsect := -Ttext 0x0 -s --oformat binary
@@ -51,7 +51,7 @@ LDFLAGS_setup	 := -Ttext 0x0 -s --oformat binary -e begtext
 $(obj)/setup $(obj)/bootsect: %: %.o FORCE
 	$(call if_changed,ld)
 
-$(obj)/compressed/lwk: FORCE
+$(obj)/compressed/vmlwk: FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/compressed IMAGE_OFFSET=$(IMAGE_OFFSET) $@
 
 # Set this if you want to pass append arguments to the isoimage kernel

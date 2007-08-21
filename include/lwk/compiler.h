@@ -39,7 +39,7 @@ extern void __chk_io_ptr(void __iomem *);
 #if __GNUC__ > 4
 #error no compiler-gcc.h file for this gcc version
 #elif __GNUC__ == 4
-# include <linux/compiler-gcc4.h>
+# include <lwk/compiler-gcc4.h>
 #else
 # error Sorry, your compiler is too old/not recognized.
 #endif

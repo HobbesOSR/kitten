@@ -1,5 +1,5 @@
-#ifndef _ASM_IO_H
-#define _ASM_IO_H
+#ifndef _ARCH_IO_H
+#define _ARCH_IO_H
 
 
 /*
@@ -125,7 +125,7 @@ static inline void * phys_to_virt(unsigned long address)
  */
 #define page_to_phys(page)    ((dma_addr_t)page_to_pfn(page) << PAGE_SHIFT)
 
-#include <asm-generic/iomap.h>
+#include <arch-generic/iomap.h>
 
 extern void __iomem *__ioremap(unsigned long offset, unsigned long size, unsigned long flags);
 

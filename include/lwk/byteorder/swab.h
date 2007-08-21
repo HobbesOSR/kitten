@@ -1,8 +1,8 @@
-#ifndef _LINUX_BYTEORDER_SWAB_H
-#define _LINUX_BYTEORDER_SWAB_H
+#ifndef _LWK_BYTEORDER_SWAB_H
+#define _LWK_BYTEORDER_SWAB_H
 
 /*
- * linux/byteorder/swab.h
+ * lwk/byteorder/swab.h
  * Byte-swapping, independently from CPU endianness
  *	swabXX[ps]?(foo)
  *
@@ -15,7 +15,7 @@
  *
  */
 
-#include <linux/compiler.h>
+#include <lwk/compiler.h>
 
 /* casts are necessary for constants, because we never know how for sure
  * how U/UL/ULL map to __u16, __u32, __u64. At least not in a portable way.
@@ -189,4 +189,4 @@ static __inline__ void __swab64s(__u64 *addr)
 #define swab64s __swab64s
 #endif
 
-#endif /* _LINUX_BYTEORDER_SWAB_H */
+#endif /* _LWK_BYTEORDER_SWAB_H */

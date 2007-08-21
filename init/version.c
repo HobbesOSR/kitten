@@ -6,33 +6,11 @@
  *  May be freely distributed as part of Linux.
  */
 
-#include <linux/compile.h>
-#include <linux/module.h>
-#include <linux/uts.h>
-#include <linux/utsname.h>
-#include <linux/version.h>
+#include <lwk/compile.h>
+#include <lwk/version.h>
 
-#define version(a) Version_ ## a
-#define version_string(a) version(a)
-
-int version_string(LINUX_VERSION_CODE);
-
-struct new_utsname system_utsname = {
-	.sysname	= UTS_SYSNAME,
-	.nodename	= UTS_NODENAME,
-	.release	= UTS_RELEASE,
-	.version	= UTS_VERSION,
-	.machine	= UTS_MACHINE,
-	.domainname	= UTS_DOMAINNAME,
-};
-
-EXPORT_SYMBOL(system_utsname);
-
-const char linux_banner[] =
-	"Linux version " UTS_RELEASE " (" LINUX_COMPILE_BY "@"
-	LINUX_COMPILE_HOST ") (" LINUX_COMPILER ") " UTS_VERSION
-#ifdef CONFIG_VERSION_SIGNATURE
-	" (" CONFIG_VERSION_SIGNATURE ")"
-#endif
+const char lwk_banner[] =
+	"LWK version " UTS_RELEASE " (" LWK_COMPILE_BY "@"
+	LWK_COMPILE_HOST ") (" LWK_COMPILER ") " UTS_VERSION
 	"\n";
 
