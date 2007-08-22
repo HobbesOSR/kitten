@@ -7,12 +7,12 @@
  *
  */
 
-#ifndef _LINUX_PREFETCH_H
-#define _LINUX_PREFETCH_H
+#ifndef _LWK_PREFETCH_H
+#define _LWK_PREFETCH_H
 
-#include <linux/types.h>
-#include <asm/processor.h>
-#include <asm/cache.h>
+#include <lwk/types.h>
+#include <arch/processor.h>
+#include <arch/cache.h>
 
 /*
 	prefetch(x) attempts to pre-emptively get the memory pointed to

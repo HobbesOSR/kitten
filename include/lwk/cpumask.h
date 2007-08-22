@@ -1,5 +1,5 @@
-#ifndef __LINUX_CPUMASK_H
-#define __LINUX_CPUMASK_H
+#ifndef _LWK_CPUMASK_H
+#define _LWK_CPUMASK_H
 
 /*
  * Cpumasks provide a bitmap suitable for representing the
@@ -81,9 +81,12 @@
  *    inside a macro, the way we do the other calls.
  */
 
-#include <linux/kernel.h>
-#include <linux/threads.h>
-#include <linux/bitmap.h>
+#include <lwk/kernel.h>
+#include <lwk/bitmap.h>
+
+#ifndef NR_CPUS
+#define NR_CPUS	CONFIG_NR_CPUS
+#endif
 
 typedef struct { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
 extern cpumask_t _unused_cpumask_arg_;
@@ -212,15 +215,10 @@ static inline void __cpus_shift_left(cpumask_t *dstp,
 	bitmap_shift_left(dstp->bits, srcp->bits, n, nbits);
 }
 
-#ifdef CONFIG_SMP
 int __first_cpu(const cpumask_t *srcp);
 #define first_cpu(src) __first_cpu(&(src))
 int __next_cpu(int n, const cpumask_t *srcp);
 #define next_cpu(n, src) __next_cpu((n), &(src))
-#else
-#define first_cpu(src)		0
-#define next_cpu(n, src)	1
-#endif
 
 #define cpumask_of_cpu(cpu)						\
 ({									\
@@ -311,14 +309,10 @@ static inline void __cpus_remap(cpumask_t *dstp, const cpumask_t *srcp,
 	bitmap_remap(dstp->bits, srcp->bits, oldp->bits, newp->bits, nbits);
 }
 
-#if NR_CPUS > 1
 #define for_each_cpu_mask(cpu, mask)		\
 	for ((cpu) = first_cpu(mask);		\
 		(cpu) < NR_CPUS;		\
 		(cpu) = next_cpu((cpu), (mask)))
-#else /* NR_CPUS == 1 */
-#define for_each_cpu_mask(cpu, mask) for ((cpu) = 0; (cpu) < 1; (cpu)++)
-#endif /* NR_CPUS */
 
 /*
  * The following particular system cpumasks and operations manage
@@ -380,34 +374,20 @@ extern cpumask_t cpu_possible_map;
 extern cpumask_t cpu_online_map;
 extern cpumask_t cpu_present_map;
 
-#if NR_CPUS > 1
 #define num_online_cpus()	cpus_weight(cpu_online_map)
 #define num_possible_cpus()	cpus_weight(cpu_possible_map)
 #define num_present_cpus()	cpus_weight(cpu_present_map)
 #define cpu_online(cpu)		cpu_isset((cpu), cpu_online_map)
 #define cpu_possible(cpu)	cpu_isset((cpu), cpu_possible_map)
 #define cpu_present(cpu)	cpu_isset((cpu), cpu_present_map)
-#else
-#define num_online_cpus()	1
-#define num_possible_cpus()	1
-#define num_present_cpus()	1
-#define cpu_online(cpu)		((cpu) == 0)
-#define cpu_possible(cpu)	((cpu) == 0)
-#define cpu_present(cpu)	((cpu) == 0)
-#endif
 
-#ifdef CONFIG_SMP
 int highest_possible_processor_id(void);
 #define any_online_cpu(mask) __any_online_cpu(&(mask))
 int __any_online_cpu(const cpumask_t *mask);
-#else
-#define highest_possible_processor_id()	0
-#define any_online_cpu(mask)		0
-#endif
 
 #define for_each_cpu(cpu)  for_each_cpu_mask((cpu), cpu_possible_map)
 #define for_each_possible_cpu(cpu)  for_each_cpu_mask((cpu), cpu_possible_map)
 #define for_each_online_cpu(cpu)  for_each_cpu_mask((cpu), cpu_online_map)
 #define for_each_present_cpu(cpu) for_each_cpu_mask((cpu), cpu_present_map)
 
-#endif /* __LINUX_CPUMASK_H */
+#endif /* _LWK_CPUMASK_H */

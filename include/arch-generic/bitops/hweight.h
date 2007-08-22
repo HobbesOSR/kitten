@@ -1,7 +1,7 @@
 #ifndef _ASM_GENERIC_BITOPS_HWEIGHT_H_
 #define _ASM_GENERIC_BITOPS_HWEIGHT_H_
 
-#include <asm/types.h>
+#include <arch/types.h>
 
 extern unsigned int hweight32(unsigned int w);
 extern unsigned int hweight16(unsigned int w);

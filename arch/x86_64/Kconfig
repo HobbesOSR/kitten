@@ -18,7 +18,7 @@ config X86_PC
         help
 	  Support for standard PC compatible systems.
 
-config X86_RED_STORM
+config X86_REDSTORM
         bool "Red Storm (Cray XT3/XT4)"
          help
 	  Support for Cray XT3 and XT4 systems.
@@ -57,14 +57,18 @@ config X86_L1_CACHE_BYTES
         default "128" if GENERIC_CPU || MPSC
         default "64" if MK8
 
-config X86_INTERNODE_CACHE_BYTES
-	int
-	default X86_L1_CACHE_BYTES
-
 config X86_L1_CACHE_SHIFT
         int
         default "7" if GENERIC_CPU || MPSC
         default "6" if MK8
+
+config X86_INTERNODE_CACHE_BYTES
+	int
+	default X86_L1_CACHE_BYTES
+
+config X86_INTERNODE_CACHE_SHIFT
+	int
+	default X86_L1_CACHE_SHIFT
 
 config NR_CPUS
         int "Maximum number of CPUs (2-256)"

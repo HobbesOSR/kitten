@@ -1,11 +1,11 @@
-#ifndef X86_64_PDA_H
-#define X86_64_PDA_H
+#ifndef _X86_64_PDA_H
+#define _X86_64_PDA_H
 
 #ifndef __ASSEMBLY__
-#include <linux/stddef.h>
-#include <linux/types.h>
-#include <linux/cache.h>
-#include <asm/page.h>
+#include <lwk/stddef.h>
+#include <lwk/types.h>
+#include <lwk/cache.h>
+#include <arch/page.h>
 
 /* Per processor datastructure. %gs points to it while the kernel runs */ 
 struct x8664_pda {

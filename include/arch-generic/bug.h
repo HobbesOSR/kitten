@@ -1,9 +1,8 @@
-#ifndef _ASM_GENERIC_BUG_H
-#define _ASM_GENERIC_BUG_H
+#ifndef _ARCH_GENERIC_BUG_H
+#define _ARCH_GENERIC_BUG_H
 
-#include <linux/compiler.h>
+#include <lwk/compiler.h>
 
-#ifdef CONFIG_BUG
 #ifndef HAVE_ARCH_BUG
 #define BUG() do { \
 	printk("BUG: failure at %s:%d/%s()!\n", __FILE__, __LINE__, __FUNCTION__); \
@@ -19,23 +18,10 @@
 #define WARN_ON(condition) do { \
 	if (unlikely((condition)!=0)) { \
 		printk("BUG: warning at %s:%d/%s()\n", __FILE__, __LINE__, __FUNCTION__); \
-		dump_stack(); \
+		/* TODO FIX ME */ \
+		/* dump_stack(); */ \
 	} \
 } while (0)
-#endif
-
-#else /* !CONFIG_BUG */
-#ifndef HAVE_ARCH_BUG
-#define BUG()
-#endif
-
-#ifndef HAVE_ARCH_BUG_ON
-#define BUG_ON(condition) do { if (condition) ; } while(0)
-#endif
-
-#ifndef HAVE_ARCH_WARN_ON
-#define WARN_ON(condition) do { if (condition) ; } while(0)
-#endif
 #endif
 
 #endif

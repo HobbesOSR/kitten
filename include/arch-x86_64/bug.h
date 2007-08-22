@@ -1,7 +1,7 @@
-#ifndef __ASM_X8664_BUG_H
-#define __ASM_X8664_BUG_H 1
+#ifndef __ARCH_BUG_H
+#define __ARCH_BUG_H
 
-#include <linux/stringify.h>
+#include <lwk/stringify.h>
 
 /*
  * Tell the user there is some problem.  The exception handler decodes 
@@ -15,7 +15,6 @@ struct bug_frame {
 	unsigned short line;
 } __attribute__((packed));
 
-#ifdef CONFIG_BUG
 #define HAVE_ARCH_BUG
 /* We turn the bug frame into valid instructions to not confuse
    the disassembler. Thanks to Jan Beulich & Suresh Siddha
@@ -26,9 +25,6 @@ struct bug_frame {
 	"ud2 ; pushq $%c1 ; ret $%c0" :: 				\
 		     "i"(__LINE__), "i" (__FILE__))
 void out_of_line_bug(void);
-#else
-static inline void out_of_line_bug(void) { }
-#endif
 
-#include <asm-generic/bug.h>
+#include <arch-generic/bug.h>
 #endif

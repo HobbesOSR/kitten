@@ -1,11 +1,11 @@
-#ifndef __LINUX_BITMAP_H
-#define __LINUX_BITMAP_H
+#ifndef _LWK_BITMAP_H
+#define _LWK_BITMAP_H
 
 #ifndef __ASSEMBLY__
 
-#include <linux/types.h>
-#include <linux/bitops.h>
-#include <linux/string.h>
+#include <lwk/types.h>
+#include <lwk/bitops.h>
+#include <lwk/string.h>
 
 /*
  * bitmaps provide bit arrays that consume one or more unsigned
@@ -14,7 +14,7 @@
  *
  * Function implementations generic to all architectures are in
  * lib/bitmap.c.  Functions implementations that are architecture
- * specific are in various include/asm-<arch>/bitops.h headers
+ * specific are in various include/arch-<arch>/bitops.h headers
  * and other arch/<arch> specific files.
  *
  * See lib/bitmap.c for more details.
@@ -68,7 +68,7 @@
  */
 
 /*
- * The DECLARE_BITMAP(name,bits) macro, in linux/types.h, can be used
+ * The DECLARE_BITMAP(name,bits) macro, in lwk/types.h, can be used
  * to declare an array named 'name' of just enough unsigned longs to
  * contain all bit positions from 0 to 'bits' - 1.
  */
@@ -267,4 +267,4 @@ static inline void bitmap_shift_left(unsigned long *dst,
 
 #endif /* __ASSEMBLY__ */
 
-#endif /* __LINUX_BITMAP_H */
+#endif /* _LWK_BITMAP_H */

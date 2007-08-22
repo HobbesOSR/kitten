@@ -1,12 +1,12 @@
-#ifndef _LINUX_BITOPS_H
-#define _LINUX_BITOPS_H
-#include <asm/types.h>
+#ifndef _LWK_BITOPS_H
+#define _LWK_BITOPS_H
+#include <arch/types.h>
 
 /*
  * Include this here because some architectures need generic_ffs/fls in
  * scope
  */
-#include <asm/bitops.h>
+#include <arch/bitops.h>
 
 static __inline__ int get_bitmask_order(unsigned int count)
 {

@@ -17,14 +17,14 @@
  */
 
 #include <stdarg.h>
-#include <linux/module.h>
-#include <linux/types.h>
-#include <linux/string.h>
-#include <linux/ctype.h>
-#include <linux/kernel.h>
+#include <lwk/linux_compat.h>
+#include <lwk/types.h>
+#include <lwk/string.h>
+#include <lwk/ctype.h>
+#include <lwk/kernel.h>
 
-#include <asm/page.h>		/* for PAGE_SIZE */
-#include <asm/div64.h>
+#include <arch/page.h>		/* for PAGE_SIZE */
+#include <arch/div64.h>
 
 /**
  * simple_strtoul - convert a string to an unsigned long

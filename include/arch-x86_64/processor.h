@@ -4,22 +4,23 @@
  * Copyright (C) 1994 Linus Torvalds
  */
 
-#ifndef __ASM_X86_64_PROCESSOR_H
-#define __ASM_X86_64_PROCESSOR_H
+#ifndef _X86_64_PROCESSOR_H
+#define _X86_64_PROCESSOR_H
 
-#include <asm/segment.h>
-#include <asm/page.h>
-#include <asm/types.h>
-#include <asm/sigcontext.h>
-#include <asm/cpufeature.h>
-#include <linux/threads.h>
-#include <asm/msr.h>
-#include <asm/current.h>
-#include <asm/system.h>
-#include <asm/mmsegment.h>
-#include <asm/percpu.h>
-#include <linux/personality.h>
-#include <linux/cpumask.h>
+#include <arch/segment.h>
+#include <arch/page.h>
+#include <arch/types.h>
+#include <arch/sigcontext.h>
+#include <arch/cpufeature.h>
+/* #include <linux/threads.h> */
+#include <arch/msr.h>
+/* #include <arch/current.h> */
+/* #include <arch/system.h> */
+/* #include <arch/mmsegment.h> */
+#include <arch/percpu.h>
+/* #include <lwk/personality.h> */
+#include <lwk/cpumask.h>
+#include <lwk/cache.h>
 
 #define TF_MASK		0x00000100
 #define IF_MASK		0x00000200
@@ -65,9 +66,7 @@ struct cpuinfo_x86 {
         __u32   x86_power; 	
 	__u32   extended_cpuid_level;	/* Max extended CPUID function supported */
 	unsigned long loops_per_jiffy;
-#ifdef CONFIG_SMP
 	cpumask_t llc_shared_map;	/* cpus sharing the last level cache */
-#endif
 	__u8	apicid;
 	__u8	booted_cores;	/* number of cores as seen by OS */
 } ____cacheline_aligned;
@@ -83,13 +82,8 @@ struct cpuinfo_x86 {
 #define X86_VENDOR_NUM 8
 #define X86_VENDOR_UNKNOWN 0xff
 
-#ifdef CONFIG_SMP
 extern struct cpuinfo_x86 cpu_data[];
 #define current_cpu_data cpu_data[smp_processor_id()]
-#else
-#define cpu_data (&boot_cpu_data)
-#define current_cpu_data boot_cpu_data
-#endif
 
 extern char ignore_irq13;
 
@@ -161,21 +155,6 @@ static inline void clear_in_cr4 (unsigned long mask)
 		:"ax");
 }
 
-
-/*
- * User space process size. 47bits minus one guard page.
- */
-#define TASK_SIZE64	(0x800000000000UL - 4096)
-
-/* This decides where the kernel will search for a free chunk of vm
- * space during mmap's.
- */
-#define IA32_PAGE_OFFSET ((current->personality & ADDR_LIMIT_3GB) ? 0xc0000000 : 0xFFFFe000)
-
-#define TASK_SIZE 		(test_thread_flag(TIF_IA32) ? IA32_PAGE_OFFSET : TASK_SIZE64)
-#define TASK_SIZE_OF(child) 	((test_tsk_thread_flag(child, TIF_IA32)) ? IA32_PAGE_OFFSET : TASK_SIZE64)
-
-#define TASK_UNMAPPED_BASE	PAGE_ALIGN(TASK_SIZE/3)
 
 /*
  * Size of io_bitmap.
@@ -403,10 +382,7 @@ static inline void prefetch(void *x)
 #define ARCH_HAS_PREFETCHW 1
 static inline void prefetchw(void *x) 
 { 
-	alternative_input("prefetcht0 (%1)",
-			  "prefetchw (%1)",
-			  X86_FEATURE_3DNOW,
-			  "r" (x));
+	asm volatile("prefetchtw %0" :: "m" (*(unsigned long *)x));
 } 
 
 #define ARCH_HAS_SPINLOCK_PREFETCH 1
@@ -414,33 +390,6 @@ static inline void prefetchw(void *x)
 #define spin_lock_prefetch(x)  prefetchw(x)
 
 #define cpu_relax()   rep_nop()
-
-/*
- *      NSC/Cyrix CPU configuration register indexes
- */
-#define CX86_CCR0 0xc0
-#define CX86_CCR1 0xc1
-#define CX86_CCR2 0xc2
-#define CX86_CCR3 0xc3
-#define CX86_CCR4 0xe8
-#define CX86_CCR5 0xe9
-#define CX86_CCR6 0xea
-#define CX86_CCR7 0xeb
-#define CX86_DIR0 0xfe
-#define CX86_DIR1 0xff
-#define CX86_ARR_BASE 0xc4
-#define CX86_RCR_BASE 0xdc
-
-/*
- *      NSC/Cyrix CPU indexed register access macros
- */
-
-#define getCx86(reg) ({ outb((reg), 0x22); inb(0x23); })
-
-#define setCx86(reg, data) do { \
-	outb((reg), 0x22); \
-	outb((data), 0x23); \
-} while (0)
 
 static inline void serialize_cpu(void)
 {
@@ -479,4 +428,4 @@ extern int bootloader_type;
 
 #define HAVE_ARCH_PICK_MMAP_LAYOUT 1
 
-#endif /* __ASM_X86_64_PROCESSOR_H */
+#endif /* _X86_64_PROCESSOR_H */

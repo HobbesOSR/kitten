@@ -1,5 +1,5 @@
-#ifndef _ASM_GENERIC_DIV64_H
-#define _ASM_GENERIC_DIV64_H
+#ifndef _ARCH_GENERIC_DIV64_H
+#define _ARCH_GENERIC_DIV64_H
 /*
  * Copyright (C) 2003 Bernardo Innocenti <bernie@develer.com>
  * Based on former asm-ppc/div64.h and asm-m68knommu/div64.h
@@ -17,8 +17,8 @@
  *       beware of side effects!
  */
 
-#include <linux/types.h>
-#include <linux/compiler.h>
+#include <lwk/types.h>
+#include <lwk/compiler.h>
 
 #if BITS_PER_LONG == 64
 
@@ -55,4 +55,4 @@ extern uint32_t __div64_32(uint64_t *dividend, uint32_t divisor);
 
 #endif /* BITS_PER_LONG */
 
-#endif /* _ASM_GENERIC_DIV64_H */
+#endif /* _ARCH_GENERIC_DIV64_H */

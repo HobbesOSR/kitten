@@ -1,1 +1,1 @@
-#include <asm-generic/div64.h>
+#include <arch-generic/div64.h>

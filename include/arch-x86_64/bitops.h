@@ -5,8 +5,6 @@
  * Copyright 1992, Linus Torvalds.
  */
 
-#include <asm/alternative.h>
-
 #define ADDR (*(volatile long *) addr)
 
 /**
@@ -21,8 +19,8 @@
  */
 static __inline__ void set_bit(int nr, volatile void * addr)
 {
-	__asm__ __volatile__( LOCK_PREFIX
-		"btsl %1,%0"
+	__asm__ __volatile__(
+		"lock ; btsl %1,%0"
 		:"+m" (ADDR)
 		:"dIr" (nr) : "memory");
 }
@@ -56,8 +54,8 @@ static __inline__ void __set_bit(int nr, volatile void * addr)
  */
 static __inline__ void clear_bit(int nr, volatile void * addr)
 {
-	__asm__ __volatile__( LOCK_PREFIX
-		"btrl %1,%0"
+	__asm__ __volatile__(
+		"lock ; btrl %1,%0"
 		:"+m" (ADDR)
 		:"dIr" (nr));
 }
@@ -101,8 +99,8 @@ static __inline__ void __change_bit(int nr, volatile void * addr)
  */
 static __inline__ void change_bit(int nr, volatile void * addr)
 {
-	__asm__ __volatile__( LOCK_PREFIX
-		"btcl %1,%0"
+	__asm__ __volatile__(
+		"lock ; btcl %1,%0"
 		:"+m" (ADDR)
 		:"dIr" (nr));
 }
@@ -119,8 +117,8 @@ static __inline__ int test_and_set_bit(int nr, volatile void * addr)
 {
 	int oldbit;
 
-	__asm__ __volatile__( LOCK_PREFIX
-		"btsl %2,%1\n\tsbbl %0,%0"
+	__asm__ __volatile__(
+		"lock ; btsl %2,%1\n\tsbbl %0,%0"
 		:"=r" (oldbit),"+m" (ADDR)
 		:"dIr" (nr) : "memory");
 	return oldbit;
@@ -158,8 +156,8 @@ static __inline__ int test_and_clear_bit(int nr, volatile void * addr)
 {
 	int oldbit;
 
-	__asm__ __volatile__( LOCK_PREFIX
-		"btrl %2,%1\n\tsbbl %0,%0"
+	__asm__ __volatile__(
+		"lock ; btrl %2,%1\n\tsbbl %0,%0"
 		:"=r" (oldbit),"+m" (ADDR)
 		:"dIr" (nr) : "memory");
 	return oldbit;
@@ -209,8 +207,8 @@ static __inline__ int test_and_change_bit(int nr, volatile void * addr)
 {
 	int oldbit;
 
-	__asm__ __volatile__( LOCK_PREFIX
-		"btcl %2,%1\n\tsbbl %0,%0"
+	__asm__ __volatile__(
+		"lock ; btcl %2,%1\n\tsbbl %0,%0"
 		:"=r" (oldbit),"+m" (ADDR)
 		:"dIr" (nr) : "memory");
 	return oldbit;
@@ -350,8 +348,6 @@ static __inline__ unsigned long __fls(unsigned long word)
 
 #ifdef __KERNEL__
 
-#include <asm-generic/bitops/sched.h>
-
 /**
  * ffs - find first bit set
  * @x: the word to search
@@ -399,20 +395,7 @@ static __inline__ int fls(int x)
 	return r+1;
 }
 
-#include <asm-generic/bitops/hweight.h>
-
-#endif /* __KERNEL__ */
-
-#ifdef __KERNEL__
-
-#include <asm-generic/bitops/ext2-non-atomic.h>
-
-#define ext2_set_bit_atomic(lock,nr,addr) \
-	        test_and_set_bit((nr),(unsigned long*)addr)
-#define ext2_clear_bit_atomic(lock,nr,addr) \
-	        test_and_clear_bit((nr),(unsigned long*)addr)
-
-#include <asm-generic/bitops/minix.h>
+#include <arch-generic/bitops/hweight.h>
 
 #endif /* __KERNEL__ */
 

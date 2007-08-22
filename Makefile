@@ -433,7 +433,7 @@ scripts_basic: include/lwk/autoconf.h
 init-y		:= init/
 #drivers-y	:= drivers/ sound/
 #net-y		:= net/
-#libs-y		:= lib/
+libs-y		:= lib/
 #core-y		:= usr/
 endif # KBUILD_EXTMOD
 

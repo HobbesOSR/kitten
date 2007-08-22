@@ -1,5 +1,5 @@
-#ifndef _LINUX_CTYPE_H
-#define _LINUX_CTYPE_H
+#ifndef _LWK_CTYPE_H
+#define _LWK_CTYPE_H
 
 /*
  * NOTE! This ctype does not handle EOF like the standard C

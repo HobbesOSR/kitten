@@ -1,13 +1,13 @@
-#ifndef _LINUX_STRING_H_
-#define _LINUX_STRING_H_
+#ifndef _LWK_STRING_H_
+#define _LWK_STRING_H_
 
-/* We don't want strings.h stuff being user by user stuff by accident */
+/* We don't want strings.h stuff being used by user stuff by accident */
 
 #ifdef __KERNEL__
 
-#include <linux/compiler.h>	/* for inline */
-#include <linux/types.h>	/* for size_t */
-#include <linux/stddef.h>	/* for NULL */
+#include <lwk/compiler.h>	/* for inline */
+#include <lwk/types.h>		/* for size_t */
+#include <lwk/stddef.h>		/* for NULL */
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +18,7 @@ extern char *strndup_user(const char __user *, long);
 /*
  * Include machine specific inline routines
  */
-#include <asm/string.h>
+#include <arch/string.h>
 
 #ifndef __HAVE_ARCH_STRCPY
 extern char * strcpy(char *,const char *);
@@ -104,4 +104,4 @@ extern char *kstrdup(const char *s, gfp_t gfp);
 #endif
 
 #endif
-#endif /* _LINUX_STRING_H_ */
+#endif /* _LWK_STRING_H_ */

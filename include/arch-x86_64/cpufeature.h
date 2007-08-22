@@ -4,8 +4,8 @@
  * Defines x86 CPU feature bits
  */
 
-#ifndef __ASM_X8664_CPUFEATURE_H
-#define __ASM_X8664_CPUFEATURE_H
+#ifndef _X86_64_CPUFEATURE_H
+#define _X86_64_CPUFEATURE_H
 
 #define NCAPINTS	7	/* N 32-bit words worth of info */
 
@@ -112,4 +112,4 @@
 #define cpu_has_centaur_mcr    0
 #define cpu_has_clflush	       boot_cpu_has(X86_FEATURE_CLFLSH)
 
-#endif /* __ASM_X8664_CPUFEATURE_H */
+#endif /* _X86_64_CPUFEATURE_H */
