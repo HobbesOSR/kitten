@@ -30,7 +30,7 @@ subdir-		:= compressed/	#Let make clean descend in compressed/
 # ---------------------------------------------------------------------------
 
 $(obj)/bzImage: IMAGE_OFFSET := 0x100000
-$(obj)/bzImage: EXTRA_AFLAGS := -traditional
+$(obj)/bzImage: EXTRA_AFLAGS := -traditional -D__BIG_KERNEL__
 $(obj)/bzImage: BUILDFLAGS   := -b
 
 quiet_cmd_image = BUILD   $@

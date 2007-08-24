@@ -6,10 +6,13 @@
 /*
  * This file builds a disk-image from three different files:
  *
- * - bootsect: compatibility mbr which prints an error message if
- *             someone tries to boot the kernel directly.
- * - setup: 8086 machine code, sets up system parm
- * - system: 80386 code for actual system
+ * - bootsect:  Compatibility mbr which prints an error message if
+ *              someone tries to boot the kernel directly.
+ * - setup:     8086 machine code, sets up system parm
+ * - vmlwk.bin: The "piggy" LWK kernel image.  The first part of the
+ *              image is the decompression code (compressed/head.o),
+ *              which begins executing at startup_32.  startup_32 then
+ *              uncompresses the real kernel image that follows it.
  *
  * It does some checking that all files are of the correct type, and
  * just writes the result to stdout, removing headers and padding to

@@ -102,7 +102,11 @@ CAN_USE_HEAP	= 0x80			# If set, the loader also has set
 					# space behind setup.S can be used for
 					# heap purposes.
 					# Only the loader knows what is free
+#ifndef __BIG_KERNEL__
+		.byte	0
+#else
 		.byte	LOADED_HIGH
+#endif
 
 setup_move_size: .word  0x8000		# size to move, when setup is not
 					# loaded at 0x90000. We will move setup 
@@ -113,7 +117,11 @@ setup_move_size: .word  0x8000		# size to move, when setup is not
 
 code32_start:				# here loaders can put a different
 					# start address for 32-bit code.
+#ifndef __BIG_KERNEL__
+		.long	0x1000		#   0x1000 = default for zImage
+#else
 		.long	0x100000	# 0x100000 = default for big kernel
+#endif
 
 ramdisk_image:	.long	0		# address of loaded ramdisk image
 					# Here the loader puts the 32-bit
@@ -464,6 +472,11 @@ mem88:
 	movw	$0x0305, %ax
 	xorw	%bx, %bx
 	int	$0x16
+
+# Check for video adapter and its parameters and allow the
+# user to browse video modes.
+	call	video				# NOTE: we need %ds pointing
+						# to bootsector
 
 # Get hd0 data...
 	xorw	%ax, %ax
@@ -830,6 +843,9 @@ gdt_48:
 
 	.word	0, 0				# gdt base (filled in later)
 
+# Include video setup & detection code
+
+#include "video.S"
 
 # Setup signature -- must be last
 setup_sig1:	.word	SIG1
