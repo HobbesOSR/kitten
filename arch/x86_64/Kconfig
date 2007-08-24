@@ -87,7 +87,7 @@ config NR_CPUS
 #
 config PHYSICAL_START
 	hex
-	default "0x100000"
+	default "0x200000"
 
 endmenu
 
