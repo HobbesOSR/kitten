@@ -83,10 +83,7 @@
 
 #include <lwk/kernel.h>
 #include <lwk/bitmap.h>
-
-#ifndef NR_CPUS
-#define NR_CPUS	CONFIG_NR_CPUS
-#endif
+#include <lwk/cpu.h>
 
 typedef struct { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
 extern cpumask_t _unused_cpumask_arg_;

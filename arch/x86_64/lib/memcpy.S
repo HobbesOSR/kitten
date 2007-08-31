@@ -1,6 +1,6 @@
 /* Copyright 2002 Andi Kleen */
 	
-	#include <asm/cpufeature.h>		
+	#include <arch/cpufeature.h>		
 /*
  * memcpy - Copy a memory block.
  *

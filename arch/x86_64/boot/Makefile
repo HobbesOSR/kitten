@@ -55,7 +55,7 @@ $(obj)/compressed/vmlwk: FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/compressed IMAGE_OFFSET=$(IMAGE_OFFSET) $@
 
 # Set this if you want to pass append arguments to the isoimage kernel
-FDARGS = 
+FDARGS = console=vga
 # Set this if you want an initrd included with the isoimage kernel
 FDINITRD =
 

@@ -45,6 +45,8 @@
 #define __exitdata	__attribute__ ((__section__(".exit.data")))
 #define __exit_call	__attribute_used__ __attribute__ ((__section__ (".exitcall.exit")))
 #define __exit		__attribute_used__ __attribute__ ((__section__(".exit.text")))
+#define __cpuinitdata	__initdata
+#define __cpuinit	__init
 
 /* For assembly routines */
 #define __INIT		.section	".init.text","ax"
@@ -54,7 +56,8 @@
 #ifndef __ASSEMBLY__
 
 /* Defined in init/main.c */
-extern char saved_command_line[];
+#define COMMAND_LINE_SIZE       1024
+extern char lwk_command_line[COMMAND_LINE_SIZE];
 
 /* used by init/main.c */
 extern void setup_arch(char **);

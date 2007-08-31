@@ -1,0 +1,1 @@
+obj-$(CONFIG_VGA)	+= vga.o

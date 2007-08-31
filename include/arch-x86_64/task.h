@@ -2,7 +2,7 @@
 #define _ARCH_TASK_H
 
 struct arch_task {
-	int 	foo;
+	uint32_t	cpu;	/* task's current CPU */
 };
 
 #endif

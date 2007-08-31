@@ -5,26 +5,25 @@
  * See setup.c for older changelog.
  * $Id: setup64.c,v 1.12 2002/03/21 10:09:17 ak Exp $
  */ 
-#include <linux/config.h>
-#include <linux/init.h>
-#include <linux/kernel.h>
-#include <linux/sched.h>
-#include <linux/string.h>
-#include <linux/bootmem.h>
-#include <linux/bitops.h>
-#include <linux/module.h>
-#include <asm/bootsetup.h>
-#include <asm/pda.h>
-#include <asm/pgtable.h>
-#include <asm/processor.h>
-#include <asm/desc.h>
-#include <asm/atomic.h>
-#include <asm/mmu_context.h>
-#include <asm/smp.h>
-#include <asm/i387.h>
-#include <asm/percpu.h>
-#include <asm/proto.h>
-#include <asm/sections.h>
+#include <lwk/init.h>
+#include <lwk/kernel.h>
+// #include <linux/sched.h>
+#include <lwk/string.h>
+//#include <linux/bootmem.h>
+#include <lwk/bitops.h>
+//#include <linux/module.h>
+#include <arch/bootsetup.h>
+#include <arch/pda.h>
+#include <arch/pgtable.h>
+#include <arch/processor.h>
+#include <arch/desc.h>
+#include <arch/atomic.h>
+//#include <asm/mmu_context.h>
+#include <arch/smp.h>
+//#include <asm/i387.h>
+#include <arch/percpu.h>
+#include <arch/proto.h>
+#include <arch/sections.h>
 
 char x86_boot_params[BOOT_PARAM_SIZE] __initdata = {0,};
 
@@ -40,44 +39,6 @@ char boot_cpu_stack[IRQSTACKSIZE] __attribute__((section(".bss.page_aligned")));
 unsigned long __supported_pte_mask __read_mostly = ~0UL;
 static int do_not_nx __cpuinitdata = 0;
 
-/* noexec=on|off
-Control non executable mappings for 64bit processes.
-
-on	Enable(default)
-off	Disable
-*/ 
-int __init nonx_setup(char *str)
-{
-	if (!strncmp(str, "on", 2)) {
-                __supported_pte_mask |= _PAGE_NX; 
- 		do_not_nx = 0; 
-	} else if (!strncmp(str, "off", 3)) {
-		do_not_nx = 1;
-		__supported_pte_mask &= ~_PAGE_NX;
-        }
-	return 1;
-} 
-__setup("noexec=", nonx_setup);	/* parsed early actually */
-
-int force_personality32 = 0; 
-
-/* noexec32=on|off
-Control non executable heap for 32bit processes.
-To control the stack too use noexec=off
-
-on	PROT_READ does not imply PROT_EXEC for 32bit processes
-off	PROT_READ implies PROT_EXEC (default)
-*/
-static int __init nonx32_setup(char *str)
-{
-	if (!strcmp(str, "on"))
-		force_personality32 &= ~READ_IMPLIES_EXEC;
-	else if (!strcmp(str, "off"))
-		force_personality32 |= READ_IMPLIES_EXEC;
-	return 1;
-}
-__setup("noexec32=", nonx32_setup);
-
 /*
  * Great future plan:
  * Declare PDA itself and support (irqstack,tss,pgd) as per cpu data.
@@ -88,16 +49,8 @@ void __init setup_per_cpu_areas(void)
 	int i;
 	unsigned long size;
 
-#ifdef CONFIG_HOTPLUG_CPU
-	prefill_possible_map();
-#endif
-
 	/* Copy section for each CPU (we discard the original) */
 	size = ALIGN(__per_cpu_end - __per_cpu_start, SMP_CACHE_BYTES);
-#ifdef CONFIG_MODULES
-	if (size < PERCPU_ENOUGH_ROOM)
-		size = PERCPU_ENOUGH_ROOM;
-#endif
 
 	for_each_cpu_mask (i, cpu_possible_map) {
 		char *ptr;
@@ -127,7 +80,7 @@ void pda_init(int cpu)
 	pda->cpunumber = cpu; 
 	pda->irqcount = -1;
 	pda->kernelstack = 
-		(unsigned long)stack_thread_info() - PDA_STACKOFFSET + THREAD_SIZE; 
+		(unsigned long)stack_thread_info() - PDA_STACKOFFSET + TASK_SIZE; 
 	pda->active_mm = &init_mm;
 	pda->mmu_state = 0;
 

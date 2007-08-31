@@ -1,10 +1,10 @@
-#ifndef __ASM_APIC_H
-#define __ASM_APIC_H
+#ifndef _ASM_APIC_H
+#define _ASM_APIC_H
 
-#include <linux/pm.h>
-#include <asm/fixmap.h>
-#include <asm/apicdef.h>
-#include <asm/system.h>
+// #include <linux/pm.h>
+#include <arch/fixmap.h>
+#include <arch/apicdef.h>
+#include <arch/system.h>
 
 #define Dprintk(x...)
 
@@ -28,8 +28,6 @@ extern int apic_runs_main_timer;
 		if ((v) <= apic_verbosity) \
 			printk(s, ##a);    \
 	} while (0)
-
-#ifdef CONFIG_X86_LOCAL_APIC
 
 struct pt_regs;
 
@@ -110,8 +108,6 @@ void switch_ipi_to_APIC_timer(void *cpumask);
 
 #define ARCH_APICTIMER_STOPS_ON_C3	1
 
-#endif /* CONFIG_X86_LOCAL_APIC */
-
 extern unsigned boot_cpu_id;
 
-#endif /* __ASM_APIC_H */
+#endif /* _ASM_APIC_H */

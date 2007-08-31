@@ -6,11 +6,10 @@
 	 * $Id: thunk.S,v 1.2 2002/03/13 20:06:58 ak Exp $
 	 */
 
-	#include <linux/config.h>
-	#include <linux/linkage.h>
-	#include <asm/dwarf2.h>
-	#include <asm/calling.h>			
-	#include <asm/rwlock.h>
+	#include <lwk/linkage.h>
+	#include <arch/dwarf2.h>
+	#include <arch/calling.h>			
+	#include <arch/rwlock.h>
 		
 	/* rdi:	arg1 ... normal C conventions. rax is saved/restored. */ 	
 	.macro thunk name,func
@@ -35,6 +34,7 @@
 	.endm
 	
 
+#if 0
 	.section .sched.text
 #ifdef CONFIG_RWSEM_XCHGADD_ALGORITHM
 	thunk rwsem_down_read_failed_thunk,rwsem_down_read_failed
@@ -47,6 +47,7 @@
 	thunk_retrax __down_failed_interruptible,__down_interruptible
 	thunk_retrax __down_failed_trylock,__down_trylock
 	thunk __up_wakeup,__up
+#endif
 	
 	/* SAVE_ARGS below is used only for the .cfi directives it contains. */
 	CFI_STARTPROC
@@ -63,7 +64,6 @@ restore_norax:
 	ret
 	CFI_ENDPROC
 
-#ifdef CONFIG_SMP
 /* Support for read/write spinlocks. */
 	.text
 /* rax:	pointer to rwlock_t */	
@@ -91,4 +91,3 @@ ENTRY(__read_lock_failed)
 	decl (%rax)
 	js __read_lock_failed
 	ret
-#endif

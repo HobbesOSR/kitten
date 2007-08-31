@@ -1,32 +1,23 @@
-#ifndef __ASM_SMP_H
-#define __ASM_SMP_H
+#ifndef _ASM_SMP_H
+#define _ASM_SMP_H
 
 /*
  * We need the APIC definitions automatically as part of 'smp.h'
  */
 #ifndef __ASSEMBLY__
-#include <linux/threads.h>
-#include <linux/cpumask.h>
-#include <linux/bitops.h>
+/* #include <linux/threads.h>s */
+#include <lwk/cpumask.h>
+#include <lwk/bitops.h>
 extern int disable_apic;
 #endif
 
-#ifdef CONFIG_X86_LOCAL_APIC
 #ifndef __ASSEMBLY__
-#include <asm/fixmap.h>
-#include <asm/mpspec.h>
-#ifdef CONFIG_X86_IO_APIC
-#include <asm/io_apic.h>
-#endif
-#include <asm/apic.h>
-#include <asm/thread_info.h>
-#endif
-#endif
-
-#ifdef CONFIG_SMP
-#ifndef ASSEMBLY
-
-#include <asm/pda.h>
+#include <arch/fixmap.h>
+//#include <asm/mpspec.h>
+//#include <asm/io_apic.h>
+#include <arch/apic.h>
+//#include <asm/thread_info.h>
+#include <arch/pda.h>
 
 struct pt_regs;
 
@@ -89,7 +80,6 @@ extern unsigned disabled_cpus;
 
 #define NO_PROC_ID		0xFF		/* No processor magic marker */
 
-#endif
 
 #ifndef ASSEMBLY
 /*
@@ -115,19 +105,13 @@ static inline int cpu_present_to_apicid(int mps_cpu)
 
 #endif /* !ASSEMBLY */
 
-#ifndef CONFIG_SMP
-#define stack_smp_processor_id() 0
-#define safe_smp_processor_id() 0
-#define cpu_logical_map(x) (x)
-#else
-#include <asm/thread_info.h>
+#include <lwk/task.h>
 #define stack_smp_processor_id() \
-({ 								\
-	struct thread_info *ti;					\
-	__asm__("andq %%rsp,%0; ":"=r" (ti) : "0" (CURRENT_MASK));	\
-	ti->cpu;						\
+({ 									\
+	struct task *task;						\
+	__asm__("andq %%rsp,%0; ":"=r" (task) : "0" (CURRENT_MASK));	\
+	task->arch.cpu;							\
 })
-#endif
 
 #ifndef __ASSEMBLY__
 static __inline int logical_smp_processor_id(void)
@@ -137,11 +121,7 @@ static __inline int logical_smp_processor_id(void)
 }
 #endif
 
-#ifdef CONFIG_SMP
 #define cpu_physical_id(cpu)		x86_cpu_to_apicid[cpu]
-#else
-#define cpu_physical_id(cpu)		boot_cpu_id
-#endif
 
 #endif
 

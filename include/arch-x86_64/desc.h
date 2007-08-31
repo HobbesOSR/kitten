@@ -1,17 +1,16 @@
 /* Written 2000 by Andi Kleen */ 
-#ifndef __ARCH_DESC_H
-#define __ARCH_DESC_H
+#ifndef _ARCH_DESC_H
+#define _ARCH_DESC_H
 
-#include <linux/threads.h>
-#include <asm/ldt.h>
+#include <arch/ldt.h>
 
 #ifndef __ASSEMBLY__
 
-#include <linux/string.h>
-#include <linux/smp.h>
+#include <lwk/string.h>
+#include <lwk/smp.h>
 
-#include <asm/segment.h>
-#include <asm/mmu.h>
+#include <arch/segment.h>
+#include <arch/mmu.h>
 
 // 8 byte segment descriptor
 struct desc_struct { 

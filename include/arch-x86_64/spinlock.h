@@ -1,9 +1,9 @@
-#ifndef __ASM_SPINLOCK_H
-#define __ASM_SPINLOCK_H
+#ifndef _X86_64_SPINLOCK_H
+#define _X86_64_SPINLOCK_H
 
-#include <asm/atomic.h>
-#include <asm/rwlock.h>
-#include <asm/page.h>
+#include <arch/atomic.h>
+#include <arch/rwlock.h>
+#include <arch/page.h>
 
 /*
  * Your basic SMP spinlocks, allowing only a single CPU anywhere
@@ -13,7 +13,7 @@
  *
  * We make no fairness assumptions. They have a cost.
  *
- * (the type definitions are in asm/spinlock_types.h)
+ * (the type definitions are in arch/spinlock_types.h)
  */
 
 #define __raw_spin_is_locked(x) \
@@ -31,19 +31,15 @@
 	"jmp 1b\n" \
 	LOCK_SECTION_END
 
-#define __raw_spin_lock_string_up \
-	"\n\tdecl %0"
-
 #define __raw_spin_unlock_string \
 	"movl $1,%0" \
 		:"=m" (lock->slock) : : "memory"
 
 static inline void __raw_spin_lock(raw_spinlock_t *lock)
 {
-	alternative_smp(
-		__raw_spin_lock_string,
-		__raw_spin_lock_string_up,
-		"=m" (lock->slock) : : "memory");
+	__asm__ __volatile__(
+		__raw_spin_lock_string
+		:"=m" (lock->slock) : : "memory");
 }
 
 #define __raw_spin_lock_flags(lock, flags) __raw_spin_lock(lock)
@@ -134,4 +130,4 @@ static inline void __raw_write_unlock(raw_rwlock_t *rw)
 				: "=m" (rw->lock) : : "memory");
 }
 
-#endif /* __ASM_SPINLOCK_H */
+#endif /* _X86_64_SPINLOCK_H */

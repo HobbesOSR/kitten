@@ -50,6 +50,8 @@ CFLAGS += $(cflags-y)
 AFLAGS += -m64
 
 head-y := arch/x86_64/kernel/head.o arch/x86_64/kernel/head64.o arch/x86_64/kernel/init_task.o
+
+libs-y += arch/x86_64/lib/
 core-y += arch/x86_64/kernel/
 
 boot := arch/x86_64/boot

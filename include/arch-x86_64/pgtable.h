@@ -5,11 +5,11 @@
  * This file contains the functions and defines necessary to modify and use
  * the x86-64 page table tree.
  */
-#include <asm/processor.h>
-#include <asm/fixmap.h>
-#include <asm/bitops.h>
-#include <linux/threads.h>
-#include <asm/pda.h>
+#include <arch/processor.h>
+#include <arch/fixmap.h>
+#include <arch/bitops.h>
+//#include <linux/threads.h>
+#include <arch/pda.h>
 
 extern pud_t level3_kernel_pgt[512];
 extern pud_t level3_physmem_pgt[512];
@@ -131,7 +131,7 @@ static inline pte_t ptep_get_and_clear_full(struct mm_struct *mm, unsigned long 
 #define PGDIR_SIZE	(1UL << PGDIR_SHIFT)
 #define PGDIR_MASK	(~(PGDIR_SIZE-1))
 
-#define USER_PTRS_PER_PGD	((TASK_SIZE-1)/PGDIR_SIZE+1)
+#define USER_PTRS_PER_PGD	((USR_ADDR_SPACE_SIZE-1)/PGDIR_SIZE+1)
 #define FIRST_USER_ADDRESS	0
 
 #ifndef __ASSEMBLY__
@@ -420,7 +420,7 @@ static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
 #define __pte_to_swp_entry(pte)		((swp_entry_t) { pte_val(pte) })
 #define __swp_entry_to_pte(x)		((pte_t) { (x).val })
 
-extern spinlock_t pgd_lock;
+// extern spinlock_t pgd_lock;
 extern struct page *pgd_list;
 void vmalloc_sync_all(void);
 
@@ -454,6 +454,6 @@ extern int kern_addr_valid(unsigned long addr);
 #define __HAVE_ARCH_PTEP_GET_AND_CLEAR_FULL
 #define __HAVE_ARCH_PTEP_SET_WRPROTECT
 #define __HAVE_ARCH_PTE_SAME
-#include <asm-generic/pgtable.h>
+#include <arch-generic/pgtable.h>
 
 #endif /* _X86_64_PGTABLE_H */

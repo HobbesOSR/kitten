@@ -13,7 +13,7 @@ union task_union init_task_union
 
 				/* x86_64 specific portion */
 				.arch = {
-					.foo = 0,
+					.cpu = 0,
 				}
 			}
 		};

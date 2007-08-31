@@ -1,25 +1,18 @@
-#ifndef __LINUX_SPINLOCK_TYPES_H
-#define __LINUX_SPINLOCK_TYPES_H
+#ifndef _LWK_SPINLOCK_TYPES_H
+#define _LWK_SPINLOCK_TYPES_H
 
 /*
- * include/linux/spinlock_types.h - generic spinlock type definitions
- *                                  and initializers
+ * include/lwk/spinlock_types.h - generic spinlock type definitions
+ *                                and initializers
  *
  * portions Copyright 2005, Red Hat, Inc., Ingo Molnar
  * Released under the General Public License (GPL).
  */
 
-#if defined(CONFIG_SMP)
-# include <asm/spinlock_types.h>
-#else
-# include <linux/spinlock_types_up.h>
-#endif
+#include <arch/spinlock_types.h>
 
 typedef struct {
 	raw_spinlock_t raw_lock;
-#if defined(CONFIG_PREEMPT) && defined(CONFIG_SMP)
-	unsigned int break_lock;
-#endif
 #ifdef CONFIG_DEBUG_SPINLOCK
 	unsigned int magic, owner_cpu;
 	void *owner;
@@ -30,9 +23,6 @@ typedef struct {
 
 typedef struct {
 	raw_rwlock_t raw_lock;
-#if defined(CONFIG_PREEMPT) && defined(CONFIG_SMP)
-	unsigned int break_lock;
-#endif
 #ifdef CONFIG_DEBUG_SPINLOCK
 	unsigned int magic, owner_cpu;
 	void *owner;
@@ -64,4 +54,4 @@ typedef struct {
 #define DEFINE_SPINLOCK(x)	spinlock_t x = SPIN_LOCK_UNLOCKED
 #define DEFINE_RWLOCK(x)	rwlock_t x = RW_LOCK_UNLOCKED
 
-#endif /* __LINUX_SPINLOCK_TYPES_H */
+#endif /* _LWK_SPINLOCK_TYPES_H */

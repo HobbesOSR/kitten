@@ -1,7 +1,7 @@
-#ifndef _X8664_SECTIONS_H
-#define _X8664_SECTIONS_H
+#ifndef _X86_64_SECTIONS_H
+#define _X86_64_SECTIONS_H
 
 /* nothing to see, move along */
-#include <asm-generic/sections.h>
+#include <arch-generic/sections.h>
 
 #endif

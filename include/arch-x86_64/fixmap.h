@@ -11,11 +11,9 @@
 #ifndef _ASM_FIXMAP_H
 #define _ASM_FIXMAP_H
 
-#include <linux/kernel.h>
-#include <asm/apicdef.h>
-#include <asm/page.h>
-#include <asm/vsyscall.h>
-#include <asm/vsyscall32.h>
+#include <lwk/kernel.h>
+#include <arch/apicdef.h>
+#include <arch/page.h>
 
 /*
  * Here we define all the compile-time 'special' virtual
@@ -33,17 +31,10 @@
  */
 
 enum fixed_addresses {
-	VSYSCALL_LAST_PAGE,
-	VSYSCALL_FIRST_PAGE = VSYSCALL_LAST_PAGE + ((VSYSCALL_END-VSYSCALL_START) >> PAGE_SHIFT) - 1,
-	VSYSCALL_HPET,
 	FIX_HPET_BASE,
-#ifdef CONFIG_X86_LOCAL_APIC
-	FIX_APIC_BASE,	/* local (CPU) APIC) -- required for SMP or not */
-#endif
-#ifdef CONFIG_X86_IO_APIC
+	FIX_APIC_BASE,	/* local (CPU) APIC) */
 	FIX_IO_APIC_BASE_0,
 	FIX_IO_APIC_BASE_END = FIX_IO_APIC_BASE_0 + MAX_IO_APICS-1,
-#endif
 	__end_of_fixed_addresses
 };
 
@@ -58,7 +49,7 @@ extern void __set_fixmap (enum fixed_addresses idx,
 #define set_fixmap_nocache(idx, phys) \
 		__set_fixmap(idx, phys, PAGE_KERNEL_NOCACHE)
 
-#define FIXADDR_TOP	(VSYSCALL_END-PAGE_SIZE)
+#define FIXADDR_TOP	(0xffffffffffe00000ul - PAGE_SIZE)
 #define FIXADDR_SIZE	(__end_of_fixed_addresses << PAGE_SHIFT)
 #define FIXADDR_START	(FIXADDR_TOP - FIXADDR_SIZE)
 

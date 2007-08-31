@@ -1,5 +1,5 @@
-#ifndef _ASM_GENERIC_SECTIONS_H_
-#define _ASM_GENERIC_SECTIONS_H_
+#ifndef _ARCH_GENERIC_SECTIONS_H_
+#define _ARCH_GENERIC_SECTIONS_H_
 
 /* References to section boundaries */
 
@@ -15,4 +15,4 @@ extern char __per_cpu_start[], __per_cpu_end[];
 extern char __kprobes_text_start[], __kprobes_text_end[];
 extern char __initdata_begin[], __initdata_end[];
 
-#endif /* _ASM_GENERIC_SECTIONS_H_ */
+#endif /* _ARCH_GENERIC_SECTIONS_H_ */

@@ -92,4 +92,8 @@ config PHYSICAL_START
 endmenu
 
 
+config VGA
+	bool
+	default "y"
+
 source "arch/x86_64/Kconfig.debug"

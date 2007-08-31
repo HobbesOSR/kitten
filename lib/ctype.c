@@ -4,8 +4,8 @@
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
-#include <linux/ctype.h>
-#include <linux/module.h>
+#include <lwk/ctype.h>
+#include <lwk/linux_compat.h>
 
 unsigned char _ctype[] = {
 _C,_C,_C,_C,_C,_C,_C,_C,			/* 0-7 */

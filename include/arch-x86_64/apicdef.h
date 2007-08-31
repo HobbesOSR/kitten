@@ -1,5 +1,5 @@
-#ifndef __ASM_APICDEF_H
-#define __ASM_APICDEF_H
+#ifndef _ASM_APICDEF_H
+#define _ASM_APICDEF_H
 
 /*
  * Constants for various Intel APICs. (local APIC, IOAPIC, etc.)

@@ -22,6 +22,12 @@ extern const char lwk_banner[];
 #define LONG_MIN        (-LONG_MAX - 1)
 #define ULONG_MAX       (~0UL)
 
+#define STACK_MAGIC     0xdeadbeef
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
+#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
+
 extern unsigned long simple_strtoul(const char *,char **,unsigned int);
 extern long simple_strtol(const char *,char **,unsigned int);
 extern unsigned long long simple_strtoull(const char *,char **,unsigned int);

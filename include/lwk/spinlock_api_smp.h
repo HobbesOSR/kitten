@@ -1,12 +1,12 @@
-#ifndef __LINUX_SPINLOCK_API_SMP_H
-#define __LINUX_SPINLOCK_API_SMP_H
+#ifndef _LWK_SPINLOCK_API_SMP_H
+#define _LWK_SPINLOCK_API_SMP_H
 
-#ifndef __LINUX_SPINLOCK_H
+#ifndef _LWK_SPINLOCK_H
 # error "please don't include this file directly"
 #endif
 
 /*
- * include/linux/spinlock_api_smp.h
+ * include/lwk/spinlock_api_smp.h
  *
  * spinlock API declarations on SMP (and debug)
  * (implemented in kernel/spinlock.c)
@@ -54,4 +54,4 @@ void __lockfunc _read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
 void __lockfunc _write_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
 							__releases(rwlock_t);
 
-#endif /* __LINUX_SPINLOCK_API_SMP_H */
+#endif /* _LWK_SPINLOCK_API_SMP_H */

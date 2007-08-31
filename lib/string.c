@@ -19,10 +19,11 @@
  * -  Kissed strtok() goodbye
  */
 
-#include <linux/types.h>
-#include <linux/string.h>
-#include <linux/ctype.h>
-#include <linux/module.h>
+#include <lwk/types.h>
+#include <lwk/string.h>
+#include <lwk/ctype.h>
+#include <lwk/linux_compat.h>
+#include <arch/bug.h>
 
 #ifndef __HAVE_ARCH_STRNICMP
 /**

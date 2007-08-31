@@ -37,4 +37,11 @@ extern char x86_boot_params[BOOT_PARAM_SIZE];
 #define RAMDISK_PROMPT_FLAG		0x8000
 #define RAMDISK_LOAD_FLAG		0x4000	
 
+/* Defines needed to find the kernel boot command line... sigh. */
+#define NEW_CL_POINTER			0x228	/* Relative to real mode data */
+#define OLD_CL_MAGIC_ADDR		0x90020
+#define OLD_CL_MAGIC			0xA33F
+#define OLD_CL_BASE_ADDR		0x90000
+#define OLD_CL_OFFSET			0x90022
+
 #endif

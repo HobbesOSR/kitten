@@ -1,4 +1,4 @@
-/* include/asm-x86_64/rwlock.h
+/* include/arch-x86_64/rwlock.h
  *
  *	Helpers used by both rw spinlocks and rw semaphores.
  *
@@ -15,16 +15,16 @@
  *	as published by the Free Software Foundation; either version
  *	2 of the License, or (at your option) any later version.
  */
-#ifndef _ASM_X86_64_RWLOCK_H
-#define _ASM_X86_64_RWLOCK_H
+#ifndef _ARCH_X86_64_RWLOCK_H
+#define _ARCH_X86_64_RWLOCK_H
 
-#include <linux/stringify.h>
+#include <lwk/stringify.h>
 
 #define RW_LOCK_BIAS		 0x01000000
 #define RW_LOCK_BIAS_STR	"0x01000000"
 
 #define __build_read_lock_ptr(rw, helper)   \
-	asm volatile(LOCK_PREFIX "subl $1,(%0)\n\t" \
+	asm volatile("lock ; subl $1,(%0)\n\t" \
 		     "js 2f\n" \
 		     "1:\n" \
 		    LOCK_SECTION_START("") \
@@ -34,7 +34,7 @@
 		     ::"a" (rw) : "memory")
 
 #define __build_read_lock_const(rw, helper)   \
-	asm volatile(LOCK_PREFIX "subl $1,%0\n\t" \
+	asm volatile("lock ; subl $1,%0\n\t" \
 		     "js 2f\n" \
 		     "1:\n" \
 		    LOCK_SECTION_START("") \
@@ -54,7 +54,7 @@
 					} while (0)
 
 #define __build_write_lock_ptr(rw, helper) \
-	asm volatile(LOCK_PREFIX "subl $" RW_LOCK_BIAS_STR ",(%0)\n\t" \
+	asm volatile("lock ; subl $" RW_LOCK_BIAS_STR ",(%0)\n\t" \
 		     "jnz 2f\n" \
 		     "1:\n" \
 		     LOCK_SECTION_START("") \
@@ -64,7 +64,7 @@
 		     ::"a" (rw) : "memory")
 
 #define __build_write_lock_const(rw, helper) \
-	asm volatile(LOCK_PREFIX "subl $" RW_LOCK_BIAS_STR ",%0\n\t" \
+	asm volatile("lock ; subl $" RW_LOCK_BIAS_STR ",%0\n\t" \
 		     "jnz 2f\n" \
 		     "1:\n" \
 		    LOCK_SECTION_START("") \

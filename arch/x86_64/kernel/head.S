@@ -10,6 +10,7 @@
 
 #include <lwk/linkage.h>
 #include <lwk/init.h>
+#include <lwk/cpu.h>
 //#include <arch/desc.h>
 #include <arch/segment.h>
 #include <arch/page.h>
@@ -336,7 +337,7 @@ cpu_gdt_descr:
 	.word	gdt_end-cpu_gdt_table-1
 gdt:
 	.quad	cpu_gdt_table
-	.rept	CONFIG_NR_CPUS-1
+	.rept	NR_CPUS-1
 	.word	0
 	.quad	0
 	.endr

@@ -15,7 +15,7 @@
 /* #include <linux/threads.h> */
 #include <arch/msr.h>
 /* #include <arch/current.h> */
-/* #include <arch/system.h> */
+#include <arch/system.h>
 /* #include <arch/mmsegment.h> */
 #include <arch/percpu.h>
 /* #include <lwk/personality.h> */

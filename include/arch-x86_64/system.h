@@ -1,9 +1,8 @@
 #ifndef __ASM_SYSTEM_H
 #define __ASM_SYSTEM_H
 
-#include <linux/kernel.h>
-#include <asm/segment.h>
-#include <asm/alternative.h>
+#include <lwk/kernel.h>
+#include <arch/segment.h>
 
 #ifdef __KERNEL__
 
@@ -29,7 +28,7 @@
 		     "thread_return:\n\t"					    \
 		     "movq %%gs:%P[pda_pcurrent],%%rsi\n\t"			  \
 		     "movq %P[thread_info](%%rsi),%%r8\n\t"			  \
-		     LOCK_PREFIX "btr  %[tif_fork],%P[ti_flags](%%r8)\n\t"	  \
+		     "lock ; btr  %[tif_fork],%P[ti_flags](%%r8)\n\t"	  \
 		     "movq %%rax,%%rdi\n\t" 					  \
 		     "jc   ret_from_fork\n\t"					  \
 		     RESTORE_CONTEXT						    \
@@ -181,25 +180,25 @@ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
 	unsigned long prev;
 	switch (size) {
 	case 1:
-		__asm__ __volatile__(LOCK_PREFIX "cmpxchgb %b1,%2"
+		__asm__ __volatile__("lock ; cmpxchgb %b1,%2"
 				     : "=a"(prev)
 				     : "q"(new), "m"(*__xg(ptr)), "0"(old)
 				     : "memory");
 		return prev;
 	case 2:
-		__asm__ __volatile__(LOCK_PREFIX "cmpxchgw %w1,%2"
+		__asm__ __volatile__("lock ; cmpxchgw %w1,%2"
 				     : "=a"(prev)
 				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
 				     : "memory");
 		return prev;
 	case 4:
-		__asm__ __volatile__(LOCK_PREFIX "cmpxchgl %k1,%2"
+		__asm__ __volatile__("lock ; cmpxchgl %k1,%2"
 				     : "=a"(prev)
 				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
 				     : "memory");
 		return prev;
 	case 8:
-		__asm__ __volatile__(LOCK_PREFIX "cmpxchgq %1,%2"
+		__asm__ __volatile__("lock ; cmpxchgq %1,%2"
 				     : "=a"(prev)
 				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
 				     : "memory");
@@ -212,19 +211,12 @@ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
 	((__typeof__(*(ptr)))__cmpxchg((ptr),(unsigned long)(o),\
 					(unsigned long)(n),sizeof(*(ptr))))
 
-#ifdef CONFIG_SMP
 #define smp_mb()	mb()
 #define smp_rmb()	rmb()
 #define smp_wmb()	wmb()
 #define smp_read_barrier_depends()	do {} while(0)
-#else
-#define smp_mb()	barrier()
-#define smp_rmb()	barrier()
-#define smp_wmb()	barrier()
-#define smp_read_barrier_depends()	do {} while(0)
-#endif
-
     
+
 /*
  * Force strict CPU ordering.
  * And yes, this is required on UP too when we're talking
@@ -248,21 +240,6 @@ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
 #define local_save_flags(x)	do { warn_if_not_ulong(x); __asm__ __volatile__("# save_flags \n\t pushfq ; popq %q0":"=g" (x): /* no input */ :"memory"); } while (0)
 #define local_irq_restore(x) 	__asm__ __volatile__("# restore_flags \n\t pushq %0 ; popfq": /* no output */ :"g" (x):"memory", "cc")
 
-#ifdef CONFIG_X86_VSMP
-/* Interrupt control for VSMP  architecture */
-#define local_irq_disable()	do { unsigned long flags; local_save_flags(flags); local_irq_restore((flags & ~(1 << 9)) | (1 << 18)); } while (0)
-#define local_irq_enable()	do { unsigned long flags; local_save_flags(flags); local_irq_restore((flags | (1 << 9)) & ~(1 << 18)); } while (0)
-
-#define irqs_disabled()					\
-({							\
-	unsigned long flags;				\
-	local_save_flags(flags);			\
-	(flags & (1<<18)) || !(flags & (1<<9));		\
-})
-
-/* For spinlocks etc */
-#define local_irq_save(x)	do { local_save_flags(x); local_irq_restore((x & ~(1 << 9)) | (1 << 18)); } while (0)
-#else  /* CONFIG_X86_VSMP */
 #define local_irq_disable() 	__asm__ __volatile__("cli": : :"memory")
 #define local_irq_enable()	__asm__ __volatile__("sti": : :"memory")
 
@@ -275,7 +252,6 @@ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
 
 /* For spinlocks etc */
 #define local_irq_save(x) 	do { warn_if_not_ulong(x); __asm__ __volatile__("# local_irq_save \n\t pushfq ; popq %0 ; cli":"=g" (x): /* no input */ :"memory"); } while (0)
-#endif
 
 /* used in the idle loop; sti takes one instruction cycle to complete */
 #define safe_halt()		__asm__ __volatile__("sti; hlt": : :"memory")

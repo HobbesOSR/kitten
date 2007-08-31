@@ -1,121 +1,118 @@
-/*
- *  arch/x86_64/kernel/head64.c -- prepare to run common code
+#include <lwk/init.h>
+#include <lwk/kernel.h>
+#include <lwk/string.h>
+#include <lwk/screen_info.h>
+#include <arch/bootsetup.h>
+#include <arch/sections.h>
+
+// Needed for set_intr_gate()
+#include <arch/processor.h>
+#include <arch/desc.h>
+
+// Needed for early_idt_handler
+#include <arch/proto.h>
+
+
+/** Data passed to the kernel by the bootloader.
  *
- *  Copyright (C) 2000 Andrea Arcangeli <andrea@suse.de> SuSE
- *
- *  $Id: head64.c,v 1.22 2001/07/06 14:28:20 ak Exp $
+ * NOTE: This is marked as __initdata so it goes away after the
+ *       kernel bootstrap process is complete.
  */
+char x86_boot_params[BOOT_PARAM_SIZE] __initdata = {0,};
 
-#include <linux/init.h>
-#include <linux/linkage.h>
-#include <linux/types.h>
-#include <linux/kernel.h>
-#include <linux/string.h>
-#include <linux/percpu.h>
 
-#include <asm/processor.h>
-#include <asm/proto.h>
-#include <asm/smp.h>
-#include <asm/bootsetup.h>
-#include <asm/setup.h>
-#include <asm/desc.h>
-#include <asm/pgtable.h>
-#include <asm/sections.h>
+/** Interrupt Descriptor Table (IDT) descriptor.
+ *
+ * This descriptor contains the length of the IDT table and a
+ * pointer to the table.  The lidt instruction (load IDT) requires
+ * this format.
+ */
+struct desc_ptr idt_descr = { 256 * 16 - 1, (unsigned long) idt_table };
 
-/* Don't add a printk in there. printk relies on the PDA which is not initialized 
-   yet. */
-static void __init clear_bss(void)
-{
-	memset(__bss_start, 0,
-	       (unsigned long) __bss_stop - (unsigned long) __bss_start);
-}
 
-#define NEW_CL_POINTER		0x228	/* Relative to real mode data */
-#define OLD_CL_MAGIC_ADDR	0x90020
-#define OLD_CL_MAGIC            0xA33F
-#define OLD_CL_BASE_ADDR        0x90000
-#define OLD_CL_OFFSET           0x90022
-
-extern char saved_command_line[];
-
-static void __init copy_bootdata(char *real_mode_data)
+/** Determines the address of the kernel boot command line. */
+static char *
+__init
+find_command_line(void)
 {
 	int new_data;
-	char * command_line;
+	char *command_line;
 
-	memcpy(x86_boot_params, real_mode_data, BOOT_PARAM_SIZE);
 	new_data = *(int *) (x86_boot_params + NEW_CL_POINTER);
 	if (!new_data) {
 		if (OLD_CL_MAGIC != * (u16 *) OLD_CL_MAGIC_ADDR) {
-			printk("so old bootloader that it does not support commandline?!\n");
-			return;
+			return NULL;
 		}
 		new_data = OLD_CL_BASE_ADDR + * (u16 *) OLD_CL_OFFSET;
-		printk("old bootloader convention, maybe loadlin?\n");
 	}
 	command_line = (char *) ((u64)(new_data));
-	memcpy(saved_command_line, command_line, COMMAND_LINE_SIZE);
-	printk("Bootdata ok (command line is %s)\n", saved_command_line);	
+	return command_line;
 }
 
-static void __init setup_boot_cpu_data(void)
+
+static void
+__init
+setup_console(char *cfg)
 {
-	unsigned int dummy, eax;
+	char buf[256];
+	char *space;
+	char *s;
 
-	/* get vendor info */
-	cpuid(0, (unsigned int *)&boot_cpu_data.cpuid_level,
-	      (unsigned int *)&boot_cpu_data.x86_vendor_id[0],
-	      (unsigned int *)&boot_cpu_data.x86_vendor_id[8],
-	      (unsigned int *)&boot_cpu_data.x86_vendor_id[4]);
+	// Create a copy of config string and NULL
+	// terminate it at the first space.
+	strlcpy(buf, cfg, sizeof(buf));
+	space = strchr(buf, ' ');
+	if (space)
+		*space = 0;
 
-	/* get cpu type */
-	cpuid(1, &eax, &dummy, &dummy,
-		(unsigned int *) &boot_cpu_data.x86_capability);
-	boot_cpu_data.x86 = (eax >> 8) & 0xf;
-	boot_cpu_data.x86_model = (eax >> 4) & 0xf;
-	boot_cpu_data.x86_mask = eax & 0xf;
+	// VGA console
+	if ((s = strstr(buf, "vga")) != NULL) {
+		screen_info = SCREEN_INFO;
+		vga_init();
+	}
 }
 
-void __init x86_64_start_kernel(char * real_mode_data)
+
+/** This is the initial C entry point to the kernel.
+ *
+ * NOTE: The order of operations is usually important.  Be careful.
+ */
+void
+__init
+x86_64_start_kernel(char * real_mode_data)
 {
 	char *s;
 	int i;
 
+	// Setup the initial interrupt descriptor table (IDT).
+	// This will be eventually be populated with the real handlers.
 	for (i = 0; i < 256; i++)
 		set_intr_gate(i, early_idt_handler);
 	asm volatile("lidt %0" :: "m" (idt_descr));
-	clear_bss();
 
-	/*
-	 * switch to init_level4_pgt from boot_level4_pgt
-	 */
+	// Zero the "Block Started by Symbol" section...
+	// you know, the one that holds uninitialized data.
+	memset(__bss_start, 0,
+	       (unsigned long) __bss_stop - (unsigned long) __bss_start);
+
+	// Store a copy of the data passed in by the bootloader.
+	// real_mode_data will get clobbered eventually when the
+	// memory subsystem is initialized.
+	memcpy(x86_boot_params, real_mode_data, sizeof(x86_boot_params));
+
+	// Stash away the kernel boot command line.
+	memcpy(lwk_command_line, find_command_line(), sizeof(lwk_command_line));
+
+	// Switch to a new copy of the boot page tables.  Not exactly sure
+	// why this is done but it is probably because boot_level4_pgt is
+	// marked as __initdata, meaning it gets discarded after bootstrap.
 	memcpy(init_level4_pgt, boot_level4_pgt, PTRS_PER_PGD*sizeof(pgd_t));
 	asm volatile("movq %0,%%cr3" :: "r" (__pa_symbol(&init_level4_pgt)));
 
- 	for (i = 0; i < NR_CPUS; i++)
- 		cpu_pda(i) = &boot_cpu_pda[i];
+	// Initialize the console(s)... printk() will/should work after this.
+	if ((s = strstr(lwk_command_line, "console=")) != NULL)
+		setup_console(strchr(s, '=') + 1);
 
-	pda_init(0);
-	copy_bootdata(real_mode_data);
-#ifdef CONFIG_SMP
-	cpu_set(0, cpu_online_map);
-#endif
-	s = strstr(saved_command_line, "earlyprintk=");
-	if (s != NULL)
-		setup_early_printk(strchr(s, '=') + 1);
-#ifdef CONFIG_NUMA
-	s = strstr(saved_command_line, "numa=");
-	if (s != NULL)
-		numa_setup(s+5);
-#endif
-#ifdef CONFIG_X86_IO_APIC
-	if (strstr(saved_command_line, "disableapic"))
-		disable_apic = 1;
-#endif
-	/* You need early console to see that */
-	if (__pa_symbol(&_end) >= KERNEL_TEXT_SIZE)
-		panic("Kernel too big for kernel mapping\n");
-
-	setup_boot_cpu_data();
-	start_kernel();
+	init();
 }
+
