@@ -96,4 +96,8 @@ config VGA
 	bool
 	default "y"
 
+config SERIAL
+	bool
+	default "y"
+
 source "arch/x86_64/Kconfig.debug"

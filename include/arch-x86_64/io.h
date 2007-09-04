@@ -102,7 +102,7 @@ __OUTS(l)
 
 #if defined(__KERNEL__) && __x86_64__
 
-#include <linux/vmalloc.h>
+// #include <linux/vmalloc.h>
 
 #ifndef __i386__
 /*

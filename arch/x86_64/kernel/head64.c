@@ -56,7 +56,6 @@ setup_console(char *cfg)
 {
 	char buf[256];
 	char *space;
-	char *s;
 
 	// Create a copy of config string and NULL
 	// terminate it at the first space.
@@ -66,10 +65,12 @@ setup_console(char *cfg)
 		*space = 0;
 
 	// VGA console
-	if ((s = strstr(buf, "vga")) != NULL) {
-		screen_info = SCREEN_INFO;
-		vga_init();
-	}
+	if (strstr(buf, "vga"))
+		vga_init(SCREEN_INFO.orig_y);
+
+	// Serial console
+	if (strstr(buf, "serial"))
+		serial_init();
 }
 
 
@@ -113,6 +114,7 @@ x86_64_start_kernel(char * real_mode_data)
 	if ((s = strstr(lwk_command_line, "console=")) != NULL)
 		setup_console(strchr(s, '=') + 1);
 
+	// Call platform-independent init() function in init/main.c
 	init();
 }
 

@@ -1,7 +1,6 @@
 #include <lwk/types.h>
 #include <lwk/string.h>
 #include <lwk/console.h>
-#include <lwk/screen_info.h>
 
 /** Base address of the VGA frame buffer. */
 static volatile uint8_t * const vga_fb = (uint8_t *) 0xffffffff800b8000ul;
@@ -121,13 +120,11 @@ static struct console vga_console = {
 
 
 /** Initializes and registers the VGA console driver. */
-void vga_init( void )
+void
+vga_init( int start_row )
 {
 	// Setup for the screen geometry and current cursor location
-	row   = ORIG_Y;
-	col   = 0;
-	nrows = ORIG_VIDEO_LINES;
-	ncols = ORIG_VIDEO_COLS;
+	row = start_row;
 
 	vga_set_font_color(0x0F /* White */);
 	console_register(&vga_console);

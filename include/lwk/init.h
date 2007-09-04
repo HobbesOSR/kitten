@@ -62,6 +62,8 @@ extern char lwk_command_line[COMMAND_LINE_SIZE];
 /* used by init/main.c */
 extern void setup_arch(char **);
 
+extern void init(void);
+
 #endif /* !__ASSEMBLY__ */
   
 #endif /* _LWK_INIT_H */
