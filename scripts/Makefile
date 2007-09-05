@@ -15,8 +15,8 @@ hostprogs-$(CONFIG_IKCONFIG)     += bin2c
 
 always		:= $(hostprogs-y)
 
-subdir-$(CONFIG_MODVERSIONS) += genksyms
-subdir-$(CONFIG_MODULES)     += mod
+#subdir-$(CONFIG_MODVERSIONS) += genksyms
+#subdir-$(CONFIG_MODULES)     += mod
 
 # Let clean descend into subdirs
-subdir-	+= basic kconfig package
+subdir-	+= basic kconfig
