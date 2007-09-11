@@ -50,7 +50,7 @@ find_command_line(void)
 }
 
 
-static void
+void
 __init
 setup_console(char *cfg)
 {
@@ -64,13 +64,21 @@ setup_console(char *cfg)
 	if (space)
 		*space = 0;
 
+#ifdef CONFIG_PC
 	// VGA console
 	if (strstr(buf, "vga"))
-		vga_init(SCREEN_INFO.orig_y);
+		vga_console_init(SCREEN_INFO.orig_y);
 
 	// Serial console
 	if (strstr(buf, "serial"))
-		serial_init();
+		serial_console_init();
+#endif
+
+#ifdef CONFIG_CRAY_XT
+	// Cray RCA L0 console
+	if (strstr(buf, "rcal0"))
+		l0_console_init();
+#endif
 }
 
 
@@ -83,7 +91,7 @@ __init
 x86_64_start_kernel(char * real_mode_data)
 {
 	char *s;
-	int i;
+	volatile int i;
 
 	// Setup the initial interrupt descriptor table (IDT).
 	// This will be eventually be populated with the real handlers.

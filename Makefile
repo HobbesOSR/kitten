@@ -467,7 +467,7 @@ endif
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults vmlwk but it is usually overriden in the arch makefile
-all: vmlwk
+all: vmlwk vmlwk.bin vmlwk.asm
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 CFLAGS		+= -Os
@@ -710,6 +710,12 @@ endif # ifdef CONFIG_KALLSYMS
 vmlwk: $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) $(kallsyms.o) FORCE
 	$(call if_changed_rule,vmlwk__)
 	$(Q)rm -f .old_version
+
+vmlwk.bin: vmlwk FORCE
+	$(OBJCOPY) -O binary $< $@
+
+vmlwk.asm: vmlwk
+	$(OBJDUMP) --disassemble $< > $@
 
 # The actual objects are generated when descending, 
 # make sure no implicit rule kicks in
@@ -957,7 +963,7 @@ endif # CONFIG_MODULES
 
 # Directories & files removed with 'make clean'
 CLEAN_DIRS  += $(MODVERDIR)
-CLEAN_FILES +=	vmlwk System.map \
+CLEAN_FILES +=	vmlwk System.map vmlwk.bin vmlwk.asm \
                 .tmp_kallsyms* .tmp_version .tmp_vmlwk* .tmp_System.map
 
 # Directories & files removed with 'make mrproper'

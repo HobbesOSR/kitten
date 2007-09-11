@@ -7,18 +7,18 @@ config x86_64
 	  Support for the x86-64 architecture.
 
 
-menu "Processor type and features"
+menu "Target Configuration"
 
 choice
-	prompt "Subarchitecture Type"
-	default X86_PC
+	prompt "System Architecture"
+	default PC
 
-config X86_PC
+config PC
         bool "PC-compatible"
         help
 	  Support for standard PC compatible systems.
 
-config X86_REDSTORM
+config CRAY_XT
         bool "Red Storm (Cray XT3/XT4)"
          help
 	  Support for Cray XT3 and XT4 systems.
@@ -87,17 +87,22 @@ config NR_CPUS
 #
 config PHYSICAL_START
 	hex
-	default "0x200000"
+	default "0x100000"
 
 endmenu
 
 
-config VGA
+config VGA_CONSOLE
 	bool
-	default "y"
+	default "y" if PC
 
-config SERIAL
+config SERIAL_CONSOLE
 	bool
-	default "y"
+	default "y" if PC
+
+config L0_CONSOLE
+	bool
+	default "y" if CRAY_XT
+	default "n"
 
 source "arch/x86_64/Kconfig.debug"

@@ -1,5 +1,5 @@
-#ifndef _X8664_DELAY_H
-#define _X8664_DELAY_H
+#ifndef _X86_64_DELAY_H
+#define _X86_64_DELAY_H
 
 /*
  * Copyright (C) 1993 Linus Torvalds
@@ -24,4 +24,4 @@ extern void __delay(unsigned long loops);
        __ndelay(n))
 
 
-#endif /* defined(_X8664_DELAY_H) */
+#endif /* defined(_X86_64_DELAY_H) */

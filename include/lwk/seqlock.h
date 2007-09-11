@@ -1,5 +1,5 @@
-#ifndef __LINUX_SEQLOCK_H
-#define __LINUX_SEQLOCK_H
+#ifndef _LWK_SEQLOCK_H
+#define _LWK_SEQLOCK_H
 /*
  * Reader/writer consistent mechanism without starving writers. This type of
  * lock for data where the reader wants a consitent set of information
@@ -26,8 +26,7 @@
  * by Keith Owens and Andrea Arcangeli
  */
 
-#include <linux/spinlock.h>
-#include <linux/preempt.h>
+#include <lwk/spinlock.h>
 
 typedef struct {
 	unsigned sequence;
@@ -44,7 +43,6 @@ typedef struct {
 
 /* Lock out other writers and update the count.
  * Acts like a normal spin_lock/unlock.
- * Don't need preempt_disable() because that is in the spin_lock already.
  */
 static inline void write_seqlock(seqlock_t *sl)
 {
@@ -171,4 +169,4 @@ static inline void write_seqcount_end(seqcount_t *s)
 		ret;							\
 	})
 
-#endif /* __LINUX_SEQLOCK_H */
+#endif /* _LWK_SEQLOCK_H */

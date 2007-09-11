@@ -121,7 +121,7 @@ static struct console vga_console = {
 
 /** Initializes and registers the VGA console driver. */
 void
-vga_init( int start_row )
+vga_console_init( int start_row )
 {
 	// Setup for the screen geometry and current cursor location
 	row = start_row;

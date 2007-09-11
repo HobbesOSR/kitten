@@ -14,8 +14,7 @@
 #ifndef	__RCA_L0_LINUX_H__
 #define	__RCA_L0_LINUX_H__
 
-#include <linux/sched.h>
-#include <linux/version.h>
+#include <lwk/version.h>
 
 /* 
  * LINUX:
@@ -27,22 +26,6 @@
 #define rca_l0_comm_va(addr) \
 	(void*)(((unsigned long)0xFFFFFFFF << 32) | (unsigned long)(addr))
 
-#define	L0RCA_POLL_INTERVAL	(HZ)
-
 extern int l0rca_os_init(void);
-
-/* Task/work Q stuff, make common between 2.4 and 2.6 kernels. */
-
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
-#define DECLARE_WORKQ(q)		struct tq_struct q
-#define INIT_WORKQ(q,func,data)	INIT_TQUEUE(q,func,data)
-#define SCHEDULE_WORK(q)		schedule_task(q)
-#else
-#include <linux/workqueue.h>
-#define DECLARE_WORKQ(q)		struct work_struct q
-#define INIT_WORKQ(q,func,data)	INIT_WORK(q,func,data)
-#define SCHEDULE_WORK(q)		schedule_work(q)
-#endif
 
 #endif	/* __RCA_L0_LINUX_H__ */

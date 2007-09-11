@@ -18,11 +18,11 @@
  */
 
 
-#include <linux/kernel.h>
-#include <linux/mm.h>
-#include <linux/errno.h>
-#include <linux/delay.h>
-#include <linux/version.h>
+#include <lwk/kernel.h>
+#include <lwk/string.h>
+#include <lwk/errno.h>
+#include <lwk/delay.h>
+#include <lwk/version.h>
 #include <rca/rca_l0_linux.h>
 #include <rca/rca_l0.h>
 extern void	set_debug_traps(void) ;		/* GDB routine */
@@ -151,9 +151,10 @@ int l0rca_get_proc_num(void)
 static inline void set_chan_tx_state(l0rca_mapped_ch_t *ch_ptr)
 {
 	volatile uint32_t wx, rx;
+	int not_full;
 	SSGET32(ch_ptr->ch_widx, wx);
 	SSGET32(ch_ptr->ch_ridx, rx);
-	int not_full = (wx - rx) < ch_ptr->num_obj;
+	not_full = (wx - rx) < ch_ptr->num_obj;
 	SET_CHAN_STATE(ch_ptr, not_full  ? CHAN_TX_STATE_AVAIL : CHAN_TX_STATE_FULL);
 }
 
@@ -224,8 +225,10 @@ void l0rca_init_config(void)
 		/* Ensure num_obj is a power of 2 */
 		if (num_obj & (num_obj - 1))
 		{
+#if 0
 			panic ("l0rca_init_config: num_obj[%u] for channel %d is not power of 2\n",
 			       num_obj, i);
+#endif
 		}
 		l0rca_early_cfg.ch_data[i].num_obj = num_obj;
 		SSGET32(&(l0rca_cfg->chnl_data[i].l0_intr_bit), tmp32);
@@ -350,11 +353,13 @@ int register_ch_down(int ch_num, l0rca_down_handle_t handler, int poll)
 	ch_ptr->down_handler = handler;
 	ch_ptr->poll = poll;
 
+#if 0
 	/* Do any OS specific initialization e.g. set irq, timers etc. */
 	if (l0rca_os_init())
 	{
 		panic ("Unable to initialize OS service for L0RCA interface\n");
 	}
+#endif
 
 	return 0;
 }

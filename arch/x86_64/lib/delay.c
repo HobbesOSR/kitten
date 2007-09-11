@@ -8,15 +8,11 @@
  *	depends wildly on alignment on many x86 processors. 
  */
 
-#include <linux/config.h>
-#include <linux/sched.h>
-#include <linux/delay.h>
-#include <asm/delay.h>
-#include <asm/msr.h>
-
-#ifdef CONFIG_SMP
-#include <asm/smp.h>
-#endif
+// #include <linux/sched.h>
+#include <lwk/delay.h>
+#include <arch/msr.h>
+#include <arch/processor.h>
+#include <arch/smp.h>
 
 int read_current_timer(unsigned long *timer_value)
 {
@@ -39,7 +35,8 @@ void __delay(unsigned long loops)
 
 inline void __const_udelay(unsigned long xloops)
 {
-	__delay((xloops * HZ * cpu_data[raw_smp_processor_id()].loops_per_jiffy) >> 32);
+//	__delay((xloops * HZ * cpu_data[raw_smp_processor_id()].loops_per_jiffy) >> 32);
+	__delay((xloops * 1000) >> 32);
 }
 
 void __udelay(unsigned long usecs)

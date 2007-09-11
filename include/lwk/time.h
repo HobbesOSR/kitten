@@ -1,10 +1,10 @@
-#ifndef _LINUX_TIME_H
-#define _LINUX_TIME_H
+#ifndef _LWK_TIME_H
+#define _LWK_TIME_H
 
-#include <linux/types.h>
+#include <lwk/types.h>
 
 #ifdef __KERNEL__
-# include <linux/seqlock.h>
+# include <lwk/seqlock.h>
 #endif
 
 #ifndef _STRUCT_TIMESPEC

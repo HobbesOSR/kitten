@@ -1,7 +1,7 @@
-#ifndef _LINUX_ERRNO_H
-#define _LINUX_ERRNO_H
+#ifndef _LWK_ERRNO_H
+#define _LWK_ERRNO_H
 
-#include <asm/errno.h>
+#include <arch/errno.h>
 
 #ifdef __KERNEL__
 

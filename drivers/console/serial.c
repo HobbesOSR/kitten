@@ -77,7 +77,7 @@ static struct console serial_console = {
 
 /** Initializes and registers the serial console driver. */
 void
-serial_init( void )
+serial_console_init( void )
 {
 	const int port = serial_port;
 	const int baud = serial_baud;

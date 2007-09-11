@@ -179,9 +179,18 @@ startup_64:
 	movl %eax,%ss
 	movl %eax,%es
 			
+#ifndef CONFIG_CRAY_XT
 	/* esi is pointer to real mode structure with interesting info.
 	   pass it to C */
 	movl	%esi, %edi
+#else
+	/*
+	 * Cray hard codes the location of the bootdata.  Maybe
+	 * someday coldstart will be updated to pass the address in
+	 * like a normal bootloader.
+	 */
+	movq	$0xffffffff80090000, %rdi
+#endif
 	
 	/* Finally jump to run C code and to be on real kernel address
 	 * Since we are running on identity-mapped space we have to jump
@@ -267,7 +276,12 @@ NEXT_PAGE(level3_kernel_pgt)
 	.fill	510,8,0
 	/* (2^48-(2*1024*1024*1024)-((2^39)*511))/(2^30) = 510 */
 	.quad	phys_level2_kernel_pgt | 0x007
+#ifndef CONFIG_CRAY_XT
 	.fill	1,8,0
+#else
+	/* Map in the SeaStar early so that it can be accessed right away */
+	.quad	phys_level2_seastar_pgt | 0x007	/* -> level2_seastar_pgt */
+#endif
 
 NEXT_PAGE(level2_ident_pgt)
 	/* 40MB for bootup. 	*/
@@ -296,6 +310,18 @@ NEXT_PAGE(level2_kernel_pgt)
 NEXT_PAGE(level3_physmem_pgt)
 	.quad	phys_level2_kernel_pgt | 0x007	/* so that __va works even before pagetable_init */
 	.fill	511,8,0
+
+#ifdef CONFIG_CRAY_XT
+/*
+ * Cray - This maps last 2MB of the first 4GB; page at 0x8000 for
+ * these pagetables. Not provided ident mapping. We can if we need to later.
+ * The physical address is 0xFFE00000. Everything we need for RCA/L0 is mapped
+ * from this physical address onwards. This range is mapped non-cacheable.
+ */
+NEXT_PAGE(level2_seastar_pgt)
+	.fill 511,8,0
+	.quad   0x00000000ffe00193
+#endif
 
 #undef NEXT_PAGE
 

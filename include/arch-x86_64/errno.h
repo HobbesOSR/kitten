@@ -1,6 +1,6 @@
-#ifndef _X8664_ERRNO_H
-#define _X8664_ERRNO_H
+#ifndef _X86_64_ERRNO_H
+#define _X86_64_ERRNO_H
 
-#include <asm-generic/errno.h>
+#include <arch-generic/errno.h>
 
 #endif

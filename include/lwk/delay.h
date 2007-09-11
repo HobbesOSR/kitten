@@ -1,5 +1,5 @@
-#ifndef _LINUX_DELAY_H
-#define _LINUX_DELAY_H
+#ifndef _LWK_DELAY_H
+#define _LWK_DELAY_H
 
 /*
  * Copyright (C) 1993 Linus Torvalds
@@ -9,7 +9,7 @@
 
 extern unsigned long loops_per_jiffy;
 
-#include <asm/delay.h>
+#include <arch/delay.h>
 
 /*
  * Using udelay() for intervals greater than a few milliseconds can
@@ -47,4 +47,4 @@ static inline void ssleep(unsigned int seconds)
 	msleep(seconds * 1000);
 }
 
-#endif /* defined(_LINUX_DELAY_H) */
+#endif /* defined(_LWK_DELAY_H) */

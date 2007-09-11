@@ -15,8 +15,8 @@
 #define __CRAY_EVENT_DEF_H__
 
 
-#include <linux/types.h>
-#include <linux/time.h>
+#include <lwk/types.h>
+#include <lwk/time.h>
 #include <rca/rca_defs.h>
 
 typedef union rs_node_u {
