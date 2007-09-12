@@ -93,7 +93,7 @@
 	__end_rodata = .;						\
 	. = ALIGN(4096);						\
 									\
-	/* Built-in module parameters. */				\
+	/* Core LWK and driver parameters. */				\
 	__param : AT(ADDR(__param) - LOAD_OFFSET) {			\
 		VMLWK_SYMBOL(__start___param) = .;			\
 		*(__param)						\

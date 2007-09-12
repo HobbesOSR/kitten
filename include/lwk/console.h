@@ -19,5 +19,6 @@ struct console {
 
 extern void console_register(struct console *);
 extern void console_write(const char *);
+extern void init_console(void);
 
 #endif

@@ -1,1 +1,1 @@
-obj-y	:= console.o printk.o spinlock.o
+obj-y	:= console.o printk.o spinlock.o params.o

@@ -1,4 +1,5 @@
 #include <lwk/console.h>
+#include <lwk/params.h>
 #include <arch/io.h>
 
 // Serial port registers
@@ -33,10 +34,10 @@
 #define LCR_DLAB	0x80	// Divisor latch access bit
 
 /** IO port address of the serial port. */
-static int serial_port = 0x3F8;	// COM1
+static unsigned int port = 0x3F8;  // COM1
 
 /** Serial port baud rate. */
-static int serial_baud = 9600;
+static unsigned int baud = 9600;
 #define SERIAL_MAX_BAUD	115200
 
 
@@ -45,10 +46,10 @@ static void
 serial_putc( unsigned char c )
 {
 	// Wait until the TX buffer is empty
-	while ((inb_p(serial_port + LSR) & LSR_TXEMPT) == 0)
+	while ((inb_p(port + LSR) & LSR_TXEMPT) == 0)
 		;
 	// Slam the 8 bits down the 1 bit pipe... meeeooowwwy!
-	outb(c, serial_port);
+	outb(c, port);
 }
 
 
@@ -79,9 +80,6 @@ static struct console serial_console = {
 void
 serial_console_init( void )
 {
-	const int port = serial_port;
-	const int baud = serial_baud;
-
 	// Setup the divisor latch registers for the specified baud rate
 	unsigned int div = SERIAL_MAX_BAUD / baud;
 	outb( inb(port+LCR) | LCR_DLAB	, port+LCR ); // set DLAB
@@ -98,4 +96,13 @@ serial_console_init( void )
 
 	console_register(&serial_console);
 }
+
+
+/*
+ * These parameters can be overridden via the kernel command line...
+ *
+ * 	serial.port=0x3e8 serial.baud=14400 
+ */
+DRIVER_PARAM(port, uint, "serial port i/o port address");
+DRIVER_PARAM(baud, uint, "serial port baud rate");
 

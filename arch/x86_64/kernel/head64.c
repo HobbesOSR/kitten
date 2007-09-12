@@ -50,38 +50,6 @@ find_command_line(void)
 }
 
 
-void
-__init
-setup_console(char *cfg)
-{
-	char buf[256];
-	char *space;
-
-	// Create a copy of config string and NULL
-	// terminate it at the first space.
-	strlcpy(buf, cfg, sizeof(buf));
-	space = strchr(buf, ' ');
-	if (space)
-		*space = 0;
-
-#ifdef CONFIG_PC
-	// VGA console
-	if (strstr(buf, "vga"))
-		vga_console_init(SCREEN_INFO.orig_y);
-
-	// Serial console
-	if (strstr(buf, "serial"))
-		serial_console_init();
-#endif
-
-#ifdef CONFIG_CRAY_XT
-	// Cray RCA L0 console
-	if (strstr(buf, "rcal0"))
-		l0_console_init();
-#endif
-}
-
-
 /** This is the initial C entry point to the kernel.
  *
  * NOTE: The order of operations is usually important.  Be careful.
@@ -117,10 +85,6 @@ x86_64_start_kernel(char * real_mode_data)
 	// marked as __initdata, meaning it gets discarded after bootstrap.
 	memcpy(init_level4_pgt, boot_level4_pgt, PTRS_PER_PGD*sizeof(pgd_t));
 	asm volatile("movq %0,%%cr3" :: "r" (__pa_symbol(&init_level4_pgt)));
-
-	// Initialize the console(s)... printk() will/should work after this.
-	if ((s = strstr(lwk_command_line, "console=")) != NULL)
-		setup_console(strchr(s, '=') + 1);
 
 	// Call platform-independent init() function in init/main.c
 	init();
