@@ -1,0 +1,39 @@
+# use glob syntax.
+syntax: glob
+
+*.o
+*.cmd
+*.out
+vmlwk
+vmlwk.*
+System.map
+*.swp
+.config
+.config.old
+.kconfig.d
+.version
+.kernelrelease
+patch
+out
+lib.a
+*.iso
+arch/x86_64/boot/bootsect
+arch/x86_64/boot/bzImage
+arch/x86_64/boot/setup
+arch/x86_64/boot/tools/build
+arch/x86_64/kernel/asm-offsets.s
+bochs/bochsout.txt
+include/arch-x86_64/asm-offsets.h
+include/lwk/autoconf.h
+include/lwk/compile.h
+include/lwk/version.h
+scripts/basic/docproc
+scripts/basic/fixdep
+scripts/basic/split-include
+scripts/kconfig/conf
+scripts/kconfig/lex.zconf.c
+scripts/kconfig/zconf.hash.c
+scripts/kconfig/zconf.tab.c
+
+syntax: regexp
+^include/config
