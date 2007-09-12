@@ -46,25 +46,30 @@ console_write(
 }
 
 
-#include <arch/proto.h>
+/** Finds the console driver corresponding to the specified name. */
+static int
+install_console_driver(char * name)
+{
+	struct console_driver *drvs = __start___console_driver_table;
+	unsigned int num_drvs =
+		__stop___console_driver_table - __start___console_driver_table;
+	unsigned int i;
+
+	for (i = 0; i < num_drvs; i++) {
+		if (strcmp(name, drvs[i].name) == 0) {
+			drvs[i].init();
+			return 0;
+		}
+	}
+	return -1;
+}
+
+
 /** Initializes the console subsystem; called once at boot. */
 void
 init_console( void )
 {
-#ifdef CONFIG_PC
-	// VGA console
-	if (strstr(consoles, "vga"))
-		vga_console_init();
-
-	// Serial console
-	if (strstr(consoles, "serial"))
-		serial_console_init();
-#endif
-
-#ifdef CONFIG_CRAY_XT
-	// Cray RCA L0 console
-	if (strstr(consoles, "rcal0"))
-		l0_console_init();
-#endif
+	install_console_driver("vga");
+	install_console_driver("serial");
 }
 

@@ -93,12 +93,21 @@
 	__end_rodata = .;						\
 	. = ALIGN(4096);						\
 									\
-	/* Core LWK and driver parameters. */				\
+	/* Core LWK and driver parameters */				\
 	__param : AT(ADDR(__param) - LOAD_OFFSET) {			\
 		VMLWK_SYMBOL(__start___param) = .;			\
 		*(__param)						\
 		VMLWK_SYMBOL(__stop___param) = .;			\
+	}								\
+									\
+	/* Console driver table */					\
+	__console_driver_table : AT(ADDR(__console_driver_table) - LOAD_OFFSET) { \
+		VMLWK_SYMBOL(__start___console_driver_table) = .;	\
+		*(__console_driver_table)				\
+		VMLWK_SYMBOL(__stop___console_driver_table) = .;	\
 	}
+
+
 
 #define SECURITY_INIT							\
 	.security_initcall.init : AT(ADDR(.security_initcall.init) - LOAD_OFFSET) { \

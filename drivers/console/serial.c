@@ -104,3 +104,5 @@ serial_console_init( void )
 }
 
 
+REGISTER_CONSOLE_DRIVER(serial, serial_console_init);
+

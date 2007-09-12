@@ -130,3 +130,6 @@ vga_console_init( void )
 	console_register(&vga_console);
 }
 
+
+REGISTER_CONSOLE_DRIVER(vga, vga_console_init);
+

@@ -117,4 +117,10 @@ extern int printk(const char * fmt, ...)
 	(void)__tmp; \
 })
 
+/*
+ * Check at compile time that 'type' is a multiple of align.
+ */
+#define aligncheck(type,align) \
+	extern int __align_check[ (sizeof(type) % (align) == 0 ? 0 : 1/0) ]
+
 #endif
