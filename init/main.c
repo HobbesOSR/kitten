@@ -3,6 +3,7 @@
 #include <lwk/params.h>
 #include <lwk/console.h>
 
+
 /** Pristine copy of the LWK boot command line. */
 char lwk_command_line[COMMAND_LINE_SIZE];
 
@@ -12,20 +13,11 @@ init()
 {
 	int i;
 
-	// Parse the LWK boot command line
-	parse_args(
-		"Parsing Arguments",
-		lwk_command_line,
-		__start___param,
-		__stop___param - __start___param,
-		NULL
-	);
+	// Pick up any boot-time parameters passed on the command line.
+	parse_params(lwk_command_line);
 
 	// printk should work after this
 	init_console();
-
-
-
 
 	printk("%s\n", lwk_command_line);
 	for (i = 0; i < 15; i++)

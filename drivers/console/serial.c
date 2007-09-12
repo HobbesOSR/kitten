@@ -33,11 +33,17 @@
 // LCR bits
 #define LCR_DLAB	0x80	// Divisor latch access bit
 
+
 /** IO port address of the serial port. */
 static unsigned int port = 0x3F8;  // COM1
+DRIVER_PARAM(port, uint,
+	"Serial port i/o port address. Example: serial.port=0x3f8");
+
 
 /** Serial port baud rate. */
 static unsigned int baud = 9600;
+DRIVER_PARAM(baud, uint,
+	"Serial port baud rate. Example: serial.baud=14400");
 #define SERIAL_MAX_BAUD	115200
 
 
@@ -97,12 +103,4 @@ serial_console_init( void )
 	console_register(&serial_console);
 }
 
-
-/*
- * These parameters can be overridden via the kernel command line...
- *
- * 	serial.port=0x3e8 serial.baud=14400 
- */
-DRIVER_PARAM(port, uint, "serial port i/o port address");
-DRIVER_PARAM(baud, uint, "serial port baud rate");
 

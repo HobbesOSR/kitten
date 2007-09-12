@@ -172,6 +172,8 @@ extern int param_array_get(char *buffer, struct kernel_param *kp);
 extern int param_set_copystring(const char *val, struct kernel_param *kp);
 extern int param_get_string(char *buffer, struct kernel_param *kp);
 
+extern int parse_params(const char *str);
+extern int param_set_by_name_int(char *param, int val);
 
 /*
  * These two symbols are defined by the platform's linker script.
@@ -181,6 +183,5 @@ extern int param_get_string(char *buffer, struct kernel_param *kp);
  * this table.
  */
 extern struct kernel_param __start___param[], __stop___param[];
-
 
 #endif /* _LWK_PARAMS_H */

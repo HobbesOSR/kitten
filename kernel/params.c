@@ -362,3 +362,31 @@ int param_get_string(char *buffer, struct kernel_param *kp)
 	return strlcpy(buffer, kps->string, kps->maxlen);
 }
 
+/** Parses all parameters from the input string. */
+int parse_params(const char *str)
+{
+	struct kernel_param * params     = __start___param;
+	unsigned int          num_params = __stop___param - __start___param;
+	char tmp[2048];
+
+	// Make a temporary copy of the string since parse_args modifies it
+	if (strlen(str)+1 > sizeof(tmp)) {
+		printk(KERN_ERR "parse_params: input string too large");
+		return -ENOSPC;
+	}
+	
+	strcpy(tmp, str);
+	return parse_args("Parsing Arguments", tmp, params, num_params, NULL);
+}
+
+/** Manually sets the specified parameter. */
+int param_set_by_name_int(char *param, int val)
+{
+	struct kernel_param * params     = __start___param;
+	unsigned int          num_params = __stop___param - __start___param;
+	char valstr[128];
+
+	sprintf(valstr, "%d", val);
+	return parse_one(param, valstr, params, num_params, NULL);
+}
+

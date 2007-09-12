@@ -54,7 +54,7 @@ init_console( void )
 #ifdef CONFIG_PC
 	// VGA console
 	if (strstr(consoles, "vga"))
-		vga_console_init(0);
+		vga_console_init();
 
 	// Serial console
 	if (strstr(consoles, "serial"))

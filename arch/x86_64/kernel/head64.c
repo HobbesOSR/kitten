@@ -2,6 +2,7 @@
 #include <lwk/kernel.h>
 #include <lwk/string.h>
 #include <lwk/screen_info.h>
+#include <lwk/params.h>
 #include <arch/bootsetup.h>
 #include <arch/sections.h>
 
@@ -58,7 +59,6 @@ void
 __init
 x86_64_start_kernel(char * real_mode_data)
 {
-	char *s;
 	volatile int i;
 
 	// Setup the initial interrupt descriptor table (IDT).
@@ -76,6 +76,10 @@ x86_64_start_kernel(char * real_mode_data)
 	// real_mode_data will get clobbered eventually when the
 	// memory subsystem is initialized.
 	memcpy(x86_boot_params, real_mode_data, sizeof(x86_boot_params));
+
+	// Tell the VGA driver the starting line number... this avoids
+	// overwriting BIOS and bootloader messages.
+	param_set_by_name_int("vga.row", SCREEN_INFO.orig_y);
 
 	// Stash away the kernel boot command line.
 	memcpy(lwk_command_line, find_command_line(), sizeof(lwk_command_line));
