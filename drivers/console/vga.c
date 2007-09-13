@@ -1,15 +1,12 @@
-#include <lwk/types.h>
-#include <lwk/string.h>
+#include <lwk/driver.h>
 #include <lwk/console.h>
-#include <lwk/params.h>
+#include <lwk/string.h>
 
 /** Base address of the VGA frame buffer. */
 static volatile uint8_t * const vga_fb = (uint8_t *) 0xffffffff800b8000ul;
 
 /** Current cursor row coordinate. */
 static int row = 0;
-DRIVER_PARAM(row, int,
-	"Starting screen row. Example: vga.row=0");
 
 /** Current cursor column coordinate. */
 static int col = 0;
@@ -139,6 +136,6 @@ vga_console_init( void )
 	initialized = 1;
 }
 
-
-REGISTER_CONSOLE_DRIVER(vga, vga_console_init);
+driver_init(vga_console_init);
+driver_param(row, int);
 

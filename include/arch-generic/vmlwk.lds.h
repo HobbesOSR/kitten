@@ -100,11 +100,11 @@
 		VMLWK_SYMBOL(__stop___param) = .;			\
 	}								\
 									\
-	/* Console driver table */					\
-	__console_driver_table : AT(ADDR(__console_driver_table) - LOAD_OFFSET) { \
-		VMLWK_SYMBOL(__start___console_driver_table) = .;	\
-		*(__console_driver_table)				\
-		VMLWK_SYMBOL(__stop___console_driver_table) = .;	\
+	/* Driver table */						\
+	__driver_table : AT(ADDR(__driver_table) - LOAD_OFFSET) {	\
+		VMLWK_SYMBOL(__start___driver_table) = .;		\
+		*(__driver_table)					\
+		VMLWK_SYMBOL(__stop___driver_table) = .;		\
 	}
 
 

@@ -46,71 +46,36 @@ struct kparam_array {
 /* Helper functions: type is byte, short, ushort, int, uint, long,
    ulong, charp, bool or invbool, or XXX if you define param_get_XXX,
    param_set_XXX and param_check_XXX. */
-#define __PARAM_NAMED(prefix, name, value, type, description) 		\
+#define __param_named(prefix, name, value, type) 			\
 	param_check_##type(name, &(value));				\
 	__param_call(prefix, name, param_set_##type, param_get_##type, &value)
 
-#define __PARAM(prefix, name, type, description)			\
-	__PARAM_NAMED(prefix, name, name, type, description)
-
 /* Actually copy string: maxlen param is usually sizeof(string). */
-#define __PARAM_STRING(prefix, name, string, len, description)		\
+#define __param_string(prefix, name, string, len)			\
 	static struct kparam_string __param_string_##name		\
 		= { len, string };					\
 	__param_call(prefix, name, param_set_copystring,		\
 		   param_get_string, &__param_string_##name)
 
 /* Comma-separated array: *nump is set to number they actually specified. */
-#define __PARAM_ARRAY_NAMED(prefix, name, array, type, nump, description) \
-	static struct kparam_array __param_arr_##name			  \
-	= { ARRAY_SIZE(array), nump, param_set_##type, param_get_##type,  \
-	    sizeof(array[0]), array };					  \
-	__param_call(prefix, name, param_array_set, param_array_get, 	  \
+#define __param_array_named(prefix, name, array, type, nump) 		\
+	static struct kparam_array __param_arr_##name			\
+	= { ARRAY_SIZE(array), nump, param_set_##type, param_get_##type,\
+	    sizeof(array[0]), array };					\
+	__param_call(prefix, name, param_array_set, param_array_get, 	\
 			  &__param_arr_##name)
-
-#define __PARAM_ARRAY(prefix, name, type, nump, description)		  \
-	__PARAM_ARRAY_NAMED(prefix, name, name, type, nump, description)
-
-
-/*
- * Driver parameters will have the name of the driver followed
- * by a '.' pre-prepended to the parameter name.  For example,
- * if the serial port driver defines the parameter:
- *
- *     driver_param(debug, int, "debug level");
- *
- * Then the user could set debug on the kernel command line by
- * specifying:
- *
- *     serial.debug=1
- *
- * This assumes that the driver_param() was defined in serial.c.
- * KBUILD_MODNAME is set to the name of the file being compiled.
- * Alternatively, you could set it before including lwk/params.h.
- */
-#define DRIVER_PARAM_PREFIX	KBUILD_MODNAME "."
-
-#define DRIVER_PARAM(name, type, description) \
-	__PARAM(DRIVER_PARAM_PREFIX, name, type, description)
-
-#define DRIVER_PARAM_NAMED(name, value, type, description) \
-	__PARAM_NAMED(DRIVER_PARAM_PREFIX, name, value, type, description)
-
-#define DRIVER_PARAM_STRING(name, string, len, description) \
-	__PARAM_STRING(DRIVER_PARAM_PREFIX, name, string, len, description)
-
 
 /*
  * Core kernel parameters are just raw... they have no prefix.
  */
-#define KERNEL_PARAM(name, type, description) \
-	__PARAM("", name, type, description)
+#define KERNEL_PARAM(name, type) \
+	__param("", name, type)
 
-#define KERNEL_PARAM_NAMED(name, value, type, description) \
-	__PARAM_NAMED("", name, value, type, description)
+#define KERNEL_PARAM_NAMED(name, value, type) \
+	__param_named("", name, value, type)
 
-#define KERNEL_PARAM_STRING(name, string, len, description) \
-	__PARAM_STRING("", name, string, len, description)
+#define KERNEL_PARAM_STRING(name, string, len) \
+	__param_string("", name, string, len)
 
 
 /* Called at kernel boot */

@@ -2,6 +2,7 @@
 #include <lwk/console.h>
 #include <lwk/spinlock.h>
 #include <lwk/params.h>
+#include <lwk/driver.h>
 
 
 /** List of all registered consoles in the system.
@@ -17,9 +18,8 @@ static DEFINE_SPINLOCK(console_lock);
 
 
 /** Holds a comma separated list of consoles to configure. */
-static char consoles[128];
-KERNEL_PARAM_STRING(console, consoles, sizeof(consoles),
-	"List of consoles to configure. Example: console=vga,serial");
+static char console_str[128];
+KERNEL_PARAM_STRING(console, console_str, sizeof(console_str));
 
 
 /** Registers a new console. */
@@ -43,39 +43,20 @@ console_write(const char *str)
 }
 
 
-/** Finds the console driver corresponding to the specified name. */
-static int
-install_console_driver(char *name)
-{
-	struct console_driver *drvs = __start___console_driver_table;
-	unsigned int num_drvs =
-		__stop___console_driver_table - __start___console_driver_table;
-	unsigned int i;
-
-	for (i = 0; i < num_drvs; i++) {
-		if (strcmp(name, drvs[i].name) == 0) {
-			drvs[i].init();
-			return 0;
-		}
-	}
-	return -1;
-}
-
-
 /** Initializes the console subsystem; called once at boot. */
 void
 console_init(void)
 {
 	char *p, *con;
 	
-	// consoles contains comma separated list of console
+	// console_str contains comma separated list of console
 	// driver names.  Try to install a driver for each
 	// console name con.
-	p = con = consoles;
+	p = con = console_str;
 	while (*p != '\0') {
 		if (*p == ',') {
 			*p = '\0'; // null terminate con
-			if (install_console_driver(con))
+			if (driver_init_by_name(con))
 				printk(KERN_WARNING
 				       "failed to install console=%s\n", con);
 			con = p + 1;
@@ -84,7 +65,7 @@ console_init(void)
 	}
 
 	// Catch the last one
-	if (p != consoles)
-		install_console_driver(con);
+	if (p != console_str)
+		driver_init_by_name(con);
 }
 

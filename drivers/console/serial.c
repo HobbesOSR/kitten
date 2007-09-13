@@ -1,6 +1,5 @@
-#include <lwk/kernel.h>
+#include <lwk/driver.h>
 #include <lwk/console.h>
-#include <lwk/params.h>
 #include <arch/io.h>
 
 // Serial port registers
@@ -37,14 +36,10 @@
 
 /** IO port address of the serial port. */
 static unsigned int port = 0x3F8;  // COM1
-DRIVER_PARAM(port, uint,
-	"Serial port i/o port address. Example: serial.port=0x3f8");
 
 
 /** Serial port baud rate. */
 static unsigned int baud = 9600;
-DRIVER_PARAM(baud, uint,
-	"Serial port baud rate. Example: serial.baud=14400");
 #define SERIAL_MAX_BAUD	115200
 
 
@@ -115,6 +110,6 @@ serial_console_init( void )
 	initialized = 1;
 }
 
-
-REGISTER_CONSOLE_DRIVER(serial, serial_console_init);
-
+driver_init(serial_console_init);
+driver_param(port, uint);
+driver_param(baud, uint);

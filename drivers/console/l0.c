@@ -1,3 +1,4 @@
+#include <lwk/driver.h>
 #include <lwk/console.h>
 #include <lwk/string.h>
 #include <lwk/delay.h>
@@ -86,6 +87,5 @@ l0_console_init( void )
 	initialized = 1;
 }
 
-
-REGISTER_CONSOLE_DRIVER(rcal0, l0_console_init);
+driver_init(l0_console_init);
 
