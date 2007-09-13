@@ -145,4 +145,13 @@ extern int param_get_string(char *buffer, struct kernel_param *kp);
 extern int parse_params(const char *str);
 extern int param_set_by_name_int(char *param, int val);
 
+/*
+ * These two symbols are defined by the platform's linker script.
+ * They surround a table of kernel parameter descriptors.  This table
+ * is used by the command line parser to determine how each argument
+ * should be handled... each encountered argument causes a search of
+ * this table.
+ */
+extern struct kernel_param __start___param[], __stop___param[];
+
 #endif /* _LWK_PARAMS_H */

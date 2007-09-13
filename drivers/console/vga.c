@@ -20,18 +20,16 @@ static int ncols = 80;
 /** Set when vga console has been initialized. */
 static int initialized = 0;
 
-
 /** Calculates the offset in the vga_fb corresponding to (row, col). */
-static inline int
-cursor( int row, int col )
+static inline int cursor(int row, int col)
 {
 	return (row * ncols * 2) + col * 2;
 }
 
-
-/** Scrolls everything on the screen up by one row. */
-static void
-vga_scroll( void )
+/**
+ * Scrolls everything on the screen up by one row.
+ */ 
+static void vga_scroll(void)
 {
 	int i;
 
@@ -47,10 +45,10 @@ vga_scroll( void )
 		vga_fb[cursor(nrows-1, i)] = ' ';
 }
 
-
-/** Moves cursor to the next line. */
-static void
-vga_newline( void )
+/**
+ * Moves cursor to the next line.
+ */ 
+static void vga_newline(void)
 {
 	row = row + 1;
 	col = 0;
@@ -61,10 +59,10 @@ vga_newline( void )
 	}
 }
 
-
-/** Sets the VGA font color. */
-static void
-vga_set_font_color( uint8_t color )
+/**
+ * Sets the VGA font color.
+ */
+static void vga_set_font_color(uint8_t color)
 {
 	int i, j;
 	for (i = 0; i < nrows; i++)
@@ -72,10 +70,10 @@ vga_set_font_color( uint8_t color )
 			vga_fb[cursor(i, j) + 1] = color;
 }
 
-
-/** Prints a single character to the screen. */
-static void
-vga_putc( unsigned char c )
+/**
+ * Prints a single character to the screen.
+ */
+static void vga_putc(unsigned char c)
 {
 	// Print the character
 	vga_fb[cursor(row, col)] = c;
@@ -85,13 +83,10 @@ vga_putc( unsigned char c )
 		vga_newline();
 }
 
-
-/** Writes a string to the screen at the current cursor location. */
-static void
-vga_write(
-	struct console *	con,
-	const char *		str
-)
+/**
+ * Writes a string to the screen at the current cursor location.
+ */
+static void vga_write(struct console *con, const char *str)
 {
 	unsigned char c;
 
@@ -114,17 +109,18 @@ vga_write(
 	}
 }
 
-
-/** VGA console device. */
+/**
+ * VGA console device.
+ */
 static struct console vga_console = {
-	.name = "VGA Console",
+	.name  = "VGA Console",
 	.write = vga_write
 };
 
-
-/** Initializes and registers the VGA console driver. */
-void
-vga_console_init( void )
+/**
+ * Initializes and registers the VGA console driver.
+ */
+void vga_console_init(void)
 {
 	if (initialized) {
 		printk(KERN_ERR "VGA console already initialized.\n");
@@ -137,5 +133,12 @@ vga_console_init( void )
 }
 
 driver_init(vga_console_init);
+
+/**
+ * Sets the row on the screen to start printing at.
+ * This is used to avoid overwriting BIOS/boot messages.
+ * At least on x86-64, this is set automatically as part
+ * of the bootstrap process.
+ */
 driver_param(row, int);
 

@@ -261,7 +261,7 @@ int param_get_invbool(char *buffer, struct kernel_param *kp)
 }
 
 /* We cheat here and temporarily mangle the string. */
-static int param_array(const char *name,
+static int _param_array(const char *name,
 		       const char *val,
 		       unsigned int min, unsigned int max,
 		       void *elem, int elemsize,
@@ -319,7 +319,7 @@ int param_array_set(const char *val, struct kernel_param *kp)
 	struct kparam_array *arr = kp->arg;
 	unsigned int temp_num;
 
-	return param_array(kp->name, val, 1, arr->max, arr->elem,
+	return _param_array(kp->name, val, 1, arr->max, arr->elem,
 			   arr->elemsize, arr->set, arr->num ?: &temp_num);
 }
 

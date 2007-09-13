@@ -5,9 +5,4 @@
 
 extern void early_idt_handler(void);
 
-/* Driver init prototypes... TODO: move these */
-extern void vga_console_init(void);
-extern void serial_console_init(void);
-extern void l0_console_init(void);
-
 #endif

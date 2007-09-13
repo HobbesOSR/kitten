@@ -10,13 +10,10 @@ static rs_event_t ev_hdr = {0};
 /** Set when L0 console has been initialized. */
 static int initialized = 0;
 
-
-/** Writes a message to the Cray L0 console. */
-static void
-l0_write(
-	struct console *	con,
-	const char *		str
-)
+/**
+ * Writes a message to the Cray L0 console.
+ */
+static void l0_write(struct console *con, const char *str)
 {
 	int ret = 0;
 	unsigned int n = strlen(str);
@@ -47,17 +44,18 @@ l0_write(
 	return;
 }
 
-
-/** Cray L0 console device. */
+/**
+ * Cray L0 console device.
+ */
 static struct console l0_console = {
-	.name = "Cray L0 Console",
+	.name  = "Cray L0 Console",
 	.write = l0_write
 };
 
-
-/** Initializes the Cray XT L0 console. */
-void
-l0_console_init( void )
+/**
+ * Initializes the Cray XT L0 console.
+ */
+void l0_console_init(void)
 {
 	if (initialized) {
 		printk(KERN_ERR "RCA L0 console already initialized.\n");

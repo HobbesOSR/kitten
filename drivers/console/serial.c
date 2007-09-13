@@ -33,23 +33,20 @@
 // LCR bits
 #define LCR_DLAB	0x80	// Divisor latch access bit
 
-
 /** IO port address of the serial port. */
 static unsigned int port = 0x3F8;  // COM1
-
 
 /** Serial port baud rate. */
 static unsigned int baud = 9600;
 #define SERIAL_MAX_BAUD	115200
 
-
 /** Set when serial console has been initialized. */
 static int initialized = 0;
 
-
-/** Prints a single character to the serial port. */
-static void
-serial_putc( unsigned char c )
+/**
+ * Prints a single character to the serial port.
+ */
+static void serial_putc(unsigned char c)
 {
 	// Wait until the TX buffer is empty
 	while ((inb_p(port + LSR) & LSR_TXEMPT) == 0)
@@ -58,13 +55,10 @@ serial_putc( unsigned char c )
 	outb(c, port);
 }
 
-
-/** Writes a string to the serial port. */
-static void
-serial_write(
-	struct console *	con,
-	const char *		str
-)
+/**
+ * Writes a string to the serial port.
+ */
+static void serial_write(struct console *con, const char *str)
 {
 	unsigned char c;
 	while ((c = *str++) != '\0') {
@@ -74,17 +68,18 @@ serial_write(
 	}
 }
 
-
-/** Serial port console device. */
+/**
+ * Serial port console device.
+ */
 static struct console serial_console = {
-	.name = "Serial Console",
+	.name  = "Serial Console",
 	.write = serial_write
 };
 
-
-/** Initializes and registers the serial console driver. */
-void
-serial_console_init( void )
+/**
+ * Initializes and registers the serial console driver.
+ */
+void serial_console_init(void)
 {
 	// Setup the divisor latch registers for the specified baud rate
 	unsigned int div = SERIAL_MAX_BAUD / baud;
@@ -111,5 +106,11 @@ serial_console_init( void )
 }
 
 driver_init(serial_console_init);
+
+/**
+ * Configurable parameters for controlling the serial port
+ * I/O port address and baud.
+ */
 driver_param(port, uint);
 driver_param(baud, uint);
+
