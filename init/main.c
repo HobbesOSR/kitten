@@ -17,7 +17,7 @@ init()
 	parse_params(lwk_command_line);
 
 	// printk should work after this
-	init_console();
+	console_init();
 
 	printk("%s\n", lwk_command_line);
 	for (i = 0; i < 15; i++)

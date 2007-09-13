@@ -1,3 +1,4 @@
+#include <lwk/kernel.h>
 #include <lwk/console.h>
 #include <lwk/params.h>
 #include <arch/io.h>
@@ -47,6 +48,10 @@ DRIVER_PARAM(baud, uint,
 #define SERIAL_MAX_BAUD	115200
 
 
+/** Set when serial console has been initialized. */
+static int initialized = 0;
+
+
 /** Prints a single character to the serial port. */
 static void
 serial_putc( unsigned char c )
@@ -88,6 +93,12 @@ serial_console_init( void )
 {
 	// Setup the divisor latch registers for the specified baud rate
 	unsigned int div = SERIAL_MAX_BAUD / baud;
+
+	if (initialized) {
+		printk(KERN_ERR "Serial console already initialized.\n");
+		return;
+	}
+
 	outb( inb(port+LCR) | LCR_DLAB	, port+LCR ); // set DLAB
 	outb( (div>>0) & 0xFF		, port+DLL ); // set divisor low byte
 	outb( (div>>8) & 0xFF		, port+DLH ); // set divisor high byte
@@ -101,6 +112,7 @@ serial_console_init( void )
 	outb( MCR_RTS | MCR_DTR | MCR_OUT2 , port+MCR);
 
 	console_register(&serial_console);
+	initialized = 1;
 }
 
 

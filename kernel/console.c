@@ -15,12 +15,6 @@ static LIST_HEAD(console_list);
 static DEFINE_SPINLOCK(console_lock);
 
 
-/** Holds list of consoles to configure; parsed from kernel boot cmdline. */
-static char consoles[128];
-KERNEL_PARAM_STRING(console, consoles, sizeof(consoles),
-	"List of consoles to configure. Example: console=vga,serial");
-
-
 /** Registers a new console. */
 void
 console_register(
@@ -65,11 +59,18 @@ install_console_driver(char * name)
 }
 
 
+/** Holds list of consoles to configure; parsed from kernel boot cmdline. */
+static char consoles[128];
+KERNEL_PARAM_STRING(console, consoles, sizeof(consoles),
+	"List of consoles to configure. Example: console=vga,serial");
+
+
 /** Initializes the console subsystem; called once at boot. */
 void
-init_console( void )
+console_init( void )
 {
 	install_console_driver("vga");
 	install_console_driver("serial");
+	printk("consoles = %s\n", consoles);
 }
 

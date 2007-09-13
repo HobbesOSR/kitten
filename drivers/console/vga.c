@@ -20,6 +20,9 @@ static int nrows = 25;
 /** Number of columns on the screen. */
 static int ncols = 80;
 
+/** Set when vga console has been initialized. */
+static int initialized = 0;
+
 
 /** Calculates the offset in the vga_fb corresponding to (row, col). */
 static inline int
@@ -126,8 +129,14 @@ static struct console vga_console = {
 void
 vga_console_init( void )
 {
+	if (initialized) {
+		printk(KERN_ERR "VGA console already initialized.\n");
+		return;
+	}
+
 	vga_set_font_color(0x0F /* White */);
 	console_register(&vga_console);
+	initialized = 1;
 }
 
 

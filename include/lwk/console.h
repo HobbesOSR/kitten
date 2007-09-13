@@ -37,12 +37,12 @@ aligncheck(struct console_driver, 16);
 		       aligned(sizeof(void *))))			\
 	= { __driver_name, init }
 
-extern void console_register(struct console *);
-extern void console_write(const char *);
-extern void init_console(void);
-
 /* These two symbols surround the console driver table. */
 extern struct console_driver __start___console_driver_table[],
                              __stop___console_driver_table[];
+
+extern void console_register(struct console *);
+extern void console_write(const char *);
+extern void console_init(void);
 
 #endif

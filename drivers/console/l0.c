@@ -6,6 +6,9 @@
 /** Template event heder with static fields filled in. */
 static rs_event_t ev_hdr = {0};
 
+/** Set when L0 console has been initialized. */
+static int initialized = 0;
+
 
 /** Writes a message to the Cray L0 console. */
 static void
@@ -55,6 +58,11 @@ static struct console l0_console = {
 void
 l0_console_init( void )
 {
+	if (initialized) {
+		printk(KERN_ERR "RCA L0 console already initialized.\n");
+		return;
+	}
+
 	// Read the configuration information provided by the L0
 	l0rca_init_config();
 
@@ -75,5 +83,9 @@ l0_console_init( void )
 
 	// Register the L0 console with the LWK
 	console_register(&l0_console);
+	initialized = 1;
 }
+
+
+REGISTER_CONSOLE_DRIVER(rcal0, l0_console_init);
 
