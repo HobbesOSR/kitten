@@ -19,7 +19,7 @@ static DEFINE_SPINLOCK(console_lock);
 
 /** Holds a comma separated list of consoles to configure. */
 static char console_str[128];
-KERNEL_PARAM_STRING(console, console_str, sizeof(console_str));
+param_string(console, console_str, sizeof(console_str));
 
 
 /** Registers a new console. */

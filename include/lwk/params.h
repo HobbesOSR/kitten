@@ -66,17 +66,22 @@ struct kparam_array {
 			  &__param_arr_##name)
 
 /*
- * Core kernel parameters are just raw... they have no prefix.
+ * Basic parameter interface.  These are just raw... they have no prefix.
  */
-#define KERNEL_PARAM(name, type) \
-	__param("", name, type)
+#define param(name, type) \
+	__param_named("", name, name, type)
 
-#define KERNEL_PARAM_NAMED(name, value, type) \
+#define param_named(name, value, type) \
 	__param_named("", name, value, type)
 
-#define KERNEL_PARAM_STRING(name, string, len) \
+#define param_string(name, string, len) \
 	__param_string("", name, string, len)
 
+#define param_array(name, type, nump) \
+	__param_array_named("", name, name, type, nump)
+
+#define param_array_named(name, array, type, nump) \
+	__param_array_named("", name, array, type, nump);
 
 /* Called at kernel boot */
 extern int parse_args(const char *name,
@@ -139,14 +144,5 @@ extern int param_get_string(char *buffer, struct kernel_param *kp);
 
 extern int parse_params(const char *str);
 extern int param_set_by_name_int(char *param, int val);
-
-/*
- * These two symbols are defined by the platform's linker script.
- * They surround a table of kernel parameter descriptors.  This table
- * is used by the command line parser to determine how each argument
- * should be handled... each encountered argument causes a search of
- * this table.
- */
-extern struct kernel_param __start___param[], __stop___param[];
 
 #endif /* _LWK_PARAMS_H */
