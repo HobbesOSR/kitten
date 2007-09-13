@@ -1,3 +1,4 @@
+#include <lwk/kernel.h>
 #include <lwk/console.h>
 #include <lwk/spinlock.h>
 #include <lwk/params.h>
@@ -23,9 +24,7 @@ KERNEL_PARAM_STRING(console, consoles, sizeof(consoles),
 
 /** Registers a new console. */
 void
-console_register(
-	struct console *con
-)
+console_register(struct console *con)
 {
 	list_add(&con->next, &console_list);
 }
@@ -33,9 +32,7 @@ console_register(
 
 /** Writes a string to all registered consoles. */
 void
-console_write(
-	const char *str
-)
+console_write(const char *str)
 {
 	struct console *con;
 
@@ -78,7 +75,9 @@ console_init(void)
 	while (*p != '\0') {
 		if (*p == ',') {
 			*p = '\0'; // null terminate con
-			install_console_driver(con);
+			if (install_console_driver(con))
+				printk(KERN_WARNING
+				       "failed to install console=%s\n", con);
 			con = p + 1;
 		}
 		++p;
