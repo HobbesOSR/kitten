@@ -15,6 +15,12 @@ static LIST_HEAD(console_list);
 static DEFINE_SPINLOCK(console_lock);
 
 
+/** Holds a comma separated list of consoles to configure. */
+static char consoles[128];
+KERNEL_PARAM_STRING(console, consoles, sizeof(consoles),
+	"List of consoles to configure. Example: console=vga,serial");
+
+
 /** Registers a new console. */
 void
 console_register(
@@ -42,7 +48,7 @@ console_write(
 
 /** Finds the console driver corresponding to the specified name. */
 static int
-install_console_driver(char * name)
+install_console_driver(char *name)
 {
 	struct console_driver *drvs = __start___console_driver_table;
 	unsigned int num_drvs =
@@ -59,18 +65,27 @@ install_console_driver(char * name)
 }
 
 
-/** Holds list of consoles to configure; parsed from kernel boot cmdline. */
-static char consoles[128];
-KERNEL_PARAM_STRING(console, consoles, sizeof(consoles),
-	"List of consoles to configure. Example: console=vga,serial");
-
-
 /** Initializes the console subsystem; called once at boot. */
 void
-console_init( void )
+console_init(void)
 {
-	install_console_driver("vga");
-	install_console_driver("serial");
-	printk("consoles = %s\n", consoles);
+	char *p, *con;
+	
+	// consoles contains comma separated list of console
+	// driver names.  Try to install a driver for each
+	// console name con.
+	p = con = consoles;
+	while (*p != '\0') {
+		if (*p == ',') {
+			*p = '\0'; // null terminate con
+			install_console_driver(con);
+			con = p + 1;
+		}
+		++p;
+	}
+
+	// Catch the last one
+	if (p != consoles)
+		install_console_driver(con);
 }
 
