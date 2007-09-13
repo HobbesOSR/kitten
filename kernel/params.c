@@ -362,7 +362,9 @@ int param_get_string(char *buffer, struct kernel_param *kp)
 	return strlcpy(buffer, kps->string, kps->maxlen);
 }
 
-/** Parses all parameters from the input string. */
+/**
+ * Parses all parameters from the input string.
+ */
 int parse_params(const char *str)
 {
 	struct kernel_param * params     = __start___param;
@@ -379,7 +381,9 @@ int parse_params(const char *str)
 	return parse_args("Parsing Arguments", tmp, params, num_params, NULL);
 }
 
-/** Manually sets the specified parameter. */
+/**
+ * Manually sets the specified parameter.
+ */
 int param_set_by_name_int(char *param, int val)
 {
 	struct kernel_param * params     = __start___param;

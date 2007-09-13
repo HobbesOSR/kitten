@@ -1,10 +1,10 @@
 #include <lwk/kernel.h>
 #include <lwk/console.h>
 
-
-/** Prints a message to the console. */
-int
-printk(const char *fmt, ...)
+/**
+ * Prints a message to the console.
+ */
+int printk(const char *fmt, ...)
 {
 	va_list args;
 	int len;

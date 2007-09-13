@@ -4,7 +4,6 @@
 #include <lwk/params.h>
 #include <lwk/driver.h>
 
-
 /** List of all registered consoles in the system.
  *
  * Kernel messages output via printk() will be written to
@@ -12,27 +11,25 @@
  */
 static LIST_HEAD(console_list);
 
-
 /** Serializes access to the console. */
 static DEFINE_SPINLOCK(console_lock);
-
 
 /** Holds a comma separated list of consoles to configure. */
 static char console_str[128];
 param_string(console, console_str, sizeof(console_str));
 
-
-/** Registers a new console. */
-void
-console_register(struct console *con)
+/**
+ * Registers a new console.
+ */
+void console_register(struct console *con)
 {
 	list_add(&con->next, &console_list);
 }
 
-
-/** Writes a string to all registered consoles. */
-void
-console_write(const char *str)
+/**
+ * Writes a string to all registered consoles.
+ */
+void console_write(const char *str)
 {
 	struct console *con;
 
@@ -42,10 +39,10 @@ console_write(const char *str)
 	spin_unlock(&console_lock);
 }
 
-
-/** Initializes the console subsystem; called once at boot. */
-void
-console_init(void)
+/**
+ * Initializes the console subsystem; called once at boot.
+ */
+void console_init(void)
 {
 	char *p, *con;
 	
