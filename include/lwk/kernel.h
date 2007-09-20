@@ -60,6 +60,10 @@ extern int vprintk(const char *fmt, va_list args)
 extern int printk(const char * fmt, ...)
         __attribute__ ((format (printf, 1, 2)));
 
+extern int get_option(char **str, int *pint);
+extern char *get_options(const char *str, int nints, int *ints);
+extern unsigned long long memparse(char *ptr, char **retptr);
+
 /*
  * min()/max() macros that also do
  * strict type-checking.. See the

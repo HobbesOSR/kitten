@@ -65,6 +65,10 @@ struct kparam_array {
 	__param_call(prefix, name, param_array_set, param_array_get, 	\
 			  &__param_arr_##name)
 
+/* Call a function to parse the parameter */
+#define __param_func(prefix, name, func)				\
+	__param_call(prefix, name, func, NULL, NULL)
+
 /*
  * Basic parameter interface.  These are just raw... they have no prefix.
  */
@@ -81,7 +85,10 @@ struct kparam_array {
 	__param_array_named("", name, name, type, nump)
 
 #define param_array_named(name, array, type, nump) \
-	__param_array_named("", name, array, type, nump);
+	__param_array_named("", name, array, type, nump)
+
+#define param_func(name, func) \
+	__param_func("", name, func)
 
 /* Called at kernel boot */
 extern int parse_args(const char *name,

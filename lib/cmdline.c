@@ -12,9 +12,9 @@
  *
  */
 
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/string.h>
+#include <lwk/kernel.h>
+#include <lwk/string.h>
+#include <lwk/linux_compat.h>
 
 
 /**

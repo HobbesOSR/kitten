@@ -16,4 +16,8 @@ void init_kernel_pgtables(unsigned long start, unsigned long end);
 
 extern unsigned long end_pfn_map;
 
+extern void init_resources(void);
+
+void __init zap_low_mappings(int cpu);
+
 #endif

@@ -3,6 +3,7 @@
 #include <lwk/params.h>
 #include <lwk/console.h>
 
+#include <lwk/driver.h>
 
 /** Pristine copy of the LWK boot command line. */
 char lwk_command_line[COMMAND_LINE_SIZE];

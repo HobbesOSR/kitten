@@ -525,7 +525,7 @@ export MODLIB
 
 ifeq ($(KBUILD_EXTMOD),)
 #core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
-core-y		+= kernel/
+core-y		+= kernel/ mm/
 
 vmlwk-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \

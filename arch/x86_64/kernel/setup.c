@@ -1,6 +1,7 @@
 #include <lwk/kernel.h>
 #include <lwk/init.h>
 #include <lwk/cpuinfo.h>
+#include <lwk/bootmem.h>
 #include <arch/e820.h>
 #include <arch/page.h>
 #include <arch/proto.h>
@@ -15,6 +16,31 @@ unsigned long __supported_pte_mask __read_mostly = ~0UL;
  * Bitmap of features enabled in the CR4 register.
  */
 unsigned long mmu_cr4_features;
+
+/**
+ * This sets up the bootstrap memory allocator.  It is a simple
+ * bitmap based allocator that tracks memory at a page grandularity.
+ * Once the bootstrap process is complete, each unallocated page
+ * is added to the real memory allocator's free pool.  Memory allocated
+ * during bootstrap remains allocated forever, unless explicitly
+ * freed before turning things over to the real memory allocator.
+ */
+static void __init
+setup_bootmem_allocator(
+	unsigned long	start_pfn,
+	unsigned long	end_pfn
+)
+{
+	unsigned long bootmap_size, bootmap;
+
+	bootmap_size = bootmem_bootmap_pages(end_pfn)<<PAGE_SHIFT;
+	bootmap = find_e820_area(0, end_pfn<<PAGE_SHIFT, bootmap_size);
+	if (bootmap == -1L)
+		panic("Cannot find bootmem map of size %ld\n",bootmap_size);
+	bootmap_size = init_bootmem(bootmap >> PAGE_SHIFT, end_pfn);
+	e820_bootmem_free(0, end_pfn << PAGE_SHIFT);
+	reserve_bootmem(bootmap, bootmap_size);
+}
 
 /**
  * Architecture specific initialization.
@@ -53,4 +79,26 @@ setup_arch(void)
 	 * from whatever task was running when the kernel got invoked.
 	 */
 	init_kernel_pgtables(0, (end_pfn_map << PAGE_SHIFT));
+
+	/*
+ 	 * It's now safe to destroy the virtual memory mappings from
+ 	 * [0, PAGE_OFFSET).  From here on out, the kernel accesses memory
+ 	 * using the identity map that we just set up, i.e., in the region
+ 	 * [PAGE_OFFSET, TOP_OF_MEMORY)
+ 	 */
+	zap_low_mappings(0);
+	
+	/*
+ 	 * Initialize the bootstrap dynamic memory allocator.
+ 	 * alloc_bootmem() will work after this.
+ 	 */
+	setup_bootmem_allocator(0, end_pfn);
+
+	/*
+	 * Mark reserved memory and io ports as, well... reserved.
+	 */
+	init_resources();
+
+	printk("after init_resources()\n");
 }
+

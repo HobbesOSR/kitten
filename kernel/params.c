@@ -49,6 +49,7 @@ static int parse_one(char *param,
 		     int (*handle_unknown)(char *param, char *val))
 {
 	unsigned int i;
+printk("in parse_one(%s, %s)\n", param, val);
 
 	/* Find parameter */
 	for (i = 0; i < num_params; i++) {

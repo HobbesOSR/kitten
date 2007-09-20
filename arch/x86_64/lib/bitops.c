@@ -1,4 +1,4 @@
-#include <linux/bitops.h>
+#include <lwk/bitops.h>
 
 #undef find_first_zero_bit
 #undef find_next_zero_bit
@@ -167,7 +167,7 @@ long find_next_bit(const unsigned long * addr, long size, long offset)
 	return (offset + set + res);
 }
 
-#include <linux/module.h>
+#include <lwk/linux_compat.h>
 
 EXPORT_SYMBOL(find_next_bit);
 EXPORT_SYMBOL(find_first_bit);

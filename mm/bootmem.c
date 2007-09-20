@@ -1,5 +1,5 @@
 /*
- *  linux/mm/bootmem.c
+ *  lwk/mm/bootmem.c
  *
  *  Copyright (C) 1999 Ingo Molnar
  *  Discontiguous memory support, Kanoj Sarcar, SGI, Nov 1999
@@ -9,41 +9,32 @@
  *  system memory and memory holes as well.
  */
 
-#include <linux/mm.h>
-#include <linux/kernel_stat.h>
-#include <linux/swap.h>
-#include <linux/interrupt.h>
-#include <linux/init.h>
-#include <linux/bootmem.h>
-#include <linux/mmzone.h>
-#include <linux/module.h>
-#include <asm/dma.h>
-#include <asm/io.h>
-#include "internal.h"
+#include <lwk/init.h>
+#include <lwk/bootmem.h>
+#include <lwk/bitops.h>
+#include <arch/io.h>
 
-/*
- * Access to this subsystem has to be serialized externally. (this is
- * true for the boot process anyway)
+/**
+ * Access to this subsystem has to be serialized externally.
+ * (this is true for the boot process anyway)
  */
-unsigned long max_low_pfn;
-unsigned long min_low_pfn;
-unsigned long max_pfn;
 
-EXPORT_SYMBOL(max_pfn);		/* This is exported so
-				 * dma_get_required_mask(), which uses
-				 * it, can be an inline function */
+/**
+ *
+ */
+static bootmem_data_t __initdata bootmem_data;
 
+/**
+ * List of bootmem_data structures, each describing a section of
+ * physical memory.
+ */
 static LIST_HEAD(bdata_list);
-#ifdef CONFIG_CRASH_DUMP
-/*
- * If we have booted due to a crash, max_pfn will be a very low value. We need
- * to know the amount of memory that the previous kernel used.
- */
-unsigned long saved_max_pfn;
-#endif
 
-/* return the number of _pages_ that will be allocated for the boot bitmap */
-unsigned long __init bootmem_bootmap_pages (unsigned long pages)
+/**
+ * Returns the number of _pages_ that will be allocated for the boot bitmap.
+ */
+unsigned long __init
+bootmem_bootmap_pages(unsigned long pages)
 {
 	unsigned long mapsize;
 
@@ -53,10 +44,12 @@ unsigned long __init bootmem_bootmap_pages (unsigned long pages)
 
 	return mapsize;
 }
-/*
- * link bdata in order
+
+/**
+ * Links a newly created bootmem_data structure to the bdata_list.
  */
-static void link_bootmem(bootmem_data_t *bdata)
+static void __init
+link_bootmem(bootmem_data_t *bdata)
 {
 	bootmem_data_t *ent;
 	if (list_empty(&bdata_list)) {
@@ -74,14 +67,17 @@ static void link_bootmem(bootmem_data_t *bdata)
 	return;
 }
 
-
-/*
+/**
  * Called once to set up the allocator itself.
  */
-static unsigned long __init init_bootmem_core (pg_data_t *pgdat,
-	unsigned long mapstart, unsigned long start, unsigned long end)
+static unsigned long __init
+init_bootmem_core(
+	bootmem_data_t	*bdata,
+	unsigned long	mapstart,
+	unsigned long	start,
+	unsigned long	end
+)
 {
-	bootmem_data_t *bdata = pgdat->bdata;
 	unsigned long mapsize = ((end - start)+7)/8;
 
 	mapsize = ALIGN(mapsize, sizeof(long));
@@ -99,12 +95,17 @@ static unsigned long __init init_bootmem_core (pg_data_t *pgdat,
 	return mapsize;
 }
 
-/*
+/**
  * Marks a particular physical memory range as unallocatable. Usable RAM
  * might be used for boot-time allocations - or it might get added
  * to the free page pool later on.
  */
-static void __init reserve_bootmem_core(bootmem_data_t *bdata, unsigned long addr, unsigned long size)
+static void __init
+reserve_bootmem_core(
+	bootmem_data_t	*bdata,
+	unsigned long	addr,
+	unsigned long	size
+)
 {
 	unsigned long i;
 	/*
@@ -129,7 +130,15 @@ static void __init reserve_bootmem_core(bootmem_data_t *bdata, unsigned long add
 		}
 }
 
-static void __init free_bootmem_core(bootmem_data_t *bdata, unsigned long addr, unsigned long size)
+/**
+ * Frees a section of bootmemory.
+ */
+static void __init
+free_bootmem_core(
+	bootmem_data_t	*bdata,
+	unsigned long	addr,
+	unsigned long	size
+)
 {
 	unsigned long i;
 	unsigned long start;
@@ -159,7 +168,7 @@ static void __init free_bootmem_core(bootmem_data_t *bdata, unsigned long addr, 
 	}
 }
 
-/*
+/**
  * We 'merge' subsequent allocations to save space. We might 'lose'
  * some fraction of a page if allocations cannot be satisfied due to
  * size constraints on boxes where there is physical RAM space
@@ -173,8 +182,13 @@ static void __init free_bootmem_core(bootmem_data_t *bdata, unsigned long addr, 
  * NOTE:  This function is _not_ reentrant.
  */
 void * __init
-__alloc_bootmem_core(struct bootmem_data *bdata, unsigned long size,
-	      unsigned long align, unsigned long goal, unsigned long limit)
+__alloc_bootmem_core(
+	struct bootmem_data	*bdata,
+	unsigned long		size,
+	unsigned long		align,
+	unsigned long		goal,
+	unsigned long		limit
+)
 {
 	unsigned long offset, remaining_size, areasize, preferred;
 	unsigned long i, start = 0, incr, eidx, end_pfn = bdata->node_low_pfn;
@@ -291,6 +305,7 @@ found:
 	return ret;
 }
 
+#if 0
 static unsigned long __init free_all_bootmem_core(pg_data_t *pgdat)
 {
 	struct page *page;
@@ -356,52 +371,48 @@ static unsigned long __init free_all_bootmem_core(pg_data_t *pgdat)
 
 	return total;
 }
+#endif
 
-unsigned long __init init_bootmem_node (pg_data_t *pgdat, unsigned long freepfn, unsigned long startpfn, unsigned long endpfn)
+/**
+ * Initialize boot memory allocator.
+ */
+unsigned long __init
+init_bootmem(unsigned long start, unsigned long pages)
 {
-	return(init_bootmem_core(pgdat, freepfn, startpfn, endpfn));
+	return init_bootmem_core(&bootmem_data, start, 0, pages);
 }
 
-void __init reserve_bootmem_node (pg_data_t *pgdat, unsigned long physaddr, unsigned long size)
+/**
+ * Reserve a portion of the boot memory.
+ * This prevents the reserved memory from being allocated.
+ */
+void __init
+reserve_bootmem(unsigned long addr, unsigned long size)
 {
-	reserve_bootmem_core(pgdat->bdata, physaddr, size);
+	reserve_bootmem_core(&bootmem_data, addr, size);
 }
 
-void __init free_bootmem_node (pg_data_t *pgdat, unsigned long physaddr, unsigned long size)
+/**
+ * Return a portion of boot memory to the free pool.
+ * Note that the region freed is the set of pages covering
+ * the byte range [addr, addr+size).
+ */
+void __init
+free_bootmem(unsigned long addr, unsigned long size)
 {
-	free_bootmem_core(pgdat->bdata, physaddr, size);
+	free_bootmem_core(&bootmem_data, addr, size);
 }
 
-unsigned long __init free_all_bootmem_node (pg_data_t *pgdat)
+#if 0
+unsigned long __init
+free_all_bootmem(void)
 {
-	return(free_all_bootmem_core(pgdat));
+	return free_all_bootmem_core(NODE_DATA(0));
 }
+#endif
 
-unsigned long __init init_bootmem (unsigned long start, unsigned long pages)
-{
-	max_low_pfn = pages;
-	min_low_pfn = start;
-	return(init_bootmem_core(NODE_DATA(0), start, 0, pages));
-}
-
-#ifndef CONFIG_HAVE_ARCH_BOOTMEM_NODE
-void __init reserve_bootmem (unsigned long addr, unsigned long size)
-{
-	reserve_bootmem_core(NODE_DATA(0)->bdata, addr, size);
-}
-#endif /* !CONFIG_HAVE_ARCH_BOOTMEM_NODE */
-
-void __init free_bootmem (unsigned long addr, unsigned long size)
-{
-	free_bootmem_core(NODE_DATA(0)->bdata, addr, size);
-}
-
-unsigned long __init free_all_bootmem (void)
-{
-	return(free_all_bootmem_core(NODE_DATA(0)));
-}
-
-void * __init __alloc_bootmem_nopanic(unsigned long size, unsigned long align, unsigned long goal)
+static void * __init
+__alloc_bootmem_nopanic(unsigned long size, unsigned long align, unsigned long goal)
 {
 	bootmem_data_t *bdata;
 	void *ptr;
@@ -412,7 +423,8 @@ void * __init __alloc_bootmem_nopanic(unsigned long size, unsigned long align, u
 	return NULL;
 }
 
-void * __init __alloc_bootmem(unsigned long size, unsigned long align, unsigned long goal)
+void * __init
+__alloc_bootmem(unsigned long size, unsigned long align, unsigned long goal)
 {
 	void *mem = __alloc_bootmem_nopanic(size,align,goal);
 	if (mem)
@@ -425,41 +437,16 @@ void * __init __alloc_bootmem(unsigned long size, unsigned long align, unsigned 
 	return NULL;
 }
 
-
-void * __init __alloc_bootmem_node(pg_data_t *pgdat, unsigned long size, unsigned long align,
-				   unsigned long goal)
+/**
+ * Allocate a chunk of memory from the boot memory allocator.
+ *
+ *     size  = number of bytes requested
+ *     align = required alignment
+ *     goal  = hint specifying address to start search.
+ */
+void * __init
+alloc_bootmem(unsigned long size)
 {
-	void *ptr;
-
-	ptr = __alloc_bootmem_core(pgdat->bdata, size, align, goal, 0);
-	if (ptr)
-		return (ptr);
-
-	return __alloc_bootmem(size, align, goal);
+	return __alloc_bootmem(size, SMP_CACHE_BYTES, 0);
 }
 
-#define LOW32LIMIT 0xffffffff
-
-void * __init __alloc_bootmem_low(unsigned long size, unsigned long align, unsigned long goal)
-{
-	bootmem_data_t *bdata;
-	void *ptr;
-
-	list_for_each_entry(bdata, &bdata_list, list)
-		if ((ptr = __alloc_bootmem_core(bdata, size,
-						 align, goal, LOW32LIMIT)))
-			return(ptr);
-
-	/*
-	 * Whoops, we cannot satisfy the allocation request.
-	 */
-	printk(KERN_ALERT "low bootmem alloc of %lu bytes failed!\n", size);
-	panic("Out of low memory");
-	return NULL;
-}
-
-void * __init __alloc_bootmem_low_node(pg_data_t *pgdat, unsigned long size,
-				       unsigned long align, unsigned long goal)
-{
-	return __alloc_bootmem_core(pgdat->bdata, size, align, goal, LOW32LIMIT);
-}

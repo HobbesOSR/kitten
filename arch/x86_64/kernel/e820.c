@@ -12,8 +12,8 @@
 #include <lwk/kernel.h>
 #include <lwk/types.h>
 #include <lwk/init.h>
-//#include <linux/bootmem.h>
-//#include <linux/ioport.h>
+#include <lwk/bootmem.h>
+#include <lwk/resource.h>
 #include <lwk/string.h>
 #include <lwk/linux_compat.h>
 
@@ -47,9 +47,7 @@ unsigned long end_pfn_map;
  */
 unsigned long end_user_pfn = MAXMEM>>PAGE_SHIFT;  
 
-#ifdef TODO
 extern struct resource code_resource, data_resource;
-#endif
 
 /* Check for some hardcoded bad areas that early boot is not allowed to touch */ 
 static inline int bad_addr(unsigned long *addrp, unsigned long size)
@@ -62,13 +60,11 @@ static inline int bad_addr(unsigned long *addrp, unsigned long size)
 		return 1; 
 	}
 
-#ifdef TODO
 	/* direct mapping tables of the kernel */
 	if (last >= table_start<<PAGE_SHIFT && addr < table_end<<PAGE_SHIFT) { 
 		*addrp = table_end << PAGE_SHIFT; 
 		return 1;
 	} 
-#endif
 
 	/* initrd image */ 
 	if (LOADER_TYPE && INITRD_START && last >= INITRD_START && 
@@ -168,11 +164,10 @@ unsigned long __init find_e820_area(unsigned long start, unsigned long end, unsi
 	return -1UL;		
 } 
 
-#ifdef TODO 
 /* 
  * Free bootmem based on the e820 table for a node.
  */
-void __init e820_bootmem_free(pg_data_t *pgdat, unsigned long start,unsigned long end)
+void __init e820_bootmem_free(unsigned long start, unsigned long end)
 {
 	int i;
 	for (i = 0; i < e820.nr_map; i++) {
@@ -193,10 +188,9 @@ void __init e820_bootmem_free(pg_data_t *pgdat, unsigned long start,unsigned lon
 			last = end; 
 
 		if (last > addr && last-addr >= PAGE_SIZE)
-			free_bootmem_node(pgdat, addr, last-addr);
+			free_bootmem(addr, last-addr);
 	}
 }
-#endif
 
 /*
  * Find the highest page frame number we have available
@@ -269,7 +263,6 @@ e820_hole_size(unsigned long start_pfn, unsigned long end_pfn)
 	return ((end - start) - ram) >> PAGE_SHIFT;
 }
 
-#ifdef TODO
 /*
  * Mark e820 reserved areas as busy for the resource manager.
  */
@@ -278,7 +271,7 @@ void __init e820_reserve_resources(void)
 	int i;
 	for (i = 0; i < e820.nr_map; i++) {
 		struct resource *res;
-		res = alloc_bootmem_low(sizeof(struct resource));
+		res = alloc_bootmem(sizeof(struct resource));
 		switch (e820.map[i].type) {
 		case E820_RAM:	res->name = "System RAM"; break;
 		case E820_ACPI:	res->name = "ACPI Tables"; break;
@@ -303,7 +296,6 @@ void __init e820_reserve_resources(void)
 		}
 	}
 }
-#endif
 
 /* 
  * Add a memory region to the kernel e820 map.
@@ -608,7 +600,6 @@ void __init setup_memory_region(void)
 	end_pfn = e820_end_of_ram();
 }
 
-#ifdef TODO
 void __init parse_memopt(char *p, char **from) 
 { 
 	end_user_pfn = memparse(p, from);
@@ -635,9 +626,7 @@ void __init parse_memmapopt(char *p, char **from)
 	}
 	p = *from;
 }
-#endif
 
-#ifdef TODO
 unsigned long pci_mem_start = 0xaeedbabe;
 
 /*
@@ -697,4 +686,3 @@ __init void e820_setup_gap(void)
 	printk(KERN_INFO "Allocating PCI resources starting at %lx (gap: %lx:%lx)\n",
 		pci_mem_start, gapstart, gapsize);
 }
-#endif
