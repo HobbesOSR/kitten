@@ -46,6 +46,13 @@
 #define IRQSTACK_ORDER 2
 #define IRQSTACKSIZE (PAGE_SIZE << IRQSTACK_ORDER)
 
+#define STACKFAULT_STACK	1
+#define DOUBLEFAULT_STACK	2
+#define NMI_STACK		3
+#define DEBUG_STACK		4
+#define MCE_STACK		5
+#define N_EXCEPTION_STACKS	5	/* hw limit is 7 */
+
 /* Note: __pa(&symbol_visible_to_c) should be always replaced with __pa_symbol.
    Otherwise you risk miscompilation. */
 #define __pa(x)		(((unsigned long)(x)>=__START_KERNEL_map)?(unsigned long)(x) - (unsigned long)__START_KERNEL_map:(unsigned long)(x) - PAGE_OFFSET)
@@ -80,6 +87,8 @@ extern pgd_t init_level4_pgt[];
 extern pgd_t boot_level4_pgt[];
 
 typedef struct { unsigned long pgprot; } pgprot_t;
+
+extern unsigned long end_pfn;
 
 #endif
 

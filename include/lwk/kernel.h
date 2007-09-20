@@ -37,6 +37,8 @@ extern const char lwk_banner[];
 #define KERN_INFO	"<6>"	/* informational                        */
 #define KERN_DEBUG	"<7>"	/* debug-level messages                 */
 
+void panic(const char * fmt, ...);
+
 extern unsigned long simple_strtoul(const char *,char **,unsigned int);
 extern long simple_strtol(const char *,char **,unsigned int);
 extern unsigned long long simple_strtoull(const char *,char **,unsigned int);
@@ -86,6 +88,15 @@ extern int printk(const char * fmt, ...)
 #define max_t(type,x,y) \
 	({ type __x = (x); type __y = (y); __x > __y ? __x: __y; })
 
+/*
+ * Round x up to the nearest y aligned boundary.  y must be a power of two.
+ */
+#define round_up(x,y) (((x) + (y) - 1) & ~((y)-1))
+
+/*
+ * Round x down to the nearest y aligned boundary.  y must be a power of two.
+ */
+#define round_down(x,y) ((x) & ~((y)-1))
 
 /**
  * container_of - cast a member of a structure out to the containing structure

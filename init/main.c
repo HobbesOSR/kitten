@@ -9,19 +9,20 @@ char lwk_command_line[COMMAND_LINE_SIZE];
 
 
 void
-init()
+start_kernel()
 {
-	int i;
-
 	// Pick up any boot-time parameters passed on the command line.
 	parse_params(lwk_command_line);
 
 	// printk should work after this
 	console_init();
 
+	// Hello, Dave...
+	printk(lwk_banner);
 	printk("%s\n", lwk_command_line);
-	for (i = 0; i < 15; i++)
-		printk("%d\n", i);
+
+	// Do architecture specific initialization
+	setup_arch();
 
 	while (1) {}
 }

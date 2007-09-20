@@ -52,7 +52,8 @@ AFLAGS += -m64
 head-y := arch/x86_64/kernel/head.o arch/x86_64/kernel/head64.o arch/x86_64/kernel/init_task.o
 
 libs-y += arch/x86_64/lib/
-core-y += arch/x86_64/kernel/
+core-y += arch/x86_64/kernel/	\
+          arch/x86_64/mm/
 
 boot := arch/x86_64/boot
 

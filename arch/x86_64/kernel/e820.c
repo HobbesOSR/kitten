@@ -9,21 +9,25 @@
  *  Venkatesh Pallipadi <venkatesh.pallipadi@intel.com>
  *
  */
-#include <linux/config.h>
-#include <linux/kernel.h>
-#include <linux/types.h>
-#include <linux/init.h>
-#include <linux/bootmem.h>
-#include <linux/ioport.h>
-#include <linux/string.h>
-#include <linux/kexec.h>
-#include <linux/module.h>
+#include <lwk/kernel.h>
+#include <lwk/types.h>
+#include <lwk/init.h>
+//#include <linux/bootmem.h>
+//#include <linux/ioport.h>
+#include <lwk/string.h>
+#include <lwk/linux_compat.h>
 
-#include <asm/page.h>
-#include <asm/e820.h>
-#include <asm/proto.h>
-#include <asm/bootsetup.h>
-#include <asm/sections.h>
+#include <arch/page.h>
+#include <arch/pgtable.h>
+#include <arch/e820.h>
+#include <arch/proto.h>
+#include <arch/bootsetup.h>
+#include <arch/sections.h>
+
+/**
+ * The BIOS "e820" map of memory.
+ */
+struct e820map e820;
 
 /* 
  * PFN of last memory page.
@@ -43,7 +47,9 @@ unsigned long end_pfn_map;
  */
 unsigned long end_user_pfn = MAXMEM>>PAGE_SHIFT;  
 
+#ifdef TODO
 extern struct resource code_resource, data_resource;
+#endif
 
 /* Check for some hardcoded bad areas that early boot is not allowed to touch */ 
 static inline int bad_addr(unsigned long *addrp, unsigned long size)
@@ -56,20 +62,21 @@ static inline int bad_addr(unsigned long *addrp, unsigned long size)
 		return 1; 
 	}
 
+#ifdef TODO
 	/* direct mapping tables of the kernel */
 	if (last >= table_start<<PAGE_SHIFT && addr < table_end<<PAGE_SHIFT) { 
 		*addrp = table_end << PAGE_SHIFT; 
 		return 1;
 	} 
+#endif
 
-	/* initrd */ 
-#ifdef CONFIG_BLK_DEV_INITRD
+	/* initrd image */ 
 	if (LOADER_TYPE && INITRD_START && last >= INITRD_START && 
 	    addr < INITRD_START+INITRD_SIZE) { 
 		*addrp = INITRD_START + INITRD_SIZE; 
 		return 1;
 	} 
-#endif
+
 	/* kernel code + 640k memory hole (later should not be needed, but 
 	   be paranoid for now) */
 	if (last >= 640*1024 && addr < __pa_symbol(&_end)) { 
@@ -90,7 +97,7 @@ static inline int bad_addr(unsigned long *addrp, unsigned long size)
  * This function checks if any part of the range <start,end> is mapped
  * with type.
  */
-int __meminit
+int __init
 e820_any_mapped(unsigned long start, unsigned long end, unsigned type)
 { 
 	int i;
@@ -161,6 +168,7 @@ unsigned long __init find_e820_area(unsigned long start, unsigned long end, unsi
 	return -1UL;		
 } 
 
+#ifdef TODO 
 /* 
  * Free bootmem based on the e820 table for a node.
  */
@@ -188,6 +196,7 @@ void __init e820_bootmem_free(pg_data_t *pgdat, unsigned long start,unsigned lon
 			free_bootmem_node(pgdat, addr, last-addr);
 	}
 }
+#endif
 
 /*
  * Find the highest page frame number we have available
@@ -260,6 +269,7 @@ e820_hole_size(unsigned long start_pfn, unsigned long end_pfn)
 	return ((end - start) - ram) >> PAGE_SHIFT;
 }
 
+#ifdef TODO
 /*
  * Mark e820 reserved areas as busy for the resource manager.
  */
@@ -293,6 +303,7 @@ void __init e820_reserve_resources(void)
 		}
 	}
 }
+#endif
 
 /* 
  * Add a memory region to the kernel e820 map.
@@ -589,10 +600,15 @@ void __init setup_memory_region(void)
 		add_memory_region(0, LOWMEMSIZE(), E820_RAM);
 		add_memory_region(HIGH_MEMORY, mem_size << 10, E820_RAM);
   	}
-	printk(KERN_INFO "BIOS-provided physical RAM map:\n");
+
+	printk("BIOS-provided physical RAM map:\n");
 	e820_print_map(who);
+
+	/* This also sets end_pfn_map */
+	end_pfn = e820_end_of_ram();
 }
 
+#ifdef TODO
 void __init parse_memopt(char *p, char **from) 
 { 
 	end_user_pfn = memparse(p, from);
@@ -619,7 +635,9 @@ void __init parse_memmapopt(char *p, char **from)
 	}
 	p = *from;
 }
+#endif
 
+#ifdef TODO
 unsigned long pci_mem_start = 0xaeedbabe;
 
 /*
@@ -679,3 +697,4 @@ __init void e820_setup_gap(void)
 	printk(KERN_INFO "Allocating PCI resources starting at %lx (gap: %lx:%lx)\n",
 		pci_mem_start, gapstart, gapsize);
 }
+#endif

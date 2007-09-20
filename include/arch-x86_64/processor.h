@@ -69,6 +69,12 @@ struct cpuinfo_x86 {
 	cpumask_t llc_shared_map;	/* cpus sharing the last level cache */
 	__u8	apicid;
 	__u8	booted_cores;	/* number of cores as seen by OS */
+
+	__u8	logical_id;	/* logical ID of this CPU */
+	__u8	socket_id;      /* ID of the socket/package containing this CPU */
+	__u8	socket_core_id; /* ID of the core in the enclosing socket/package */
+	__u8	core_thread_id; /* ID of the hw_thread in the enclosing core */
+	__u32	max_freq;	/* Maximum frequency of this CPU in KHz */
 } ____cacheline_aligned;
 
 #define X86_VENDOR_INTEL 0
@@ -275,14 +281,13 @@ struct thread_struct {
 			: /* no output */			\
 			:"r" (value))
 
-struct task_struct;
 struct mm_struct;
 
 /* Free all resources held by a thread. */
-extern void release_thread(struct task_struct *);
+extern void release_thread(struct task *);
 
 /* Prepare to copy thread state - unlazy all lazy status */
-extern void prepare_to_copy(struct task_struct *tsk);
+extern void prepare_to_copy(struct task *tsk);
 
 /*
  * create a kernel thread without removing it from tasklists
@@ -295,7 +300,7 @@ extern long kernel_thread(int (*fn)(void *), void * arg, unsigned long flags);
  */
 #define thread_saved_pc(t) (*(unsigned long *)((t)->thread.rsp - 8))
 
-extern unsigned long get_wchan(struct task_struct *p);
+extern unsigned long get_wchan(struct task *p);
 #define task_pt_regs(tsk) ((struct pt_regs *)(tsk)->thread.rsp0 - 1)
 #define KSTK_EIP(tsk) (task_pt_regs(tsk)->rip)
 #define KSTK_ESP(tsk) -1 /* sorry. doesn't work for syscall. */

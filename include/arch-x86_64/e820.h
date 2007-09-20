@@ -11,6 +11,8 @@
 #ifndef _ARCH_E820_H
 #define _ARCH_E820_H
 
+#include <lwk/init.h>
+
 #define E820MAP	0x2d0		/* our map */
 #define E820MAX	128		/* number of entries in E820MAP */
 #define E820NR	0x1e8		/* # entries in E820MAP */
@@ -48,7 +50,9 @@ extern void e820_print_map(char *who);
 extern int e820_any_mapped(unsigned long start, unsigned long end, unsigned type);
 extern int e820_all_mapped(unsigned long start, unsigned long end, unsigned type);
 
+#ifdef TODO
 extern void e820_bootmem_free(pg_data_t *pgdat, unsigned long start,unsigned long end);
+#endif
 extern void e820_setup_gap(void);
 extern unsigned long e820_hole_size(unsigned long start_pfn,
 				    unsigned long end_pfn);

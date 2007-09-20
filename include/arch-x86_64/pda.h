@@ -9,7 +9,7 @@
 
 /* Per processor datastructure. %gs points to it while the kernel runs */ 
 struct x8664_pda {
-	struct task_struct *pcurrent;	/* Current process */
+	struct task *pcurrent;	/* Current process */
 	unsigned long data_offset;	/* Per cpu data offset from linker address */
 	unsigned long kernelstack;  /* top of kernel stack for current */ 
 	unsigned long oldrsp; 	    /* user rsp for system call */
@@ -29,6 +29,8 @@ struct x8664_pda {
 
 extern struct x8664_pda *_cpu_pda[];
 extern struct x8664_pda boot_cpu_pda[];
+
+void pda_init(int cpu);
 
 #define cpu_pda(i) (_cpu_pda[i])
 

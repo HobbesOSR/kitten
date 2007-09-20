@@ -1,8 +1,6 @@
 #include <lwk/task.h>
 #include <lwk/init_task.h>
 
-#define init_task init_task_union.task_info
-
 union task_union init_task_union
 	__attribute__((__section__(".data.init_task"))) =
 		{

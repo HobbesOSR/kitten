@@ -1,8 +1,8 @@
-#ifndef _X8664_TLBFLUSH_H
-#define _X8664_TLBFLUSH_H
+#ifndef _X86_64_TLBFLUSH_H
+#define _X86_64_TLBFLUSH_H
 
-#include <linux/mm.h>
-#include <asm/processor.h>
+//#include <linux/mm.h>
+#include <arch/processor.h>
 
 #define __flush_tlb()							\
 	do {								\
@@ -43,6 +43,7 @@ extern unsigned long pgkern_mask;
 #define __flush_tlb_one(addr) \
 	__asm__ __volatile__("invlpg %0": :"m" (*(char *) addr))
 
+#if 0
 
 /*
  * TLB flushing:
@@ -124,4 +125,6 @@ static inline void flush_tlb_pgtables(struct mm_struct *mm,
 	   by the normal TLB flushing algorithms. */
 }
 
-#endif /* _X8664_TLBFLUSH_H */
+#endif
+
+#endif /* _X86_64_TLBFLUSH_H */

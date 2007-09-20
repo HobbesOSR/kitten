@@ -19,4 +19,6 @@ union task_union {
 	unsigned long	stack[TASK_SIZE/sizeof(long)];
 };
 
+extern union task_union init_task_union;
+
 #endif

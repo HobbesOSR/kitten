@@ -4,17 +4,22 @@
 #include <lwk/params.h>
 #include <lwk/driver.h>
 
-/** List of all registered consoles in the system.
+/**
+ * List of all registered consoles in the system.
  *
  * Kernel messages output via printk() will be written to
  * all consoles in this list.
  */
 static LIST_HEAD(console_list);
 
-/** Serializes access to the console. */
+/**
+ * Serializes access to the console.
+ */
 static DEFINE_SPINLOCK(console_lock);
 
-/** Holds a comma separated list of consoles to configure. */
+/**
+ * Holds a comma separated list of consoles to configure.
+ */
 static char console_str[128];
 param_string(console, console_str, sizeof(console_str));
 
