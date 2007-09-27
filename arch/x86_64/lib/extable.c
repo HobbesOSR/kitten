@@ -2,11 +2,11 @@
  * lwk/arch/x86_64/lib/extable.c
  */
 
-#include <lwk/init.h>
-#include <arch/uaccess.h>
+#include <lwk/stddef.h>
+#include <lwk/extable.h>
 
 /* Simple binary search */
-const struct exception_table_entry * __init
+const struct exception_table_entry *
 search_extable(const struct exception_table_entry *first,
 	       const struct exception_table_entry *last,
 	       unsigned long value)

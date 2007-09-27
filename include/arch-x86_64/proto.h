@@ -10,8 +10,6 @@ extern char boot_exception_stacks[];
 
 extern unsigned long table_start, table_end;
 
-void discover_ebda(void);
-
 void init_kernel_pgtables(unsigned long start, unsigned long end);
 
 extern unsigned long end_pfn_map;
@@ -19,5 +17,9 @@ extern unsigned long end_pfn_map;
 extern void init_resources(void);
 
 void __init zap_low_mappings(int cpu);
+
+extern unsigned long ebda_addr, ebda_size;
+
+extern int unhandled_signal(struct task *tsk, int sig);
 
 #endif

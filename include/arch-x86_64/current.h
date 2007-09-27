@@ -2,13 +2,13 @@
 #define _X86_64_CURRENT_H
 
 #if !defined(__ASSEMBLY__) 
-struct task_struct;
+struct task;
 
-#include <asm/pda.h>
+#include <arch/pda.h>
 
-static inline struct task_struct *get_current(void) 
+static inline struct task *get_current(void) 
 { 
-	struct task_struct *t = read_pda(pcurrent); 
+	struct task *t = read_pda(pcurrent); 
 	return t;
 } 
 
@@ -17,7 +17,7 @@ static inline struct task_struct *get_current(void)
 #else
 
 #ifndef ASM_OFFSET_H
-#include <asm/asm-offsets.h> 
+#include <arch/asm-offsets.h> 
 #endif
 
 #define GET_CURRENT(reg) movq %gs:(pda_pcurrent),reg

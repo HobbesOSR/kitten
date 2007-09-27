@@ -5,12 +5,13 @@
  * This source code is licensed under the GNU General Public License,
  * Version 2.  See the file COPYING for more details.
  */
-#include <linux/module.h>
-#include <linux/ctype.h>
-#include <linux/errno.h>
-#include <linux/bitmap.h>
-#include <linux/bitops.h>
-#include <asm/uaccess.h>
+#include <lwk/kernel.h>
+#include <lwk/ctype.h>
+#include <lwk/errno.h>
+#include <lwk/bitmap.h>
+#include <lwk/bitops.h>
+#include <lwk/linux_compat.h>
+//#include <asm/uaccess.h>
 
 /*
  * bitmaps provide an array of bits, implemented using an an
@@ -315,6 +316,7 @@ int bitmap_scnprintf(char *buf, unsigned int buflen,
 }
 EXPORT_SYMBOL(bitmap_scnprintf);
 
+#if 0
 /**
  * bitmap_parse - convert an ASCII hex string into a bitmap.
  * @buf: pointer to buffer in user space containing string.
@@ -393,6 +395,7 @@ int bitmap_parse(const char __user *ubuf, unsigned int ubuflen,
 	return 0;
 }
 EXPORT_SYMBOL(bitmap_parse);
+#endif
 
 /*
  * bscnl_emit(buf, buflen, rbot, rtop, bp)

@@ -262,11 +262,11 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 	asm volatile("movq %%cr4,%0" : "=r" (mmu_cr4_features));
 	__flush_tlb_all();
 
-	printk("Allocated %lu KB for kernel page tables [0x%lx - 0x%lx)\n",
+	printk(KERN_DEBUG
+		"Allocated %lu KB for kernel page tables [0x%lx - 0x%lx)\n",
 		((table_end - table_start) << PAGE_SHIFT) / 1024,
 		table_start << PAGE_SHIFT,
-		table_end   << PAGE_SHIFT
-	);
+		table_end   << PAGE_SHIFT);
 }
 
 /**

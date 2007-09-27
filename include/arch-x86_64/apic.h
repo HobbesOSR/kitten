@@ -1,12 +1,10 @@
-#ifndef _ASM_APIC_H
-#define _ASM_APIC_H
+#ifndef __ASM_APIC_H
+#define __ASM_APIC_H
 
 // #include <linux/pm.h>
 #include <arch/fixmap.h>
 #include <arch/apicdef.h>
 #include <arch/system.h>
-
-#define Dprintk(x...)
 
 /*
  * Debugging macros
@@ -110,4 +108,4 @@ void switch_ipi_to_APIC_timer(void *cpumask);
 
 extern unsigned boot_cpu_id;
 
-#endif /* _ASM_APIC_H */
+#endif /* __ASM_APIC_H */

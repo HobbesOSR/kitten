@@ -1,15 +1,15 @@
-#ifndef _ASMx8664_SIGNAL_H
-#define _ASMx8664_SIGNAL_H
+#ifndef _ASM_X86_64_SIGNAL_H
+#define _ASM_X86_64_SIGNAL_H
 
 #ifndef __ASSEMBLY__
-#include <linux/types.h>
-#include <linux/time.h>
+#include <lwk/types.h>
+#include <lwk/time.h>
 
 /* Avoid too many header ordering problems.  */
 struct siginfo;
 
 #ifdef __KERNEL__
-#include <linux/linkage.h>
+#include <lwk/linkage.h>
 /* Most things should be clean enough to redefine this at will, if care
    is taken to make libc match.  */
 
@@ -110,7 +110,7 @@ typedef unsigned long sigset_t;
 #define MINSIGSTKSZ	2048
 #define SIGSTKSZ	8192
 
-#include <asm-generic/signal.h>
+#include <arch-generic/signal.h>
 
 #ifndef __ASSEMBLY__
 
@@ -132,46 +132,9 @@ typedef struct sigaltstack {
 } stack_t;
 
 #ifdef __KERNEL__
-#include <asm/sigcontext.h>
+#include <arch/sigcontext.h>
 
 #undef __HAVE_ARCH_SIG_BITOPS
-#if 0
-
-static inline void sigaddset(sigset_t *set, int _sig)
-{
-	__asm__("btsq %1,%0" : "=m"(*set) : "Ir"(_sig - 1) : "cc");
-}
-
-static inline void sigdelset(sigset_t *set, int _sig)
-{
-	__asm__("btrq %1,%0" : "=m"(*set) : "Ir"(_sig - 1) : "cc");
-}
-
-static inline int __const_sigismember(sigset_t *set, int _sig)
-{
-	unsigned long sig = _sig - 1;
-	return 1 & (set->sig[sig / _NSIG_BPW] >> (sig & ~(_NSIG_BPW-1)));
-}
-
-static inline int __gen_sigismember(sigset_t *set, int _sig)
-{
-	int ret;
-	__asm__("btq %2,%1\n\tsbbq %0,%0"
-		: "=r"(ret) : "m"(*set), "Ir"(_sig-1) : "cc");
-	return ret;
-}
-
-#define sigismember(set,sig)			\
-	(__builtin_constant_p(sig) ?		\
-	 __const_sigismember((set),(sig)) :	\
-	 __gen_sigismember((set),(sig)))
-
-static inline int sigfindinword(unsigned long word)
-{
-	__asm__("bsfq %1,%0" : "=r"(word) : "rm"(word) : "cc");
-	return word;
-}
-#endif
 #endif
 
 #define ptrace_signal_deliver(regs, cookie) do { } while (0)

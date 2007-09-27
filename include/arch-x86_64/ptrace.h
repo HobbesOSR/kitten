@@ -18,7 +18,8 @@
 #define RDX 96
 #define RSI 104
 #define RDI 112
-#define ORIG_RAX 120       /* = ERROR */ 
+#define ORIG_RAX 120       /* = ERROR_CODE */ 
+#define ERROR_CODE 120
 /* end of arguments */ 	
 /* cpu exception frame or undefined in case of fast syscall. */
 #define RIP 128
@@ -87,10 +88,10 @@ struct pt_regs {
 extern unsigned long profile_pc(struct pt_regs *regs);
 void signal_fault(struct pt_regs *regs, void __user *frame, char *where);
 
-struct task_struct;
+struct task;
 
 extern unsigned long
-convert_rip_to_linear(struct task_struct *child, struct pt_regs *regs);
+convert_rip_to_linear(struct task *child, struct pt_regs *regs);
 
 enum {
         EF_CF   = 0x00000001,

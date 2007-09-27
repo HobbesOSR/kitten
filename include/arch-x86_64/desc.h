@@ -32,14 +32,20 @@ enum {
 	GATE_CALL = 0xC,
 }; 	
 
-// 16byte gate
+/**
+ * Long-Mode Gate Descriptor (16-bytes)
+ */
 struct gate_struct {          
-	u16 offset_low;
-	u16 segment; 
-	unsigned ist : 3, zero0 : 5, type : 5, dpl : 2, p : 1;
-	u16 offset_middle;
-	u32 offset_high;
-	u32 zero1; 
+	uint16_t offset_low;	/* [15-0] of target code segment offset */
+	uint16_t segment; 	/* Target code segment selector */
+	unsigned ist    : 3;	/* Interrupt-Stack-Table index into TSS */
+	unsigned zero0  : 5;
+	unsigned type   : 5;	/* Gate descriptor type */
+	unsigned dpl    : 2;	/* Privilege level */
+	unsigned p      : 1;	/* Present bit... in use? */
+	uint16_t offset_middle;	/* [31-24] of target code segment offset */
+	uint32_t offset_high;	/* [63-32] of target code segment offset */
+	uint32_t zero1;
 } __attribute__((packed));
 
 #define PTR_LOW(x) ((unsigned long)(x) & 0xFFFF) 
@@ -81,7 +87,17 @@ extern struct desc_ptr cpu_gdt_descr[];
 /* the cpu gdt accessor */
 #define cpu_gdt(_cpu) ((struct desc_struct *)cpu_gdt_descr[_cpu].address)
 
-static inline void _set_gate(void *adr, unsigned type, unsigned long func, unsigned dpl, unsigned ist)  
+/**
+ * Installs a Long-Mode gate descriptor.
+ */
+static inline void
+_set_gate(
+	void *        adr,	/* Address to install gate descriptor at */
+	unsigned      type,	/* Type of gate */
+	unsigned long func,	/* The handler function for the gate */
+	unsigned      dpl,	/* Privilege level */
+	unsigned      ist	/* Interupt-Stack-Table index */
+)  
 {
 	struct gate_struct s; 	
 	s.offset_low = PTR_LOW(func); 
@@ -98,24 +114,42 @@ static inline void _set_gate(void *adr, unsigned type, unsigned long func, unsig
 	memcpy(adr, &s, 16); 
 } 
 
-static inline void set_intr_gate(int nr, void *func) 
+/**
+ * Installs an interrupt gate.
+ * The interrupt will execute on the normal kernel stack.
+ */
+static inline void
+set_intr_gate(int nr, void *func) 
 { 
 	BUG_ON((unsigned)nr > 0xFF);
 	_set_gate(&idt_table[nr], GATE_INTERRUPT, (unsigned long) func, 0, 0); 
 } 
 
+/**
+ * Installs an interrupt gate.
+ * The interrupt will execute on the stack specified by the 'ist' argument.
+ */
 static inline void set_intr_gate_ist(int nr, void *func, unsigned ist) 
 { 
 	BUG_ON((unsigned)nr > 0xFF);
 	_set_gate(&idt_table[nr], GATE_INTERRUPT, (unsigned long) func, 0, ist); 
 } 
 
+/**
+ * Installs a system interrupt gate.
+ * The privilege level is set to 3, meaning that user-mode can trigger it.
+ */
 static inline void set_system_gate(int nr, void *func) 
 { 
 	BUG_ON((unsigned)nr > 0xFF);
 	_set_gate(&idt_table[nr], GATE_INTERRUPT, (unsigned long) func, 3, 0); 
 } 
 
+/**
+ * Installs a system interrupt gate.
+ * The privilege level is set to 3, meaning that user-mode can trigger it.
+ * The interrupt will execute on the stack specified by the 'ist' argument.
+ */
 static inline void set_system_gate_ist(int nr, void *func, unsigned ist)
 {
 	_set_gate(&idt_table[nr], GATE_INTERRUPT, (unsigned long) func, 3, ist);

@@ -1,6 +1,8 @@
 #ifndef __ASM_MPSPEC_H
 #define __ASM_MPSPEC_H
 
+#include <lwk/kernel.h>
+
 /*
  * Structure definitions for SMP machines following the
  * Intel Multiprocessing Specification 1.1 and 1.4.
@@ -31,6 +33,7 @@ struct intel_mp_floating
 	unsigned char mpf_feature4;	/* Unused (0)			*/
 	unsigned char mpf_feature5;	/* Unused (0)			*/
 };
+sizecheck_struct(intel_mp_floating, 16);
 
 struct mp_config_table
 {
@@ -170,8 +173,8 @@ extern int mp_bus_id_to_pci_bus [MAX_MP_BUSSES];
 
 extern unsigned int boot_cpu_physical_apicid;
 extern int smp_found_config;
-extern void find_smp_config (void);
-extern void get_smp_config (void);
+extern void find_mp_config(void);
+extern void get_mp_config(void);
 extern int nr_ioapics;
 extern unsigned char apic_version [MAX_APICS];
 extern int mp_irq_entries;

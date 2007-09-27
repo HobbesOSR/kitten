@@ -11,7 +11,7 @@
 #include <lwk/linkage.h>
 #include <lwk/init.h>
 #include <lwk/cpu.h>
-//#include <arch/desc.h>
+#include <arch/desc.h>
 #include <arch/segment.h>
 #include <arch/page.h>
 #include <arch/msr.h>
@@ -218,15 +218,10 @@ ENTRY(early_idt_handler)
 	movq (%rsp),%rdx
 	movq %cr2,%rcx
 	leaq early_idt_msg(%rip),%rdi
-//	call early_printk
+	call printk
 	cmpl $2,early_recursion_flag(%rip)
 	jz  1f
 //	call dump_stack
-#ifdef CONFIG_KALLSYMS	
-	leaq early_idt_ripmsg(%rip),%rdi
-	movq 8(%rsp),%rsi	# get rip again
-	call __print_symbol
-#endif
 1:	hlt
 	jmp 1b
 early_recursion_flag:
@@ -234,8 +229,6 @@ early_recursion_flag:
 
 early_idt_msg:
 	.asciz "PANIC: early exception rip %lx error %lx cr2 %lx\n"
-early_idt_ripmsg:
-	.asciz "RIP %s\n"
 
 .code32
 ENTRY(no_long_mode)

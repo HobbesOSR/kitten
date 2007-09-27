@@ -43,7 +43,7 @@ struct arch_cpuinfo {
 	uint8_t		x86_vendor;		// CPU vendor
 	uint8_t		x86_model;
 	uint8_t		x86_mask;
-	uint32_t	x86_capability[NCAPINTS]; // optional capabilities 
+	uint32_t	x86_capability[NCAPINTS]; // optional CPU features
 	char		x86_vendor_id[16];
 	char		x86_model_id[64];
 	int 		x86_cache_size[3];	// in KB
@@ -57,7 +57,7 @@ struct arch_cpuinfo {
 	uint32_t	cpuid_level;		// Max supported CPUID level
 	uint32_t	extended_cpuid_level;	// Max ext. CPUID func supported
 	uint32_t	max_freq;		// Max CPU frequency in KHz
-	uint8_t		apicid;
+	uint8_t		apic_id;		// Local APIC ID
 };
 
 extern struct cpuinfo boot_cpu_info;

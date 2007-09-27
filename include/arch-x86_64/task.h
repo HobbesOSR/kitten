@@ -4,23 +4,24 @@
 #include <arch/pda.h>
 
 /**
+ * Flags for arch_task.status field.
+ */
+#define TS_USEDFPU	0x0001	/* FPU was used by this task this quantum (SMP) */
+#define TS_COMPAT	0x0002	/* 32bit syscall active */
+#define TS_POLLING	0x0004	/* true if in idle loop and not sleeping */
+
+/**
  * Architecture specific task information.
  */
 struct arch_task {
-	uint32_t	cpu;	/* task's current CPU */
-};
+	uint32_t		status;		/* thread-synchronous status */
+	struct thread_struct 	thread;
 
-/**
- * Returns a pointer to the currently executing task's task structure.
- * It is safe to call this from interrupt context but seldom does it
- * make sense.
- */
-static inline struct task *current_task(void)
-{
-	struct task *tsk;
-	tsk = (void *)(read_pda(kernelstack) + PDA_STACKOFFSET - TASK_SIZE);
-	return tsk;
-}
+
+
+
+	int cpu;
+};
 
 /**
  * Do not call this in interrupt context.  Interrupts are

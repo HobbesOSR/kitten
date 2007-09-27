@@ -1,12 +1,12 @@
-#ifndef _LINUX_SIGNAL_H
-#define _LINUX_SIGNAL_H
+#ifndef _LWK_SIGNAL_H
+#define _LWK_SIGNAL_H
 
-#include <asm/signal.h>
-#include <asm/siginfo.h>
+#include <arch/signal.h>
+#include <arch/siginfo.h>
 
 #ifdef __KERNEL__
-#include <linux/list.h>
-#include <linux/spinlock.h>
+#include <lwk/list.h>
+#include <lwk/spinlock.h>
 
 /*
  * Real Time signals may be queued.
@@ -32,9 +32,9 @@ struct sigpending {
  */
 
 #ifndef __HAVE_ARCH_SIG_BITOPS
-#include <linux/bitops.h>
+#include <lwk/bitops.h>
 
-/* We don't use <linux/bitops.h> for these because there is no need to
+/* We don't use <lwk/bitops.h> for these because there is no need to
    be atomic.  */
 static inline void sigaddset(sigset_t *set, int _sig)
 {
@@ -90,7 +90,7 @@ static inline int sigisemptyset(sigset_t *set)
 #define sigmask(sig)	(1UL << ((sig) - 1))
 
 #ifndef __HAVE_ARCH_SIG_SETOPS
-#include <linux/string.h>
+#include <lwk/string.h>
 
 #define _SIG_SET_BINOP(name, op)					\
 static inline void name(sigset_t *r, const sigset_t *a, const sigset_t *b) \
@@ -234,8 +234,8 @@ static inline int valid_signal(unsigned long sig)
 }
 
 extern int next_signal(struct sigpending *pending, sigset_t *mask);
-extern int group_send_sig_info(int sig, struct siginfo *info, struct task_struct *p);
-extern int __group_send_sig_info(int, struct siginfo *, struct task_struct *);
+extern int group_send_sig_info(int sig, struct siginfo *info, struct task *p);
+extern int __group_send_sig_info(int, struct siginfo *, struct task *);
 extern long do_sigpending(void __user *, unsigned long);
 extern int sigprocmask(int, sigset_t *, sigset_t *);
 
@@ -245,8 +245,8 @@ extern int get_signal_to_deliver(siginfo_t *info, struct k_sigaction *return_ka,
 extern struct kmem_cache *sighand_cachep;
 
 /*
- * In POSIX a signal is sent either to a specific thread (Linux task)
- * or to the process as a whole (Linux thread group).  How the signal
+ * In POSIX a signal is sent either to a specific thread (LWK task)
+ * or to the process as a whole (LWK thread group).  How the signal
  * is sent determines whether it's to one thread or the whole group,
  * which determines which signal mask(s) are involved in blocking it
  * from being delivered until later.  When the signal is delivered,
@@ -371,4 +371,4 @@ extern struct kmem_cache *sighand_cachep;
 
 #endif /* __KERNEL__ */
 
-#endif /* _LINUX_SIGNAL_H */
+#endif /* _LWK_SIGNAL_H */

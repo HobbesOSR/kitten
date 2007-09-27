@@ -9,10 +9,9 @@
  * 2 of the License, or (at your option) any later version.
  */
 
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/sort.h>
-#include <asm/uaccess.h>
+#include <lwk/init.h>
+#include <lwk/sort.h>
+#include <lwk/extable.h>
 
 #ifndef ARCH_HAS_SORT_EXTABLE
 /*

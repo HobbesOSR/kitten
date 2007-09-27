@@ -15,28 +15,26 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
-#include <linux/module.h>
-#include <linux/init.h>
-#include <asm/uaccess.h>
-#include <asm/sections.h>
+#include <lwk/init.h>
+#include <lwk/extable.h>
+#include <arch/uaccess.h>
+#include <arch/sections.h>
 
 extern struct exception_table_entry __start___ex_table[];
 extern struct exception_table_entry __stop___ex_table[];
 
 /* Sort the kernel's built-in exception table */
-void __init sort_main_extable(void)
+void __init sort_exception_table(void)
 {
 	sort_extable(__start___ex_table, __stop___ex_table);
 }
 
-/* Given an address, look for it in the exception tables. */
-const struct exception_table_entry *search_exception_tables(unsigned long addr)
+/* Given an address, look for it in the exception table. */
+const struct exception_table_entry *search_exception_table(unsigned long addr)
 {
 	const struct exception_table_entry *e;
 
 	e = search_extable(__start___ex_table, __stop___ex_table-1, addr);
-	if (!e)
-		e = search_module_extables(addr);
 	return e;
 }
 
@@ -56,12 +54,12 @@ int __kernel_text_address(unsigned long addr)
 {
 	if (core_kernel_text(addr))
 		return 1;
-	return __module_text_address(addr) != NULL;
+	return 0;
 }
 
 int kernel_text_address(unsigned long addr)
 {
 	if (core_kernel_text(addr))
 		return 1;
-	return module_text_address(addr) != NULL;
+	return 0;
 }

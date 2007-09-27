@@ -1,7 +1,7 @@
 #ifndef __ASM_GENERIC_SIGNAL_H
 #define __ASM_GENERIC_SIGNAL_H
 
-#include <linux/compiler.h>
+#include <lwk/compiler.h>
 
 #ifndef SIG_BLOCK
 #define SIG_BLOCK          0	/* for blocking signals */

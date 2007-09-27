@@ -4,6 +4,7 @@
 #include <lwk/screen_info.h>
 #include <lwk/params.h>
 #include <lwk/smp.h>
+#include <lwk/cpuinfo.h>
 #include <arch/bootsetup.h>
 #include <arch/sections.h>
 #include <arch/pda.h>
@@ -43,12 +44,6 @@ __attribute__((section(".bss.page_aligned")));
  */
 char boot_exception_stacks[(N_EXCEPTION_STACKS - 1) * EXCEPTION_STKSZ + DEBUG_STKSZ]
 __attribute__((section(".bss.page_aligned")));
-
-
-/**
- * Bitmask of currently online CPUs.
- */
-cpumask_t cpu_online_map __read_mostly;
 
 
 /**

@@ -1,5 +1,5 @@
-#include <linux/module.h>
-#include <asm/types.h>
+#include <lwk/linux_compat.h>
+#include <arch/types.h>
 
 /**
  * hweightN - returns the hamming weight of a N-bit word

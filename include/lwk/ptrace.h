@@ -1,5 +1,5 @@
-#ifndef _LINUX_PTRACE_H
-#define _LINUX_PTRACE_H
+#ifndef _LWK_PTRACE_H
+#define _LWK_PTRACE_H
 /* ptrace.h */
 /* structs and defines to help the user use the ptrace system call. */
 
@@ -46,7 +46,7 @@
 #define PTRACE_EVENT_VFORK_DONE	5
 #define PTRACE_EVENT_EXIT	6
 
-#include <asm/ptrace.h>
+#include <arch/ptrace.h>
 
 #ifdef __KERNEL__
 /*
@@ -73,35 +73,35 @@
 #define PT_BLOCKSTEP_BIT	30
 #define PT_BLOCKSTEP		(1<<PT_BLOCKSTEP_BIT)
 
-#include <linux/compiler.h>		/* For unlikely.  */
-#include <linux/sched.h>		/* For struct task_struct.  */
+#include <lwk/compiler.h>	/* For unlikely.  */
+#include <lwk/task.h>
 
 
-extern long arch_ptrace(struct task_struct *child, long request, long addr, long data);
-extern struct task_struct *ptrace_get_task_struct(pid_t pid);
+extern long arch_ptrace(struct task *child, long request, long addr, long data);
+extern struct task *ptrace_get_task(pid_t pid);
 extern int ptrace_traceme(void);
-extern int ptrace_readdata(struct task_struct *tsk, unsigned long src, char __user *dst, int len);
-extern int ptrace_writedata(struct task_struct *tsk, char __user *src, unsigned long dst, int len);
-extern int ptrace_attach(struct task_struct *tsk);
-extern int ptrace_detach(struct task_struct *, unsigned int);
-extern void __ptrace_detach(struct task_struct *, unsigned int);
-extern void ptrace_disable(struct task_struct *);
-extern int ptrace_check_attach(struct task_struct *task, int kill);
-extern int ptrace_request(struct task_struct *child, long request, long addr, long data);
+extern int ptrace_readdata(struct task *tsk, unsigned long src, char __user *dst, int len);
+extern int ptrace_writedata(struct task *tsk, char __user *src, unsigned long dst, int len);
+extern int ptrace_attach(struct task *tsk);
+extern int ptrace_detach(struct task *, unsigned int);
+extern void __ptrace_detach(struct task *, unsigned int);
+extern void ptrace_disable(struct task *);
+extern int ptrace_check_attach(struct task *task, int kill);
+extern int ptrace_request(struct task *child, long request, long addr, long data);
 extern void ptrace_notify(int exit_code);
-extern void __ptrace_link(struct task_struct *child,
-			  struct task_struct *new_parent);
-extern void __ptrace_unlink(struct task_struct *child);
-extern void ptrace_untrace(struct task_struct *child);
-extern int ptrace_may_attach(struct task_struct *task);
+extern void __ptrace_link(struct task *child,
+			  struct task *new_parent);
+extern void __ptrace_unlink(struct task *child);
+extern void ptrace_untrace(struct task *child);
+extern int ptrace_may_attach(struct task *task);
 
-static inline void ptrace_link(struct task_struct *child,
-			       struct task_struct *new_parent)
+static inline void ptrace_link(struct task *child,
+			       struct task *new_parent)
 {
 	if (unlikely(child->ptrace))
 		__ptrace_link(child, new_parent);
 }
-static inline void ptrace_unlink(struct task_struct *child)
+static inline void ptrace_unlink(struct task *child)
 {
 	if (unlikely(child->ptrace))
 		__ptrace_unlink(child);

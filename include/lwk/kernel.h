@@ -138,4 +138,18 @@ extern unsigned long long memparse(char *ptr, char **retptr);
 #define aligncheck(type,align) \
 	extern int __align_check[ (sizeof(type) % (align) == 0 ? 0 : 1/0) ]
 
+/*
+ * Check at compile time that the type 'type' has the expected 'size'.
+ * NOTE: 'type' must be a single word, so this doesn't work for structures.
+ *       For structures, use sizecheck_struct().
+ */
+#define sizecheck(type,size) \
+	extern int __size_check_##type[ (sizeof(type) == (size) ? 0 : 1/0) ]
+
+/*
+ * Check at compile time that the structure 'name' has the expected size 'size'.
+ */
+#define sizecheck_struct(name,size) \
+	extern int __size_check_struct_##name[ (sizeof(struct name) == (size) ? 0 : 1/0) ]
+
 #endif

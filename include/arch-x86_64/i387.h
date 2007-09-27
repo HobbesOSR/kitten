@@ -9,20 +9,20 @@
  * x86-64 work by Andi Kleen 2002
  */
 
-#ifndef __ASM_X86_64_I387_H
-#define __ASM_X86_64_I387_H
+#ifndef _X86_64_I387_H
+#define _X86_64_I387_H
 
-#include <linux/sched.h>
-#include <asm/processor.h>
-#include <asm/sigcontext.h>
-#include <asm/user.h>
-#include <asm/thread_info.h>
-#include <asm/uaccess.h>
+#include <lwk/task.h>
+#include <lwk/errno.h>
+#include <arch/processor.h>
+#include <arch/sigcontext.h>
+#include <arch/user.h>
+#include <arch/uaccess.h>
 
 extern void fpu_init(void);
 extern unsigned int mxcsr_feature_mask;
 extern void mxcsr_feature_mask_init(void);
-extern void init_fpu(struct task_struct *child);
+extern void init_fpu(struct task *child);
 extern int save_i387(struct _fpstate __user *buf);
 
 /*
@@ -30,7 +30,7 @@ extern int save_i387(struct _fpstate __user *buf);
  */
 
 #define unlazy_fpu(tsk) do { \
-	if (task_thread_info(tsk)->status & TS_USEDFPU) \
+	if (tsk->arch.status & TS_USEDFPU) \
 		save_init_fpu(tsk); \
 } while (0)
 
@@ -46,9 +46,9 @@ static inline void tolerant_fwait(void)
 }
 
 #define clear_fpu(tsk) do { \
-	if (task_thread_info(tsk)->status & TS_USEDFPU) {	\
+	if (tsk->arch.status & TS_USEDFPU) {			\
 		tolerant_fwait();				\
-		task_thread_info(tsk)->status &= ~TS_USEDFPU;	\
+		tsk->arch.status &= ~TS_USEDFPU;		\
 		stts();						\
 	}							\
 } while (0)
@@ -57,20 +57,20 @@ static inline void tolerant_fwait(void)
  * ptrace request handers...
  */
 extern int get_fpregs(struct user_i387_struct __user *buf,
-		      struct task_struct *tsk);
-extern int set_fpregs(struct task_struct *tsk,
+		      struct task *tsk);
+extern int set_fpregs(struct task *tsk,
 		      struct user_i387_struct __user *buf);
 
 /*
  * i387 state interaction
  */
-#define get_fpu_mxcsr(t) ((t)->thread.i387.fxsave.mxcsr)
-#define get_fpu_cwd(t) ((t)->thread.i387.fxsave.cwd)
-#define get_fpu_fxsr_twd(t) ((t)->thread.i387.fxsave.twd)
-#define get_fpu_swd(t) ((t)->thread.i387.fxsave.swd)
-#define set_fpu_cwd(t,val) ((t)->thread.i387.fxsave.cwd = (val))
-#define set_fpu_swd(t,val) ((t)->thread.i387.fxsave.swd = (val))
-#define set_fpu_fxsr_twd(t,val) ((t)->thread.i387.fxsave.twd = (val))
+#define get_fpu_mxcsr(t) ((t)->arch.i387.fxsave.mxcsr)
+#define get_fpu_cwd(t) ((t)->arch.i387.fxsave.cwd)
+#define get_fpu_fxsr_twd(t) ((t)->arch.i387.fxsave.twd)
+#define get_fpu_swd(t) ((t)->arch.i387.fxsave.swd)
+#define set_fpu_cwd(t,val) ((t)->arch.i387.fxsave.cwd = (val))
+#define set_fpu_swd(t,val) ((t)->arch.i387.fxsave.swd = (val))
+#define set_fpu_fxsr_twd(t,val) ((t)->arch.i387.fxsave.twd = (val))
 
 #define X87_FSW_ES (1 << 7)	/* Exception Summary */
 
@@ -83,10 +83,14 @@ static inline void clear_fpu_state(struct i387_fxsave_struct *fx)
 {
 	if (unlikely(fx->swd & X87_FSW_ES))
 		 asm volatile("fnclex");
-	alternative_input(ASM_NOP8 ASM_NOP2,
-	     	     "    emms\n"		/* clear stack tags */
-	     	     "    fildl %%gs:0",	/* load to clear state */
-		     X86_FEATURE_FXSAVE_LEAK);
+
+	/*
+	 * Unconditional fix for AMD CPUs that don't save/restore FDP/FIP/FOP.
+	 * TODO: some CPUs may not need this, possibly use Linux
+	 *       alternative_input() mechanism.
+	 */
+	asm volatile ("emms");		/* clear stack tags */
+	asm volatile ("fildl %%gs:0");	/* load to clear state */
 }
 
 static inline int restore_fpu_checking(struct i387_fxsave_struct *fx) 
@@ -134,13 +138,13 @@ static inline int save_i387_checking(struct i387_fxsave_struct __user *fx)
 #else
 		     : [fx] "cdaSDb" (fx), "0" (0));
 #endif
-	if (unlikely(err))
-		__clear_user(fx, sizeof(struct i387_fxsave_struct));
+	if (unlikely(err) && __clear_user(fx, sizeof(struct i387_fxsave_struct)))
+		err = -EFAULT;
 	/* No need to clear here because the caller clears USED_MATH */
 	return err;
 } 
 
-static inline void __fxsave_clear(struct task_struct *tsk)
+static inline void __fxsave_clear(struct task *tsk)
 {
 	/* Using "rex64; fxsave %0" is broken because, if the memory operand
 	   uses any extended registers for addressing, a second REX prefix
@@ -150,33 +154,31 @@ static inline void __fxsave_clear(struct task_struct *tsk)
 	/* Using "fxsaveq %0" would be the ideal choice, but is only supported
 	   starting with gas 2.16. */
 	__asm__ __volatile__("fxsaveq %0"
-			     : "=m" (tsk->thread.i387.fxsave));
+			     : "=m" (tsk->arch.thread.i387.fxsave));
 #elif 0
 	/* Using, as a workaround, the properly prefixed form below isn't
 	   accepted by any binutils version so far released, complaining that
 	   the same type of prefix is used twice if an extended register is
 	   needed for addressing (fix submitted to mainline 2005-11-21). */
 	__asm__ __volatile__("rex64/fxsave %0"
-			     : "=m" (tsk->thread.i387.fxsave));
+			     : "=m" (tsk->arch.thread.i387.fxsave));
 #else
 	/* This, however, we can work around by forcing the compiler to select
 	   an addressing mode that doesn't require extended registers. */
 	__asm__ __volatile__("rex64/fxsave %P2(%1)"
-			     : "=m" (tsk->thread.i387.fxsave)
+			     : "=m" (tsk->arch.thread.i387.fxsave)
 			     : "cdaSDb" (tsk),
 				"i" (offsetof(__typeof__(*tsk),
-					      thread.i387.fxsave)));
+					      arch.thread.i387.fxsave)));
 #endif
-	clear_fpu_state(&tsk->thread.i387.fxsave);
+	clear_fpu_state(&tsk->arch.thread.i387.fxsave);
 }
 
 static inline void kernel_fpu_begin(void)
 {
-	struct thread_info *me = current_thread_info();
-	preempt_disable();
-	if (me->status & TS_USEDFPU) {
-		__fxsave_clear(me->task);
-		me->status &= ~TS_USEDFPU;
+	if (current->arch.status & TS_USEDFPU) {
+		__fxsave_clear(current);
+		current->arch.status &= ~TS_USEDFPU;
 		return;
 	}
 	clts();
@@ -185,13 +187,12 @@ static inline void kernel_fpu_begin(void)
 static inline void kernel_fpu_end(void)
 {
 	stts();
-	preempt_enable();
 }
 
-static inline void save_init_fpu(struct task_struct *tsk)
+static inline void save_init_fpu(struct task *tsk)
 {
  	__fxsave_clear(tsk);
-	task_thread_info(tsk)->status &= ~TS_USEDFPU;
+	tsk->arch.status &= ~TS_USEDFPU;
 	stts();
 }
 
@@ -203,4 +204,4 @@ static inline int restore_i387(struct _fpstate __user *buf)
 	return restore_fpu_checking((__force struct i387_fxsave_struct *)buf);
 }
 
-#endif /* __ASM_X86_64_I387_H */
+#endif /* _X86_64_I387_H */

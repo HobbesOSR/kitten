@@ -254,7 +254,7 @@ static void write_src(void)
 	unsigned int *markers;
 	char buf[KSYM_NAME_LEN+1];
 
-	printf("#include <asm/types.h>\n");
+	printf("#include <arch/types.h>\n");
 	printf("#if BITS_PER_LONG == 64\n");
 	printf("#define PTR .quad\n");
 	printf("#define ALGN .align 8\n");

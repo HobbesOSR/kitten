@@ -1,13 +1,14 @@
-#ifndef __X86_64_UACCESS_H
-#define __X86_64_UACCESS_H
+#ifndef _X86_64_UACCESS_H
+#define _X86_64_UACCESS_H
 
 /*
  * User space memory access functions
  */
-#include <linux/compiler.h>
-#include <linux/errno.h>
-#include <linux/prefetch.h>
-#include <asm/page.h>
+#include <lwk/compiler.h>
+#include <lwk/errno.h>
+#include <lwk/prefetch.h>
+#include <lwk/task.h>
+#include <arch/page.h>
 
 #define VERIFY_READ 0
 #define VERIFY_WRITE 1
@@ -26,12 +27,12 @@
 #define USER_DS		MAKE_MM_SEG(PAGE_OFFSET)
 
 #define get_ds()	(KERNEL_DS)
-#define get_fs()	(current_thread_info()->addr_limit)
-#define set_fs(x)	(current_thread_info()->addr_limit = (x))
+#define get_fs()	(current->arch.addr_limit)
+#define set_fs(x)	(current->arch.addr_limit = (x))
 
 #define segment_eq(a,b)	((a).seg == (b).seg)
 
-#define __addr_ok(addr) (!((unsigned long)(addr) & (current_thread_info()->addr_limit.seg)))
+#define __addr_ok(addr) (!((unsigned long)(addr) & (current->arch.addr_limit.seg)))
 
 /*
  * Uhhuh, this needs 65-bit arithmetic. We have a carry..
@@ -42,30 +43,10 @@
 	asm("# range_ok\n\r" \
 		"addq %3,%1 ; sbbq %0,%0 ; cmpq %1,%4 ; sbbq $0,%0"  \
 		:"=&r" (flag), "=r" (sum) \
-		:"1" (addr),"g" ((long)(size)),"g" (current_thread_info()->addr_limit.seg)); \
+		:"1" (addr),"g" ((long)(size)),"g" (current->arch.addr_limit.seg)); \
 	flag; })
 
 #define access_ok(type, addr, size) (__range_not_ok(addr,size) == 0)
-
-/*
- * The exception table consists of pairs of addresses: the first is the
- * address of an instruction that is allowed to fault, and the second is
- * the address at which the program should continue.  No registers are
- * modified, so it is entirely up to the continuation code to figure out
- * what to do.
- *
- * All the routines below use bits of fixup code that are out of line
- * with the main instruction path.  This means when everything is well,
- * we don't even have to jump over them.  Further, they do not intrude
- * on our cache or tlb entries.
- */
-
-struct exception_table_entry
-{
-	unsigned long insn, fixup;
-};
-
-#define ARCH_HAS_SEARCH_EXTABLE
 
 /*
  * These are the main single-value transfer routines.  They automatically
@@ -367,4 +348,4 @@ __copy_to_user_inatomic(void __user *dst, const void *src, unsigned size)
 	return copy_user_generic((__force void *)dst, src, size);
 }
 
-#endif /* __X86_64_UACCESS_H */
+#endif /* _X86_64_UACCESS_H */

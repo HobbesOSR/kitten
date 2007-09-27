@@ -3,6 +3,6 @@
 
 #define __ARCH_SI_PREAMBLE_SIZE	(4 * sizeof(int))
 
-#include <asm-generic/siginfo.h>
+#include <arch-generic/siginfo.h>
 
 #endif

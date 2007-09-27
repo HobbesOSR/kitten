@@ -75,4 +75,9 @@ void smp_prepare_boot_cpu(void);
 #define put_cpu()		do { } while (0)
 #define put_cpu_no_resched()	do { } while (0)
 
+/**
+ * Returns the current CPU's logical ID.
+ */
+#define cpu_id() smp_processor_id()
+
 #endif /* _LWK_SMP_H */

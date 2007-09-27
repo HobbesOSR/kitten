@@ -34,6 +34,8 @@ scripts/kconfig/conf
 scripts/kconfig/lex.zconf.c
 scripts/kconfig/zconf.hash.c
 scripts/kconfig/zconf.tab.c
+scripts/kallsyms
+.tmp_*
 
 syntax: regexp
 ^include/config

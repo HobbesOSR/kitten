@@ -1,8 +1,8 @@
 #ifndef _X86_64_USER_H
 #define _X86_64_USER_H
 
-#include <asm/types.h>
-#include <asm/page.h>
+#include <arch/types.h>
+#include <arch/page.h>
 /* Core file format: The core file is written in such a way that gdb
    can understand it and provide useful information to the user.
    There are quite a number of obstacles to being able to view the

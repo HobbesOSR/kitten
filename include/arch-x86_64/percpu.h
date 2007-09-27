@@ -20,8 +20,6 @@
 #define per_cpu(var, cpu) (*RELOC_HIDE(&per_cpu__##var, __per_cpu_offset(cpu)))
 #define __get_cpu_var(var) (*RELOC_HIDE(&per_cpu__##var, __my_cpu_offset()))
 
-extern void setup_per_cpu_areas(void);
-
 #define DECLARE_PER_CPU(type, name) extern __typeof__(type) per_cpu__##name
 
 #endif /* _X86_64_PERCPU_H */

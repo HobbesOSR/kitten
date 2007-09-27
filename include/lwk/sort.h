@@ -1,7 +1,7 @@
-#ifndef _LINUX_SORT_H
-#define _LINUX_SORT_H
+#ifndef _LWK_SORT_H
+#define _LWK_SORT_H
 
-#include <linux/types.h>
+#include <lwk/types.h>
 
 void sort(void *base, size_t num, size_t size,
 	  int (*cmp)(const void *, const void *),

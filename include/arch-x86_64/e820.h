@@ -60,7 +60,6 @@ extern void __init parse_memmapopt(char *p, char **end);
 
 extern struct e820map e820;
 
-extern unsigned ebda_addr, ebda_size;
 #endif /* !__ASSEMBLY__ */
 
 #endif /* _ARCH_E820_H */

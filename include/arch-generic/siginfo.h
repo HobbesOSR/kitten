@@ -1,8 +1,8 @@
 #ifndef _ASM_GENERIC_SIGINFO_H
 #define _ASM_GENERIC_SIGINFO_H
 
-#include <linux/compiler.h>
-#include <linux/types.h>
+#include <lwk/compiler.h>
+#include <lwk/types.h>
 
 typedef union sigval {
 	int sival_int;
@@ -274,7 +274,7 @@ void do_schedule_next_timer(struct siginfo *info);
 
 #ifndef HAVE_ARCH_COPY_SIGINFO
 
-#include <linux/string.h>
+#include <lwk/string.h>
 
 static inline void copy_siginfo(struct siginfo *to, struct siginfo *from)
 {

@@ -1,21 +1,17 @@
-#ifndef __LINUX_PERCPU_H
-#define __LINUX_PERCPU_H
-#include <linux/spinlock.h> /* For preempt_disable() */
-#include <linux/slab.h> /* For kmalloc() */
-#include <linux/smp.h>
-#include <linux/string.h> /* For memset() */
-#include <asm/percpu.h>
+#ifndef _LWK_PERCPU_H
+#define _LWK_PERCPU_H
+#include <lwk/smp.h>
+#include <lwk/string.h>
+#include <arch/percpu.h>
 
-/* Enough to cover all DEFINE_PER_CPUs in kernel, including modules. */
+/* Enough to cover all DEFINE_PER_CPU()'s in kernel. */
 #ifndef PERCPU_ENOUGH_ROOM
 #define PERCPU_ENOUGH_ROOM 32768
 #endif
 
 /* Must be an lvalue. */
-#define get_cpu_var(var) (*({ preempt_disable(); &__get_cpu_var(var); }))
-#define put_cpu_var(var) preempt_enable()
-
-#ifdef CONFIG_SMP
+#define get_cpu_var(var) __get_cpu_var(var)
+#define put_cpu_var(var) 
 
 struct percpu_data {
 	void *ptrs[NR_CPUS];
@@ -35,25 +31,9 @@ struct percpu_data {
 extern void *__alloc_percpu(size_t size);
 extern void free_percpu(const void *);
 
-#else /* CONFIG_SMP */
-
-#define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
-
-static inline void *__alloc_percpu(size_t size)
-{
-	void *ret = kmalloc(size, GFP_KERNEL);
-	if (ret)
-		memset(ret, 0, size);
-	return ret;
-}
-static inline void free_percpu(const void *ptr)
-{	
-	kfree(ptr);
-}
-
-#endif /* CONFIG_SMP */
-
 /* Simple wrapper for the common case: zeros memory. */
 #define alloc_percpu(type)	((type *)(__alloc_percpu(sizeof(type))))
 
-#endif /* __LINUX_PERCPU_H */
+extern void setup_per_cpu_areas(void);
+
+#endif /* _LWK_PERCPU_H */

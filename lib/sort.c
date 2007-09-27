@@ -4,10 +4,9 @@
  * Jan 23 2005  Matt Mackall <mpm@selenic.com>
  */
 
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/sort.h>
-#include <linux/slab.h>
+#include <lwk/kernel.h>
+#include <lwk/sort.h>
+#include <lwk/linux_compat.h>
 
 static void u32_swap(void *a, void *b, int size)
 {

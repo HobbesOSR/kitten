@@ -6,6 +6,7 @@ config x86_64
 	help
 	  Support for the x86-64 architecture.
 
+source "init/Kconfig"
 
 menu "Target Configuration"
 

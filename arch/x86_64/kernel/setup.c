@@ -2,9 +2,15 @@
 #include <lwk/init.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/bootmem.h>
+#include <arch/bootsetup.h>
 #include <arch/e820.h>
 #include <arch/page.h>
+#include <arch/sections.h>
+#include <arch/smp.h>
 #include <arch/proto.h>
+#include <arch/mpspec.h>
+
+#include <arch/i387.h>
 
 /**
  * Bitmap of of PTE/PMD entry flags that are supported.
@@ -16,6 +22,43 @@ unsigned long __supported_pte_mask __read_mostly = ~0UL;
  * Bitmap of features enabled in the CR4 register.
  */
 unsigned long mmu_cr4_features;
+
+/**
+ * Start and end addresses of the initrd image.
+ */
+unsigned long initrd_start;
+unsigned long initrd_end;
+
+/**
+ * Base address and size of the Extended BIOS Data Area.
+ */
+unsigned long __initdata ebda_addr;
+unsigned long __initdata ebda_size;
+#define EBDA_ADDR_POINTER 0x40E
+
+/**
+ * Finds the address and length of the Extended BIOS Data Area.
+ */
+static void __init
+discover_ebda(void)
+{
+	/*
+	 * There is a real-mode segmented pointer pointing to the 
+	 * 4K EBDA area at 0x40E
+	 */
+	ebda_addr = *(unsigned short *)EBDA_ADDR_POINTER;
+	ebda_addr <<= 4;
+
+	ebda_size = *(unsigned short *)(unsigned long)ebda_addr;
+
+	/* Round EBDA up to pages */
+	if (ebda_size == 0)
+		ebda_size = 1;
+	ebda_size <<= 10;
+	ebda_size = round_up(ebda_size + (ebda_addr & ~PAGE_MASK), PAGE_SIZE);
+	if (ebda_size > 64*1024)
+		ebda_size = 64*1024;
+}
 
 /**
  * This sets up the bootstrap memory allocator.  It is a simple
@@ -43,8 +86,56 @@ setup_bootmem_allocator(
 }
 
 /**
+ * Mark in-use memory regions as reserved.
+ * This prevents the bootmem allocator from allocating them.
+ */
+static void __init
+reserve_memory(void)
+{
+	/* Reserve the kernel page table memory */
+	reserve_bootmem(table_start << PAGE_SHIFT,
+	                (table_end - table_start) << PAGE_SHIFT);
+
+	/* Reserve kernel memory */
+	reserve_bootmem(__pa_symbol(&_text),
+	                __pa_symbol(&_end) - __pa_symbol(&_text));
+
+	/* Reserve physical page 0... it's a often a special BIOS page */
+	reserve_bootmem(0, PAGE_SIZE);
+
+	/* Reserve the Extended BIOS Data Area memory */
+	if (ebda_addr)
+		reserve_bootmem(ebda_addr, ebda_size);
+
+	/* Reserve SMP trampoline */
+	reserve_bootmem(SMP_TRAMPOLINE_BASE, PAGE_SIZE);
+
+	/* Find and reserve boot-time SMP configuration */
+	find_mp_config();
+
+	/* Reserve memory used by the initrd image */
+	if (LOADER_TYPE && INITRD_START) {
+		if (INITRD_START + INITRD_SIZE <= (end_pfn << PAGE_SHIFT)) {
+			reserve_bootmem(INITRD_START, INITRD_SIZE);
+			initrd_start =
+				INITRD_START ? INITRD_START + PAGE_OFFSET : 0;
+			initrd_end = initrd_start+INITRD_SIZE;
+		} else {
+			printk(KERN_ERR "initrd extends beyond end of memory "
+			    "(0x%08lx > 0x%08lx)\ndisabling initrd\n",
+			    (unsigned long)(INITRD_START + INITRD_SIZE),
+			    (unsigned long)(end_pfn << PAGE_SHIFT));
+			initrd_start = 0;
+		}
+	}
+}
+
+/**
  * Architecture specific initialization.
  * This is called from start_kernel() in init/main.c.
+ *
+ * NOTE: Ordering is usually important.  Do not move things
+ *       around unless you know what you are doing.
  */
 void __init
 setup_arch(void)
@@ -83,8 +174,8 @@ setup_arch(void)
 	/*
  	 * It's now safe to destroy the virtual memory mappings from
  	 * [0, PAGE_OFFSET).  From here on out, the kernel accesses memory
- 	 * using the identity map that we just set up, i.e., in the region
- 	 * [PAGE_OFFSET, TOP_OF_MEMORY)
+ 	 * using the identity map that we just set up, i.e., in the (virtual)
+ 	 * region [PAGE_OFFSET, TOP_OF_MEMORY).
  	 */
 	zap_low_mappings(0);
 	
@@ -93,12 +184,21 @@ setup_arch(void)
  	 * alloc_bootmem() will work after this.
  	 */
 	setup_bootmem_allocator(0, end_pfn);
+	reserve_memory();
 
 	/*
-	 * Mark reserved memory and io ports as, well... reserved.
+	 * Get the multiprocessor configuration...
+	 * number of CPUs, PCI bus info, APIC info, etc.
+	 */
+	get_mp_config();
+
+	/*
+	 * Initialize resources.  Resources reserve sections of normal memory
+	 * (iomem) and I/O ports (ioport) for devices and other system
+	 * resources.  For each resource type, there is a tree which tracks
+	 * which regions are in use.  This eliminates the possiblity of
+	 * conflicts... e.g., two devices trying to use the same iomem region.
 	 */
 	init_resources();
-
-	printk("after init_resources()\n");
 }
 

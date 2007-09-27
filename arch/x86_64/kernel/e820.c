@@ -318,26 +318,30 @@ void __init add_memory_region(unsigned long start, unsigned long size, int type)
 void __init e820_print_map(char *who)
 {
 	int i;
+	char type[16];
 
 	for (i = 0; i < e820.nr_map; i++) {
-		printk(" %s: %016Lx - %016Lx ", who,
-			(unsigned long long) e820.map[i].addr,
-			(unsigned long long) (e820.map[i].addr + e820.map[i].size));
 		switch (e820.map[i].type) {
-		case E820_RAM:	printk("(usable)\n");
+		case E820_RAM:	sprintf(type, "(usable)\n");
 				break;
 		case E820_RESERVED:
-				printk("(reserved)\n");
+				sprintf(type, "(reserved)\n");
 				break;
 		case E820_ACPI:
-				printk("(ACPI data)\n");
+				sprintf(type, "(ACPI data)\n");
 				break;
 		case E820_NVS:
-				printk("(ACPI NVS)\n");
+				sprintf(type, "(ACPI NVS)\n");
 				break;
-		default:	printk("type %u\n", e820.map[i].type);
+		default:	sprintf(type, "type %u\n", e820.map[i].type);
 				break;
 		}
+
+		printk(KERN_DEBUG
+			" %s: %016Lx - %016Lx %s", who,
+			(unsigned long long) e820.map[i].addr,
+			(unsigned long long) (e820.map[i].addr + e820.map[i].size),
+			type);
 	}
 }
 
@@ -593,7 +597,7 @@ void __init setup_memory_region(void)
 		add_memory_region(HIGH_MEMORY, mem_size << 10, E820_RAM);
   	}
 
-	printk("BIOS-provided physical RAM map:\n");
+	printk(KERN_DEBUG "BIOS-provided physical RAM map:\n");
 	e820_print_map(who);
 
 	/* This also sets end_pfn_map */

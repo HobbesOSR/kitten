@@ -23,10 +23,9 @@
  *  lwk/spinlock.h:        builds the final spin_*() APIs.
  */
 
+#include <lwk/kernel.h>
 #include <lwk/linkage.h>
 #include <lwk/compiler.h>
-#include <lwk/task.h>
-#include <lwk/kernel.h>
 #include <lwk/stringify.h>
 #include <arch/system.h>
 
