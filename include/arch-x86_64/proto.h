@@ -5,7 +5,6 @@
 
 extern void early_idt_handler(void);
 
-extern char boot_cpu_stack[];
 extern char boot_exception_stacks[];
 
 extern unsigned long table_start, table_end;
@@ -21,5 +20,8 @@ void __init zap_low_mappings(int cpu);
 extern unsigned long ebda_addr, ebda_size;
 
 extern int unhandled_signal(struct task *tsk, int sig);
+
+extern void system_call(void);
+extern void ignore_sysret(void);
 
 #endif

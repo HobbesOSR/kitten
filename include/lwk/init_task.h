@@ -1,15 +1,19 @@
 #ifndef _LWK_INIT_TASK_H
 #define _LWK_INIT_TASK_H
 
-/*
- * Macro that initializes platform-independent fields in the
- * initial task structure.  All architectures should be able to use
- * this macro.
+/**
+ * Initializes architecture-independent fields in the initial task structure.
  */
-#define INIT_TASK(tsk) \
+#define INIT_MM(name)
+
+/**
+ * Initializes architecture-independent fields in the initial task structure.
+ */
+#define INIT_TASK(name) \
 	.pid		=	0,					\
 	.tid		=	0,					\
 	.uid		=	0,					\
 	.cpu		=	0,					\
+	.mm		=	&init_mm,				\
 
 #endif

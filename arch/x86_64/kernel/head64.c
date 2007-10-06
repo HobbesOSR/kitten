@@ -33,13 +33,6 @@ struct desc_ptr idt_descr = { 256 * 16 - 1, (unsigned long) idt_table };
 
 
 /**
- * Memory for stack of CPU 0.
- */
-char boot_cpu_stack[IRQSTACKSIZE]
-__attribute__((section(".bss.page_aligned")));
-
-
-/**
  * Array of exception stacks.
  */
 char boot_exception_stacks[(N_EXCEPTION_STACKS - 1) * EXCEPTION_STKSZ + DEBUG_STKSZ]

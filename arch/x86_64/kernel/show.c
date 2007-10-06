@@ -27,6 +27,9 @@ printk_address(unsigned long address)
 
 /**
  * Prints x86_64 general purpose registers and friends to the console.
+ * NOTE: This prints the CPU register values contained in the passed in
+ *       'struct pt_regs *'.  It DOES NOT print the current values in
+ *       the CPU's registers.
  */
 void
 show_registers(struct pt_regs * regs)

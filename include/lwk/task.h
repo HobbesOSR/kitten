@@ -11,12 +11,21 @@
 #include <arch/processor.h>
 #include <arch/task.h>
 #include <arch/current.h>
+#include <arch/mmu.h>
 
 /**
  * Length of human readable task name.
  * Task name excludes path.
  */
 #define TASK_NAME_LENGTH	16
+
+/**
+ * Memory management context structure.
+ */
+struct mm_struct {
+	/* Architecture-specific MM context */
+	mm_context_t context;
+};
 
 /**
  * Signal handler structure.
@@ -38,7 +47,10 @@ struct task {
 	uint32_t		pid;	/* Process ID */
 	uint32_t		tid;	/* Thread ID */
 	uint32_t		uid;	/* User ID */
-	uint32_t		cpu;	/* CPU task is executing on */
+	uint32_t		gid;	/* Group ID */
+	uint32_t		cpu;	/* CPU task is running on */
+
+	struct mm_struct *	mm;	/* Memory management info */
 
 	unsigned long		ptrace;
 	struct sighand_struct *	sighand;
@@ -54,6 +66,7 @@ union task_union {
 };
 
 extern union task_union init_task_union;
+extern struct mm_struct init_mm;
 
 /**
  * Checks to see if a task structure is the init task.

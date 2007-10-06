@@ -1,9 +1,9 @@
-#ifndef _LINUX_UNISTD_H_
-#define _LINUX_UNISTD_H_
+#ifndef _LWK_UNISTD_H
+#define _LWK_UNISTD_H
 
 /*
  * Include machine specific syscall numbers
  */
-#include <asm/unistd.h>
+#include <arch/unistd.h>
 
-#endif /* _LINUX_UNISTD_H_ */
+#endif /* _LWK_UNISTD_H */

@@ -10,8 +10,6 @@
 #include <arch/proto.h>
 #include <arch/mpspec.h>
 
-#include <arch/i387.h>
-
 /**
  * Bitmap of of PTE/PMD entry flags that are supported.
  * This is AND'ed with a PTE/PMD entry before it is installed.

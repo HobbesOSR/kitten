@@ -1,20 +1,21 @@
 #include <lwk/linkage.h>
+#include <lwk/errno.h>
 #include <arch/ptrace.h>
+#include <arch/asm-offsets.h>
 
 
 /**
- * This is the common entry point for exceptions.  Exceptions are generally
- * error conditions, e.g., divide by 0, machine check, etc.  The x86_64
- * architecture defines a number of standard exceptions in the interrupt vector
- * range [0,31].
+ * This is the common entry point for error exceptions/interrupts. These
+ * indicate error conditions, e.g., divide by 0, machine check, etc. The x86_64
+ * architecture defines a number of standard exceptions and interrupts in the
+ * interrupt vector range [0,31].
  *
  * Upon entry, this function expects the stack frame to look like:
  * (NOTE: The stack is growing down)
- * (NOTE: This assumes the exception was triggered while user space code was
- *        executing.  If the kernel was executing when the exception fired,
- *        SS and RSP are not pushed onto the stack by the CPU. The eventual
- *        IRETQ instruction inspects RFLAGS to determine if SS and RSP need
- *        to be popped, so we don't have to do anything special.)
+ * (NOTE: For those of you familiar with 32-bit x86, x86_64 differs in that
+ *        it unconditionally pushes SS and RSP, even if there is no privlege
+ *        level change. Furthermore, the control unit forces the stack to
+ *        16-byte alignment before pushing SS. Very nice! )
  * 
  *                       [...]
  *                       SS         (stack segment selector)
@@ -26,13 +27,13 @@
  *    stack pointer  ->  RAX        (saved RAX, RAX now holds the handler addr)
  *
  * The function pushes the rest of the registers to the stack in the same
- * format as the Linux pt_regs structure (see /include/arch-x86_64/ptrace.h)
- * and then calls the handler function whose address is stored in RAX.  The
- * handler function is typically a higher-level C function and expects to be
- * passed a pointer to the pt_regs structure setup by this function as well as
- * the original error_code saved by the CPU control unit, if there was one (not
- * all exceptions push an error_code to the stack... in that case, the handler
- * is passed 0 as the error code argument).
+ * format as the pt_regs structure (see /include/arch-x86_64/ptrace.h) and then
+ * calls the handler function whose address is stored in RAX. The handler
+ * function is typically a higher-level C function and expects to be passed a
+ * pointer to the pt_regs structure setup by this function as well as the
+ * original error_code saved by the CPU control unit, if there was one (not all
+ * exceptions push an error_code to the stack... in that case, the handler is
+ * passed 0 as the error code argument).
  *
  * Before calling the handler function, the stack frame looks like:
  *
@@ -62,8 +63,14 @@
  * After the handler function returns, this function restores the stack to its
  * pre-exception state, restores the CPU state to its pre-exception state,
  * and returns to the program that was running when the exception occurred.
+ *
+ * NOTE: Before the x86_64 CPU control unit jumps to an exception handler, it
+ *       disables external interrupts (clears IF flag in RFLAGS register).
+ *       However, this does not prevent exceptions from triggering (i.e.,
+ *       nested exceptions). There is no way to disable exceptions... they
+ *       are 'internal interrupts'.
  */
-ENTRY(exception_entry)
+ENTRY(error_entry)
 	cld				/* Kernel expects direction flag to be cleared */
 
 	/*
@@ -98,11 +105,11 @@ ENTRY(exception_entry)
 	 */
 	xorl %ebx,%ebx			/* Use EBX as a boolean: 0=need SWAPGS, 1=don't need it */
 	testl $3,CS(%rsp)		/* determine if we came from the kernel */
-	je  exception_kernelspace
+	je  error_kernelspace
 
-exception_swapgs:
+error_swapgs:
 	swapgs				/* Swaps GS register with value in KernelGSbase MSR */
-exception_after_swapgs:
+error_after_swapgs:
 
 	/*
 	 * Setup argments for handler function
@@ -116,19 +123,19 @@ exception_after_swapgs:
 	 */
 	call *%rax
 
-exception_exit:
+error_exit:
 
 	/*
 	 * Call SWAPGS, if necessary.  EBX is a boolean: 0=need SWAPGS, 1=don't need it.
 	 */
 	testl %ebx,%ebx			/* Sets zero flag if EBX=0 */
-	jne exception_restore_regs	/* If zero flag set, don't need SWAPGS */
+	jne error_restore_regs		/* If zero flag set, don't need SWAPGS */
 	swapgs
 
 	/*
 	 * Restore registers
 	 */
-exception_restore_regs:
+error_restore_regs:
 	movq  0*8(%rsp),%r15			/* Restore R15 from stack frame */
         movq  1*8(%rsp),%r14			/* Restore R14 from stack frame */
         movq  2*8(%rsp),%r13			/* Restore R13 from stack frame */
@@ -150,84 +157,218 @@ exception_restore_regs:
 	 * Return to the program that was executing when the exception occurred.
 	 * The stack pointer now points to RIP in the stack frame (see stack
 	 * frame layout in comment above).  IRETQ pops and restores RIP, CS,
-	 * RFLAGS.  If RFLAGS specifiy that a privilege level change is needed,
-	 * RSP and SS are also popped and restored.  Control is then transfered
-	 * back to the program that was executing when the exception occurred
-	 * (i.e., instruction at RIP).
+	 * RFLAGS, RSP, and SS.  Control is then transfered back to the program
+	 * that was executing when the exception occurred (i.e., the
+	 * instruction at the restored address in RIP).
 	 */
 	iretq
 
-exception_kernelspace:
+error_kernelspace:
 	incl %ebx			/* Set boolean, we don't need a SWAPGS */
-	jmp exception_after_swapgs
-/*
- * End of exception_enter()
- */
+	jmp error_after_swapgs
+END(error_enter);
 
 
 /**
- * For exceptions that do not have an error_code pushed onto the stack by the
- * CPU control unit when the exception occurs.  We compensate by pushing a dummy
- * error_code (0) onto the stack.
+ * For error exceptions/interrupts that do not have an error_code pushed onto
+ * the stack by the CPU control unit when the exception/interrupt occurs.
+ * We compensate by pushing a dummy error_code (0) onto the stack.
  */
-	.macro exception handler_name
+	.macro error handler_name
 	pushq $0			/* Push dummy error code onto stack */
 	pushq %rax			/* Push pristine RAX onto stack */
 	leaq  \handler_name(%rip),%rax	/* Stash handler address in RAX */
-	jmp exception_entry
+	jmp error_entry
 	.endm
 
-
 /**
- * For exceptions that do have an error_code pushed onto the stack by the
- * CPU control unit when the exception occurs.
+ * For error exceptions/interrupts that do have an error_code pushed onto
+ * the stack by the CPU control unit when the exception/interrupt occurs.
  */
-	.macro exception_with_error_code handler_name
+	.macro error_with_error_code handler_name
 	pushq %rax			/* push pristine RAX onto stack */
 	leaq  \handler_name(%rip),%rax	/* stash handler address in RAX */
-	jmp exception_entry
+	jmp error_entry
 	.endm
 
 
 /**
- * x86_64 architecture defined exceptions.
+ * x86_64 architecture defined exceptions and interrupts.
  */
 ENTRY(divide_error)
-	exception do_divide_error
+	error do_divide_error
+END(divide_error)
+
 ENTRY(nmi)
-	exception do_nmi
+	error do_nmi
+END(nmi)
+
 ENTRY(int3)
-	exception do_int3
+	error do_int3
+END(int3)
+
 ENTRY(overflow)
-	exception do_overflow
+	error do_overflow
+END(overflow)
+
 ENTRY(bounds)
-	exception do_bounds
+	error do_bounds
+END(bounds)
+
 ENTRY(invalid_op)
-	exception do_invalid_op
+	error do_invalid_op
+END(invalid_op)
+
 ENTRY(device_not_available)
-	exception do_device_not_available
+	error do_device_not_available
+END(device_not_available)
+
 ENTRY(double_fault)
-	exception_with_error_code do_double_fault
+	error_with_error_code do_double_fault
+END(double_fault)
+
 ENTRY(coprocessor_segment_overrun)
-	exception do_coprocessor_segment_overrun
+	error do_coprocessor_segment_overrun
+END(coprocessor_segment_overrun)
+
 ENTRY(invalid_TSS)
-	exception_with_error_code do_invalid_TSS
+	error_with_error_code do_invalid_TSS
+END(invalid_TSS)
+
 ENTRY(segment_not_present)
-	exception_with_error_code do_segment_not_present
+	error_with_error_code do_segment_not_present
+END(segment_not_present)
+
 ENTRY(stack_segment)
-	exception_with_error_code do_stack_segment
+	error_with_error_code do_stack_segment
+END(stack_segment)
+
 ENTRY(general_protection)
-	exception_with_error_code do_general_protection
+	error_with_error_code do_general_protection
+END(general_protection)
+
 ENTRY(page_fault)
-	exception_with_error_code do_page_fault
+	error_with_error_code do_page_fault
+END(page_fault)
+
 ENTRY(spurious_interrupt_bug)
-	exception do_spurious_interrupt_bug
+	error do_spurious_interrupt_bug
+END(spurious_interrupt_bug)
+
 ENTRY(coprocessor_error)
-	exception do_coprocessor_error
+	error do_coprocessor_error
+END(coprocessor_error)
+
 ENTRY(alignment_check)
-	exception_with_error_code do_alignment_check
+	error_with_error_code do_alignment_check
+END(alignment_check)
+
 ENTRY(machine_check)
-	exception do_machine_check
+	error do_machine_check
+END(machine_check)
+
 ENTRY(simd_coprocessor_error)
-	exception do_simd_coprocessor_error
+	error do_simd_coprocessor_error
+END(simd_coprocessor_error)
+
+
+/**
+ * This is the entry point for system calls. Upon entry we are still running
+ * with the user-level stack and the x86_64 CPU control unit has stashed the
+ * user-level RIP in RCX and RFLAGS in R11. External interrupts are diabled.
+ *
+ * The first thing this function does is generate a partial stack frame
+ * containing all caller-saved registers. After this is done, the system call
+ * number (stored in RAX by user-level) is used to index into the system call
+ * table (sys_call_table) and call the handler function. The handler function
+ * is responsible for saving all callee-saved registers... if it is a C
+ * function, callee-saved registers are saved automatically by the compiler.
+ *
+ * Immediately before calling the handler function, the kernel stack looks
+ * like:
+ *
+ *            RIP      = user-space RIP
+ *            ORIG_RAX = system call #, passed from user-space
+ *            RDI      = ARG0, passed from user-space
+ *            RSI      = ARG1, passed from user-space
+ *            RDX      = ARG2, passed from user-space
+ *            (junk)   = normally RCX, but RCX is clobbered by SYSCALL
+ *            RAX      = system call #, passed from user-space
+ *            R8       = ARG4, passed from user-space
+ *            R9       = ARG5, passed from user-space
+ *            R10      = ARG3, passed from user-space
+ *     RSP -> R11      = user-space RFLAGS
+ *
+ * And the registers are setup as follows:
+ *
+ *            RDI      = ARG0
+ *            RSI      = ARG1
+ *            RDX      = ARG2
+ *            RCX      = ARG3 (was stored on R10 on entry)
+ *            R8       = ARG4
+ *            R9       = ARG5
+ *            RAX      = System call #
+ *
+ * NOTE: RCX and R11 are clobbered by system calls. This is due to the SYSCALL
+ *       instruction using RCX and R11 to store RIP and RFLAGS before
+ *       transfering control to the kernel. User-level will observe different
+ *       values of RCX and R11 after SYSCALL than before.
+ */
+ENTRY(system_call)
+	/*
+	 * Enter from user-space
+	 */
+	swapgs				/* Load GS.base with kernel PDA addr */
+	movq %rsp, %gs:pda_oldrsp	/* Backup user-space RSP             */
+	movq %gs:pda_kernelstack, %rsp	/* Load kernel stack                 */
+
+	/*
+	 * Save registers to kernel-stack
+	 */
+	subq $10*8,%rsp			/* Make room on the stack            */
+	movq %rcx,10*8(%rsp)		/* Save user-space RIP               */
+	movq %rax, 9*8(%rsp)		/* Save syscall # in ORIG_RAX slot   */
+	movq %rdi, 8*8(%rsp)		/* Save user-space RDI (ARG0)        */
+	movq %rsi, 7*8(%rsp)		/* Save user-space RSI (ARG1)        */
+	movq %rdx, 6*8(%rsp)		/* Save user-space RDX (ARG2)        */
+	movq %rcx, 5*8(%rsp)		/* RCX is clobbered, save anyways    */
+	movq %rax, 4*8(%rsp)		/* Save user-space RAX (syscall #)   */
+	movq %r8,  3*8(%rsp)		/* Save user-space R8  (ARG4)        */
+	movq %r9,  2*8(%rsp)		/* Save user-space R9  (ARG5)        */
+	movq %r10, 1*8(%rsp)		/* Save user-space R10 (ARG3)        */
+	movq %r11,    (%rsp)		/* R11 is clobbered, save anyways    */
+
+	/*
+	 * Call the system call handler
+	 */
+	movq %r10, %rcx			/* Per x86_64 C ABI, RCX holds ARG3  */
+	call *sys_call_table(,%rax,8)	/* Call the system call handler      */
+	movq %rax, 4*8(%rsp)		/* Save return code in stack frame   */
+
+	/*
+	 * Return to user-space
+	 */
+	movq     (%rsp), %r11		/* Restore RFLAGS for SYSRET         */
+	movq  1*8(%rsp), %r10		/* Restore user-space R10 (ARG3)     */
+	movq  2*8(%rsp), %r9		/* Restore user-space R9  (ARG5)     */
+	movq  3*8(%rsp), %r8		/* Restore user-space R8  (ARG4)     */
+	movq  4*8(%rsp), %rax		/* Return syscall return code        */
+	movq  6*8(%rsp), %rdx		/* Restore user-space RDX (ARG2)     */
+	movq  7*8(%rsp), %rsi		/* Restore user-space RSI (ARG1)     */
+	movq  8*8(%rsp), %rdi		/* Restore user-space RDI (ARG0)     */
+	movq 10*8(%rsp), %rcx		/* Restore RIP for SYSRET            */
+	movq %gs:pda_oldrsp, %rsp	/* Restore user-space RSP            */
+	swapgs				/* Restore user-space GS.base        */
+	sysretq				/* Return to user-space              */
+END(system_call)
+
+
+/**
+ * This handles SYSCALL instructions issued from compatibility mode.
+ * We don't support them.
+ */
+ENTRY(ignore_sysret)
+	mov $-ENOSYS,%eax
+	sysret
+END(ignore_sysret)
 

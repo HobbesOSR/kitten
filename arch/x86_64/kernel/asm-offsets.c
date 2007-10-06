@@ -16,10 +16,25 @@
 #include <asm/thread_info.h>
 #endif
 
+#include <arch/pda.h>
+
 #define DEFINE(sym, val) \
         asm volatile("\n->" #sym " %0 " #val : : "i" (val))
 
 #define BLANK() asm volatile("\n->" : : )
+
+/**
+ * This is used to automatically count the number of system calls.
+ * A table is generated with one entry for each system call defined in
+ * arch/unistd.h, which contains the list of system calls.
+ */
+#define __NO_STUBS 1
+#undef __SYSCALL
+#undef _ARCH_X86_64_UNISTD_H
+#define __SYSCALL(nr, sym) [nr] = 1,
+static char syscalls[] = {
+#include <arch/unistd.h>
+};
 
 int main(void)
 {
@@ -37,6 +52,7 @@ int main(void)
 	ENTRY(preempt_count);
 	ENTRY(status);
 	BLANK();
+#endif
 #undef ENTRY
 #define ENTRY(entry) DEFINE(pda_ ## entry, offsetof(struct x8664_pda, entry))
 	ENTRY(kernelstack); 
@@ -48,11 +64,14 @@ int main(void)
 	ENTRY(data_offset);
 	BLANK();
 #undef ENTRY
+#if 0
 	DEFINE(pbe_address, offsetof(struct pbe, address));
 	DEFINE(pbe_orig_address, offsetof(struct pbe, orig_address));
 	DEFINE(pbe_next, offsetof(struct pbe, next));
 	BLANK();
 	DEFINE(TSS_ist, offsetof(struct tss_struct, ist));
 #endif
+	BLANK();
+	DEFINE(__NR_syscall_max, sizeof(syscalls) - 1);
 	return 0;
 }
