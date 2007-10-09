@@ -21,10 +21,8 @@
  * For historical reasons, these macros are grossly misnamed.
  */
 
-#define MAKE_MM_SEG(s)	((mm_segment_t) { (s) })
-
-#define KERNEL_DS	MAKE_MM_SEG(0xFFFFFFFFFFFFFFFFUL)
-#define USER_DS		MAKE_MM_SEG(PAGE_OFFSET)
+#define KERNEL_DS	0xFFFFFFFFFFFFFFFFUL
+#define USER_DS		PAGE_OFFSET
 
 #define get_ds()	(KERNEL_DS)
 #define get_fs()	(current->arch.addr_limit)
@@ -32,7 +30,7 @@
 
 #define segment_eq(a,b)	((a).seg == (b).seg)
 
-#define __addr_ok(addr) (!((unsigned long)(addr) & (current->arch.addr_limit.seg)))
+#define __addr_ok(addr) (!((unsigned long)(addr) & (current->arch.addr_limit)))
 
 /*
  * Uhhuh, this needs 65-bit arithmetic. We have a carry..
@@ -43,7 +41,7 @@
 	asm("# range_ok\n\r" \
 		"addq %3,%1 ; sbbq %0,%0 ; cmpq %1,%4 ; sbbq $0,%0"  \
 		:"=&r" (flag), "=r" (sum) \
-		:"1" (addr),"g" ((long)(size)),"g" (current->arch.addr_limit.seg)); \
+		:"1" (addr),"g" ((long)(size)),"g" (current->arch.addr_limit)); \
 	flag; })
 
 #define access_ok(type, addr, size) (__range_not_ok(addr,size) == 0)

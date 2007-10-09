@@ -16,6 +16,7 @@
 #include <asm/thread_info.h>
 #endif
 
+#include <lwk/task.h>
 #include <arch/pda.h>
 
 #define DEFINE(sym, val) \
@@ -38,21 +39,19 @@ static char syscalls[] = {
 
 int main(void)
 {
-#if 0
 #define ENTRY(entry) DEFINE(tsk_ ## entry, offsetof(struct task_struct, entry))
+#if 0
 	ENTRY(state);
 	ENTRY(flags); 
 	ENTRY(thread); 
+#endif
 	ENTRY(pid);
 	BLANK();
 #undef ENTRY
-#define ENTRY(entry) DEFINE(threadinfo_ ## entry, offsetof(struct thread_info, entry))
-	ENTRY(flags);
+#define ENTRY(entry) DEFINE(tsk_arch_ ## entry, offsetof(struct task_struct, arch) + offsetof(struct arch_task, entry))
 	ENTRY(addr_limit);
-	ENTRY(preempt_count);
 	ENTRY(status);
 	BLANK();
-#endif
 #undef ENTRY
 #define ENTRY(entry) DEFINE(pda_ ## entry, offsetof(struct x8664_pda, entry))
 	ENTRY(kernelstack); 

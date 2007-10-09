@@ -26,18 +26,18 @@
  * as they get called from within inline assembly.
  */
 
-#include <linux/linkage.h>
-#include <asm/dwarf2.h>
-#include <asm/page.h>
-#include <asm/errno.h>
-#include <asm/asm-offsets.h>
-#include <asm/thread_info.h>
+#include <lwk/linkage.h>
+#include <arch/dwarf2.h>
+#include <arch/page.h>
+#include <arch/errno.h>
+#include <arch/asm-offsets.h>
+#include <arch/current.h>
 
 	.text
 ENTRY(__get_user_1)
 	CFI_STARTPROC
-	GET_THREAD_INFO(%r8)
-	cmpq threadinfo_addr_limit(%r8),%rcx
+	GET_CURRENT(%r8)
+	cmpq tsk_arch_addr_limit(%r8),%rcx
 	jae bad_get_user
 1:	movzb (%rcx),%edx
 	xorl %eax,%eax
@@ -47,10 +47,10 @@ ENDPROC(__get_user_1)
 
 ENTRY(__get_user_2)
 	CFI_STARTPROC
-	GET_THREAD_INFO(%r8)
+	GET_CURRENT(%r8)
 	addq $1,%rcx
 	jc 20f
-	cmpq threadinfo_addr_limit(%r8),%rcx
+	cmpq tsk_arch_addr_limit(%r8),%rcx
 	jae 20f
 	decq   %rcx
 2:	movzwl (%rcx),%edx
@@ -63,10 +63,10 @@ ENDPROC(__get_user_2)
 
 ENTRY(__get_user_4)
 	CFI_STARTPROC
-	GET_THREAD_INFO(%r8)
+	GET_CURRENT(%r8)
 	addq $3,%rcx
 	jc 30f
-	cmpq threadinfo_addr_limit(%r8),%rcx
+	cmpq tsk_arch_addr_limit(%r8),%rcx
 	jae 30f
 	subq $3,%rcx
 3:	movl (%rcx),%edx
@@ -79,10 +79,10 @@ ENDPROC(__get_user_4)
 
 ENTRY(__get_user_8)
 	CFI_STARTPROC
-	GET_THREAD_INFO(%r8)
+	GET_CURRENT(%r8)
 	addq $7,%rcx
 	jc 40f
-	cmpq threadinfo_addr_limit(%r8),%rcx
+	cmpq tsk_arch_addr_limit(%r8),%rcx
 	jae	40f
 	subq	$7,%rcx
 4:	movq (%rcx),%rdx

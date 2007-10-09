@@ -7,7 +7,7 @@
  * Returns 1 if the signal is unhandled, 0 otherwise.
  */
 int
-unhandled_signal(struct task *tsk, int sig)
+unhandled_signal(struct task_struct *tsk, int sig)
 {
 	if (is_init(tsk))
 		return 1;

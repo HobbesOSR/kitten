@@ -181,7 +181,7 @@ struct i387_fxsave_struct {
 	u32	mxcsr;
 	u32	mxcsr_mask;
 	u32	st_space[32];	/* 8*16 bytes for each FP-reg = 128 bytes */
-	u32	xmm_space[64];	/* 16*16 bytes for each XMM-reg = 128 bytes */
+	u32	xmm_space[64];	/* 16*16 bytes for each XMM-reg = 256 bytes */
 	u32	padding[24];
 } __attribute__ ((aligned (16)));
 
@@ -284,10 +284,10 @@ struct thread_struct {
 struct mm_struct;
 
 /* Free all resources held by a thread. */
-extern void release_thread(struct task *);
+extern void release_thread(struct task_struct *);
 
 /* Prepare to copy thread state - unlazy all lazy status */
-extern void prepare_to_copy(struct task *tsk);
+extern void prepare_to_copy(struct task_struct *tsk);
 
 /*
  * create a kernel thread without removing it from tasklists
@@ -300,7 +300,7 @@ extern long kernel_thread(int (*fn)(void *), void * arg, unsigned long flags);
  */
 #define thread_saved_pc(t) (*(unsigned long *)((t)->thread.rsp - 8))
 
-extern unsigned long get_wchan(struct task *p);
+extern unsigned long get_wchan(struct task_struct *p);
 #define task_pt_regs(tsk) ((struct pt_regs *)(tsk)->thread.rsp0 - 1)
 #define KSTK_EIP(tsk) (task_pt_regs(tsk)->rip)
 #define KSTK_ESP(tsk) -1 /* sorry. doesn't work for syscall. */

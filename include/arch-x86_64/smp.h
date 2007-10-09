@@ -108,7 +108,7 @@ static inline int cpu_present_to_apicid(int mps_cpu)
 #include <lwk/task.h>
 #define stack_smp_processor_id() \
 ({ 									\
-	struct task *task;						\
+	struct task_struct *task;						\
 	__asm__("andq %%rsp,%0; ":"=r" (task) : "0" (CURRENT_MASK));	\
 	task->arch.cpu;							\
 })

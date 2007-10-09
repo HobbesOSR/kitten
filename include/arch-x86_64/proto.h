@@ -19,7 +19,7 @@ void __init zap_low_mappings(int cpu);
 
 extern unsigned long ebda_addr, ebda_size;
 
-extern int unhandled_signal(struct task *tsk, int sig);
+extern int unhandled_signal(struct task_struct *tsk, int sig);
 
 extern void system_call(void);
 extern void ignore_sysret(void);

@@ -9,7 +9,7 @@
 
 /* Per processor datastructure. %gs points to it while the kernel runs */ 
 struct x8664_pda {
-	struct task *pcurrent;	/* Current process */
+	struct task_struct *pcurrent;	/* Current process */
 	unsigned long data_offset;	/* Per cpu data offset from linker address */
 	unsigned long kernelstack;  /* top of kernel stack for current */ 
 	unsigned long oldrsp; 	    /* user rsp for system call */

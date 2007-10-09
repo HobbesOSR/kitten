@@ -7,6 +7,7 @@
 #include <arch/processor.h>
 #include <arch/desc.h>
 #include <arch/proto.h>
+#include <arch/i387.h>
 
 /**
  * Bitmap of CPUs that have been initialized.
@@ -69,15 +70,13 @@ syscall_init(void)
 
 /**
  * Initializes and installs the calling CPU's Task State Segment (TSS).
- * The CPU's logical ID is passed in as input and must be correct.
- * The 'cpu' argument does *NOT* allow you to setup another CPU's TSS.
  */
 void __init
 tss_init(void)
 {
-	struct task *       me  = get_current_via_RSP();
-	int                 cpu = me->cpu;
-	struct tss_struct * tss = &per_cpu(init_tss, cpu);
+	struct task_struct *me  = get_current_via_RSP();
+	int                cpu  = me->cpu;
+	struct tss_struct  *tss = &per_cpu(init_tss, cpu);
 	int i;
 
 	/*
@@ -101,25 +100,18 @@ tss_init(void)
 		tss->io_bitmap[i] = ~0UL;
 
 	/*
- 	 * Install the CPU's TSS.
+ 	 * Install the CPU's TSS and load the CPU's Task Register (TR).
  	 * Each CPU has its own TSS.
  	 */
 	set_tss_desc(cpu, tss);
-	load_TR_desc();
-	load_LDT(&init_mm.context);
+	asm volatile("ltr %w0":: "r" (GDT_ENTRY_TSS*8));
 }
-
-#if 0
 
 void __init
 cpu_init(void)
 {
 	int cpu;
-	struct task *me;
-
-	if (cpu_test_and_set(cpu, cpu_initialized_map))
-		panic("CPU#%d already initialized!\n", cpu);
-	printk(KERN_DEBUG "Initializing CPU#%d\n", cpu);
+	struct task_struct *me;
 
 	/*
  	 * Get a reference to the currently executing task and the ID of the
@@ -129,6 +121,10 @@ cpu_init(void)
  	 */
 	me  = get_current_via_RSP();	/* returns ptr to init task */
 	cpu = me->cpu;			/* get CPU's logical ID */
+
+	if (cpu_test_and_set(cpu, cpu_initialized_map))
+		panic("CPU#%d already initialized!\n", cpu);
+	printk(KERN_DEBUG "Initializing CPU#%d\n", cpu);
 
 	/*
  	 * Initialize this CPU's PDA (holds per-CPU data, each CPU has its own).
@@ -160,16 +156,28 @@ cpu_init(void)
 	asm volatile("lgdt %0" :: "m" (cpu_gdt_descr[cpu]));
 
 	/*
+	 * Initialize the CPU's Local Descriptor Table.
+	 * We have no need for a LDT, so we point it at the NULL descriptor.
+	 */
+	asm volatile("lldt %w0":: "r" (0));
+
+	/*
  	 * Initialize the CPU's Interrupt Descriptor Table.
  	 * All CPU's share the same IDT.
  	 */
 	asm volatile("lidt %0" :: "m" (idt_descr));
 
 	/*
+ 	 * Initialize the CPU's Task State Segment structure.
+ 	 * Each CPU has its own TSS.
+ 	 */
+	tss_init();
+
+	/*
  	 * Zero the init-task's Thread-Local Storage (TLS) array.
  	 * A task's TLS array is loaded into the GDT when it is run.
  	 */
-	memset(me->thread.tls_array, 0, GDT_ENTRY_TLS_ENTRIES * 8);
+	memset(me->arch.thread.tls_array, 0, GDT_ENTRY_TLS_ENTRIES * 8);
 
 	/*
  	 * Initialize MSRs needed to support SYSCALL and SYSRET instuctions.
@@ -185,12 +193,6 @@ cpu_init(void)
  	 */
 	wrmsrl(MSR_FS_BASE, 0);
 	wrmsrl(MSR_KERNEL_GS_BASE, 0);
-	barrier();
-
-	/*
- 	 * Initialize the CPU's Task State Segment structure.
- 	 */
-	tss_init(void);
 
 	/*
  	 * Clear the CPU's debug registers.
@@ -206,5 +208,12 @@ cpu_init(void)
 	set_debugreg(0UL, 6);
 	set_debugreg(0UL, 7);
 
+	/*
+	 * Initialize the floating point unit.
+	 */
+	fpu_init();
+
+	/* Memory barrier for good measure. This probably isn't necessary. */
+	barrier();
 }
-#endif
+

@@ -152,4 +152,9 @@ extern unsigned long long memparse(char *ptr, char **retptr);
 #define sizecheck_struct(name,size) \
 	extern int __size_check_struct_##name[ (sizeof(struct name) == (size) ? 0 : 1/0) ]
 
+/*
+ * Force a compilation error if condition is true
+ */
+#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
+
 #endif

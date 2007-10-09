@@ -22,7 +22,7 @@
 extern void fpu_init(void);
 extern unsigned int mxcsr_feature_mask;
 extern void mxcsr_feature_mask_init(void);
-extern void init_fpu(struct task *child);
+extern void init_fpu(struct task_struct *child);
 extern int save_i387(struct _fpstate __user *buf);
 
 /*
@@ -57,8 +57,8 @@ static inline void tolerant_fwait(void)
  * ptrace request handers...
  */
 extern int get_fpregs(struct user_i387_struct __user *buf,
-		      struct task *tsk);
-extern int set_fpregs(struct task *tsk,
+		      struct task_struct *tsk);
+extern int set_fpregs(struct task_struct *tsk,
 		      struct user_i387_struct __user *buf);
 
 /*
@@ -90,7 +90,7 @@ static inline void clear_fpu_state(struct i387_fxsave_struct *fx)
 	 *       alternative_input() mechanism.
 	 */
 	asm volatile ("emms");		/* clear stack tags */
-	asm volatile ("fildl %%gs:0");	/* load to clear state */
+	asm volatile ("fildl %gs:0");	/* load to clear state */
 }
 
 static inline int restore_fpu_checking(struct i387_fxsave_struct *fx) 
@@ -144,7 +144,7 @@ static inline int save_i387_checking(struct i387_fxsave_struct __user *fx)
 	return err;
 } 
 
-static inline void __fxsave_clear(struct task *tsk)
+static inline void __fxsave_clear(struct task_struct *tsk)
 {
 	/* Using "rex64; fxsave %0" is broken because, if the memory operand
 	   uses any extended registers for addressing, a second REX prefix
@@ -189,7 +189,7 @@ static inline void kernel_fpu_end(void)
 	stts();
 }
 
-static inline void save_init_fpu(struct task *tsk)
+static inline void save_init_fpu(struct task_struct *tsk)
 {
  	__fxsave_clear(tsk);
 	tsk->arch.status &= ~TS_USEDFPU;

@@ -35,7 +35,7 @@ extern void machine_check(void);
 extern void simd_coprocessor_error(void);
 
 /**
- * Initializes standard x86_64 architecture exceptions.
+ * Initializes standard x86_64 architecture exceptions and interrupts.
  * The architecture reserves interrupt vectors [0-31] for specific purposes.
  * Interrupt vectors [32-255] can be used for devices or other purposes
  * (system call traps, interprocessor interrupts, etc.).
@@ -62,6 +62,8 @@ trap_init(void)
 	set_intr_gate    ( 17, &alignment_check                              );
 	set_intr_gate_ist( 18, &machine_check,              MCE_STACK        );
 	set_intr_gate    ( 19, &simd_coprocessor_error                       );
+
+	cpu_init();
 }
 
 
@@ -80,7 +82,7 @@ do_trap(
 )
 {
 #if 0
-	struct task *tsk = current;
+	struct task_struct *tsk = current;
 
 	if (user_mode(regs)) {
 		/*

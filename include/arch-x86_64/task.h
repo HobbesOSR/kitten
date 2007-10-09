@@ -15,6 +15,7 @@
  */
 struct arch_task {
 	uint32_t		status;		/* thread-synchronous status */
+	unsigned long		addr_limit;	/* task's virtual memory space is from [0,addr_limit) */
 	struct thread_struct 	thread;
 };
 
