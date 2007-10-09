@@ -73,7 +73,7 @@ config X86_INTERNODE_CACHE_SHIFT
 
 config NR_CPUS
         int "Maximum number of CPUs (2-256)"
-        range 2 255
+        range 1 255
         default "8"
         help
           This allows you to specify the maximum number of CPUs which this
