@@ -355,7 +355,7 @@ no_longmode:
 no_longmode_loop:		
 	jmp	no_longmode_loop
 long_mode_panic:
-	.string "ERROR: long mode is not supported on this system."
+	.string "BOOT FAILURE: This system does not support x86_64 long mode."
 	.byte 0
 	
 sse_ok:
