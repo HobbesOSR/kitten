@@ -350,7 +350,7 @@ int decompress_kernel(struct moveparams *mv, void *rmode)
 	else setup_output_buffer_if_we_run_high(mv);
 
 	makecrc();
-	putstr(".\nDecompressing Linux...");
+	putstr(".\nDecompressing LWK...");
 	gunzip();
 	putstr("done.\nBooting the kernel.\n");
 	if (high_loaded) close_output_buffer_if_we_run_high(mv);
