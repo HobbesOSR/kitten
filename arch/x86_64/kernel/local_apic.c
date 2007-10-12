@@ -143,7 +143,7 @@ lvt_stringify(uint32_t entry, char *buf)
 	} else if (delivery_mode == APIC_MODE_NMI) {
 		sprintf(buf, "NMI"); 
 	} else if (delivery_mode == APIC_MODE_EXTINT) {
-		sprintf(buf, "ExtINT, hooked to old 8259A");
+		sprintf(buf, "ExtINT, hooked to old 8259A PIC");
 	} else {
 		sprintf(buf, "UNKNOWN");
 	}
@@ -168,22 +168,22 @@ lapic_dump(void)
  	 * Lead off with the important stuff...
  	 */
 	printk(KERN_DEBUG
-		"    ID:  0x%08x (id=%d)\n",
+		"  ID:  0x%08x (id=%d)\n",
 		apic_read(APIC_ID),
 		GET_APIC_ID(apic_read(APIC_ID))
 	);
 	printk(KERN_DEBUG
-		"    VER: 0x%08x (version=0x%x, max_lvt=%d)\n",
+		"  VER: 0x%08x (version=0x%x, max_lvt=%d)\n",
 		apic_read(APIC_LVR),
 		GET_APIC_VERSION(apic_read(APIC_LVR)),
 		GET_APIC_MAXLVT(apic_read(APIC_LVR))
 	);
 	printk(KERN_DEBUG
-		"    ESR: 0x%08x (Error Status Reg, non-zero is bad)\n",
+		"  ESR: 0x%08x (Error Status Reg, non-zero is bad)\n",
 		apic_read(APIC_ESR)
 	);
 	printk(KERN_DEBUG
-		"    SVR: 0x%08x (Spurious vector=%d, %s)\n",
+		"  SVR: 0x%08x (Spurious vector=%d, %s)\n",
 		apic_read(APIC_SPIV),
 		apic_read(APIC_SPIV) & APIC_VECTOR_MASK,
 		(apic_read(APIC_SPIV) & APIC_SPIV_APIC_ENABLED)
@@ -194,28 +194,28 @@ lapic_dump(void)
 	/*
  	 * Local Vector Table
  	 */
-	printk(KERN_DEBUG "    Local Vector Table Entries:\n");
-	printk(KERN_DEBUG "        LVT[0] Timer:     0x%08x (%s)\n",
+	printk(KERN_DEBUG "  Local Vector Table Entries:\n");
+	printk(KERN_DEBUG "      LVT[0] Timer:     0x%08x (%s)\n",
 		apic_read(APIC_LVTT),
 		lvt_stringify(apic_read(APIC_LVTT), buf)
 	);
-	printk(KERN_DEBUG "        LVT[1] Thermal:   0x%08x (%s)\n",
+	printk(KERN_DEBUG "      LVT[1] Thermal:   0x%08x (%s)\n",
 		apic_read(APIC_LVTTHMR),
 		lvt_stringify(apic_read(APIC_LVTTHMR), buf)
 	);
-	printk(KERN_DEBUG "        LVT[2] Perf Cnt:  0x%08x (%s)\n",
+	printk(KERN_DEBUG "      LVT[2] Perf Cnt:  0x%08x (%s)\n",
 		apic_read(APIC_LVTPC),
 		lvt_stringify(apic_read(APIC_LVTPC), buf)
 	);
-	printk(KERN_DEBUG "        LVT[3] LINT0 Pin: 0x%08x (%s)\n",
+	printk(KERN_DEBUG "      LVT[3] LINT0 Pin: 0x%08x (%s)\n",
 		apic_read(APIC_LVT0),
 		lvt_stringify(apic_read(APIC_LVT0), buf)
 	);
-	printk(KERN_DEBUG "        LVT[4] LINT1 Pin: 0x%08x (%s)\n",
+	printk(KERN_DEBUG "      LVT[4] LINT1 Pin: 0x%08x (%s)\n",
 		apic_read(APIC_LVT1),
 		lvt_stringify(apic_read(APIC_LVT1), buf)
 	);
-	printk(KERN_DEBUG "        LVT[5] Error:     0x%08x (%s)\n",
+	printk(KERN_DEBUG "      LVT[5] Error:     0x%08x (%s)\n",
 		apic_read(APIC_LVTERR),
 		lvt_stringify(apic_read(APIC_LVTERR), buf)
 	);
@@ -223,26 +223,26 @@ lapic_dump(void)
 	/*
  	 * APIC timer configuration registers
  	 */
-	printk(KERN_DEBUG "    Local APIC Timer:\n");
-	printk(KERN_DEBUG "        DCR (Divide Config Reg): 0x%08x\n",
+	printk(KERN_DEBUG "  Local APIC Timer:\n");
+	printk(KERN_DEBUG "      DCR (Divide Config Reg): 0x%08x\n",
 		apic_read(APIC_TDCR)
 	);
-	printk(KERN_DEBUG "        ICT (Initial Count Reg): 0x%08x\n",
+	printk(KERN_DEBUG "      ICT (Initial Count Reg): 0x%08x\n",
 		apic_read(APIC_TMICT)
 	);
-	printk(KERN_DEBUG "        CCT (Current Count Reg): 0x%08x\n",
+	printk(KERN_DEBUG "      CCT (Current Count Reg): 0x%08x\n",
 		apic_read(APIC_TMCCT)
 	);
 
 	/*
  	 * Logical APIC addressing mode registers
  	 */
-	printk(KERN_DEBUG "    Logical Addressing Mode Information:\n");
-	printk(KERN_DEBUG "        LDR (Logical Dest Reg):  0x%08x (id=%d)\n",
+	printk(KERN_DEBUG "  Logical Addressing Mode Information:\n");
+	printk(KERN_DEBUG "      LDR (Logical Dest Reg):  0x%08x (id=%d)\n",
 		apic_read(APIC_LDR),
 		GET_APIC_LOGICAL_ID(apic_read(APIC_LDR))
 	);
-	printk(KERN_DEBUG "        DFR (Dest Format Reg):   0x%08x (%s)\n",
+	printk(KERN_DEBUG "      DFR (Dest Format Reg):   0x%08x (%s)\n",
 		apic_read(APIC_DFR),
 		(apic_read(APIC_DFR) == APIC_DFR_FLAT) ? "FLAT" : "CLUSTER"
 	);
@@ -250,14 +250,14 @@ lapic_dump(void)
 	/*
  	 * Task/processor/arbitration priority registers
  	 */
-	printk(KERN_DEBUG "    Task/Processor/Arbitration Priorities:\n");
-	printk(KERN_DEBUG "        TPR (Task Priority Reg):        0x%08x\n",
+	printk(KERN_DEBUG "  Task/Processor/Arbitration Priorities:\n");
+	printk(KERN_DEBUG "      TPR (Task Priority Reg):        0x%08x\n",
 		apic_read(APIC_TASKPRI)
 	);
-	printk(KERN_DEBUG "        PPR (Processor Priority Reg):   0x%08x\n",
+	printk(KERN_DEBUG "      PPR (Processor Priority Reg):   0x%08x\n",
 		apic_read(APIC_PROCPRI)
 	);
-	printk(KERN_DEBUG "        APR (Arbitration Priority Reg): 0x%08x\n",
+	printk(KERN_DEBUG "      APR (Arbitration Priority Reg): 0x%08x\n",
 		apic_read(APIC_ARBPRI)
 	);
 }
