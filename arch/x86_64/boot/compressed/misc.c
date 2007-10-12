@@ -364,7 +364,7 @@ asmlinkage void decompress_kernel(void *rmode, unsigned long heap,
 		error("Destination address too large");
 
 	makecrc();
-	putstr(".\nDecompressing Linux...");
+	putstr(".\nDecompressing LWK...");
 	gunzip();
 	putstr("done.\nBooting the kernel.\n");
 	return;
