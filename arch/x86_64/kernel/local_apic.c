@@ -37,6 +37,9 @@ static struct resource lapic_resource = {
 void __init
 lapic_map(void)
 {
+	if (lapic_phys_addr == 0)
+		panic("Invalid Local APIC address.");
+
 	/* Reserve physical memory used by the local APIC */
 	lapic_resource.start = lapic_phys_addr;
 	lapic_resource.end   = lapic_phys_addr + PAGE_SIZE - 1;
@@ -44,8 +47,9 @@ lapic_map(void)
 
 	/* Map local APIC into the kernel */ 
 	set_fixmap_nocache(FIX_APIC_BASE, lapic_phys_addr);
-	printk(KERN_DEBUG "Local APIC mapped to virtual address 0x%016lx\n",
-	                  fix_to_virt(FIX_APIC_BASE));
+	printk(KERN_DEBUG
+	       "Local APIC mapped to vaddr 0x%016lx (paddr 0x%016lx)\n",
+	       fix_to_virt(FIX_APIC_BASE), lapic_phys_addr);
 }
 
 /**
