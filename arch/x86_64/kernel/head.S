@@ -1,10 +1,11 @@
 /*
- *  arch/x86_64/kernel/head.S -- start in 32bit and switch to 64bit
+ *  linux/arch/x86_64/kernel/head.S -- start in 32bit and switch to 64bit
  *
  *  Copyright (C) 2000 Andrea Arcangeli <andrea@suse.de> SuSE
  *  Copyright (C) 2000 Pavel Machek <pavel@suse.cz>
  *  Copyright (C) 2000 Karsten Keil <kkeil@suse.de>
  *  Copyright (C) 2001,2002 Andi Kleen <ak@suse.de>
+ *  Copyright (C) 2005 Eric Biederman <ebiederm@xmission.com>
  */
 
 
@@ -13,97 +14,129 @@
 #include <lwk/cpu.h>
 #include <arch/desc.h>
 #include <arch/segment.h>
+#include <arch/pgtable.h>
 #include <arch/page.h>
 #include <arch/msr.h>
 #include <arch/cache.h>
-	
+
 /* we are not able to switch in one step to the final KERNEL ADRESS SPACE
- * because we need identity-mapped pages on setup so define __START_KERNEL to
- * 0x100000 for this stage
- * 
+ * because we need identity-mapped pages.
+ *
  */
 
 	.text
 	.section .bootstrap.text
-	.code32
-	.globl startup_32
-/* %bx:	 1 if coming from smp trampoline on secondary cpu */ 
-startup_32:
-	
-	/*
-	 * At this point the CPU runs in 32bit protected mode (CS.D = 1) with
-	 * paging disabled and the point of this file is to switch to 64bit
-	 * long mode with a kernel mapping for kernel and to jump into the
-	 * kernel virtual addresses.
- 	 * There is no stack until we set one up.
-	 */
-
-	/* Initialize the %ds segment register */
-	movl $__KERNEL_DS,%eax
-	movl %eax,%ds
-
-	/* Load new GDT with the 64bit segments using 32bit descriptor */
-	lgdt	pGDT32 - __START_KERNEL_map
-
-	/* If the CPU doesn't support CPUID this will double fault.
-	 * Unfortunately it is hard to check for CPUID without a stack. 
-	 */
-	
-	/* Check if extended functions are implemented */		
-	movl	$0x80000000, %eax
-	cpuid
-	cmpl	$0x80000000, %eax
-	jbe	no_long_mode
-	/* Check if long mode is implemented */
-	mov	$0x80000001, %eax
-	cpuid
-	btl	$29, %edx
-	jnc	no_long_mode
-
-	/*
-	 * Prepare for entering 64bits mode
-	 */
-
-	/* Enable PAE mode */
-	xorl	%eax, %eax
-	btsl	$5, %eax
-	movl	%eax, %cr4
-
-	/* Setup early boot stage 4 level pagetables */
-	movl	$(boot_level4_pgt - __START_KERNEL_map), %eax
-	movl	%eax, %cr3
-
-	/* Setup EFER (Extended Feature Enable Register) */
-	movl	$MSR_EFER, %ecx
-	rdmsr
-
-	/* Enable Long Mode */
-	btsl	$_EFER_LME, %eax
-				
-	/* Make changes effective */
-	wrmsr
-
-	xorl	%eax, %eax
-	btsl	$31, %eax			/* Enable paging and in turn activate Long Mode */
-	btsl	$0, %eax			/* Enable protected mode */
-	/* Make changes effective */
-	movl	%eax, %cr0
-	/*
-	 * At this point we're in long mode but in 32bit compatibility mode
-	 * with EFER.LME = 1, CS.L = 0, CS.D = 1 (and in turn
-	 * EFER.LMA = 1). Now we want to jump in 64bit mode, to do that we use
-	 * the new gdt/idt that has __KERNEL_CS with CS.L = 1.
-	 */
-	ljmp	$__KERNEL_CS, $(startup_64 - __START_KERNEL_map)
-
 	.code64
-	.org 0x100	
 	.globl startup_64
 startup_64:
-	/* We come here either from startup_32
-	 * or directly from a 64bit bootloader.
-	 * Since we may have come directly from a bootloader we
-	 * reload the page tables here.
+
+	/*
+	 * At this point the CPU runs in 64bit mode CS.L = 1 CS.D = 1,
+	 * and someone has loaded an identity mapped page table
+	 * for us.  These identity mapped page tables map all of the
+	 * kernel pages and possibly all of memory.
+	 *
+	 * %esi holds a physical pointer to real_mode_data.
+	 *
+	 * We come here either directly from a 64bit bootloader, or from
+	 * arch/x86_64/boot/compressed/head.S.
+	 *
+	 * We only come here initially at boot nothing else comes here.
+	 *
+	 * Since we may be loaded at an address different from what we were
+	 * compiled to run at we first fixup the physical addresses in our page
+	 * tables and then reload them.
+	 */
+
+	/* Compute the delta between the address I am compiled to run at and the
+	 * address I am actually running at.
+	 */
+	leaq	_text(%rip), %rbp
+	subq	$_text - __START_KERNEL_map, %rbp
+
+	/* Is the address not 2M aligned? */
+	movq	%rbp, %rax
+	andl	$~LARGE_PAGE_MASK, %eax
+	testl	%eax, %eax
+	jnz	bad_address
+
+	/* Is the address too large? */
+	leaq	_text(%rip), %rdx
+	movq	$PGDIR_SIZE, %rax
+	cmpq	%rax, %rdx
+	jae	bad_address
+
+	/* Fixup the physical addresses in the page table
+	 */
+	addq	%rbp, init_level4_pgt + 0(%rip)
+	addq	%rbp, init_level4_pgt + (258*8)(%rip)
+	addq	%rbp, init_level4_pgt + (511*8)(%rip)
+
+	addq	%rbp, level3_ident_pgt + 0(%rip)
+	addq	%rbp, level3_kernel_pgt + (510*8)(%rip)
+
+	/* Add an Identity mapping if I am above 1G */
+	leaq	_text(%rip), %rdi
+	andq	$LARGE_PAGE_MASK, %rdi
+
+	movq	%rdi, %rax
+	shrq	$PUD_SHIFT, %rax
+	andq	$(PTRS_PER_PUD - 1), %rax
+	jz	ident_complete
+
+	leaq	(level2_spare_pgt - __START_KERNEL_map + _KERNPG_TABLE)(%rbp), %rdx
+	leaq	level3_ident_pgt(%rip), %rbx
+	movq	%rdx, 0(%rbx, %rax, 8)
+
+	movq	%rdi, %rax
+	shrq	$PMD_SHIFT, %rax
+	andq	$(PTRS_PER_PMD - 1), %rax
+	leaq	__PAGE_KERNEL_LARGE_EXEC(%rdi), %rdx
+	leaq	level2_spare_pgt(%rip), %rbx
+	movq	%rdx, 0(%rbx, %rax, 8)
+ident_complete:
+
+	/* Fixup the kernel text+data virtual addresses
+	 */
+	leaq	level2_kernel_pgt(%rip), %rdi
+	leaq	4096(%rdi), %r8
+	/* See if it is a valid page table entry */
+1:	testq	$1, 0(%rdi)
+	jz	2f
+	addq	%rbp, 0(%rdi)
+	/* Go to the next page */
+2:	addq	$8, %rdi
+	cmp	%r8, %rdi
+	jne	1b
+
+	/* Fixup phys_base */
+	addq	%rbp, phys_base(%rip)
+
+	addq	%rbp, trampoline_level4_pgt + 0(%rip)
+	addq	%rbp, trampoline_level4_pgt + (511*8)(%rip)
+#ifdef CONFIG_ACPI_SLEEP
+	addq	%rbp, wakeup_level4_pgt + 0(%rip)
+	addq	%rbp, wakeup_level4_pgt + (511*8)(%rip)
+#endif
+
+	/* Due to ENTRY(), sometimes the empty space gets filled with
+	 * zeros. Better take a jmp than relying on empty space being
+	 * filled with 0x90 (nop)
+	 */
+	jmp secondary_startup_64
+ENTRY(secondary_startup_64)
+	/*
+	 * At this point the CPU runs in 64bit mode CS.L = 1 CS.D = 1,
+	 * and someone has loaded a mapped page table.
+	 *
+	 * %esi holds a physical pointer to real_mode_data.
+	 *
+	 * We come here either from startup_64 (using physical addresses)
+	 * or from trampoline.S (using virtual addresses).
+	 *
+	 * Using virtual addresses from trampoline.S removes the need
+	 * to have any identity mapped pages in the kernel page table
+	 * after the boot processor executes this code.
 	 */
 
 	/* Enable PAE mode and PGE */
@@ -113,8 +146,14 @@ startup_64:
 	movq	%rax, %cr4
 
 	/* Setup early boot stage 4 level pagetables. */
-	movq	$(boot_level4_pgt - __START_KERNEL_map), %rax
+	movq	$(init_level4_pgt - __START_KERNEL_map), %rax
+	addq	phys_base(%rip), %rax
 	movq	%rax, %cr3
+
+	/* Ensure I am executing from virtual addresses */
+	movq	$1f, %rax
+	jmp	*%rax
+1:
 
 	/* Check if nx is implemented */
 	movl	$0x80000001, %eax
@@ -124,17 +163,11 @@ startup_64:
 	/* Setup EFER (Extended Feature Enable Register) */
 	movl	$MSR_EFER, %ecx
 	rdmsr
-
-	/* Enable System Call */
-	btsl	$_EFER_SCE, %eax
-
-	/* No Execute supported? */
-	btl	$20,%edi
+	btsl	$_EFER_SCE, %eax	/* Enable System Call */
+	btl	$20,%edi		/* No Execute supported? */
 	jnc     1f
 	btsl	$_EFER_NX, %eax
-1:
-	/* Make changes effective */
-	wrmsr
+1:	wrmsr				/* Make changes effective */
 
 	/* Setup cr0 */
 #define CR0_PM				1		/* protected mode */
@@ -161,7 +194,21 @@ startup_64:
 	 * addresses where we're currently running on. We have to do that here
 	 * because in 32bit we couldn't load a 64bit linear address.
 	 */
-	lgdt	cpu_gdt_descr
+	lgdt	cpu_gdt_descr(%rip)
+
+	/* set up data segments. actually 0 would do too */
+	movl $__KERNEL_DS,%eax
+	movl %eax,%ds
+	movl %eax,%ss
+	movl %eax,%es
+
+	/*
+	 * We don't really need to load %fs or %gs, but load them anyway
+	 * to kill any stale realmode selectors.  This allows execution
+	 * under VT hardware.
+	 */
+	movl %eax,%fs
+	movl %eax,%gs
 
 	/* 
 	 * Setup up a dummy PDA. this is just for some early bootup code
@@ -173,32 +220,21 @@ startup_64:
 	shrq	$32,%rdx
 	wrmsr	
 
-	/* set up data segments. actually 0 would do too */
-	movl $__KERNEL_DS,%eax
-	movl %eax,%ds	
-	movl %eax,%ss
-	movl %eax,%es
-			
-#ifndef CONFIG_CRAY_XT
 	/* esi is pointer to real mode structure with interesting info.
 	   pass it to C */
 	movl	%esi, %edi
-#else
-	/*
-	 * Cray hard codes the location of the bootdata.  Maybe
-	 * someday coldstart will be updated to pass the address in
-	 * like a normal bootloader.
-	 */
-	movq	$0xffffffff80090000, %rdi
-#endif
 	
 	/* Finally jump to run C code and to be on real kernel address
 	 * Since we are running on identity-mapped space we have to jump
-	 * to the full 64bit address , this is only possible as indirect
-	 * jump
+	 * to the full 64bit address, this is only possible as indirect
+	 * jump.  In addition we need to ensure %cs is set so we make this
+	 * a far return.
 	 */
 	movq	initial_code(%rip),%rax
-	jmp	*%rax
+	pushq	$0		# fake return address to stop unwinder
+	pushq	$__KERNEL_CS	# set correct cs
+	pushq	%rax		# target address in negative space
+	lretq
 
 	/* SMP bootup changes these two */
 	.align	8
@@ -208,6 +244,9 @@ initial_code:
 	.globl init_rsp
 init_rsp:
 	.quad  init_task_union+TASK_SIZE-8
+
+bad_address:
+	jmp bad_address
 
 ENTRY(early_idt_handler)
 	cmpl $2,early_recursion_flag(%rip)
@@ -229,109 +268,22 @@ early_recursion_flag:
 
 early_idt_msg:
 	.asciz "PANIC: early exception rip %lx error %lx cr2 %lx\n"
+early_idt_ripmsg:
+	.asciz "RIP %s\n"
 
-.code32
-ENTRY(no_long_mode)
-	/* This isn't an x86-64 CPU so hang */
-1:
-	jmp	1b
+.balign PAGE_SIZE
 
-.org 0xf00
-	.globl pGDT32
-pGDT32:
-	.word	gdt_end-cpu_gdt_table-1
-	.long	cpu_gdt_table-__START_KERNEL_map
-
-.org 0xf10	
-ljumpvector:
-	.long	startup_64-__START_KERNEL_map
-	.word	__KERNEL_CS
-
-ENTRY(stext)
-ENTRY(_stext)
-
-	$page = 0
 #define NEXT_PAGE(name) \
-	$page = $page + 1; \
-	.org $page * 0x1000; \
-	phys_##name = $page * 0x1000 + __PHYSICAL_START; \
+	.balign	PAGE_SIZE; \
 ENTRY(name)
 
-NEXT_PAGE(init_level4_pgt)
-	/* This gets initialized in x86_64_start_kernel */
-	.fill	512,8,0
-
-NEXT_PAGE(level3_ident_pgt)
-	.quad	phys_level2_ident_pgt | 0x007
-	.fill	511,8,0
-
-NEXT_PAGE(level3_kernel_pgt)
-	.fill	510,8,0
-	/* (2^48-(2*1024*1024*1024)-((2^39)*511))/(2^30) = 510 */
-	.quad	phys_level2_kernel_pgt | 0x007
-#ifndef CONFIG_CRAY_XT
-	.fill	1,8,0
-#else
-	/* Map in the SeaStar early so that it can be accessed right away */
-	.quad	phys_level2_seastar_pgt | 0x007	/* -> level2_seastar_pgt */
-#endif
-
-NEXT_PAGE(level2_ident_pgt)
-	/* 40MB for bootup. 	*/
-	i = 0
-	.rept 20
-	.quad	i << 21 | 0x083
-	i = i + 1
+/* Automate the creation of 1 to 1 mapping pmd entries */
+#define PMDS(START, PERM, COUNT)		\
+	i = 0 ;					\
+	.rept (COUNT) ;				\
+	.quad	(START) + (i << 21) + (PERM) ;	\
+	i = i + 1 ;				\
 	.endr
-	/* Temporary mappings for the super early allocator in arch/x86_64/mm/init.c */
-	.globl temp_boot_pmds
-temp_boot_pmds:
-	.fill	492,8,0
-	
-NEXT_PAGE(level2_kernel_pgt)
-	/* 40MB kernel mapping. The kernel code cannot be bigger than that.
-	   When you change this change KERNEL_TEXT_SIZE in page.h too. */
-	/* (2^48-(2*1024*1024*1024)-((2^39)*511)-((2^30)*510)) = 0 */
-	i = 0
-	.rept 20
-	.quad	i << 21 | 0x183
-	i = i + 1
-	.endr
-	/* Module mapping starts here */
-	.fill	492,8,0
-
-NEXT_PAGE(level3_physmem_pgt)
-	.quad	phys_level2_kernel_pgt | 0x007	/* so that __va works even before pagetable_init */
-	.fill	511,8,0
-
-#ifdef CONFIG_CRAY_XT
-/*
- * Cray - This maps last 2MB of the first 4GB; page at 0x8000 for
- * these pagetables. Not provided ident mapping. We can if we need to later.
- * The physical address is 0xFFE00000. Everything we need for RCA/L0 is mapped
- * from this physical address onwards. This range is mapped non-cacheable.
- */
-NEXT_PAGE(level2_seastar_pgt)
-	.fill 511,8,0
-	.quad   0x00000000ffe00193
-#endif
-
-#undef NEXT_PAGE
-
-	.data
-
-#ifdef CONFIG_ACPI_SLEEP
-	.align PAGE_SIZE
-ENTRY(wakeup_level4_pgt)
-	.quad	phys_level3_ident_pgt | 0x007
-	.fill	255,8,0
-	.quad	phys_level3_physmem_pgt | 0x007
-	.fill	254,8,0
-	/* (2^48-(2*1024*1024*1024))/(2^39) = 511 */
-	.quad	phys_level3_kernel_pgt | 0x007
-#endif
-
-	__INITDATA
 
 	/*
 	 * This default setting generates an ident mapping at address 0x100000
@@ -339,17 +291,45 @@ ENTRY(wakeup_level4_pgt)
 	 * 0xffffffff80000000 to physical address 0x000000. (always using
 	 * 2Mbyte large pages provided by PAE mode)
 	 */
-	.align PAGE_SIZE
-ENTRY(boot_level4_pgt)
-	.quad	phys_level3_ident_pgt | 0x007
-	.fill	255,8,0
-	.quad	phys_level3_physmem_pgt | 0x007
-	.fill	254,8,0
+NEXT_PAGE(init_level4_pgt)
+	.quad	level3_ident_pgt - __START_KERNEL_map + _KERNPG_TABLE
+	.fill	257,8,0
+	.quad	level3_ident_pgt - __START_KERNEL_map + _KERNPG_TABLE
+	.fill	252,8,0
 	/* (2^48-(2*1024*1024*1024))/(2^39) = 511 */
-	.quad	phys_level3_kernel_pgt | 0x007
+	.quad	level3_kernel_pgt - __START_KERNEL_map + _PAGE_TABLE
+
+NEXT_PAGE(level3_ident_pgt)
+	.quad	level2_ident_pgt - __START_KERNEL_map + _KERNPG_TABLE
+	.fill	511,8,0
+
+NEXT_PAGE(level3_kernel_pgt)
+	.fill	510,8,0
+	/* (2^48-(2*1024*1024*1024)-((2^39)*511))/(2^30) = 510 */
+	.quad	level2_kernel_pgt - __START_KERNEL_map + _KERNPG_TABLE
+	.fill	1,8,0
+
+NEXT_PAGE(level2_ident_pgt)
+	/* Since I easily can, map the first 1G.
+	 * Don't set NX because code runs from these pages.
+	 */
+	PMDS(0x0000000000000000, __PAGE_KERNEL_LARGE_EXEC, PTRS_PER_PMD)
+
+NEXT_PAGE(level2_kernel_pgt)
+	/* 40MB kernel mapping. The kernel code cannot be bigger than that.
+	   When you change this change KERNEL_TEXT_SIZE in page.h too. */
+	/* (2^48-(2*1024*1024*1024)-((2^39)*511)-((2^30)*510)) = 0 */
+	PMDS(0x0000000000000000, __PAGE_KERNEL_LARGE_EXEC|_PAGE_GLOBAL, KERNEL_TEXT_SIZE/PMD_SIZE)
+	/* Module mapping starts here */
+	.fill	(PTRS_PER_PMD - (KERNEL_TEXT_SIZE/PMD_SIZE)),8,0
+
+NEXT_PAGE(level2_spare_pgt)
+	.fill   512,8,0
+
+#undef PMDS
+#undef NEXT_PAGE
 
 	.data
-
 	.align 16
 	.globl cpu_gdt_descr
 cpu_gdt_descr:
@@ -360,6 +340,10 @@ gdt:
 	.word	0
 	.quad	0
 	.endr
+
+ENTRY(phys_base)
+	/* This must match the first entry in level2_kernel_pgt */
+	.quad   0x0000000000000000
 
 /* We need valid kernel segments for data and code in long mode too
  * IRET will check the segment types  kkeil 2000/10/28
@@ -374,17 +358,17 @@ gdt:
 	
 ENTRY(cpu_gdt_table)
 	.quad	0x0000000000000000	/* NULL descriptor */
+	.quad	0x00cf9b000000ffff	/* __KERNEL32_CS */
+	.quad	0x00af9b000000ffff	/* __KERNEL_CS */
+	.quad	0x00cf93000000ffff	/* __KERNEL_DS */
+	.quad	0x00cffb000000ffff	/* __USER32_CS */
+	.quad	0x00cff3000000ffff	/* __USER_DS, __USER32_DS  */
+	.quad	0x00affb000000ffff	/* __USER_CS */
 	.quad	0x0			/* unused */
-	.quad	0x00af9a000000ffff	/* __KERNEL_CS */
-	.quad	0x00cf92000000ffff	/* __KERNEL_DS */
-	.quad	0x00cffa000000ffff	/* __USER32_CS */
-	.quad	0x00cff2000000ffff	/* __USER_DS, __USER32_DS  */		
-	.quad	0x00affa000000ffff	/* __USER_CS */
-	.quad	0x00cf9a000000ffff	/* __KERNEL32_CS */
 	.quad	0,0			/* TSS */
 	.quad	0,0			/* LDT */
 	.quad   0,0,0			/* three TLS descriptors */ 
-	.quad	0			/* unused */
+	.quad	0x0000f40000000000	/* node/CPU stored in limit */
 gdt_end:	
 	/* asm/segment.h:GDT_ENTRIES must match this */	
 	/* This should be a multiple of the cache line size */

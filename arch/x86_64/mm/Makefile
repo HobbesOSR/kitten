@@ -1,1 +1,1 @@
-obj-y := init.o fault.o
+obj-y := init.o fault.o phys_addr.o

@@ -1,4 +1,5 @@
 #include <lwk/kernel.h>
+#include <lwk/bootmem.h>
 #include <arch/page.h>
 #include <arch/pgtable.h>
 #include <arch/e820.h> 
@@ -9,24 +10,126 @@
  */
 unsigned long __initdata table_start, table_end;  /* page frame numbers */
 
-/**
- * Memory for temp_boot_pmds[] is reserved in arch/x86_64/kernel/head.S
- */
-extern pmd_t temp_boot_pmds[]; 
+static __init void *early_ioremap(unsigned long addr, unsigned long size)
+{
+	unsigned long vaddr;
+	pmd_t *pmd, *last_pmd;
+	int i, pmds;
+
+	pmds = ((addr & ~PMD_MASK) + size + ~PMD_MASK) / PMD_SIZE;
+	vaddr = __START_KERNEL_map;
+	pmd = level2_kernel_pgt;
+	last_pmd = level2_kernel_pgt + PTRS_PER_PMD - 1;
+	for (; pmd <= last_pmd; pmd++, vaddr += PMD_SIZE) {
+		for (i = 0; i < pmds; i++) {
+			if (pmd_present(pmd[i]))
+				goto next;
+		}
+		vaddr += addr & ~PMD_MASK;
+		addr &= PMD_MASK;
+		for (i = 0; i < pmds; i++, addr += PMD_SIZE)
+			set_pmd(pmd + i,__pmd(addr | _KERNPG_TABLE | _PAGE_PSE));
+		__flush_tlb();
+		return (void *)vaddr;
+	next:
+		;
+	}
+	printk("early_ioremap(0x%lx, %lu) failed\n", addr, size);
+	return NULL;
+}
+
+/* To avoid virtual aliases later */
+static __init void early_iounmap(void *addr, unsigned long size)
+{
+	unsigned long vaddr;
+	pmd_t *pmd;
+	int i, pmds;
+
+	vaddr = (unsigned long)addr;
+	pmds = ((vaddr & ~PMD_MASK) + size + ~PMD_MASK) / PMD_SIZE;
+	pmd = level2_kernel_pgt + pmd_index(vaddr);
+	for (i = 0; i < pmds; i++)
+		pmd_clear(pmd + i);
+	__flush_tlb();
+}
+
+static __init void *alloc_low_page(unsigned long *phys)
+{ 
+	unsigned long pfn = table_end++;
+	void *adr;
+
+	if (pfn >= end_pfn) 
+		panic("alloc_low_page: ran out of memory"); 
+
+	adr = early_ioremap(pfn * PAGE_SIZE, PAGE_SIZE);
+	memset(adr, 0, PAGE_SIZE);
+	*phys  = pfn * PAGE_SIZE;
+	return adr;
+}
 
 /**
- * These are used to map in pages of physical memory into the kernel
- * on-the-fly before the identity map is fully initialized.  * Yes, this is a bit convoluted.
+ * Destroys a temporary mapping that was setup by alloc_low_page().
  */
-static  struct temp_map { 
+static void __init
+unmap_low_page(void *adr)
+{ 
+	early_iounmap(adr, PAGE_SIZE);
+} 
+
+/**
+ * Initializes a fixmap entry to point to a given physical page.
+ */
+void __init
+__set_fixmap(
+	enum fixed_addresses fixmap_index, /* fixmap entry index to setup */
+	unsigned long        phys_addr,    /* map fixmap entry to this addr */
+	pgprot_t             prot          /* page protection bits */
+)
+{
+	unsigned long virt_addr;
+	pgd_t *pgd;
+	pud_t *pud;
 	pmd_t *pmd;
-	void  *address; 
-	int    allocated; 
-} temp_mappings[] __initdata = { 
-	{ &temp_boot_pmds[0], (void *)(40UL * 1024 * 1024), 0 },
-	{ &temp_boot_pmds[1], (void *)(42UL * 1024 * 1024), 0 }, 
-	{ NULL, NULL, 0 }
-}; 
+	pte_t *pte, new_pte;
+
+	if (fixmap_index >= __end_of_fixed_addresses)
+		panic("Invalid FIXMAP index");
+
+	/* Calculate the virtual address of the fixmap entry */
+	virt_addr = __fix_to_virt(fixmap_index);
+
+	/* Look up PGD entry covering the fixmap entry */
+	pgd = pgd_offset_k(virt_addr);
+	if (pgd_none(*pgd))
+		panic("PGD FIXMAP MISSING, it should be setup in head.S!\n");
+
+	/* Look up the PMD entry covering the fixmap entry */
+	pud = pud_offset(pgd, virt_addr);
+	if (pud_none(*pud)) {
+		/* PUD entry is empty... allocate a new PMD directory for it */
+		pmd = (pmd_t *) alloc_bootmem_aligned(PAGE_SIZE, PAGE_SIZE);
+		set_pud(pud, __pud(__pa(pmd) | _KERNPG_TABLE | _PAGE_USER));
+		BUG_ON(pmd != pmd_offset(pud, 0));
+	}
+
+	/* Look up the PMD entry covering the fixmap entry */
+	pmd = pmd_offset(pud, virt_addr);
+	if (pmd_none(*pmd)) {
+		/* PMD entry is empty... allocate a new PTE directory for it */
+		pte = (pte_t *) alloc_bootmem_aligned(PAGE_SIZE, PAGE_SIZE);
+		set_pmd(pmd, __pmd(__pa(pte) | _KERNPG_TABLE | _PAGE_USER));
+		BUG_ON(pte != pte_offset_kernel(pmd, 0));
+	}
+
+	/*
+	 * Construct and install a new PTE that maps the fixmap entry
+	 * to the requested physical address.
+	 */
+	pte     = pte_offset_kernel(pmd, virt_addr);
+	new_pte = pfn_pte(phys_addr >> PAGE_SHIFT, prot);
+	set_pte(pte, new_pte);
+	__flush_tlb_one(virt_addr);
+}
 
 /**
  * Finds enough space for the kernel page tables.
@@ -65,75 +168,6 @@ find_early_table_space(unsigned long end)
 	table_end = table_start;
 }
 
-/**
- * Allocates a page of physical memory and maps it into the kernel's address
- * space using a temporary mapping.
- *
- * Returns:
- *     The kernel virtual address of the allocated page (temporary mapping)
- *
- * Output arguments:
- *     *index = cookie needed to destroy the temporary mapping
- *                  pass to unmap_low_pages()
- *     *phys  = the physical address of the new page
- */
-static void * __init
-alloc_low_page(int *index, unsigned long *phys)
-{ 
-	struct temp_map *ti;
-	int i; 
-	unsigned long pfn = table_end++, paddr; 
-	void *addr;
-
-	if (pfn >= end_pfn) 
-		panic("alloc_low_page: ran out of memory"); 
-
-	/*
-	 * Find an available temporary mapping.
-	 */
-	for (i = 0; temp_mappings[i].allocated; i++) {
-		if (!temp_mappings[i].pmd) 
-			panic("alloc_low_page: ran out of temp mappings"); 
-	} 
-	ti = &temp_mappings[i];
-	ti->allocated = 1; 
-
-	/*
- 	 * Calculate the physical address of the new page we want to
- 	 * map in temporarily.  It will be mapped at virtual address
- 	 * ti->address.
- 	 */
-	paddr = (pfn << PAGE_SHIFT) & PMD_MASK; 
-
-	/*
- 	 * Map in the new page so that it can be accessed.
- 	 */
-	set_pmd(ti->pmd, __pmd(paddr | _KERNPG_TABLE | _PAGE_PSE)); 
-	__flush_tlb(); 	       
-
-	/*
- 	 * Be nice and zero the page.
- 	 */
-	addr = ti->address + ((pfn << PAGE_SHIFT) & ~PMD_MASK); 
-	memset(addr, 0, PAGE_SIZE);
-
-	*index = i; 
-	*phys  = pfn * PAGE_SIZE;  
-	return addr; 
-} 
-
-/**
- * Destroy a temporary mapping that was setup by alloc_low_page().
- */
-static void __init
-unmap_low_page(int index)
-{ 
-	struct temp_map *ti;
-
-	ti = &temp_mappings[index];
-	set_pmd(ti->pmd, __pmd(0));
-	ti->allocated = 0; 
-} 
 
 /**
  * Configures the input Page Middle Directory to map physical addresses
@@ -174,7 +208,6 @@ phys_pud_init(pud_t *pud, unsigned long address, unsigned long end)
 	pud = pud + i;
 
 	for (; i < PTRS_PER_PUD; pud++, i++) {
-		int map; 
 		unsigned long paddr, pmd_phys;
 		pmd_t *pmd;
 
@@ -187,10 +220,10 @@ phys_pud_init(pud_t *pud, unsigned long address, unsigned long end)
 			continue;
 		} 
 
-		pmd = alloc_low_page(&map, &pmd_phys);
+		pmd = alloc_low_page(&pmd_phys);
 		set_pud(pud, __pud(pmd_phys | _KERNPG_TABLE));
 		phys_pmd_init(pmd, paddr, end);
-		unmap_low_page(map);
+		unmap_low_page(pmd);
 	}
 	__flush_tlb();
 } 
@@ -220,7 +253,6 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 	end   = (unsigned long)__va(end);
 
 	for (; start < end; start = next) {
-		int map;
 		unsigned long pud_phys; 
 		pud_t *pud;
 
@@ -232,7 +264,7 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 		 *     pud_phys = physical address of the new page.
 		 *     map      = cookie needed to free the temporary mapping.
  		 */
-		pud = alloc_low_page(&map, &pud_phys);
+		pud = alloc_low_page(&pud_phys);
 
 		/*
 		 * Calculate the upper bound address for the PUD.
@@ -256,7 +288,7 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 		set_pgd(pgd_offset_k(start), mk_kernel_pgd(pud_phys));
 
 		/* Destroy the temporary kernel mapping of the new PUD */
-		unmap_low_page(map);   
+		unmap_low_page(pud);   
 	} 
 
 	asm volatile("movq %%cr4,%0" : "=r" (mmu_cr4_features));
@@ -283,7 +315,8 @@ zap_low_mappings(int cpu)
  		 * For AP's, zap the low identity mappings by changing the cr3
  		 * to init_level4_pgt and doing local flush tlb all.
  		 */
-		asm volatile("movq %0,%%cr3" :: "r" (__pa_symbol(&init_level4_pgt)));
+		asm volatile("movq %0,%%cr3" ::
+				"r" (__pa_symbol(&init_level4_pgt)));
 	}
 	__flush_tlb_all();
 }

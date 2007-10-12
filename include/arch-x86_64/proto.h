@@ -24,4 +24,6 @@ extern int unhandled_signal(struct task_struct *tsk, int sig);
 extern void system_call(void);
 extern void ignore_sysret(void);
 
+extern unsigned long __phys_addr(unsigned long virt_addr);
+
 #endif

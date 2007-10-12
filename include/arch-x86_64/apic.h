@@ -16,6 +16,8 @@
 extern int apic_verbosity;
 extern int apic_runs_main_timer;
 
+extern unsigned long lapic_phys_addr;
+
 /*
  * Define the default level of output to be very little
  * This can be turned up by using apic=verbose for more

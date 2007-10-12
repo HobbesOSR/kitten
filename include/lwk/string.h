@@ -1,5 +1,5 @@
-#ifndef _LWK_STRING_H_
-#define _LWK_STRING_H_
+#ifndef _LWK_STRING_H
+#define _LWK_STRING_H
 
 /* We don't want strings.h stuff being used by user stuff by accident */
 
@@ -104,4 +104,4 @@ extern char *kstrdup(const char *s, gfp_t gfp);
 #endif
 
 #endif
-#endif /* _LWK_STRING_H_ */
+#endif /* _LWK_STRING_H */

@@ -72,7 +72,6 @@ struct mpc_config_intsrc mp_irqs[MAX_IRQ_SOURCES];
 
 /* TODO: move these */
 int pic_mode;
-unsigned long lapic_addr = 0;
 
 /**
  * Computes the checksum of an MP configuration block.
@@ -300,7 +299,7 @@ read_mpc(struct mp_config_table *mpc)
 	printk(KERN_DEBUG "    APIC at: 0x%X\n", mpc->mpc_lapic);
 
 	/* Save the local APIC address, it might be non-default. */
-	lapic_addr = mpc->mpc_lapic;
+	lapic_phys_addr = mpc->mpc_lapic;
 
 	/* Now process all of the configuration blocks in the table. */
 	while (count < mpc->mpc_length) {

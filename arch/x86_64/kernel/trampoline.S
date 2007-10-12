@@ -27,11 +27,11 @@
  *	entries.
  */
 
-#include <linux/linkage.h>
-#include <asm/pgtable.h>
-#include <asm/page.h>
-#include <asm/msr.h>
-#include <asm/segment.h>
+#include <lwk/linkage.h>
+#include <arch/pgtable.h>
+#include <arch/page.h>
+#include <arch/msr.h>
+#include <arch/segment.h>
 
 .data
 

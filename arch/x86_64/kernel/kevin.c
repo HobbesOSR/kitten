@@ -146,7 +146,7 @@ cpu_init(void)
 	);
 
 	/*
-	 * Initialize the CPU's Global Descriptor Table.
+	 * Initialize the CPU's Global Descriptor Table (GDT).
 	 * The boot CPU's GDT has already been setup.
 	 * Each CPU has its own GDT.
 	 */
@@ -156,19 +156,19 @@ cpu_init(void)
 	asm volatile("lgdt %0" :: "m" (cpu_gdt_descr[cpu]));
 
 	/*
-	 * Initialize the CPU's Local Descriptor Table.
+	 * Initialize the CPU's Local Descriptor Table (LDT).
 	 * We have no need for a LDT, so we point it at the NULL descriptor.
 	 */
 	asm volatile("lldt %w0":: "r" (0));
 
 	/*
- 	 * Initialize the CPU's Interrupt Descriptor Table.
+ 	 * Initialize the CPU's Interrupt Descriptor Table (IDT).
  	 * All CPU's share the same IDT.
  	 */
 	asm volatile("lidt %0" :: "m" (idt_descr));
 
 	/*
- 	 * Initialize the CPU's Task State Segment structure.
+ 	 * Initialize the CPU's Task State Segment structure (TSS).
  	 * Each CPU has its own TSS.
  	 */
 	tss_init();
@@ -193,6 +193,7 @@ cpu_init(void)
  	 */
 	wrmsrl(MSR_FS_BASE, 0);
 	wrmsrl(MSR_KERNEL_GS_BASE, 0);
+	barrier();
 
 	/*
  	 * Clear the CPU's debug registers.
@@ -213,7 +214,8 @@ cpu_init(void)
 	 */
 	fpu_init();
 
-	/* Memory barrier for good measure. This probably isn't necessary. */
-	barrier();
+	lapic_map();
+	lapic_init();
+	lapic_dump();
 }
 

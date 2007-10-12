@@ -30,7 +30,7 @@
  * 	appropriately. Either display a message or halt.
  */
 
-#include <asm/cpufeature.h>
+#include <arch/cpufeature.h>
 
 verify_cpu:
 	pushfl				# Save caller passed flags

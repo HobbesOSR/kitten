@@ -54,10 +54,12 @@
 #define __FINIT		.previous
 #define __INITDATA	.section	".init.data","aw"
 
+/* TODO: move this */
+#define COMMAND_LINE_SIZE       1024
+
 #ifndef __ASSEMBLY__
 
 /* Defined in init/main.c */
-#define COMMAND_LINE_SIZE       1024
 extern char lwk_command_line[COMMAND_LINE_SIZE];
 
 /* used by init/main.c */

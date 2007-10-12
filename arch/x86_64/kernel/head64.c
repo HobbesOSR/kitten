@@ -81,9 +81,19 @@ x86_64_start_kernel(char * real_mode_data)
 {
 	int i;
 
-	/* Sanity check. */
-	if (__pa_symbol(&_end) >= KERNEL_TEXT_SIZE)
-		while (1) {}
+	/*
+ 	 * Zero the "Block Started by Symbol" section...
+	 * you know, the one that holds uninitialized data.
+	 */
+	memset(__bss_start, 0,
+	       (unsigned long) __bss_stop - (unsigned long) __bss_start);
+
+#if 0
+	/*
+	 * Make NULL pointer dereferences segfault.
+	 */
+	zap_identity_mappings();
+#endif
 
 	/*
 	 * Setup the initial interrupt descriptor table (IDT).
@@ -92,21 +102,6 @@ x86_64_start_kernel(char * real_mode_data)
 	for (i = 0; i < 256; i++)
 		set_intr_gate(i, early_idt_handler);
 	asm volatile("lidt %0" :: "m" (idt_descr));
-
-	/*
- 	 * Zero the "Block Started by Symbol" section...
-	 * you know, the one that holds uninitialized data.
-	 */
-	memset(__bss_start, 0,
-	       (unsigned long) __bss_stop - (unsigned long) __bss_start);
-
-	/*
- 	 * Switch to a new copy of the boot page tables.  Not exactly sure
-	 * why this is done but it is probably because boot_level4_pgt is
-	 * marked as __initdata, meaning it gets discarded after bootstrap.
-	 */
-	memcpy(init_level4_pgt, boot_level4_pgt, PTRS_PER_PGD*sizeof(pgd_t));
-	asm volatile("movq %0,%%cr3" :: "r" (__pa_symbol(&init_level4_pgt)));
 
 	/*
  	 * Early per-processor data area (PDA) initialization.

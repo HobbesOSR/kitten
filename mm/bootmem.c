@@ -423,6 +423,13 @@ __alloc_bootmem_nopanic(unsigned long size, unsigned long align, unsigned long g
 	return NULL;
 }
 
+/**
+ * Allocate a chunk of memory from the boot memory allocator.
+ *
+ *     size  = number of bytes requested
+ *     align = required alignment
+ *     goal  = hint specifying address to start search.
+ */
 void * __init
 __alloc_bootmem(unsigned long size, unsigned long align, unsigned long goal)
 {
@@ -438,15 +445,20 @@ __alloc_bootmem(unsigned long size, unsigned long align, unsigned long goal)
 }
 
 /**
- * Allocate a chunk of memory from the boot memory allocator.
- *
- *     size  = number of bytes requested
- *     align = required alignment
- *     goal  = hint specifying address to start search.
+ * Allocates a block of memory of the specified size.
  */
 void * __init
 alloc_bootmem(unsigned long size)
 {
 	return __alloc_bootmem(size, SMP_CACHE_BYTES, 0);
+}
+
+/**
+ * Allocates a block of memory of the specified size and alignment.
+ */
+void * __init
+alloc_bootmem_aligned(unsigned long size, unsigned long align)
+{
+	return __alloc_bootmem(size, align, 0);
 }
 

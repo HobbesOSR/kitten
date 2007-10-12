@@ -1,7 +1,7 @@
 /* const.h: Macros for dealing with constants.  */
 
-#ifndef _LINUX_CONST_H
-#define _LINUX_CONST_H
+#ifndef _LWK_CONST_H
+#define _LWK_CONST_H
 
 /* Some constant macros are used in both assembler and
  * C code.  Therefore we cannot annotate them always with
@@ -16,4 +16,4 @@
 #define _AC(X,Y)	__AC(X,Y)
 #endif
 
-#endif /* !(_LINUX_CONST_H) */
+#endif /* !(_LWK_CONST_H) */

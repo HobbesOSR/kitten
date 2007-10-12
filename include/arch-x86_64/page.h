@@ -1,37 +1,53 @@
 #ifndef _X86_64_PAGE_H
 #define _X86_64_PAGE_H
 
-#define PAGE_SHIFT		12
-#define PAGE_SIZE		__PAGE_SIZE
-#define PAGE_OFFSET		__PAGE_OFFSET
-
+#include <lwk/const.h>
 
 /**
- * CAREFUL... Each of the following defines has two versions, one for
- *            assembly and another for C.  Be sure to update both!
+ * Define the base page size, 4096K on x86_64.
+ * PAGE_SHIFT defines the base page size.
  */
-#ifndef __ASSEMBLY__
-#define __PAGE_SIZE             (1UL << PAGE_SHIFT)
-#define __PHYSICAL_START        ((unsigned long)CONFIG_PHYSICAL_START)
-#define __START_KERNEL          (__START_KERNEL_map + __PHYSICAL_START)
-#define __START_KERNEL_map      0xffffffff80000000UL
-#define __PAGE_OFFSET           0xffff810000000000UL
-#else
-#define __PAGE_SIZE             (0x1 << PAGE_SHIFT)
-#define __PHYSICAL_START        CONFIG_PHYSICAL_START
-#define __START_KERNEL          (__START_KERNEL_map + __PHYSICAL_START)
-#define __START_KERNEL_map      0xffffffff80000000
-#define __PAGE_OFFSET           0xffff810000000000
-#endif
-
+#define PAGE_SHIFT		12
+#define PAGE_SIZE		(_AC(1,UL) << PAGE_SHIFT)
 #define PAGE_MASK		(~(PAGE_SIZE-1))
 #define PHYSICAL_PAGE_MASK	(~(PAGE_SIZE-1) & __PHYSICAL_MASK)
 
+/**
+ * The kernel is mapped into the virtual address space of every task:
+ *
+ *     [PAGE_OFFSET, TOP_OF_MEMORY)  Kernel-space virtual memory region
+ *     [0, PAGE_OFFSET]              User-space virtual memory region
+ */
+#define PAGE_OFFSET		_AC(0xffff810000000000, UL)
+
+/**
+ * The bootloader loads the LWK at address __PHYSICAL_START in physical memory.
+ * This must be aligned on a 2 MB page boundary... or else.
+ */
+#define __PHYSICAL_START	CONFIG_PHYSICAL_START
+#define __KERNEL_ALIGN		0x200000
+
+/**
+ * If you hit this error when compiling the LWK, change your config file so that
+ * CONFIG_PHYSICAL_START is aligned to a 2 MB boundary.
+ */
+#if (CONFIG_PHYSICAL_START % __KERNEL_ALIGN) != 0
+#error "CONFIG_PHYSICAL_START must be a multiple of 2MB"
+#endif
+
+/**
+ * The kernel page tables map the kernel image text and data starting at
+ * virtual address __START_KERNEL_map. The kernel text starts at
+ * __START_KERNEL.
+ */
+#define __START_KERNEL_map	_AC(0xffffffff80000000, UL)
+#define __START_KERNEL		(__START_KERNEL_map + __PHYSICAL_START)
+
 /* See Documentation/x86_64/mm.txt for a description of the memory map. */
 #define __PHYSICAL_MASK_SHIFT   46
-#define __PHYSICAL_MASK     ((1UL << __PHYSICAL_MASK_SHIFT) - 1)
+#define __PHYSICAL_MASK     ((_AC(1,UL) << __PHYSICAL_MASK_SHIFT) - 1)
 #define __VIRTUAL_MASK_SHIFT    48
-#define __VIRTUAL_MASK      ((1UL << __VIRTUAL_MASK_SHIFT) - 1)
+#define __VIRTUAL_MASK      ((_AC(1,UL) << __VIRTUAL_MASK_SHIFT) - 1)
 
 #define TASK_ORDER 1 
 #define TASK_SIZE  (PAGE_SIZE << TASK_ORDER)
@@ -53,20 +69,18 @@
 #define MCE_STACK		5
 #define N_EXCEPTION_STACKS	5	/* hw limit is 7 */
 
-/* Note: __pa(&symbol_visible_to_c) should be always replaced with __pa_symbol.
-   Otherwise you risk miscompilation. */
-#define __pa(x)		(((unsigned long)(x)>=__START_KERNEL_map)?(unsigned long)(x) - (unsigned long)__START_KERNEL_map:(unsigned long)(x) - PAGE_OFFSET)
-/* __pa_symbol should be used for C visible symbols.
-   This seems to be the official gcc blessed way to do such arithmetic. */
-#define __pa_symbol(x)				\
-	({unsigned long v;			\
-	  asm("" : "=r" (v) : "0" (x));		\
-	  __pa(v); })
-
-
-#define __va(x)                 ((void *)((unsigned long)(x)+PAGE_OFFSET))
-#define __boot_va(x)            __va(x)
-#define __boot_pa(x)            __pa(x)
+/**
+ * Macros for converting between physical address and kernel virtual address.
+ * NOTE: These only work for kernel virtual addresses in the identity map.
+ */
+#ifndef __ASSEMBLY__
+extern unsigned long __phys_addr(unsigned long virt_addr);
+#endif
+#define __pa(x)		__phys_addr((unsigned long)(x))
+#define __pa_symbol(x)	__phys_addr((unsigned long)(x))
+#define __va(x)		((void *)((unsigned long)(x)+PAGE_OFFSET))
+#define __boot_va(x)	__va(x)
+#define __boot_pa(x)	__pa(x)
 
 #ifndef __ASSEMBLY__
 /*
@@ -93,7 +107,7 @@ extern unsigned long end_pfn;
 #endif
 
 #define PTRS_PER_PGD	512
-#define KERNEL_TEXT_SIZE (40UL*1024*1024)
+#define KERNEL_TEXT_SIZE (40*1024*1024)
 
 #define pte_val(x)  ((x).pte)
 #define pmd_val(x)  ((x).pmd)
@@ -107,5 +121,7 @@ extern unsigned long end_pfn;
 #define __pgd(x) ((pgd_t) { (x) } )
 #define __pgprot(x) ((pgprot_t) { (x) } )
 
+#define LARGE_PAGE_MASK (~(LARGE_PAGE_SIZE-1))
+#define LARGE_PAGE_SIZE (_AC(1,UL) << PMD_SHIFT)
 
 #endif
