@@ -60,7 +60,7 @@ struct arch_cpuinfo {
 	uint8_t		apic_id;		// Local APIC ID
 };
 
-extern struct cpuinfo boot_cpu_info;
+extern struct cpuinfo boot_cpu_data;
 
 struct cpuinfo;
 extern void print_arch_cpuinfo(struct cpuinfo *);

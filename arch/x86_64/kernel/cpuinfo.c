@@ -8,10 +8,10 @@
 /**
  * Information about the boot CPU.
  * The CPU capabilities stored in this structure are the lowest common
- * denominator for all CPUs in the system... in this sense, boot_cpu_info
+ * denominator for all CPUs in the system... in this sense, boot_cpu_data
  * is special compared to the corresponding entry in the cpu_info[] array.
  */
-struct cpuinfo boot_cpu_info;
+struct cpuinfo boot_cpu_data;
 
 /**
  * Gets the model name information for the calling CPU.
@@ -292,7 +292,7 @@ print_arch_cpuinfo(struct cpuinfo *c)
 		   a->cpuid_level);
 
 	for ( i = 0 ; i < 32*NCAPINTS ; i++ )
-		if (cpu_has(a, i) && x86_cap_flags[i] != NULL)
+		if (cpu_has(c, i) && x86_cap_flags[i] != NULL)
 			printk(" %s", x86_cap_flags[i]);
 	printk("\n");
 		

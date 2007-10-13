@@ -212,7 +212,6 @@ struct tss_struct {
 	unsigned long io_bitmap[IO_BITMAP_LONGS + 1];
 } __attribute__((packed)) ____cacheline_aligned;
 
-extern struct cpuinfo_x86 boot_cpu_data;
 DECLARE_PER_CPU(struct tss_struct,init_tss);
 
 #ifdef CONFIG_X86_VSMP

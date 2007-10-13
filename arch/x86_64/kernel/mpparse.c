@@ -367,8 +367,17 @@ void __init
 get_mp_config(void)
 {
 	struct intel_mp_floating *mpf = mpf_found;
-	if (!mpf)
+	if (!mpf) {
+		printk(KERN_WARNING "Assuming 1 CPU.\n");
+		num_cpus = 1;
+		/* Assign the only CPU logical=physical ID 0 */
+		cpu_set(0, cpu_present_map);
+		physid_set(0, phys_cpu_present_map);
+		cpu_info[0].logical_id   = 0;
+		cpu_info[0].hw_id        = 0;
+		cpu_info[0].arch.apic_id = 0;
 		return;
+	}
 
 	printk(KERN_DEBUG "Intel MultiProcessor Specification v1.%d\n",
 	       mpf->mpf_specification);
@@ -382,7 +391,7 @@ get_mp_config(void)
 
 	/*
 	 * We don't support the default MP configuration.
-	 * All supported platforms should provide a full MP table.
+	 * All supported multi-CPU systems must provide a full MP table.
 	 */
 	if (mpf->mpf_feature1 != 0)
 		BUG();

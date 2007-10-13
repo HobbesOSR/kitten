@@ -1,6 +1,7 @@
 #include <lwk/kernel.h>
 #include <lwk/init.h>
 #include <lwk/resource.h>
+#include <lwk/cpuinfo.h>
 #include <lwk/smp.h>
 #include <arch/page.h>
 #include <arch/pgtable.h>
@@ -11,9 +12,11 @@
 
 /**
  * Physical address of the local APIC memory mapping.
- * This is set in arch/x86_64/kernel/mpparse.c
+ * If the system BIOS provided an MP configuration table, this is set in
+ * arch/x86_64/kernel/mpparse.c to the value parsed from the table.
+ * Otherwise, the default address is used.
  */
-unsigned long lapic_phys_addr;
+unsigned long lapic_phys_addr = APIC_DEFAULT_PHYS_BASE;
 
 /**
  * Resource entry for the local APIC memory mapping.
@@ -37,8 +40,8 @@ static struct resource lapic_resource = {
 void __init
 lapic_map(void)
 {
-	if (lapic_phys_addr == 0)
-		panic("Invalid Local APIC address.");
+	if (!cpu_has_apic)
+		panic("No local APIC.");
 
 	/* Reserve physical memory used by the local APIC */
 	lapic_resource.start = lapic_phys_addr;
@@ -47,9 +50,9 @@ lapic_map(void)
 
 	/* Map local APIC into the kernel */ 
 	set_fixmap_nocache(FIX_APIC_BASE, lapic_phys_addr);
-	printk(KERN_DEBUG
-	       "Local APIC mapped to vaddr 0x%016lx (paddr 0x%016lx)\n",
-	       fix_to_virt(FIX_APIC_BASE), lapic_phys_addr);
+
+	printk(KERN_DEBUG "Local APIC mapped to virtual address 0x%016lx\n",
+	                  fix_to_virt(FIX_APIC_BASE));
 }
 
 /**

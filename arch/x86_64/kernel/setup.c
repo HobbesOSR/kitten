@@ -151,8 +151,8 @@ setup_arch(void)
  	 * boot_cpu_info and cpu_info[boot_cpu_id] structures will be
  	 * filled in completely.
  	 */
-	boot_cpu_info.logical_id = 0;
-	early_identify_cpu(&boot_cpu_info);
+	boot_cpu_data.logical_id = 0;
+	early_identify_cpu(&boot_cpu_data);
 
 	/*
 	 * Find the Extended BIOS Data Area.
