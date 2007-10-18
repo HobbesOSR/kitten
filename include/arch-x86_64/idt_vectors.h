@@ -1,7 +1,7 @@
 #ifndef _ARCH_X86_64_IDT_VECTORS_H
 #define _ARCH_X86_64_IDT_VECTORS_H
 
-/**
+/*
  * Based on linux/include/asm-x86_64/hw_irq.h
  * Original file header:
  *     (C) 1992, 1993 Linus Torvalds, (C) 1997 Ingo Molnar
@@ -20,8 +20,8 @@
  * inter-processor interrupts for TLB invalidations.
  */
 
-/**
- * Symbolic names for interrupt vectors.
+/*
+ * [0,31] Standard x86_64 architecture vectors
  */
 #define DIVIDE_ERROR_VECTOR			0
 #define DEBUG_VECTOR				1
@@ -32,7 +32,7 @@
 #define INVALID_OP_VECTOR			6
 #define DEVICE_NOT_AVAILABLE_VECTOR		7
 #define DOUBLE_FAULT_VECTOR			8
-#define COPROCESSOR_SEGMENT_OVERRUN_VECTOR	9
+#define COPROC_SEGMENT_OVERRUN_VECTOR		9
 #define INVALID_TSS_VECTOR			10
 #define SEGMENT_NOT_PRESENT_VECTOR		11
 #define STACK_SEGMENT_VECTOR			12
@@ -43,9 +43,12 @@
 #define ALIGNMENT_CHECK_VECTOR			17
 #define MACHINE_CHECK_VECTOR			18
 #define SIMD_COPROCESSOR_ERROR_VECTOR		19
-/* [20,31] are reserved by x86_64 architecture for future use */
-/* [32,238] are free */
-#define LOCAL_TIMER_VECTOR			239
+/*
+ * [20,31]   Reserved by x86_64 architecture for future use
+ * [32,238]  Free for use by devices
+ * [239,255] Used by LWK for various internal purposes
+ */
+#define APIC_TIMER_VECTOR			239
 #define INVALIDATE_TLB_0_VECTOR			240
 #define INVALIDATE_TLB_1_VECTOR			241
 #define INVALIDATE_TLB_2_VECTOR			242
@@ -54,18 +57,19 @@
 #define INVALIDATE_TLB_5_VECTOR			245
 #define INVALIDATE_TLB_6_VECTOR			246
 #define INVALIDATE_TLB_7_VECTOR			247
-/* 248 is free */
-#define THRESHOLD_APIC_VECTOR			249
-#define THERMAL_APIC_VECTOR			250
-/* 251 is free */
+/* 248 is available */
+#define APIC_PERF_COUNTER_VECTOR		249
+#define APIC_THERMAL_VECTOR			250
+/* 251 is available */
 #define CALL_FUNCTION_VECTOR			252
 #define RESCHEDULE_VECTOR			253
-#define ERROR_APIC_VECTOR			254
-#define SPURIOUS_APIC_VECTOR			255
+#define APIC_ERROR_VECTOR			254
+#define APIC_SPURIOUS_VECTOR			255
 
 /**
  * Meta-defines describing the interrupt vector space defined above.
  */
+#define NUM_IDT_ENTRIES				256
 #define FIRST_EXTERNAL_VECTOR			32
 #define FIRST_SYSTEM_VECTOR			239
 #define INVALIDATE_TLB_VECTOR_START		240

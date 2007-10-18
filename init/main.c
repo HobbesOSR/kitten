@@ -60,8 +60,13 @@ start_kernel()
 	/*
  	 * Initialize CPU exceptions/interrupts/traps.
  	 */
-	trap_init();
+	//trap_init();
+	interrupts_init();
+	cpu_init();
 
+
+	lapic_set_timer(1000000000);
+	local_irq_enable();
 	printk("Spinning forever...\n");
 	while (1) {}
 }

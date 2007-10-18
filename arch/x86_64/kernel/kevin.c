@@ -61,8 +61,8 @@ syscall_init(void)
 {
 	wrmsrl(MSR_STAR,  ((u64)__USER32_CS)<<48 | /* SYSRET  CS+SS */
 	                  ((u64)__KERNEL_CS)<<32); /* SYSCALL CS+SS */
-	wrmsrl(MSR_LSTAR, system_call);            /* SYSCALL RIP */
-	wrmsrl(MSR_CSTAR, ignore_sysret);          /* RIP for compat. mode */
+	wrmsrl(MSR_LSTAR, asm_syscall);            /* SYSCALL RIP */
+	wrmsrl(MSR_CSTAR, asm_syscall_ignore);     /* RIP for compat. mode */
 
 	/* RFLAGS to clear on SYSCALL */
 	wrmsrl(MSR_SYSCALL_MASK, EF_TF|EF_DF|EF_IE|0x3000);

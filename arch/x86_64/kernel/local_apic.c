@@ -3,6 +3,7 @@
 #include <lwk/resource.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/smp.h>
+#include <lwk/delay.h>
 #include <arch/page.h>
 #include <arch/pgtable.h>
 #include <arch/fixmap.h>
@@ -90,37 +91,40 @@ lapic_init(void)
 	 * This also enables the local APIC.
  	 */
 	val = apic_read(APIC_SPIV) & ~APIC_VECTOR_MASK;
-	val |= (APIC_SPIV_APIC_ENABLED | SPURIOUS_APIC_VECTOR);
+	val |= (APIC_SPIV_APIC_ENABLED | APIC_SPURIOUS_VECTOR);
 	apic_write(APIC_SPIV, val);
 
 	/* Setup LVT[0] = APIC Timer Interrupt */
 	apic_write(APIC_LVTT, 0
 	             | APIC_DM_FIXED       /* route to fixed IDT vector */
-	             | LOCAL_TIMER_VECTOR  /* IDT vector to route to */
+	             | APIC_TIMER_VECTOR   /* IDT vector to route to */
 	             | APIC_LVT_MASKED     /* initially disable */
 	);
 
 	/* Setup LVT[1] = Thermal Sensor Interrupt */
 	apic_write(APIC_LVTTHMR, 0
 	             | APIC_DM_FIXED       /* route to fixed IDT vector */     
-	             | THERMAL_APIC_VECTOR /* IDT vector to route to */
+	             | APIC_THERMAL_VECTOR /* IDT vector to route to */
 	);
 
 	/* Setup LVT[2] = Performance Counter Interrupt */
 	apic_write(APIC_LVTPC, 0
 	             | APIC_DM_NMI         /* treat as non-maskable interrupt */
+	                                   /* NMIs are routed to IDT vector 2 */
 	             | APIC_LVT_MASKED     /* initially disable */
 	);
 
 	/* Setup LVT[3] = Local Interrupt Pin 0 */
 	apic_write(APIC_LVT0, 0
-	             | APIC_DM_EXTINT      /* hooked up to old 8259A PIC */
+	             | APIC_DM_EXTINT      /* hooked up to old 8259A PIC   */
+	                                   /* IDT vector provided by 8259A */
 	             | APIC_LVT_MASKED     /* disable */
 	);
 
 	/* Setup LVT[4] = Local Interrupt Pin 1 */
 	apic_write(APIC_LVT1, 0
 	             | APIC_DM_NMI         /* treat as non-maskable interrupt */
+	                                   /* NMIs are routed to IDT vector 2 */
 	             | ((cpu_id() != 0)
 	                 ? APIC_LVT_MASKED /* mask on all but bootstrap CPU */
 	                 : 0)              /* bootstrap CPU (0) receives NMIs */
@@ -129,10 +133,62 @@ lapic_init(void)
 	/* Setup LVT[5] = Internal APIC Error Detector Interrupt */
 	apic_write(APIC_LVTERR, 0
 	             | APIC_DM_FIXED       /* route to fixed IDT vector */
-	             | ERROR_APIC_VECTOR   /* IDT vector to route to */
+	             | APIC_ERROR_VECTOR   /* IDT vector to route to */
 	);
 	apic_write(APIC_ESR, 0); /* spec says to clear after enabling LVTERR */
 }
+
+
+void __init
+lapic_set_timer(uint32_t count)
+{
+	uint32_t lvt;
+
+	/* Setup Divide Count Register to use the bus frequency directly. */
+	apic_write(APIC_TDCR, APIC_TDR_DIV_1);
+
+	/* Program the initial count register */
+	apic_write(APIC_TMICT, count);
+
+	/* Enable the local APIC timer */
+	lvt = apic_read(APIC_LVTT);
+	lvt &= ~APIC_LVT_MASKED;
+	lvt |= APIC_LVT_TIMER_PERIODIC;
+	apic_write(APIC_LVTT, lvt);
+}
+
+
+/* why unsigned long? */
+unsigned long
+lapic_wait4_icr_idle_safe(void)
+{
+	unsigned long send_status;
+	int timeout;
+
+	timeout = 0;
+	do {
+		send_status = apic_read(APIC_ICR) & APIC_ICR_BUSY;
+		if (!send_status)
+			break;
+		udelay(100);
+	} while (timeout++ < 1000);
+
+	return send_status;
+}
+
+
+/**
+ * Returns the number of entries in the Local Vector Table minus one.
+ * 
+ * This should return 5 or higher on all x86_64 CPUs.
+ * 6 is returned if the APIC Thermal Interrupt is supported, 5 otherwise.
+ */
+unsigned int
+lapic_get_maxlvt(void)
+{
+	return GET_APIC_MAXLVT(apic_read(APIC_LVR));
+}
+
 
 /**
  * Converts an entry in a local APIC's Local Vector Table to a
@@ -148,7 +204,7 @@ lvt_stringify(uint32_t entry, char *buf)
 			entry & APIC_VECTOR_MASK
 		);
 	} else if (delivery_mode == APIC_MODE_NMI) {
-		sprintf(buf, "NMI"); 
+		sprintf(buf, "NMI   -> IDT VECTOR 2"); 
 	} else if (delivery_mode == APIC_MODE_EXTINT) {
 		sprintf(buf, "ExtINT, hooked to old 8259A PIC");
 	} else {

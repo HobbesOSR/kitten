@@ -45,25 +45,24 @@ static __inline unsigned int apic_read(unsigned long reg)
 	return *((volatile unsigned int *)(APIC_BASE+reg));
 }
 
-static __inline__ void apic_wait_icr_idle(void)
+static __inline__ void lapic_wait4_icr_idle(void)
 {
 	while ( apic_read( APIC_ICR ) & APIC_ICR_BUSY );
 }
+extern unsigned long lapic_wait4_icr_idle_safe(void);
 
-static inline void ack_APIC_irq(void)
+static inline void lapic_ack_interrupt(void)
 {
 	/*
-	 * ack_APIC_irq() actually gets compiled as a single instruction:
-	 * - a single rmw on Pentium/82489DX
-	 * - a single write on P6+ cores (CONFIG_X86_GOOD_APIC)
-	 * ... yummie.
+	 * This gets compiled to a single instruction:
+	 * 	movl   $0x0,0xffffffffffdfe0b0
+	 *
+	 * Docs say use 0 for future compatibility.
 	 */
-
-	/* Docs say use 0 for future compatibility */
 	apic_write(APIC_EOI, 0);
 }
 
-extern int get_maxlvt (void);
+extern unsigned int lapic_get_maxlvt(void);
 extern void clear_local_APIC (void);
 extern void connect_bsp_APIC (void);
 extern void disconnect_bsp_APIC (int virt_wire_setup);
