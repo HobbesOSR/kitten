@@ -114,15 +114,9 @@ extern int __lockfunc generic__raw_read_trylock(raw_rwlock_t *lock);
 #define write_lock(lock)		_write_lock(lock)
 #define read_lock(lock)			_read_lock(lock)
 
-#if defined(CONFIG_DEBUG_SPINLOCK)
 #define spin_lock_irqsave(lock, flags)	flags = _spin_lock_irqsave(lock)
 #define read_lock_irqsave(lock, flags)	flags = _read_lock_irqsave(lock)
 #define write_lock_irqsave(lock, flags)	flags = _write_lock_irqsave(lock)
-#else
-#define spin_lock_irqsave(lock, flags)	_spin_lock_irqsave(lock, flags)
-#define read_lock_irqsave(lock, flags)	_read_lock_irqsave(lock, flags)
-#define write_lock_irqsave(lock, flags)	_write_lock_irqsave(lock, flags)
-#endif
 
 #define spin_lock_irq(lock)		_spin_lock_irq(lock)
 #define spin_lock_bh(lock)		_spin_lock_bh(lock)

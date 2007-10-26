@@ -38,8 +38,8 @@ show_registers(struct pt_regs * regs)
 	unsigned int fsindex, gsindex;
 	unsigned int ds, cs, es;
 
-	printk("Pid: %d, comm: %.20s %s\n",
-		current->pid, current->name, UTS_RELEASE);
+	printk("Task ID: %d, Task Name: %.20s %s\n",
+		current->task_id, current->task_name, UTS_RELEASE);
 	printk("RIP: %04lx:[<%016lx>] ", regs->cs & 0xffff, regs->rip);
 	printk_address(regs->rip);
 	printk("RSP: %04lx:%016lx  EFLAGS: %08lx\n", regs->ss, regs->rsp,

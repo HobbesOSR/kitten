@@ -8,19 +8,14 @@
  *	depends wildly on alignment on many x86 processors. 
  */
 
-// #include <linux/sched.h>
+#include <lwk/smp.h>
+#include <lwk/cpuinfo.h>
 #include <lwk/delay.h>
 #include <arch/msr.h>
 #include <arch/processor.h>
 #include <arch/smp.h>
 
-int read_current_timer(unsigned long *timer_value)
-{
-	rdtscll(*timer_value);
-	return 0;
-}
-
-void __delay(unsigned long loops)
+void __delay(unsigned long cycles)
 {
 	unsigned bclock, now;
 	
@@ -30,13 +25,15 @@ void __delay(unsigned long loops)
 		rep_nop(); 
 		rdtscl(now);
 	}
-	while((now-bclock) < loops);
+	while((now-bclock) < cycles);
 }
 
-inline void __const_udelay(unsigned long xloops)
+inline void __const_udelay(unsigned long xsecs)
 {
-//	__delay((xloops * HZ * cpu_data[raw_smp_processor_id()].loops_per_jiffy) >> 32);
-	__delay((xloops * 1000) >> 32);
+	__delay(
+	  (xsecs * cpu_info[cpu_id()].arch.cur_freq * 1000) /* cycles * 2**32 */
+	  >> 32                                             /* div by 2**32 */
+	);
 }
 
 void __udelay(unsigned long usecs)
@@ -48,3 +45,4 @@ void __ndelay(unsigned long nsecs)
 {
 	__const_udelay(nsecs * 0x00005);  /* 2**32 / 1000000000 (rounded up) */
 }
+

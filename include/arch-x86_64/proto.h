@@ -15,8 +15,6 @@ extern unsigned long end_pfn_map;
 
 extern void init_resources(void);
 
-void __init zap_low_mappings(int cpu);
-
 extern unsigned long ebda_addr, ebda_size;
 
 extern int unhandled_signal(struct task_struct *tsk, int sig);
@@ -25,5 +23,7 @@ extern void asm_syscall(void);
 extern void asm_syscall_ignore(void);
 
 extern unsigned long __phys_addr(unsigned long virt_addr);
+
+void __init interrupts_init(void);
 
 #endif

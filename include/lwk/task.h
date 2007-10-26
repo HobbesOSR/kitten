@@ -46,25 +46,20 @@ struct sighand_struct {
  * Task structure (aka Process Control Block).
  * There is one of these for each OS-managed thread of execution in the
  * system.  A task is a generic "context of execution"... it can either
- * represent a process, thread, or something inbetween.
+ * represent a process, thread, or something in-between.
  */
 struct task_struct {
-	uint32_t		pid;	/* Process ID */
-	uint32_t		tid;	/* Thread ID */
-	uint32_t		uid;	/* User ID */
-	uint32_t		gid;	/* Group ID */
-	uint32_t		cpu;	/* CPU task is running on */
+	uint32_t		task_id;
+	char			task_name[TASK_NAME_LENGTH];
 
-	struct mm_struct *	mm;	/* Memory management info */
+	struct mm_struct        *mm;        /* memory management info */
+	struct sighand_struct   *sighand;   /* signal handler info */
 
+	uint32_t		cpu;        /* CPU task is running on */
 	unsigned long		ptrace;
-	struct sighand_struct *	sighand;
-
-	char			name[TASK_NAME_LENGTH];
-
 	uint32_t		flags;
 
-	struct arch_task	arch;	/* arch specific task info */
+	struct arch_task	arch;       /* arch specific task info */
 };
 
 union task_union {
@@ -82,7 +77,7 @@ extern struct mm_struct init_mm;
 static inline int
 is_init(struct task_struct *tsk)
 {
-	return (tsk->pid == 1);
+	return (tsk->task_id == 1);
 }
 
 #define clear_stopped_child_used_math(child) do { (child)->flags &= ~PF_USED_MATH; } while (0)

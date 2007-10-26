@@ -33,7 +33,7 @@ static inline struct task_struct *
 get_current_via_RSP(void)
 {
 	struct task_struct *tsk;
-	__asm__("andq %%rsp,%0; ":"=r" (tsk) : "0" (~(TASK_SIZE - 1)));
+	__asm__("andq %%rsp,%0; " : "=r" (tsk) : "0" (~(TASK_SIZE - 1)));
 	return tsk;
 }
 

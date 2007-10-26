@@ -235,6 +235,10 @@ static inline unsigned int cpuid_edx(unsigned int op)
 #define MSR_K8_TOP_MEM2		   0xC001001D
 #define MSR_K8_SYSCFG		   0xC0010010
 #define MSR_K8_HWCR		   0xC0010015
+#define MSR_K8_FIDVID_STATUS	   0xC0010042
+
+/* AMD K10 MSRs */
+#define MSR_K10_COFVID_STATUS		0xC0010071
 
 /* K6 MSRs */
 #define MSR_K6_EFER			0xC0000080

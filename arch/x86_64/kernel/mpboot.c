@@ -1,109 +1,87 @@
 #include <lwk/kernel.h>
 #include <lwk/init.h>
+#include <lwk/cpuinfo.h>
+#include <lwk/smp.h>
 #include <lwk/delay.h>
+#include <lwk/bootmem.h>
+#include <lwk/task.h>
 #include <arch/atomic.h>
 #include <arch/apicdef.h>
 #include <arch/apic.h>
+#include <arch/desc.h>
 
+/**
+ * MP boot trampoline 80x86 program as an array.
+ */
+extern unsigned char trampoline_data[];
+extern unsigned char trampoline_end[];
 
-static atomic_t init_deasserted;
+/**
+ * These specify the initial stack pointer and instruction pointer for a
+ * newly booted CPU.
+ */
+extern volatile unsigned long init_rsp;
+extern void (*initial_code)(void);
 
-
-int __init
-boot_cpu(int phys_apicid, unsigned int start_rip)
+void __init
+start_secondary(void)
 {
-	unsigned long send_status, accept_status = 0;
-	int maxlvt, num_starts, j;
+	cpu_init();
+	cpu_set(cpu_id(), cpu_online_map);
+	cpu_idle();
+}
 
-	printk("Asserting INIT.\n");
-
-	/*
-	 * Turn INIT on target chip
-	 */
-	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(phys_apicid));
-
-	/*
-	 * Send IPI
-	 */
-	apic_write(APIC_ICR, APIC_INT_LEVELTRIG | APIC_INT_ASSERT
-				| APIC_DM_INIT);
-
-	printk("Waiting for send to finish...\n");
-	send_status = lapic_wait4_icr_idle_safe();
-
-	mdelay(10);
-
-	printk("Deasserting INIT.\n");
-
-	/* Target chip */
-	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(phys_apicid));
-
-	/* Send IPI */
-	apic_write(APIC_ICR, APIC_INT_LEVELTRIG | APIC_DM_INIT);
-
-	printk("Waiting for send to finish...\n");
-	send_status = lapic_wait4_icr_idle_safe();
-
-	mb();
-	atomic_set(&init_deasserted, 1);
-
-	num_starts = 2;
+void __init
+arch_boot_cpu(unsigned int cpu)
+{
+	union task_union *new_task_union;
+	struct task_struct *new_task;
+	int timeout;
 
 	/*
-	 * Run STARTUP IPI loop.
+	 * Setup the 'trampoline' cpu boot code. The trampoline contains the
+	 * first code executed by the CPU being booted. x86 CPUs boot in
+	 * pre-historic 16-bit 'real mode'... the trampoline does the messy
+	 * work to get us to 64-bit long mode and then calls the *initial_code
+	 * kernel entry function.
 	 */
-	printk("#startup loops: %d.\n", num_starts);
+	memcpy(__va(SMP_TRAMPOLINE_BASE), trampoline_data,
+	                                  trampoline_end - trampoline_data
+	);
 
-	maxlvt = lapic_get_maxlvt();
+	/*
+	 * Allocate memory for the new CPU's GDT.
+	 */
+	cpu_gdt_descr[cpu].address = (unsigned long)
+	                             alloc_bootmem_aligned(PAGE_SIZE, PAGE_SIZE);
 
-	for (j = 1; j <= num_starts; j++) {
-		printk("Sending STARTUP #%d.\n",j);
-		apic_write(APIC_ESR, 0);
-		apic_read(APIC_ESR);
-		printk("After apic_write.\n");
+	/*
+	 * Allocate memory for the new CPU's idle task.
+	 */
+	new_task_union = alloc_bootmem_aligned( sizeof(*new_task_union),
+	                                        sizeof(*new_task_union) );
+	memset(new_task_union, 0, sizeof(*new_task_union));
+	new_task = &new_task_union->task_info;
 
-		/*
-		 * STARTUP IPI
-		 */
+	/*
+	 * Initialize the bare minimum info needed to boot the new CPU.
+	 */
+	new_task->task_id = 0;
+	new_task->mm      = &init_mm;
+	new_task->cpu     = cpu;
+	strcpy(new_task->task_name, "Idle Task");
 
-		/* Target chip */
-		apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(phys_apicid));
+	/*
+	 * Set the initial kernel entry point and stack pointer for the new CPU.
+	 */
+	initial_code = start_secondary;
+	init_rsp     = (unsigned long)new_task_union
+	                                  + sizeof(union task_union) - 1;
 
-		/* Boot on the stack */
-		/* Kick the second */
-		apic_write(APIC_ICR, APIC_DM_STARTUP | (start_rip >> 12));
-
-		/*
-		 * Give the other CPU some time to accept the IPI.
-		 */
-		udelay(300);
-
-		printk("Startup point 1.\n");
-
-		printk("Waiting for send to finish...\n");
-		send_status = lapic_wait4_icr_idle_safe();
-
-		/*
-		 * Give the other CPU some time to accept the IPI.
-		 */
-		udelay(200);
-		/*
-		 * Due to the Pentium erratum 3AP.
-		 */
-		if (maxlvt > 3) {
-			apic_write(APIC_ESR, 0);
-		}
-		accept_status = (apic_read(APIC_ESR) & 0xEF);
-		if (send_status || accept_status)
-			break;
-	}
-	printk("After Startup.\n");
-
-	if (send_status)
-		printk(KERN_ERR "APIC never delivered???\n");
-	if (accept_status)
-		printk(KERN_ERR "APIC delivery error (%lx).\n", accept_status);
-
-	return (send_status | accept_status);
+	/*
+	 * Boot it!
+	 */
+	if (lapic_send_startup_ipi(cpu, SMP_TRAMPOLINE_BASE))
+		panic("Failed to send STARTUP IPI.");
 }
 

@@ -10,9 +10,8 @@
  * Initializes architecture-independent fields in the initial task structure.
  */
 #define INIT_TASK(name) \
-	.pid		=	0,					\
-	.tid		=	0,					\
-	.uid		=	0,					\
+	.task_id	=	0,					\
+	.task_name	=	"idle task",				\
 	.cpu		=	0,					\
 	.mm		=	&init_mm,				\
 

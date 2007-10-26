@@ -9,6 +9,7 @@
 #include <arch/smp.h>
 #include <arch/proto.h>
 #include <arch/mpspec.h>
+#include <arch/pda.h>
 
 /**
  * Bitmap of of PTE/PMD entry flags that are supported.
@@ -44,10 +45,10 @@ discover_ebda(void)
 	 * There is a real-mode segmented pointer pointing to the 
 	 * 4K EBDA area at 0x40E
 	 */
-	ebda_addr = *(unsigned short *)EBDA_ADDR_POINTER;
+	ebda_addr = *(unsigned short *)__va(EBDA_ADDR_POINTER);
 	ebda_addr <<= 4;
 
-	ebda_size = *(unsigned short *)(unsigned long)ebda_addr;
+	ebda_size = *(unsigned short *)__va(ebda_addr);
 
 	/* Round EBDA up to pages */
 	if (ebda_size == 0)
@@ -106,7 +107,7 @@ reserve_memory(void)
 		reserve_bootmem(ebda_addr, ebda_size);
 
 	/* Reserve SMP trampoline */
-	reserve_bootmem(SMP_TRAMPOLINE_BASE, PAGE_SIZE);
+	reserve_bootmem(SMP_TRAMPOLINE_BASE, 2*PAGE_SIZE);
 
 	/* Find and reserve boot-time SMP configuration */
 	find_mp_config();
@@ -126,6 +127,57 @@ reserve_memory(void)
 			initrd_start = 0;
 		}
 	}
+}
+
+/**
+ * This initializes a per-CPU area for each CPU.
+ *
+ * TODO: The PDA and per-CPU areas are pretty tightly wound.  It should be
+ *       possible to make the per-CPU area *be* the PDA, or put another way,
+ *       point %GS at the per-CPU area rather than the PDA.  All of the PDA's
+ *       current contents would become normal per-CPU variables.
+ */
+static void __init
+setup_per_cpu_areas(void)
+{ 
+	int i;
+	unsigned long size;
+
+	/*
+ 	 * There is an ELF section containing all per-CPU variables
+ 	 * surrounded by __per_cpu_start and __per_cpu_end symbols.
+ 	 * We create a copy of this ELF section for each CPU.
+ 	 */
+	size = ALIGN(__per_cpu_end - __per_cpu_start, SMP_CACHE_BYTES);
+
+	for_each_cpu_mask (i, cpu_present_map) {
+		char *ptr;
+
+		ptr = alloc_bootmem_aligned(size, PAGE_SIZE);
+		if (!ptr)
+			panic("Cannot allocate cpu data for CPU %d\n", i);
+
+		/*
+ 		 * Pre-bias data_offset by subtracting its offset from
+ 		 * __per_cpu_start.  Later, per_cpu() will calculate a
+ 		 * per_cpu variable's address with:
+ 		 * 
+ 		 * addr = offset_in_percpu_ELF_section + data_offset
+ 		 *      = (__per_cpu_start + offset)   + (ptr - __per_cpu_start)
+ 		 *      =                    offset    +  ptr
+ 		 */
+		cpu_pda(i)->data_offset = ptr - __per_cpu_start;
+
+		memcpy(ptr, __per_cpu_start, __per_cpu_end - __per_cpu_start);
+	}
+} 
+
+static inline int get_family(int cpuid)
+{       
+        int base = (cpuid>>8) & 0xf;
+        int extended = (cpuid>>20) &0xff;
+                        
+        return (0xf == base) ? base + extended : base;
 }
 
 /**
@@ -170,14 +222,6 @@ setup_arch(void)
 	init_kernel_pgtables(0, (end_pfn_map << PAGE_SHIFT));
 
 	/*
- 	 * It's now safe to destroy the virtual memory mappings from
- 	 * [0, PAGE_OFFSET).  From here on out, the kernel accesses memory
- 	 * using the identity map that we just set up, i.e., in the (virtual)
- 	 * region [PAGE_OFFSET, TOP_OF_MEMORY).
- 	 */
-	zap_low_mappings(0);
-	
-	/*
  	 * Initialize the bootstrap dynamic memory allocator.
  	 * alloc_bootmem() will work after this.
  	 */
@@ -198,5 +242,26 @@ setup_arch(void)
 	 * conflicts... e.g., two devices trying to use the same iomem region.
 	 */
 	init_resources();
+
+	/*
+ 	 * Initialize per-CPU areas, one per CPU.
+ 	 * Variables defined with DEFINE_PER_CPU() end up in the per-CPU area.
+ 	 * This provides a mechanism for different CPUs to refer to their
+ 	 * private copy of the variable using the same name
+ 	 * (e.g., get_cpu_var(foo)).
+ 	 */
+	setup_per_cpu_areas();
+
+	/*
+	 * Initialize the IDT table and interrupt handlers.
+	 */
+	interrupts_init();
+
+	/*
+	 * Map the local APIC into the kernel page tables.
+	 */
+	lapic_map();
+
+	cpu_init();
 }
 

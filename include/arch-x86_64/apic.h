@@ -1,7 +1,7 @@
 #ifndef __ASM_APIC_H
 #define __ASM_APIC_H
 
-// #include <linux/pm.h>
+#include <lwk/init.h>
 #include <arch/fixmap.h>
 #include <arch/apicdef.h>
 #include <arch/system.h>
@@ -49,7 +49,7 @@ static __inline__ void lapic_wait4_icr_idle(void)
 {
 	while ( apic_read( APIC_ICR ) & APIC_ICR_BUSY );
 }
-extern unsigned long lapic_wait4_icr_idle_safe(void);
+extern unsigned int lapic_wait4_icr_idle_safe(void);
 
 static inline void lapic_ack_interrupt(void)
 {
@@ -108,5 +108,12 @@ void switch_ipi_to_APIC_timer(void *cpumask);
 #define ARCH_APICTIMER_STOPS_ON_C3	1
 
 extern unsigned boot_cpu_id;
+
+extern void __init lapic_map(void);
+extern void __init lapic_init(void);
+extern void lapic_set_timer(uint32_t count);
+extern void lapic_dump(void);
+extern uint32_t lapic_send_startup_ipi(unsigned int cpu,
+                                       unsigned long start_rip);
 
 #endif /* __ASM_APIC_H */

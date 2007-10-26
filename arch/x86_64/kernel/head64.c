@@ -11,7 +11,9 @@
 #include <arch/processor.h>
 #include <arch/desc.h>
 #include <arch/proto.h>
-
+#include <arch/page.h>
+#include <arch/pgtable.h>
+#include <arch/tlbflush.h>
 
 /**
  * Data passed to the kernel by the bootloader.
@@ -20,7 +22,6 @@
  *       kernel bootstrap process is complete.
  */
 char x86_boot_params[BOOT_PARAM_SIZE] __initdata = {0,};
-
 
 /**
  * Interrupt Descriptor Table (IDT) descriptor.
@@ -31,25 +32,30 @@ char x86_boot_params[BOOT_PARAM_SIZE] __initdata = {0,};
  */
 struct desc_ptr idt_descr = { 256 * 16 - 1, (unsigned long) idt_table };
 
+/**
+ * Array of pointers to each CPU's per-processor data area.
+ * The array is indexed by CPU ID.
+ */
+struct x8664_pda *_cpu_pda[NR_CPUS] __read_mostly;
 
 /**
- * Array of exception stacks.
+ * Array of per-processor data area structures, one per CPU.
+ * The array is indexed by CPU ID.
  */
-char boot_exception_stacks[(N_EXCEPTION_STACKS - 1) * EXCEPTION_STKSZ + DEBUG_STKSZ]
-__attribute__((section(".bss.page_aligned")));
-
+struct x8664_pda boot_cpu_pda[NR_CPUS] __cacheline_aligned;
 
 /**
- * Package ID of each logical CPU.
+ * This unmaps virtual addresses [0,512GB) by clearing the first entry in the
+ * PGD/PML4T. After this executes, accesses to virtual addresses [0,512GB) will
+ * cause a page fault.
  */
-uint16_t phys_proc_id[NR_CPUS] __read_mostly = { [0 ... NR_CPUS-1] = BAD_APICID };
-
-
-/**
- * Core ID of each logical CPU.
- */
-uint16_t cpu_core_id[NR_CPUS] __read_mostly = { [0 ... NR_CPUS-1] = BAD_APICID };
-
+static void __init
+zap_identity_mappings(void)
+{
+	pgd_t *pgd = pgd_offset_k(0UL);
+	pgd_clear(pgd);
+	__flush_tlb();
+}
 
 /**
  * Determines the address of the kernel boot command line.
@@ -57,20 +63,17 @@ uint16_t cpu_core_id[NR_CPUS] __read_mostly = { [0 ... NR_CPUS-1] = BAD_APICID }
 static char * __init
 find_command_line(void)
 {
-	int new_data;
-	char *command_line;
+	unsigned long new_data;
 
-	new_data = *(int *) (x86_boot_params + NEW_CL_POINTER);
+	new_data = *(u32 *) (x86_boot_params + NEW_CL_POINTER);
 	if (!new_data) {
 		if (OLD_CL_MAGIC != * (u16 *) OLD_CL_MAGIC_ADDR) {
 			return NULL;
 		}
 		new_data = OLD_CL_BASE_ADDR + * (u16 *) OLD_CL_OFFSET;
 	}
-	command_line = (char *) ((u64)(new_data));
-	return command_line;
+	return __va(new_data);
 }
-
 
 /**
  * This is the initial C entry point to the kernel.
@@ -88,12 +91,10 @@ x86_64_start_kernel(char * real_mode_data)
 	memset(__bss_start, 0,
 	       (unsigned long) __bss_stop - (unsigned long) __bss_start);
 
-#if 0
 	/*
 	 * Make NULL pointer dereferences segfault.
 	 */
 	zap_identity_mappings();
-#endif
 
 	/*
 	 * Setup the initial interrupt descriptor table (IDT).
@@ -108,33 +109,25 @@ x86_64_start_kernel(char * real_mode_data)
  	 */
 	for (i = 0; i < NR_CPUS; i++)
 		cpu_pda(i) = &boot_cpu_pda[i];
-	pda_init(0);
+	pda_init(0, &init_task_union.task_info);
 
 	/*
- 	 * Store a copy of the data passed in by the bootloader.
-	 * real_mode_data will get clobbered eventually when the
-	 * memory subsystem is initialized.
+	 * Make a copy data passed by the bootloader.
+	 * real_mode_data will get clobbered eventually when the memory
+	 * subsystem is initialized.
 	 */
-	memcpy(x86_boot_params, real_mode_data, sizeof(x86_boot_params));
-
+	memcpy(x86_boot_params, __va(real_mode_data), sizeof(x86_boot_params));
+	memcpy(lwk_command_line, find_command_line(), sizeof(lwk_command_line));
+	
 	/*
  	 * Tell the VGA driver the starting line number... this avoids
-	 * overwriting BIOS and bootloader messages.  Use of SCREEN_INFO
-	 * requires that x86_boot_params has been initialized.
+	 * overwriting BIOS and bootloader messages. 
 	 */
 	param_set_by_name_int("vga.row", SCREEN_INFO.orig_y);
 
-	/*
-	 * Mark the boot CPU up... kinda.
-	 */
-	cpu_set(0, cpu_online_map);
-
-	/* Stash away the kernel boot command line. */
-	memcpy(lwk_command_line, find_command_line(), sizeof(lwk_command_line));
-
 	/* 
- 	 * Okay... we've done the bare essentials.  Call into the 
- 	 * platform-independent bootstrap function.  This will in turn
+ 	 * Okay... we've done the bare essentials. Call into the 
+ 	 * platform-independent bootstrap function. This will in turn
  	 * call back into architecture dependent code to do things like
  	 * initialize interrupts and boot CPUs. 
  	 */

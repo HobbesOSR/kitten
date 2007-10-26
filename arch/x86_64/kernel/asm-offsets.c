@@ -45,7 +45,7 @@ int main(void)
 	ENTRY(flags); 
 	ENTRY(thread); 
 #endif
-	ENTRY(pid);
+	ENTRY(task_id);
 	BLANK();
 #undef ENTRY
 #define ENTRY(entry) DEFINE(tsk_arch_ ## entry, offsetof(struct task_struct, arch) + offsetof(struct arch_task, entry))

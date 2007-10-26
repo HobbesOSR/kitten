@@ -138,8 +138,7 @@ lapic_init(void)
 	apic_write(APIC_ESR, 0); /* spec says to clear after enabling LVTERR */
 }
 
-
-void __init
+void 
 lapic_set_timer(uint32_t count)
 {
 	uint32_t lvt;
@@ -158,11 +157,10 @@ lapic_set_timer(uint32_t count)
 }
 
 
-/* why unsigned long? */
-unsigned long
+unsigned int
 lapic_wait4_icr_idle_safe(void)
 {
-	unsigned long send_status;
+	unsigned int send_status;
 	int timeout;
 
 	timeout = 0;
@@ -189,6 +187,49 @@ lapic_get_maxlvt(void)
 	return GET_APIC_MAXLVT(apic_read(APIC_LVR));
 }
 
+/**
+ * Send a startup inter-processor interrupt.
+ * This is used during bootstrap to wakeup the AP CPUs.
+ */
+uint32_t __init
+lapic_send_startup_ipi(
+	unsigned int	cpu,		/* Logical CPU ID */
+	unsigned long	start_rip	/* Physical addr  */
+)
+{
+	uint32_t send_status, accept_status;
+	unsigned int maxlvt  = lapic_get_maxlvt();
+	unsigned int apic_id = cpu_info[cpu].arch.apic_id;
+
+	/* Clear errors */
+	apic_write(APIC_ESR, 0);
+	apic_read(APIC_ESR);
+
+	/* Set target CPU */
+	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+
+	/* Send Startup IPI to target CPU */
+	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+	apic_write(APIC_ICR, APIC_DM_STARTUP | (start_rip >> 12));
+	udelay(300);  /* Give AP CPU some time to accept the IPI */
+	send_status = lapic_wait4_icr_idle_safe();
+	udelay(300);  /* Give AP CPU some time to accept the IPI */
+
+	/* Fixup for Pentium erratum 3AP, clear errors */
+	if (maxlvt > 3)
+		apic_write(APIC_ESR, 0);
+
+	accept_status = (apic_read(APIC_ESR) & 0xEF);
+
+	if (send_status)
+		printk(KERN_ERR "STARTUP IPI ERROR: send_status=%x\n",
+		                send_status);
+	if (accept_status)
+		printk(KERN_ERR "STARTUP IPI ERROR: accept_status=%x\n",
+		                accept_status);
+
+	return (send_status | accept_status);
+}
 
 /**
  * Converts an entry in a local APIC's Local Vector Table to a

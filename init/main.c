@@ -5,7 +5,8 @@
 #include <lwk/cpuinfo.h>
 #include <lwk/percpu.h>
 #include <lwk/smp.h>
-DEFINE_PER_CPU(int, foo);
+#include <lwk/cpuinfo.h>
+#include <lwk/delay.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -22,6 +23,9 @@ char lwk_command_line[COMMAND_LINE_SIZE];
 void
 start_kernel()
 {
+	unsigned int cpu;
+	unsigned int timeout;
+
 	/*
  	 * Parse the kernel boot command line.
  	 * This is where boot-time configurable variables get set,
@@ -46,28 +50,35 @@ start_kernel()
 	 * This detects memory, CPUs, etc.
 	 */
 	setup_arch();
-	printk(KERN_INFO  "Number of CPUs: %d\n", num_cpus());
+	printk(KERN_INFO "Number of CPUs detected: %d\n", num_cpus());
 
 	/*
- 	 * Initialize per-CPU areas, one per CPU.
- 	 * Variables defined with DEFINE_PER_CPU() end up in the per-CPU area.
- 	 * This provides a mechanism for different CPUs to refer to their
- 	 * private copy of the variable using the same name
- 	 * (e.g., get_cpu_var(foo)).
- 	 */
-	setup_per_cpu_areas();
+	 * Boot all CPUs in the system, one at a time.
+	 */
+	for_each_cpu_mask(cpu, cpu_present_map) {
+		/* The bootstrap CPU (that's us) is already booted. */
+		if (cpu == 0)
+			continue;
 
-	/*
- 	 * Initialize CPU exceptions/interrupts/traps.
- 	 */
-	//trap_init();
-	interrupts_init();
-	cpu_init();
+		printk(KERN_DEBUG "Booting CPU %u.\n", cpu);
+		arch_boot_cpu(cpu);
+
+		/* Wait for ACK that CPU has booted (5 seconds max). */
+		for (timeout = 0; timeout < 50000; timeout++) {
+			if (cpu_isset(cpu, cpu_online_map))
+				break;
+			udelay(100);
+		}
+
+		if (!cpu_isset(cpu, cpu_online_map))
+			panic("Failed to boot CPU %d.\n", cpu);
+	}
 
 
 	lapic_set_timer(1000000000);
 	local_irq_enable();
-	printk("Spinning forever...\n");
-	while (1) {}
+
+	printk(KERN_DEBUG "Spinning forever...\n");
+	cpu_idle();
 }
 

@@ -80,18 +80,18 @@ early_identify_cpu(struct cpuinfo *c)
 		uint32_t misc;
 		cpuid(0x00000001, &tfms, &misc, &a->x86_capability[4],
 		      &a->x86_capability[0]);
-		a->x86 = (tfms >> 8) & 0xf;
-		a->x86_model = (tfms >> 4) & 0xf;
-		a->x86_mask = tfms & 0xf;
-		if (a->x86 == 0xf)
-			a->x86 += (tfms >> 20) & 0xff;
-		if (a->x86 >= 0x6)
+		a->x86_family = (tfms >> 8) & 0xf;
+		a->x86_model  = (tfms >> 4) & 0xf;
+		a->x86_mask   = tfms & 0xf;
+		if (a->x86_family == 0xf)
+			a->x86_family += (tfms >> 20) & 0xff;
+		if (a->x86_family >= 0x6)
 			a->x86_model += ((tfms >> 16) & 0xF) << 4;
 		if (a->x86_capability[0] & (1<<19)) 
 			a->x86_clflush_size = ((misc >> 8) & 0xff) * 8;
 	} else {
 		/* Have CPUID level 0 only - unheard of */
-		a->x86 = 4;
+		a->x86_family = 4;
 	}
 
 	c->phys_socket_id = (cpuid_ebx(1) >> 24) & 0xff;
@@ -263,7 +263,7 @@ print_arch_cpuinfo(struct cpuinfo *c)
 	       "model\t\t: %d\n"
 	       "model name\t: %s\n",
 		     a->x86_vendor_id[0] ? a->x86_vendor_id : "unknown",
-		     a->x86,
+		     a->x86_family,
 		     (int)a->x86_model,
 		     a->x86_model_id[0] ? a->x86_model_id : "unknown");
 	

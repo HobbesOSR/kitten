@@ -301,23 +301,3 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 		table_end   << PAGE_SHIFT);
 }
 
-/**
- * Destroys any virtual memory mappings from [0,PAGE_OFFSET).
- */
-void __init
-zap_low_mappings(int cpu)
-{
-	if (cpu == 0) {
-		pgd_t *pgd = pgd_offset_k(0UL);
-		pgd_clear(pgd);
-	} else {
-		/*
- 		 * For AP's, zap the low identity mappings by changing the cr3
- 		 * to init_level4_pgt and doing local flush tlb all.
- 		 */
-		asm volatile("movq %0,%%cr3" ::
-				"r" (__pa_symbol(&init_level4_pgt)));
-	}
-	__flush_tlb_all();
-}
-
