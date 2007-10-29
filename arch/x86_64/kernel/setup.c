@@ -200,7 +200,7 @@ setup_arch(void)
 	/*
  	 * Get the bare minimum info about the bootstrap CPU... the
  	 * one we're executing on right now.  Latter on, the full
- 	 * boot_cpu_info and cpu_info[boot_cpu_id] structures will be
+ 	 * boot_cpu_data and cpu_info[boot_cpu_id] structures will be
  	 * filled in completely.
  	 */
 	boot_cpu_data.logical_id = 0;
@@ -261,6 +261,11 @@ setup_arch(void)
 	 * Map the local APIC into the kernel page tables.
 	 */
 	lapic_map();
+
+	/*
+	 * Stop the ancient i8253 Programmable Interval Timer (PIT).
+	 */
+	pit_stop_timer0();
 
 	cpu_init();
 }

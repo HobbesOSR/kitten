@@ -36,7 +36,6 @@ arch_boot_cpu(unsigned int cpu)
 {
 	union task_union *new_task_union;
 	struct task_struct *new_task;
-	int timeout;
 
 	/*
 	 * Setup the 'trampoline' cpu boot code. The trampoline contains the

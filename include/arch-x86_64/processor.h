@@ -21,6 +21,7 @@
 /* #include <lwk/personality.h> */
 #include <lwk/cpumask.h>
 #include <lwk/cache.h>
+#include <lwk/cpuinfo.h>
 
 #define TF_MASK		0x00000100
 #define IF_MASK		0x00000200
@@ -93,7 +94,7 @@ extern struct cpuinfo_x86 cpu_data[];
 
 extern char ignore_irq13;
 
-extern void identify_cpu(struct cpuinfo_x86 *);
+extern void identify_cpu(void);
 extern void print_cpu_info(struct cpuinfo_x86 *);
 extern unsigned int init_intel_cacheinfo(struct cpuinfo_x86 *c);
 

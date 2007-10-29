@@ -175,7 +175,6 @@ void
 do_apic_timer(struct pt_regs *regs, unsigned int vector)
 {
 	printk("Got APIC Timer Interrupt, vector=%u\n", vector);
-	lapic_ack_interrupt();
 }
 
 void

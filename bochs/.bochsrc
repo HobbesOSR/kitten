@@ -16,7 +16,7 @@ vga_update_interval: 10
 
 # Dual CPU, dual core, one thread per core
 #cpu: count=2:2:1, ips=10000000, reset_on_triple_fault=1
-cpu: count=4:1:1, ips=10000000, reset_on_triple_fault=1
+cpu: count=2:1:1, ips=10000000, reset_on_triple_fault=1
 megs: 256
 
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14

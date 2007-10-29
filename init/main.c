@@ -74,7 +74,6 @@ start_kernel()
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
 
-
 	lapic_set_timer(1000000000);
 	local_irq_enable();
 

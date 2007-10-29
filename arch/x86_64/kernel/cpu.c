@@ -241,8 +241,6 @@ dbg_init(void)
 	set_debugreg(0UL, 7);
 }
 
-extern unsigned int pit_calibrate_tsc(void);
-
 void __init
 cpu_init(void)
 {
@@ -260,6 +258,7 @@ cpu_init(void)
 	printk(KERN_DEBUG "Initializing CPU#%u\n", cpu);
 
 	pda_init(cpu, me);	/* per-cpu data area */
+	identify_cpu();		/* determine cpu features via CPUID */
 	cr4_init();		/* control register 4 */
 	gdt_init();		/* global descriptor table */
 	idt_init();		/* interrupt descriptor table */

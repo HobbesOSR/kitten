@@ -145,7 +145,7 @@ MP_processor_info(struct mpc_config_processor *m)
 
 	/* Store ID information. */
 	cpu_info[cpu].logical_id   = cpu;
-	cpu_info[cpu].hw_id        = m->mpc_apicid;
+	cpu_info[cpu].physical_id  = m->mpc_apicid;
 	cpu_info[cpu].arch.apic_id = m->mpc_apicid;
 
 	printk(KERN_DEBUG
@@ -374,7 +374,7 @@ get_mp_config(void)
 		cpu_set(0, cpu_present_map);
 		physid_set(0, phys_cpu_present_map);
 		cpu_info[0].logical_id   = 0;
-		cpu_info[0].hw_id        = 0;
+		cpu_info[0].physical_id  = 0;
 		cpu_info[0].arch.apic_id = 0;
 		return;
 	}

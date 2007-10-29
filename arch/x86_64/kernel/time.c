@@ -12,6 +12,26 @@
 DEFINE_SPINLOCK(pit_lock);
 
 /**
+ * This stops the Programmable Interval Timer's periodic system timer
+ * (channel 0). Some systems, BOCHS included, are booted with the PIT system
+ * timer enabled. The LWK doesn't use the PIT, so this function is used during
+ * bootstrap to disable it.
+ */
+void __init
+pit_stop_timer0(void)
+{
+	unsigned long flags;
+	unsigned PIT_MODE = 0x43;
+	unsigned PIT_CH0  = 0x40;
+
+	spin_lock_irqsave(&pit_lock, flags);
+	outb_p(0x30, PIT_MODE);		/* mode 0 */
+	outb_p(0, PIT_CH0);		/* LSB system timer interval */
+	outb_p(0, PIT_CH0);		/* MSB system timer interval */
+	spin_unlock_irqrestore(&pit_lock, flags);
+}
+
+/**
  * This uses the Programmable Interval Timer that is standard on all
  * PC-compatible systems to determine the time stamp counter frequency.
  *
@@ -124,9 +144,12 @@ time_init(void)
 
 	cpu_khz = pit_calibrate_tsc();
 
-	cpu_info[cpu_id()].arch.cur_freq = cpu_khz;
+	cpu_info[cpu_id()].arch.cur_cpu_khz = cpu_khz;
+	cpu_info[cpu_id()].arch.max_cpu_khz = cpu_khz;
+	cpu_info[cpu_id()].arch.min_cpu_khz = cpu_khz;
+	cpu_info[cpu_id()].arch.tsc_khz     = cpu_khz;
 
 	printk(KERN_DEBUG "CPU %u frequency = %u KHz\n",
-		cpu_id(), cpu_info[cpu_id()].arch.cur_freq);
+		cpu_id(), cpu_info[cpu_id()].arch.cur_cpu_khz);
 }
 

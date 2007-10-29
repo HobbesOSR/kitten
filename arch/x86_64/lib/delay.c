@@ -31,7 +31,7 @@ void __delay(unsigned long cycles)
 inline void __const_udelay(unsigned long xsecs)
 {
 	__delay(
-	  (xsecs * cpu_info[cpu_id()].arch.cur_freq * 1000) /* cycles * 2**32 */
+	  (xsecs * cpu_info[cpu_id()].arch.tsc_khz * 1000)  /* cycles * 2**32 */
 	  >> 32                                             /* div by 2**32 */
 	);
 }
