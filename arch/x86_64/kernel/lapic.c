@@ -10,6 +10,7 @@
 #include <arch/apicdef.h>
 #include <arch/apic.h>
 #include <arch/idt_vectors.h>
+#include <arch/tsc.h>
 
 /**
  * Physical address of the local APIC memory mapping.
@@ -46,7 +47,7 @@ lapic_map(void)
 
 	/* Reserve physical memory used by the local APIC */
 	lapic_resource.start = lapic_phys_addr;
-	lapic_resource.end   = lapic_phys_addr + PAGE_SIZE - 1;
+	lapic_resource.end   = lapic_phys_addr + 4096 - 1;
 	request_resource(&iomem_resource, &lapic_resource);
 
 	/* Map local APIC into the kernel */ 
@@ -156,6 +157,56 @@ lapic_set_timer(uint32_t count)
 	apic_write(APIC_LVTT, lvt);
 }
 
+void
+lapic_stop_timer(void)
+{
+	uint32_t lvt;
+
+	/* Set the initial count to 0 */
+	apic_write(APIC_TMICT, 0);
+
+	/* Enable the local APIC timer */
+	lvt = apic_read(APIC_LVTT);
+	lvt |= APIC_LVT_MASKED;
+	apic_write(APIC_LVTT, lvt);
+}
+
+/**
+ * Detects the local APIC reference bus clock. The only sure-fire way to do
+ * this is to depend on some other absolute timing source. This function uses
+ * the CPU's cycle counter and the previously detected CPU clock frequency.
+ *
+ * NOTE: This assumes that the CPU's clock frequency has already been detected.
+ *       (i.e., cpu_info[cpu_id()].arch.tsc_khz has been initialized.
+ */
+unsigned int __init
+lapic_calibrate_timer(void)
+{
+	const unsigned int tick_count = 100000000;
+	cycles_t tsc_start, tsc_now;
+	uint32_t apic_start, apic_now;
+	unsigned int apic_Hz;
+
+	/* Start the APIC counter running for calibration */
+	lapic_set_timer(4000000000);
+
+	apic_start = apic_read(APIC_TMCCT);
+	tsc_start  = get_cycles_sync();
+
+	/* Spin until enough ticks for a meaningful result have elapsed */
+	do {
+		apic_now = apic_read(APIC_TMCCT);
+		tsc_now  = get_cycles_sync();
+	} while ( ((tsc_now    - tsc_start) < tick_count) &&
+	          ((apic_start - apic_now)  < tick_count) );
+
+	apic_Hz = (apic_start - apic_now) * 1000L *
+	          cpu_info[cpu_id()].arch.tsc_khz / (tsc_now - tsc_start);
+
+	lapic_stop_timer();
+
+	return (apic_Hz / 1000);
+}
 
 unsigned int
 lapic_wait4_icr_idle_safe(void)
@@ -174,7 +225,6 @@ lapic_wait4_icr_idle_safe(void)
 	return send_status;
 }
 
-
 /**
  * Returns the number of entries in the Local Vector Table minus one.
  * 
@@ -188,16 +238,43 @@ lapic_get_maxlvt(void)
 }
 
 /**
- * Send a startup inter-processor interrupt.
+ * Sends an INIT inter-processor interrupt.
  * This is used during bootstrap to wakeup the AP CPUs.
  */
-uint32_t __init
+void __init
+lapic_send_init_ipi(unsigned int cpu)
+{
+	uint32_t status;
+	unsigned int apic_id = cpu_info[cpu].arch.apic_id;
+
+	/* Turn on INIT at target CPU */
+	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+	apic_write(APIC_ICR, APIC_INT_LEVELTRIG | APIC_INT_ASSERT
+				| APIC_DM_INIT);
+	status = lapic_wait4_icr_idle_safe();
+	if (status)
+		panic("INIT IPI ERROR: failed to assert INIT. (%x)", status);
+	mdelay(10);
+
+	/* Turn off INIT at target CPU */
+	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+	apic_write(APIC_ICR, APIC_INT_LEVELTRIG | APIC_DM_INIT);
+	status = lapic_wait4_icr_idle_safe();
+	if (status)
+		panic("INIT IPI ERROR: failed to deassert INIT. (%x)", status);
+}
+
+/**
+ * Send a STARTUP inter-processor interrupt.
+ * This is used during bootstrap to wakeup the AP CPUs.
+ */
+void __init
 lapic_send_startup_ipi(
 	unsigned int	cpu,		/* Logical CPU ID */
 	unsigned long	start_rip	/* Physical addr  */
 )
 {
-	uint32_t send_status, accept_status;
+	uint32_t status;
 	unsigned int maxlvt  = lapic_get_maxlvt();
 	unsigned int apic_id = cpu_info[cpu].arch.apic_id;
 
@@ -212,23 +289,19 @@ lapic_send_startup_ipi(
 	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
 	apic_write(APIC_ICR, APIC_DM_STARTUP | (start_rip >> 12));
 	udelay(300);  /* Give AP CPU some time to accept the IPI */
-	send_status = lapic_wait4_icr_idle_safe();
+	status = lapic_wait4_icr_idle_safe();
+	if (status)
+		panic("STARTUP IPI ERROR: failed to send. (%x)", status);
 	udelay(300);  /* Give AP CPU some time to accept the IPI */
 
 	/* Fixup for Pentium erratum 3AP, clear errors */
 	if (maxlvt > 3)
 		apic_write(APIC_ESR, 0);
 
-	accept_status = (apic_read(APIC_ESR) & 0xEF);
-
-	if (send_status)
-		printk(KERN_ERR "STARTUP IPI ERROR: send_status=%x\n",
-		                send_status);
-	if (accept_status)
-		printk(KERN_ERR "STARTUP IPI ERROR: accept_status=%x\n",
-		                accept_status);
-
-	return (send_status | accept_status);
+	/* Verify that IPI was accepted */
+	status = (apic_read(APIC_ESR) & 0xEF);
+	if (status)
+		panic("STARTUP IPI ERROR: failed to accept. (%x)", status);
 }
 
 /**

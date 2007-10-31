@@ -28,6 +28,10 @@ start_secondary(void)
 {
 	cpu_init();
 	cpu_set(cpu_id(), cpu_online_map);
+
+	lapic_set_timer(1000000000);
+	local_irq_enable();
+
 	cpu_idle();
 }
 
@@ -80,7 +84,8 @@ arch_boot_cpu(unsigned int cpu)
 	/*
 	 * Boot it!
 	 */
-	if (lapic_send_startup_ipi(cpu, SMP_TRAMPOLINE_BASE))
-		panic("Failed to send STARTUP IPI.");
+	lapic_send_init_ipi(cpu);
+	lapic_send_startup_ipi(cpu, SMP_TRAMPOLINE_BASE);
+	lapic_send_startup_ipi(cpu, SMP_TRAMPOLINE_BASE);
 }
 

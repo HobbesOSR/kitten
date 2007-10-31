@@ -263,10 +263,16 @@ setup_arch(void)
 	lapic_map();
 
 	/*
+	 * Map the IO APICs into the kernel page tables.
+	 */
+	ioapic_map();
+
+	/*
 	 * Stop the ancient i8253 Programmable Interval Timer (PIT).
 	 */
 	pit_stop_timer0();
 
 	cpu_init();
+//	ioapic_init();
 }
 

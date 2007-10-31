@@ -21,6 +21,7 @@
 #include <arch/io.h>
 #include <arch/mpspec.h>
 #include <arch/proto.h>
+#include <arch/io_apic.h>
 
 /**
  * Points to the MP table, once and if it is found.
@@ -210,6 +211,10 @@ MP_ioapic_info(struct mpc_config_ioapic *m)
 	}
 	mp_ioapics[nr_ioapics] = *m;
 	nr_ioapics++;
+
+	ioapic_id[ioapic_num]        = m->mpc_apicid;
+	ioapic_phys_addr[ioapic_num] = m->mpc_apicaddr;
+	ioapic_num++;
 }
 
 /**

@@ -14,9 +14,8 @@ extern void asm_idtvec_table(void);
 void
 do_unhandled_idt_vector(struct pt_regs *regs, unsigned int vector)
 {
-	printk(KERN_EMERG "Unhandled IDT Vector! (vector=%u)\n", vector);
-	show_registers(regs);
-	while (1) {}
+	printk(KERN_EMERG "Unhandled IDT Vector! (vector=%u, irq=%u)\n",
+	                  vector, vector-48);
 }
 
 void

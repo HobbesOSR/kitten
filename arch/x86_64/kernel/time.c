@@ -5,6 +5,7 @@
 #include <lwk/smp.h>
 #include <arch/io.h>
 #include <arch/tsc.h>
+#include <arch/apic.h>
 
 /**
  * Lock that synchronizes access to the Programmable Interval Timer.
@@ -141,6 +142,7 @@ void __init
 time_init(void)
 {
 	unsigned int cpu_khz;
+	unsigned int lapic_khz;
 
 	cpu_khz = pit_calibrate_tsc();
 
@@ -149,7 +151,18 @@ time_init(void)
 	cpu_info[cpu_id()].arch.min_cpu_khz = cpu_khz;
 	cpu_info[cpu_id()].arch.tsc_khz     = cpu_khz;
 
-	printk(KERN_DEBUG "CPU %u frequency = %u KHz\n",
-		cpu_id(), cpu_info[cpu_id()].arch.cur_cpu_khz);
+	if (cpu_id() == 0) {
+		lapic_khz = lapic_calibrate_timer();
+	} else {
+		lapic_khz = cpu_info[0].arch.lapic_khz;
+	}
+
+	cpu_info[cpu_id()].arch.lapic_khz   = lapic_khz;
+
+	printk(KERN_DEBUG "CPU %u: %u.%03u MHz, LAPIC bus %u.%03u MHz\n",
+		cpu_id(),
+		cpu_khz / 1000, cpu_khz % 1000,
+		lapic_khz / 1000, lapic_khz % 1000
+	);
 }
 

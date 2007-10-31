@@ -112,8 +112,9 @@ extern unsigned boot_cpu_id;
 extern void __init lapic_map(void);
 extern void __init lapic_init(void);
 extern void lapic_set_timer(uint32_t count);
+extern unsigned int lapic_calibrate_timer(void);
 extern void lapic_dump(void);
-extern uint32_t lapic_send_startup_ipi(unsigned int cpu,
-                                       unsigned long start_rip);
+extern void lapic_send_init_ipi(unsigned int cpu);
+extern void lapic_send_startup_ipi(unsigned int cpu, unsigned long start_rip);
 
 #endif /* __ASM_APIC_H */

@@ -84,15 +84,28 @@ union IO_APIC_reg_03 {
 extern int nr_ioapics;
 extern int nr_ioapic_registers[MAX_IO_APICS];
 
-enum ioapic_irq_destination_types {
-	dest_Fixed = 0,
-	dest_LowestPrio = 1,
-	dest_SMI = 2,
-	dest__reserved_1 = 3,
-	dest_NMI = 4,
-	dest_INIT = 5,
-	dest__reserved_2 = 6,
-	dest_ExtINT = 7
+enum ioapic_trigger_modes {
+	ioapic_edge_sensitive  = 0,
+	ioapic_level_sensitive = 1
+};
+
+enum ioapic_pin_polarities {
+	ioapic_active_high = 0,
+	ioapic_active_low  = 1
+};
+
+enum ioapic_destination_modes {
+	ioapic_physical_dest = 0,
+	ioapic_logical_dest  = 1
+};
+
+enum ioapic_delivery_modes {
+	ioapic_fixed           = 0,
+	ioapic_lowest_priority = 1,
+	ioapic_SMI             = 2,
+	ioapic_NMI             = 4,
+	ioapic_INIT            = 5,
+	ioapic_ExtINT          = 7
 };
 
 struct IO_APIC_route_entry {
@@ -109,18 +122,8 @@ struct IO_APIC_route_entry {
 		mask		:  1,	/* 0: enabled, 1: disabled */
 		__reserved_2	: 15;
 
-	union {		struct { __u32
-					__reserved_1	: 24,
-					physical_dest	:  4,
-					__reserved_2	:  4;
-			} physical;
-
-			struct { __u32
-					__reserved_1	: 24,
-					logical_dest	:  8;
-			} logical;
-	} dest;
-
+	__u32	__reserved_3	: 24,
+		dest		:  8;
 } __attribute__ ((packed));
 
 /*
@@ -192,5 +195,14 @@ extern int assign_irq_vector(int irq);
 void enable_NMI_through_LVT0 (void * dummy);
 
 extern spinlock_t i8259A_lock;
+
+extern unsigned int ioapic_num;
+extern unsigned int ioapic_id[MAX_IO_APICS];
+extern unsigned long ioapic_phys_addr[MAX_IO_APICS];
+
+extern void __init ioapic_map(void);
+extern void __init ioapic_init(void);
+extern void ioapic_dump(void);
+
 
 #endif

@@ -1,5 +1,6 @@
 #include <lwk/driver.h>
 #include <lwk/console.h>
+#include <lwk/interrupt.h>
 #include <arch/io.h>
 
 // Serial port registers

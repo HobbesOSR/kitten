@@ -44,8 +44,28 @@
 #define MACHINE_CHECK_VECTOR			18
 #define SIMD_COPROCESSOR_ERROR_VECTOR		19
 /*
- * [20,31]   Reserved by x86_64 architecture for future use
- * [32,238]  Free for use by devices
+ * [20,31] Reserved by x86_64 architecture for future use
+ * [32,47] Free for use by devices
+ * [48,63] Standard ISA IRQs
+ */
+#define IRQ0_VECTOR				48
+#define IRQ1_VECTOR				49
+#define IRQ2_VECTOR				50
+#define IRQ3_VECTOR				51
+#define IRQ4_VECTOR				52
+#define IRQ5_VECTOR				53
+#define IRQ6_VECTOR				54
+#define IRQ7_VECTOR				55
+#define IRQ8_VECTOR				56
+#define IRQ9_VECTOR				57
+#define IRQ10_VECTOR				58
+#define IRQ11_VECTOR				59
+#define IRQ12_VECTOR				60
+#define IRQ13_VECTOR				61
+#define IRQ14_VECTOR				62
+#define IRQ15_VECTOR				63
+/*
+ * [64,238]  Free for use by devices
  * [239,255] Used by LWK for various internal purposes
  */
 #define APIC_TIMER_VECTOR			239
