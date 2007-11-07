@@ -70,8 +70,7 @@ static __init void *alloc_low_page(unsigned long *phys)
 /**
  * Destroys a temporary mapping that was setup by alloc_low_page().
  */
-static void __init
-unmap_low_page(void *adr)
+static void __init unmap_low_page(void *adr)
 { 
 	early_iounmap(adr, PAGE_SIZE);
 } 

@@ -2,8 +2,14 @@
 #include <lwk/init_task.h>
 #include <lwk/percpu.h>
 #include <arch/processor.h>
+#include <arch/pgtable.h>
 
-struct mm_struct init_mm = { INIT_MM(init_mm) };
+struct mm_struct init_mm = {
+	INIT_MM(init_mm)
+	.arch = {
+		.page_table_root = (xpte_t *) init_level4_pgt
+	}
+};
 
 union task_union init_task_union
 	__attribute__((__section__(".data.init_task"))) =
@@ -18,9 +24,6 @@ union task_union init_task_union
 				}
 			}
 		};
-
-#define init_task	(init_task_union.task_info)
-#define init_stack	(init_task_union.stack)
 
 /**
  * Each CPU gets its own Task State Segment (TSS) structure. Tasks are

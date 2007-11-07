@@ -2,6 +2,11 @@
 #define _ARCH_TASK_H
 
 #include <arch/pda.h>
+#include <arch/page_table.h>
+
+struct arch_mm {
+	xpte_t	*page_table_root;
+};
 
 /**
  * Flags for arch_task.status field.

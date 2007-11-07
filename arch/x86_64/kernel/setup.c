@@ -115,15 +115,22 @@ reserve_memory(void)
 	/* Reserve memory used by the initrd image */
 	if (LOADER_TYPE && INITRD_START) {
 		if (INITRD_START + INITRD_SIZE <= (end_pfn << PAGE_SHIFT)) {
+			printk(KERN_DEBUG
+			       "reserving memory used by initrd image\n");
+			printk(KERN_DEBUG
+			       "  INITRD_START=0x%lx, INITRD_SIZE=%ld bytes\n",
+			       (unsigned long) INITRD_START,
+			       (unsigned long) INITRD_SIZE);
 			reserve_bootmem(INITRD_START, INITRD_SIZE);
 			initrd_start =
 				INITRD_START ? INITRD_START + PAGE_OFFSET : 0;
 			initrd_end = initrd_start+INITRD_SIZE;
 		} else {
-			printk(KERN_ERR "initrd extends beyond end of memory "
-			    "(0x%08lx > 0x%08lx)\ndisabling initrd\n",
-			    (unsigned long)(INITRD_START + INITRD_SIZE),
-			    (unsigned long)(end_pfn << PAGE_SHIFT));
+			printk(KERN_ERR
+			       "initrd extends beyond end of memory "
+			       "(0x%08lx > 0x%08lx)\ndisabling initrd\n",
+			       (unsigned long)(INITRD_START + INITRD_SIZE),
+			       (unsigned long)(end_pfn << PAGE_SHIFT));
 			initrd_start = 0;
 		}
 	}
@@ -273,6 +280,6 @@ setup_arch(void)
 	pit_stop_timer0();
 
 	cpu_init();
-//	ioapic_init();
+	ioapic_init();
 }
 

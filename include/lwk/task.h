@@ -30,6 +30,8 @@
 struct mm_struct {
 	/* Architecture-specific MM context */
 	mm_context_t context;
+
+	struct arch_mm		arch;
 };
 
 /**

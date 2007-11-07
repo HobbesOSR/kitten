@@ -57,7 +57,7 @@ $(obj)/compressed/vmlwk: FORCE
 # Set this if you want to pass append arguments to the isoimage kernel
 FDARGS = console=vga,serial debug_mptable=1
 # Set this if you want an initrd included with the isoimage kernel
-FDINITRD =
+FDINITRD = app.bin
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 

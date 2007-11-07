@@ -15,4 +15,7 @@
 	.cpu		=	0,					\
 	.mm		=	&init_mm,				\
 
+#define init_task  init_task_union.task_info
+#define init_stack init_task_union.stack
+
 #endif
