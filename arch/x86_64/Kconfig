@@ -101,7 +101,7 @@ config SERIAL_CONSOLE
 	bool
 	default "y" if PC
 
-config L0_CONSOLE
+config RCAL0_CONSOLE
 	bool
 	default "y" if CRAY_XT
 	default "n"
