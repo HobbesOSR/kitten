@@ -26,6 +26,4 @@ extern unsigned long __phys_addr(unsigned long virt_addr);
 
 void __init interrupts_init(void);
 
-void __init pit_stop_timer0(void);
-
 #endif

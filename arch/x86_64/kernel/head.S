@@ -26,6 +26,47 @@
 
 	.text
 	.section .bootstrap.text
+
+#ifdef CONFIG_CRAY_XT
+	.code32
+	.globl startup_32
+startup_32:
+	cld
+	cli
+	movl	$(__KERNEL_DS), %eax
+	movl	%eax, %ds
+	lgdt	gdt32_descr - __START_KERNEL_map
+
+	/* Enable PAE mode and PGE */
+	xorl	%eax, %eax
+	btsl	$5,   %eax	/* enable PAE */
+	btsl	$7,   %eax	/* enable PGE */
+	movl	%eax, %cr4
+
+	/* Setup early boot page tables */
+	movl	$(init_level4_pgt - __START_KERNEL_map), %eax
+	movl	%eax, %cr3
+
+	/* Enable Long Mode */
+	movl	$MSR_EFER, %ecx
+	rdmsr
+	btsl	$_EFER_LME, %eax
+	wrmsr
+	xorl	%eax, %eax
+	btsl	$31,  %eax	/* enable paging */
+	btsl	$0,   %eax	/* enable protected mode */
+	movl	%eax, %cr0
+
+	/* coldstart uses a hard-coded address for real_mode_data */
+	movl	$0x90000, %esi
+
+	/*
+	 * At this point we're in long mode but 32-bit compatibility mode.
+	 * This jump transitions us into true 64-bit mode.
+	 */
+	ljmp	$__KERNEL_CS, $(startup_64 - __START_KERNEL_map)
+#endif /* CONFIG_CRAY_XT */
+
 	.code64
 	.globl startup_64
 startup_64:
@@ -307,7 +348,11 @@ NEXT_PAGE(level3_kernel_pgt)
 	.fill	510,8,0
 	/* (2^48-(2*1024*1024*1024)-((2^39)*511))/(2^30) = 510 */
 	.quad	level2_kernel_pgt - __START_KERNEL_map + _KERNPG_TABLE
-	.fill	1,8,0
+#ifndef CONFIG_CRAY_XT
+        .fill   1,8,0
+#else
+        .quad   level2_seastar_pgt - __START_KERNEL_map + _KERNPG_TABLE
+#endif
 
 NEXT_PAGE(level2_ident_pgt)
 	/* Since I easily can, map the first 1G.
@@ -322,6 +367,12 @@ NEXT_PAGE(level2_kernel_pgt)
 	PMDS(0x0000000000000000, __PAGE_KERNEL_LARGE_EXEC|_PAGE_GLOBAL, KERNEL_TEXT_SIZE/PMD_SIZE)
 	/* Module mapping starts here */
 	.fill	(PTRS_PER_PMD - (KERNEL_TEXT_SIZE/PMD_SIZE)),8,0
+
+#ifdef CONFIG_CRAY_XT
+NEXT_PAGE(level2_seastar_pgt)
+        .fill 511,8,0
+        .quad   0x00000000ffe00193
+#endif
 
 NEXT_PAGE(level2_spare_pgt)
 	.fill   512,8,0
@@ -340,6 +391,14 @@ gdt:
 	.word	0
 	.quad	0
 	.endr
+
+#ifdef CONFIG_CRAY_XT
+	.align 16
+	.globl gdt32_descr
+gdt32_descr:
+	.word	gdt_end-cpu_gdt_table-1
+	.long	cpu_gdt_table-__START_KERNEL_map
+#endif
 
 ENTRY(phys_base)
 	/* This must match the first entry in level2_kernel_pgt */

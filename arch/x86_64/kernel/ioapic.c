@@ -248,6 +248,9 @@ ioapic_map(void)
 	const int name_size = 16;
 	char *name;
 
+	if (ioapic_num == 0)
+		return;
+
 	/*
 	 * Allocate enough memory for one resource structure per detected IO
 	 * APIC in the system. Memory for the resource name strings is tacked
@@ -283,9 +286,15 @@ ioapic_map(void)
 void __init
 ioapic_init(void)
 {
+	if (ioapic_num == 0)
+		return;
+
+/* TODO: FIX THIS... NEED TO PARSE MPTABLE OR SOMETHING ELSE */
+#ifdef CONFIG_PC
 	/* TODO: For now, only initializes the first one. */
 	ioapic_init_primary(0);
 	ioapic_dump();
+#endif
 }
 
 /**

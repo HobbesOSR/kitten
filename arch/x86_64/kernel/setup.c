@@ -10,6 +10,7 @@
 #include <arch/proto.h>
 #include <arch/mpspec.h>
 #include <arch/pda.h>
+#include <arch/io_apic.h>
 
 /**
  * Bitmap of of PTE/PMD entry flags that are supported.
@@ -265,19 +266,19 @@ setup_arch(void)
 	interrupts_init();
 
 	/*
-	 * Map the local APIC into the kernel page tables.
+	 * Map the APICs into the kernel page tables.
+	 *
+	 * Each CPU has its own Local APIC. All Local APICs are memory mapped
+	 * to the same virtual address region. A CPU accesses its Local APIC by
+	 * accessing the region. A CPU cannot access another CPU's Local APIC.
+	 *
+	 * Each Local APIC is connected to all IO APICs in the system. Each IO
+	 * APIC is mapped to a different virtual address region. A CPU accesses
+	 * a given IO APIC by accessing the appropriate region. All CPUs can
+	 * access all IO APICs.
 	 */
 	lapic_map();
-
-	/*
-	 * Map the IO APICs into the kernel page tables.
-	 */
 	ioapic_map();
-
-	/*
-	 * Stop the ancient i8253 Programmable Interval Timer (PIT).
-	 */
-	pit_stop_timer0();
 
 	cpu_init();
 	ioapic_init();
