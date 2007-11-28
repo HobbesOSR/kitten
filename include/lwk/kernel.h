@@ -36,6 +36,7 @@ extern const char lwk_banner[];
 #define KERN_NOTICE	"<5>"	/* normal but significant condition     */
 #define KERN_INFO	"<6>"	/* informational                        */
 #define KERN_DEBUG	"<7>"	/* debug-level messages                 */
+#define KERN_USERMSG	"<8>"	/* message from user-space		*/
 
 void panic(const char * fmt, ...);
 
