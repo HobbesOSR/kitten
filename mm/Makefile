@@ -1,1 +1,1 @@
-obj-y := bootmem.o
+obj-y := bootmem.o buddy.o kmem.o

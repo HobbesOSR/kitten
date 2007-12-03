@@ -7,11 +7,13 @@
 #include <lwk/smp.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/delay.h>
+#include <lwk/bootmem.h>
 
 /**
  * Pristine copy of the LWK boot command line.
  */
 char lwk_command_line[COMMAND_LINE_SIZE];
+
 
 /**
  * This is the architecture-independent kernel entry point. Before it is
@@ -74,6 +76,18 @@ start_kernel()
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
 
+	/*
+	 * Initialize the kernel memory subsystem. Up until now, the simple
+	 * boot-time memory allocator (bootmem) has been used for all dynamic
+	 * memory allocation. Here, the bootmem allocator is destroyed and all
+	 * of the free pages it was managing are added to the kernel memory
+	 * pool (kmem) or the user memory pool (umem).
+	 *
+	 * After this point, any use of the bootmem allocator will cause a
+	 * kernel panic. The normal kernel memory subsystem API should be used
+	 * instead (e.g., kmem_alloc() and kmem_free()).
+	 */
+	memsys_init();
 
 	lapic_set_timer(1000000000);
 	local_irq_enable();

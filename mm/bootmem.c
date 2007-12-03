@@ -10,7 +10,11 @@
  */
 
 #include <lwk/init.h>
+#include <lwk/pfn.h>
 #include <lwk/bootmem.h>
+#include <lwk/params.h>
+#include <lwk/log2.h>
+#include <lwk/kmem.h>
 #include <lwk/bitops.h>
 #include <arch/io.h>
 
@@ -18,6 +22,17 @@
  * Access to this subsystem has to be serialized externally.
  * (this is true for the boot process anyway)
  */
+
+
+/**
+ * Amount of system memory to reserve for use by the kernel. The first
+ * kmem_size bytes of system memory [0, kmem_size) will be added to the
+ * kernel memory pool. The remainder of system memory is left untouched by
+ * the kernel and is available for use by applications.
+ */
+static unsigned long kmem_size = (1024 * 1024 * 8);  /* default is first 8 MB */
+param(kmem_size, ulong);
+
 
 /**
  *
@@ -107,27 +122,27 @@ reserve_bootmem_core(
 	unsigned long	size
 )
 {
+	unsigned long sidx, eidx;
 	unsigned long i;
+
 	/*
 	 * round up, partially reserved pages are considered
 	 * fully reserved.
 	 */
-	unsigned long sidx = (addr - bdata->node_boot_start)/PAGE_SIZE;
-	unsigned long eidx = (addr + size - bdata->node_boot_start + 
-							PAGE_SIZE-1)/PAGE_SIZE;
-	unsigned long end = (addr + size + PAGE_SIZE-1)/PAGE_SIZE;
-
 	BUG_ON(!size);
-	BUG_ON(sidx >= eidx);
-	BUG_ON((addr >> PAGE_SHIFT) >= bdata->node_low_pfn);
-	BUG_ON(end > bdata->node_low_pfn);
+	BUG_ON(PFN_DOWN(addr) >= bdata->node_low_pfn);
+	BUG_ON(PFN_UP(addr + size) > bdata->node_low_pfn);
 
-	for (i = sidx; i < eidx; i++)
+	sidx = PFN_DOWN(addr - bdata->node_boot_start);
+	eidx = PFN_UP(addr + size - bdata->node_boot_start);
+
+	for (i = sidx; i < eidx; i++) {
 		if (test_and_set_bit(i, bdata->node_bootmem_map)) {
 #ifdef CONFIG_DEBUG_BOOTMEM
 			printk("hm, page %08lx reserved twice.\n", i*PAGE_SIZE);
 #endif
 		}
+	}
 }
 
 /**
@@ -305,48 +320,35 @@ found:
 	return ret;
 }
 
-#if 0
-static unsigned long __init free_all_bootmem_core(pg_data_t *pgdat)
+static unsigned long __init
+free_all_bootmem_core(struct bootmem_data *bdata)
 {
-	struct page *page;
 	unsigned long pfn;
-	bootmem_data_t *bdata = pgdat->bdata;
+	unsigned long vaddr;
 	unsigned long i, count, total = 0;
 	unsigned long idx;
 	unsigned long *map; 
-	int gofast = 0;
 
 	BUG_ON(!bdata->node_bootmem_map);
 
 	count = 0;
 	/* first extant page of the node */
 	pfn = bdata->node_boot_start >> PAGE_SHIFT;
-	idx = bdata->node_low_pfn - (bdata->node_boot_start >> PAGE_SHIFT);
+	idx = (kmem_size >> PAGE_SHIFT) - (bdata->node_boot_start >> PAGE_SHIFT);
 	map = bdata->node_bootmem_map;
-	/* Check physaddr is O(LOG2(BITS_PER_LONG)) page aligned */
-	if (bdata->node_boot_start == 0 ||
-	    ffs(bdata->node_boot_start) - PAGE_SHIFT > ffs(BITS_PER_LONG))
-		gofast = 1;
+
+	/* Release memory to the kernel pool */
 	for (i = 0; i < idx; ) {
 		unsigned long v = ~map[i / BITS_PER_LONG];
 
-		if (gofast && v == ~0UL) {
-			int order;
-
-			page = pfn_to_page(pfn);
-			count += BITS_PER_LONG;
-			order = ffs(BITS_PER_LONG) - 1;
-			__free_pages_bootmem(page, order);
-			i += BITS_PER_LONG;
-			page += BITS_PER_LONG;
-		} else if (v) {
+		if (v) {
 			unsigned long m;
 
-			page = pfn_to_page(pfn);
-			for (m = 1; m && i < idx; m<<=1, page++, i++) {
+			vaddr = (unsigned long) __va(pfn << PAGE_SHIFT);
+			for (m = 1; m && i < idx; m<<=1, vaddr+=PAGE_SIZE, i++) {
 				if (v & m) {
 					count++;
-					__free_pages_bootmem(page, 0);
+					kmem_add_memory(vaddr, PAGE_SIZE);
 				}
 			}
 		} else {
@@ -360,18 +362,17 @@ static unsigned long __init free_all_bootmem_core(pg_data_t *pgdat)
 	 * Now free the allocator bitmap itself, it's not
 	 * needed anymore:
 	 */
-	page = virt_to_page(bdata->node_bootmem_map);
+	vaddr = (unsigned long)bdata->node_bootmem_map;
 	count = 0;
-	for (i = 0; i < ((bdata->node_low_pfn-(bdata->node_boot_start >> PAGE_SHIFT))/8 + PAGE_SIZE-1)/PAGE_SIZE; i++,page++) {
+	for (i = 0; i < ((bdata->node_low_pfn-(bdata->node_boot_start >> PAGE_SHIFT))/8 + PAGE_SIZE-1)/PAGE_SIZE; i++,vaddr+=PAGE_SIZE) {
 		count++;
-		__free_pages_bootmem(page, 0);
+		kmem_add_memory(vaddr, PAGE_SIZE);
 	}
 	total += count;
 	bdata->node_bootmem_map = NULL;
 
 	return total;
 }
-#endif
 
 /**
  * Initialize boot memory allocator.
@@ -403,13 +404,11 @@ free_bootmem(unsigned long addr, unsigned long size)
 	free_bootmem_core(&bootmem_data, addr, size);
 }
 
-#if 0
 unsigned long __init
 free_all_bootmem(void)
 {
-	return free_all_bootmem_core(NODE_DATA(0));
+	return free_all_bootmem_core(&bootmem_data);
 }
-#endif
 
 static void * __init
 __alloc_bootmem_nopanic(unsigned long size, unsigned long align, unsigned long goal)
@@ -460,5 +459,32 @@ void * __init
 alloc_bootmem_aligned(unsigned long size, unsigned long align)
 {
 	return __alloc_bootmem(size, align, 0);
+}
+
+/**
+ * Initializes the kernel memory subsystem.
+ */
+void
+memsys_init(void)
+{
+	unsigned long kmem_pages;
+
+	/* We like powers of two */
+	if (!is_power_of_2(kmem_size)) {
+		printk(KERN_WARNING "kmem_size must be a power of two.");
+		kmem_size = roundup_pow_of_two(kmem_size);
+	}
+
+	printk(KERN_DEBUG
+	       "First %lu bytes of system memory reserved for the kernel.\n",
+	       kmem_size);
+
+	/* Initialize the kernel memory pool */
+	kmem_create_zone(PAGE_OFFSET, kmem_size);
+	kmem_pages = free_all_bootmem();
+
+	printk(KERN_DEBUG
+	       "Released %lu bootmem pages to the kernel memory pool.\n",
+	       kmem_pages);
 }
 

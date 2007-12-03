@@ -35,6 +35,9 @@ typedef __kernel_uid_t		uid_t;
 typedef __kernel_gid_t		gid_t;
 typedef __kernel_loff_t		loff_t;
 
+/* _Bool is a base type in C99... what a bad name! */
+typedef _Bool			bool;
+
 /*
  * The following typedefs are also protected by individual ifdefs for
  * historical reasons:

@@ -9,11 +9,11 @@
  * 2 of the License, or (at your option) any later version.
  */
 
-#ifndef _LINUX_LOG2_H
-#define _LINUX_LOG2_H
+#ifndef _LWK_LOG2_H
+#define _LWK_LOG2_H
 
-#include <linux/types.h>
-#include <linux/bitops.h>
+#include <lwk/types.h>
+#include <lwk/bitops.h>
 
 /*
  * deal with unrepresentable constant logarithms
@@ -165,4 +165,4 @@ unsigned long __roundup_pow_of_two(unsigned long n)
 	__roundup_pow_of_two(n)			\
  )
 
-#endif /* _LINUX_LOG2_H */
+#endif /* _LWK_LOG2_H */
