@@ -39,11 +39,12 @@ void console_register(struct console *con)
 void console_write(const char *str)
 {
 	struct console *con;
+	unsigned long flags;
 
-	spin_lock(&console_lock);
+	spin_lock_irqsave(&console_lock, flags);
 	list_for_each_entry(con, &console_list, next)
 		con->write(con, str);
-	spin_unlock(&console_lock);
+	spin_unlock_irqrestore(&console_lock, flags);
 }
 
 /**
