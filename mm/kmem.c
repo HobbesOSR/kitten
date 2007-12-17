@@ -116,7 +116,7 @@ kmem_add_memory(unsigned long base_addr, size_t size)
 
 /**
  * Allocates memory from the kernel memory pool. This will return a memory
- * region that is at least 16-byte aligned.
+ * region that is at least 16-byte aligned. The memory returned is zeroed.
  *
  * Arguments:
  *       [IN] size: Amount of memory to allocate in bytes.
@@ -142,6 +142,9 @@ kmem_alloc(size_t size)
 	/* Allocate memory from the underlying buddy system */
 	if ((hdr = buddy_alloc(kmem, order)) == NULL)
 		return NULL;
+
+	/* Zero the block */
+	memset(hdr, 0, (1UL << order));
 
 	/* Initialize the block header */
 	hdr->order = order;       /* kmem_free() needs this to free the block */
@@ -187,7 +190,7 @@ kmem_free(void *addr)
 /**
  * Allocates pages of memory from the kernel memory pool. The number of pages
  * requested must be a power of two and the returned pages will be contiguous
- * in physical memory.
+ * in physical memory. The memory returned is zeroed.
  *
  * Arguments:
  *       [IN] order: Number of pages to allocated, 2^order:
@@ -203,7 +206,19 @@ kmem_free(void *addr)
 void *
 kmem_get_pages(unsigned long order)
 {
-	return buddy_alloc(kmem, order + ilog2(PAGE_SIZE));
+	unsigned long block_order;
+	void *addr;
+
+	/* Calculate the block size needed; convert page order to byte order */
+	block_order = order + ilog2(PAGE_SIZE);
+
+	/* Allocate memory from the underlying buddy system */
+	if ((addr = buddy_alloc(kmem, block_order)) == NULL)
+		return NULL;
+
+	/* Zero the block and return its address */
+	memset(addr, 0, (1UL << block_order));
+	return addr;
 }
 
 
