@@ -1,12 +1,6 @@
 #ifndef _ARCH_X86_64_PAGE_TABLE_H
 #define _ARCH_X86_64_PAGE_TABLE_H
 
-typedef enum {
-	PAGE_SIZE_4KB =       4096UL,
-	PAGE_SIZE_2MB =    2097152UL,
-	PAGE_SIZE_1GB = 1073741824UL
-} page_size_t;
-
 typedef struct {
 	uint64_t
 		present    :1,  /* Is there a physical page? */
@@ -78,15 +72,5 @@ typedef struct {
 		os_bits_2  :11, /* Available for us! */
 		no_exec    :1;  /* Is the page executable? */
 } xpte_1GB_t;
-
-extern void
-arch_map_memory(
-	struct mm_struct *mm,
-	unsigned long    vaddr,
-	unsigned long    paddr,
-	unsigned long    len,
-	uint32_t         flags,
-	page_size_t      pgsize
-);
 
 #endif

@@ -1,13 +1,13 @@
 #include <lwk/task.h>
 #include <lwk/init_task.h>
 #include <lwk/percpu.h>
+#include <lwk/aspace.h>
 #include <arch/processor.h>
-#include <arch/pgtable.h>
 
-struct mm_struct init_mm = {
-	INIT_MM(init_mm)
+struct aspace init_aspace = {
+	INIT_ASPACE(init_aspace)
 	.arch = {
-		.page_table_root = (xpte_t *) init_level4_pgt
+		.pgd = (xpte_t *) init_level4_pgt
 	}
 };
 

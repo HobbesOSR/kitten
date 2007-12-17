@@ -2,6 +2,7 @@
 #include <lwk/init.h>
 #include <lwk/smp.h>
 #include <lwk/cpuinfo.h>
+#include <lwk/aspace.h>
 #include <arch/processor.h>
 #include <arch/proto.h>
 
@@ -244,6 +245,9 @@ early_identify_cpu(struct cpuinfo *c)
 	 *       ID can sometimes be used to discover CPU topology.
 	 */
 	a->initial_lapic_id = (misc >> 24) & 0xff;
+
+	/* TODO: determine which page sizes are supported by the CPU */
+	supported_pagesz_mask = (VM_PAGE_4KB | VM_PAGE_2MB);
 }
 
 /*

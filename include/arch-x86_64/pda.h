@@ -23,7 +23,7 @@ struct x8664_pda {
 	unsigned int __softirq_pending;
 	unsigned int __nmi_count;	/* number of NMI on this CPUs */
 	int mmu_state;     
-	struct mm_struct *active_mm;
+	struct aspace *active_aspace;
 	unsigned apic_timer_irqs;
 } ____cacheline_aligned_in_smp;
 

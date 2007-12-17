@@ -25,16 +25,6 @@
 #define PF_USED_MATH    0x00002000      /* if unset the fpu must be initialized before use */
 
 /**
- * Memory management context structure.
- */
-struct mm_struct {
-	/* Architecture-specific MM context */
-	mm_context_t context;
-
-	struct arch_mm		arch;
-};
-
-/**
  * Signal handler structure.
  */
 struct sighand_struct {
@@ -54,7 +44,7 @@ struct task_struct {
 	uint32_t		task_id;
 	char			task_name[TASK_NAME_LENGTH];
 
-	struct mm_struct        *mm;        /* memory management info */
+	struct aspace		*aspace;    /* Address space the task runs in */
 	struct sighand_struct   *sighand;   /* signal handler info */
 
 	uint32_t		cpu;        /* CPU task is running on */
@@ -70,7 +60,7 @@ union task_union {
 };
 
 extern union task_union init_task_union;
-extern struct mm_struct init_mm;
+extern struct aspace init_aspace;
 
 /**
  * Checks to see if a task structure is the init task.

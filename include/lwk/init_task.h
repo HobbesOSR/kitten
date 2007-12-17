@@ -2,9 +2,9 @@
 #define _LWK_INIT_TASK_H
 
 /**
- * Initializes architecture-independent fields in the initial task structure.
+ * Initializes architecture-independent fields in the initial address space.
  */
-#define INIT_MM(name)
+#define INIT_ASPACE(name)
 
 /**
  * Initializes architecture-independent fields in the initial task structure.
@@ -13,7 +13,7 @@
 	.task_id	=	0,					\
 	.task_name	=	"idle task",				\
 	.cpu		=	0,					\
-	.mm		=	&init_mm,				\
+	.aspace		=	&init_aspace,				\
 
 #define init_task  init_task_union.task_info
 #define init_stack init_task_union.stack

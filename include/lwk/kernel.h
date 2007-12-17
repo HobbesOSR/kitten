@@ -10,6 +10,8 @@
 #include <lwk/stddef.h>
 #include <lwk/types.h>
 #include <lwk/compiler.h>
+#include <lwk/kmem.h>
+#include <lwk/errno.h>
 #include <arch/byteorder.h>
 #include <arch/bug.h>
 

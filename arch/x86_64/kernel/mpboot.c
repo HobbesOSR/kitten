@@ -70,7 +70,7 @@ arch_boot_cpu(unsigned int cpu)
 	 * Initialize the bare minimum info needed to boot the new CPU.
 	 */
 	new_task->task_id = 0;
-	new_task->mm      = &init_mm;
+	new_task->aspace  = &init_aspace;
 	new_task->cpu     = cpu;
 	strcpy(new_task->task_name, "Idle Task");
 
