@@ -1,10 +1,9 @@
-#ifndef _LINUX_ELF_H
-#define _LINUX_ELF_H
+#ifndef _LWK_ELF_H
+#define _LWK_ELF_H
 
-#include <linux/types.h>
-#include <linux/auxvec.h>
-#include <linux/elf-em.h>
-#include <asm/elf.h>
+#include <lwk/types.h>
+#include <lwk/elf-em.h>
+#include <arch/elf.h>
 
 struct file;
 
@@ -397,4 +396,16 @@ static inline void arch_write_notes(struct file *file) { }
 #define ELF_CORE_WRITE_EXTRA_NOTES arch_write_notes(file)
 #endif /* ARCH_HAVE_EXTRA_ELF_NOTES */
 
-#endif /* _LINUX_ELF_H */
+extern int
+elf_load_executable(
+	void *		elf_image,
+	unsigned long	heap_size,
+	unsigned long	stack_size,
+	char *		argv[],
+	char *		envp[],
+	struct aspace *	aspace,
+	unsigned long *	entry_point,
+	unsigned long *	stack_ptr
+);
+
+#endif /* _LWK_ELF_H */

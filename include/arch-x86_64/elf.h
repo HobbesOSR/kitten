@@ -5,8 +5,8 @@
  * ELF register definitions..
  */
 
-#include <asm/ptrace.h>
-#include <asm/user.h>
+#include <arch/ptrace.h>
+#include <arch/user.h>
 
 /* x86-64 relocation types */
 #define R_X86_64_NONE		0	/* No reloc */
@@ -44,7 +44,7 @@ typedef struct user_i387_struct elf_fpregset_t;
 #define ELF_ARCH	EM_X86_64
 
 #ifdef __KERNEL__
-#include <asm/processor.h>
+#include <arch/processor.h>
 
 /*
  * This is used to ensure we don't load something for the wrong architecture.

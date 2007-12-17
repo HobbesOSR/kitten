@@ -6,6 +6,20 @@
 
 
 /**
+ * This starts a task executing.
+ * extern void ATTRIB_NORET asm_run_task(struct pt_regs *context)
+ */
+ENTRY(asm_run_task)
+	swapgs			/* Install the user PDA */
+	mov $0, %rdx		/* crt1 expects this to be addr of rtld_fini */
+	pop %rax		/* Pop the return address */
+	mov %rdi, %rsp		/* Point stack pointer at pt_regs input arg */
+	add $128, %rsp		/* Bump to point to the RIP slot in pt_regs */
+	iretq			/* Start the task executing */
+END(asm_run_task)
+
+
+/**
  * This is the entry point for system calls. Upon entry we are still running
  * with the user-level stack and the x86_64 CPU control unit has stashed the
  * user-level RIP in RCX and RFLAGS in R11. External interrupts are diabled.

@@ -26,4 +26,6 @@ extern unsigned long __phys_addr(unsigned long virt_addr);
 
 void __init interrupts_init(void);
 
+extern void *pct_elf_image;
+
 #endif

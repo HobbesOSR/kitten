@@ -27,6 +27,7 @@ start_kernel()
 {
 	unsigned int cpu;
 	unsigned int timeout;
+	int status;
 
 	/*
  	 * Parse the kernel boot command line.
@@ -89,10 +90,16 @@ start_kernel()
 	 */
 	memsys_init();
 
-	lapic_set_timer(1000000000);
+	/*
+	 * LWK is fully initialized. Enable external interrupts.
+	 */
 	local_irq_enable();
 
-	printk(KERN_DEBUG "Spinning forever...\n");
-	cpu_idle();
+	/*
+	 * Load the Process Control Task.
+	 */
+	printk(KERN_INFO "Loading PCT...\n");
+	status = arch_load_pct();  /* This should not return */
+	panic("Failed to load PCT! status=%d\n", status);
 }
 

@@ -67,6 +67,8 @@ extern void setup_arch(void);
 
 extern void start_kernel(void);
 
+extern int arch_load_pct(void);
+
 #endif /* !__ASSEMBLY__ */
   
 #endif /* _LWK_INIT_H */

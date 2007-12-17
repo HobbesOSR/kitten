@@ -126,6 +126,7 @@ reserve_memory(void)
 			initrd_start =
 				INITRD_START ? INITRD_START + PAGE_OFFSET : 0;
 			initrd_end = initrd_start+INITRD_SIZE;
+			pct_elf_image = (void *)initrd_start;
 		} else {
 			printk(KERN_ERR
 			       "initrd extends beyond end of memory "
