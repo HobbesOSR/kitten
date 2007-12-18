@@ -461,7 +461,8 @@ aspace_kmem_alloc_region(
 	unsigned long	extent,
 	unsigned long	flags,
 	unsigned long	pagesz,
-	const char *	name
+	const char *	name,
+	void **		kmem
 )
 {
 	int status;
@@ -493,6 +494,10 @@ aspace_kmem_alloc_region(
 	);
 	if (status)
 		return status;
+
+	/* Return pointer to the kernel mapping of the memory allocated */
+	if (kmem)
+		*kmem = mem;
 
 	return 0;
 }

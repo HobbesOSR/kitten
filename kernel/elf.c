@@ -124,12 +124,17 @@ elf_print_phdr(struct elf_phdr *hdr)
  * in the format that the C library expects them. Eventually the arguments get
  * passed to the application's main(argc, argv, envp) function.
  *
+ * This routine is careful to only write to the kernel mapping of the stack
+ * (all writes are via kstack_top). All pointers written to the stack are
+ * converted to user pointers relative to ustack_top.
+ *
  * This returns the new value of the user stack pointer after the arguments and
  * environment have been pushed onto it.
  */
 static unsigned long
 copy_args_to_stack(
-	unsigned long	stack,
+	unsigned long	kstack_top,  /* kernel virtual addr of stack top */
+	unsigned long	ustack_top,  /* user virtual addr of stack top */
 	char *		argv[], 
 	char *		envp[]
 )
@@ -141,6 +146,7 @@ copy_args_to_stack(
 	int i;
 	char *arg_sptr;
 	char **arg_ptr;
+	unsigned long stack = kstack_top;
 
 	/* put a NULL pointer here for case were there are 0 args and envs */ 
 	stack -= sizeof(char *);
@@ -163,7 +169,14 @@ copy_args_to_stack(
 		char *env_sptr = (char *)(stack -= ((space + 15) & ~15));
 		char **env_ptr = (char **)(stack -= sizeof(void *) * (envc+1));
 		for (i = 0; i < envc; i++) {
-			env_ptr[i] = env_sptr;
+			/*
+ 			 * Write a pointer to the environment string to the 
+ 			 * stack... need to be careful to convert the kernel
+ 			 * pointer to a user pointer.
+ 			 */
+			env_ptr[i] = (char *)(
+			    ustack_top - (kstack_top - (unsigned long)env_sptr)
+			);
 			strcpy(env_sptr, envp[i]);
 			env_sptr += strlen(envp[i]) + 1;
 		} 
@@ -173,7 +186,14 @@ copy_args_to_stack(
 	arg_ptr = (char **)(stack -= sizeof(void *) * (argc+1));
 
 	for (i = 0; i < argc; i++) {
-		arg_ptr[i] = arg_sptr;
+		/*
+ 		 * Write a pointer to the argument string to the stack...
+ 		 * need to be careful to convert the kernel pointer to a
+ 		 * user pointer.
+ 		 */
+		arg_ptr[i] = (char *)(
+		    ustack_top - (kstack_top - (unsigned long)arg_sptr)
+		);
 		strcpy(arg_sptr, argv[i]);
 		arg_sptr += strlen(argv[i]) + 1;
 	} 
@@ -181,17 +201,14 @@ copy_args_to_stack(
 
 	*((int *)(stack -= sizeof(void *))) = argc;
 
-	return stack;
+	return ustack_top - (kstack_top - stack);
 }
 
 
 /**
  * Loads an ELF executable image into the specified address space. The address
  * space passed in (aspace) must have previously been created with
- * aspace_create(). Additionally, the CPU must currently be executing in the
- * aspace since this function directly accesses the user-space regions that it
- * creates. If another aspace is active, page faults or data corruption will
- * occur... very bad.
+ * aspace_create(). 
  *
  * If successful, the initial entry point and stack pointer are returned to the
  * caller. The caller should use these when it launches the executable (e.g.,
@@ -232,6 +249,8 @@ elf_load_executable(
 	unsigned int      num_load_segments = 0;
 	unsigned long     heap_start = 0;
 	unsigned long     stack_top;
+	void *            kmem;
+	unsigned long     src, dst;
 
 	BUG_ON(!elf_image||!argv||!envp||!aspace||!entry_point||!stack_ptr);
 	BUG_ON((heap_size == 0) || (stack_size == 0));
@@ -258,7 +277,7 @@ elf_load_executable(
 
 		/* Calculate the segment's bounds */
 		start  = round_down(phdr->p_vaddr, PAGE_SIZE);
-		end    = round_up(start + phdr->p_memsz, PAGE_SIZE);
+		end    = round_up(phdr->p_vaddr + phdr->p_memsz, PAGE_SIZE);
 		extent = end - start;
 
 		/* Need to keep track of where heap should start */
@@ -272,16 +291,19 @@ elf_load_executable(
 				extent,
 				elf_to_vm_flags(phdr->p_flags),
 				PAGE_SIZE,
-				"ELF PT_LOAD"
+				"ELF PT_LOAD",
+				&kmem
 		);
 		if (status)
 			return status;
 
 		/* Copy segment data from ELF image into the address space */
+		dst = (unsigned long)kmem + 
+			(phdr->p_vaddr - round_down(phdr->p_vaddr, PAGE_SIZE));
+		src = (unsigned long)elf_image + phdr->p_offset;
 		memcpy(
-			(void *)(start +
-			  (phdr->p_vaddr-round_down(phdr->p_vaddr,PAGE_SIZE))),
-			(void *)((unsigned long)elf_image + phdr->p_offset),
+			(void *)dst,
+			(void *)src,
 			phdr->p_filesz
 		);
 	}
@@ -302,7 +324,8 @@ elf_load_executable(
 			extent,
 			VM_READ | VM_WRITE | VM_USER,
 			PAGE_SIZE,
-			"Heap"
+			"Heap",
+			NULL
 	);
 	if (status)
 		return status;
@@ -317,14 +340,18 @@ elf_load_executable(
 			extent,
 			VM_READ | VM_WRITE | VM_USER,
 			PAGE_SIZE,
-			"Stack"
+			"Stack",
+			&kmem
 	);
 	if (status)
 		return status;
 
-	/* Stack starts out at highest address and grows down */
-	stack_top = end;
-	stack_top = copy_args_to_stack(stack_top, argv, envp);
+	/* Copy arguments and environment to the top of the stack */
+	stack_top = copy_args_to_stack(
+			(unsigned long)kmem + extent,
+			end,
+			argv, envp
+	);
 
 	/* Return initial entry point and stack pointer */
 	*entry_point = ehdr->e_entry;

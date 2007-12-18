@@ -88,7 +88,8 @@ aspace_kmem_alloc_region(
 	unsigned long	extent,
 	unsigned long	flags,
 	unsigned long	pagesz,
-	const char *	name
+	const char *	name,
+	void **		kmem
 );
 
 extern void aspace_dump(struct aspace *aspace);
