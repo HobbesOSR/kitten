@@ -1,0 +1,30 @@
+Scripts for building cross-compiler toolchains are in scripts/toolchain.
+E.g., to build an x86-64 toolchain:
+
+	cd scripts/toolchain
+	./build-x86_64.sh
+
+By default, the toolchain will be installed in /opt/toolchain/x86_64.
+Edit PREFIX in build-x86_64.sh to change this.
+
+To build a x86_64 Kitten using a cross-compiler:
+
+	export PATH=/opt/toolchain/x86_64/bin:$PATH
+	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- config
+	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu-
+
+The resulting kernel image is at:
+
+	arch/x86_64/boot/bzImage
+
+This is a drop in replacement for a Linux bzImage.
+
+If you have syslinux installed ('syslinux' Debian package), a bootable
+iso cdrom image can be built with:
+
+	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- isoimage
+
+and booted under the Qemu full-system simulator ('qemu' Debian package):
+
+	qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso
+
