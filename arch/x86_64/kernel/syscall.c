@@ -12,7 +12,7 @@
 #include <arch/unistd.h>
 
 /**
- * Setup for the include of <arch/unistd.h> in the sys_call_table[]
+ * Setup for the include of <arch/unistd.h> in the syscall_table[]
  * definition below.
  */
 #undef __SYSCALL
@@ -22,14 +22,20 @@
 /**
  * Prototype for system call handler functions.
  */
-typedef long (*sys_call_ptr_t)(void); 
+typedef long (*syscall_ptr_t)(void); 
 
 /**
  * Dummy handler for unimplemented system calls.
  */
-long sys_not_implemented(void)
+long syscall_not_implemented(void)
 {
-	printk(KERN_DEBUG "System call not implemented!\n");
+	unsigned long syscall_number;
+
+	/* On entry to function, syscall # is in %rax register */
+	asm volatile("mov %%rax, %0" : "=r"(syscall_number)::"%rax");
+
+	printk(KERN_DEBUG "System call not implemented! "
+	                  "(syscall_number=%lu)\n", syscall_number);
 	return -ENOSYS;
 }
 
@@ -38,8 +44,8 @@ long sys_not_implemented(void)
  * uses this table to determine the handler function to call for each
  * system call.  The table is indexed by system call number.
  */
-const sys_call_ptr_t sys_call_table[__NR_syscall_max+1] = {
-	[0 ... __NR_syscall_max] = sys_not_implemented,
+const syscall_ptr_t syscall_table[__NR_syscall_max+1] = {
+	[0 ... __NR_syscall_max] = syscall_not_implemented,
 	#include <arch/unistd.h>
 };
 
