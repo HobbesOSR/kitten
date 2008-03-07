@@ -21,6 +21,7 @@ union task_union init_task_union
 
 				/* x86_64 specific portion */
 				.arch = {
+					.addr_limit = PAGE_OFFSET
 				}
 			}
 		};

@@ -1,11 +1,18 @@
-#ifndef _LINUX_UTS_H
-#define _LINUX_UTS_H
+#ifndef _LWK_UTS_H
+#define _LWK_UTS_H
+
+#include <lwk/compile.h>  /* for UTS_MACHINE and UTS_VERSION */
 
 /*
  * Defines for what uname() should return 
+ * We trick user-level into thinking we are Linux for compatibility purposes.
  */
-#ifndef UTS_SYSNAME
-#define UTS_SYSNAME "Linux"
+#ifndef UTS_LINUX_SYSNAME
+#define UTS_LINUX_SYSNAME "Linux"
+#endif
+
+#ifndef UTS_LINUX_RELEASE
+#define UTS_LINUX_RELEASE "2.6.23"
 #endif
 
 #ifndef UTS_NODENAME

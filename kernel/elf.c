@@ -330,6 +330,16 @@ elf_load_executable(
 	if (status)
 		return status;
 
+	/* Remember the heap boundaries */
+	aspace->heap_start = start;
+	aspace->heap_end   = end;
+
+	/* The UNIX data segment grows up from the bottom of the heap */
+	aspace->brk = aspace->heap_start;
+
+	/* Anonymous mmap() requests are satisfied from the top of the heap */
+	aspace->mmap_brk = aspace->heap_end;
+
 	/* Set up an address space region for the stack */
 	end    = PAGE_OFFSET - PAGE_SIZE; /* one guard page */
 	start  = round_down(end - stack_size, PAGE_SIZE);

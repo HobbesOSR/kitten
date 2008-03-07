@@ -44,6 +44,9 @@ struct task_struct {
 	uint32_t		task_id;
 	char			task_name[TASK_NAME_LENGTH];
 
+	uid_t			uid;        /* user ID */
+	gid_t			gid;        /* group ID */
+
 	struct aspace		*aspace;    /* Address space the task runs in */
 	struct sighand_struct   *sighand;   /* signal handler info */
 

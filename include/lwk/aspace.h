@@ -6,6 +6,7 @@
 #include <lwk/list.h>
 #include <lwk/spinlock.h>
 #include <arch/aspace.h>
+#include <arch/mman.h>
 
 /**
  * Protection and memory type flags.
@@ -38,6 +39,40 @@ struct aspace {
 
 	int                refcnt;      /* # tasks using this address space */
 	struct list_head   region_list; /* Sorted non-overlapping region list */
+
+	/**
+	 * The address space's "Heap" region spans from:
+	 *     [heap_start, heap_end)
+	 */
+	unsigned long      heap_start;
+	unsigned long      heap_end;
+
+	/**
+	 * The traditional UNIX data segment is contained in the address
+	 * space's heap region, ranging from:
+	 *     [heap_start, brk)
+	 *
+	 * GLIBC/malloc will call the sys_brk() system call when it wants to
+	 * expand or shrink the data segment. The kernel verifies that the new
+	 * brk value is legal before updating it. The data segment may not
+	 * extend beyond the address space's heap region or overlap with
+	 * any anonymous mmap regions (see mmap_brk below).
+	 */
+	unsigned long brk;
+
+	/**
+	 * Memory for anonymous mmap() regions is allocated from the top of the
+	 * address space's heap region, ranging from:
+	 *     [mmap_brk, heap_end)
+	 *
+	 * GLIBC makes at least one mmap() call during pre-main app startup
+	 * to allocate some "anonymous" memory (i.e., normal memory, not a
+	 * file mapping). mmap_brk starts out set to heap_end and grows down
+	 * as anonymous mmap() calls are made. The kernel takes care to prevent
+	 * mmap_brk from extending into the UNIX data segment (see brk above).
+	 */
+	unsigned long mmap_brk;
+
 	struct arch_aspace arch;        /* Architecture specific data */
 };
 

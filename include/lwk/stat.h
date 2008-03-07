@@ -1,9 +1,9 @@
-#ifndef _LINUX_STAT_H
-#define _LINUX_STAT_H
+#ifndef _LWK_STAT_H
+#define _LWK_STAT_H
 
 #ifdef __KERNEL__
 
-#include <asm/stat.h>
+#include <arch/stat.h>
 
 #endif
 
@@ -56,8 +56,8 @@
 #define UTIME_NOW	((1l << 30) - 1l)
 #define UTIME_OMIT	((1l << 30) - 2l)
 
-#include <linux/types.h>
-#include <linux/time.h>
+#include <lwk/types.h>
+#include <lwk/time.h>
 
 struct kstat {
 	u64		ino;

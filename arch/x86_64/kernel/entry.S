@@ -3,6 +3,7 @@
 #include <arch/ptrace.h>
 #include <arch/asm-offsets.h>
 #include <arch/idt_vectors.h>
+#include <arch/dwarf2.h>
 
 
 /**
@@ -260,5 +261,39 @@ ENTRY(asm_idtvec_table)
 		vector=vector+1
 	.endr
 END(asm_idtvec_table)
+
+
+/**
+ * Reload gs selector with exception handling.
+ *     edi:  new selector
+ */
+ENTRY(load_gs_index)
+	CFI_STARTPROC
+	pushf
+	CFI_ADJUST_CFA_OFFSET 8
+	cli
+	swapgs
+gs_change:
+	movl %edi,%gs
+2:	mfence          /* workaround */
+	swapgs
+	popf
+	CFI_ADJUST_CFA_OFFSET -8
+	ret
+	CFI_ENDPROC
+ENDPROC(load_gs_index)
+
+	.section __ex_table,"a"
+	.align 8
+	.quad gs_change,bad_gs
+	.previous
+	.section .fixup,"ax"
+	/* running with kernelgs */
+bad_gs:
+	swapgs                  /* switch back to user gs */
+	xorl %eax,%eax
+	movl %eax,%gs
+	jmp  2b
+	.previous
 
 

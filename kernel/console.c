@@ -74,33 +74,3 @@ void console_init(void)
 		driver_init_by_name(con);
 }
 
-/**
- * System Call: Writes a string to the local console.
- */
-long sys_write_console(const char __user *buf, size_t count)
-{
-	char   kbuf[512];
-	size_t kcount = count;
-
-	/* Protect against overflowing the kernel buffer */
-	if (kcount >= sizeof(kbuf))
-		kcount = sizeof(kbuf) - 1;
-
-	/* Copy the user-level string to a kernel buffer */
-	/* TODO: Fix this to perform access checks */
-	if (__copy_from_user(kbuf, buf, kcount))
-		return -EFAULT;
-	kbuf[kcount] = '\0';
-
-	/* Write the string to the local console */
-	printk(KERN_USERMSG
-		"(TSK-%u) %s%s\n",
-		current->task_id,
-		kbuf,
-		(kcount != count) ? " <TRUNCATED>" : ""
-	);
-
-	/* Return number of characters actually printed */
-	return kcount;
-}
-

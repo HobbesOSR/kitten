@@ -1,5 +1,5 @@
-#ifndef _ASM_X86_64_STAT_H
-#define _ASM_X86_64_STAT_H
+#ifndef _X86_64_STAT_H
+#define _X86_64_STAT_H
 
 #define STAT_HAVE_NSEC 1
 
@@ -24,21 +24,6 @@ struct stat {
 	unsigned long	st_ctime;
 	unsigned long   st_ctime_nsec;
   	long		__unused[3];
-};
-
-/* For 32bit emulation */
-struct __old_kernel_stat {
-	unsigned short st_dev;
-	unsigned short st_ino;
-	unsigned short st_mode;
-	unsigned short st_nlink;
-	unsigned short st_uid;
-	unsigned short st_gid;
-	unsigned short st_rdev;
-	unsigned int  st_size;
-	unsigned int  st_atime;
-	unsigned int  st_mtime;
-	unsigned int  st_ctime;
 };
 
 #endif

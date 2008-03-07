@@ -1,7 +1,7 @@
 #ifndef __X8664_MMAN_H__
 #define __X8664_MMAN_H__
 
-#include <asm-generic/mman.h>
+#include <arch-generic/mman.h>
 
 #define MAP_32BIT	0x40		/* only give out 32bit addresses */
 

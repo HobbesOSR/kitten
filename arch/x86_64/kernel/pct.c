@@ -89,6 +89,7 @@ int
 arch_load_pct(void)
 {
 	int status;
+	union task_union *new_task;
 	struct task_struct *pct_task;
 	char *argv[MAX_NUM_STRS] = { "pct" };
 	char *envp[MAX_NUM_STRS];
@@ -103,8 +104,12 @@ arch_load_pct(void)
 
 	BUG_ON(pct_elf_image == NULL);
 
-	pct_task = kmem_alloc(sizeof(struct task_struct));
-	BUG_ON(!pct_task);
+	new_task = kmem_get_pages(TASK_ORDER);
+	if (!new_task)
+		panic("Failed to allocate new task.");
+
+	pct_task = &new_task->task_info;
+	pct_task->arch.addr_limit = PAGE_OFFSET;
 
 	pct_task->aspace = aspace_create();
 	BUG_ON(!pct_task->aspace);
@@ -137,6 +142,29 @@ arch_load_pct(void)
 	regs->rip                  = entry_point;
 	regs->rsp                  = stack_ptr;
 	regs->eflags               = (1 << 9 );
+
+	/* Set the PCT as the current process */
+	write_pda(pcurrent, pct_task);
+
+	/* Initialize the PCT's FPU state */
+	memset(
+		&pct_task->arch.thread.i387.fxsave,
+		0,
+		sizeof(struct i387_fxsave_struct)
+	);
+	pct_task->arch.thread.i387.fxsave.cwd = 0x37f;
+	pct_task->arch.thread.i387.fxsave.mxcsr = 0x1f80;
+
+	/*
+	 * Clear the task switch flag... if not cleared we'll get
+	 * a "Device Not Available" interrupt when the first FPU/SSE
+	 * instruction is executed.
+	 */
+	clts();
+
+	/* PCT runs as root */
+	pct_task->uid = 0;
+	pct_task->gid = 0;
 
 	asm_run_task(regs);  /* this does not return */
 }
