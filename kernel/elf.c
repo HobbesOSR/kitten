@@ -144,47 +144,47 @@ copy_args_to_stack(
 	int space = 0;
 	int len;
 	int i;
-	char *arg_sptr;
-	char **arg_ptr;
+	char *arg_sptr, *env_sptr;
+	char **arg_ptr, **env_ptr;
 	unsigned long stack = kstack_top;
 
 	/* put a NULL pointer here for case were there are 0 args and envs */ 
 	stack -= sizeof(char *);
 	*((char *)stack) = 0;
 
+	/* Calculate how much stack memory to reserve for argument strings */
 	while ((len = strlen(argv[argc])) != 0) {
 		space += len + 1;
 		++argc;
 	}
+	arg_sptr = (char *)(stack -= round_up(space, 16));
 
-	arg_sptr = (char *)(stack -= ((space + 15) & ~15));
-
+	/* Calculate how much stack memory to reserve for environment strings */
 	space = 0;
 	while ((len = strlen(envp[envc])) != 0) {
 		space += len + 1;
 		++envc;
 	}
+	env_sptr = (char *)(stack -= round_up(space, 16));
 
-	if (envc) {
-		char *env_sptr = (char *)(stack -= ((space + 15) & ~15));
-		char **env_ptr = (char **)(stack -= sizeof(void *) * (envc+1));
-		for (i = 0; i < envc; i++) {
-			/*
- 			 * Write a pointer to the environment string to the 
- 			 * stack... need to be careful to convert the kernel
- 			 * pointer to a user pointer.
- 			 */
-			env_ptr[i] = (char *)(
-			    ustack_top - (kstack_top - (unsigned long)env_sptr)
-			);
-			strcpy(env_sptr, envp[i]);
-			env_sptr += strlen(envp[i]) + 1;
-		} 
-		env_ptr[i] = 0;
-	}
+	/* Push environment variables onto user stack */
+	env_ptr  = (char **)(stack -= sizeof(void *) * (envc+1));
+	for (i = 0; i < envc; i++) {
+		/*
+ 		 * Write a pointer to the environment string to the 
+ 		 * stack... need to be careful to convert the kernel
+ 		 * pointer to a user pointer.
+ 		 */
+		env_ptr[i] = (char *)(
+		    ustack_top - (kstack_top - (unsigned long)env_sptr)
+		);
+		strcpy(env_sptr, envp[i]);
+		env_sptr += strlen(envp[i]) + 1;
+	} 
+	env_ptr[i] = 0;
 
+	/* Push arguments onto user stack */
 	arg_ptr = (char **)(stack -= sizeof(void *) * (argc+1));
-
 	for (i = 0; i < argc; i++) {
 		/*
  		 * Write a pointer to the argument string to the stack...
@@ -199,6 +199,7 @@ copy_args_to_stack(
 	} 
 	arg_ptr[i] = 0;
 
+	/* Push the number of arguments onto user stack */
 	*((int *)(stack -= sizeof(void *))) = argc;
 
 	return ustack_top - (kstack_top - stack);
