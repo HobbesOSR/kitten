@@ -99,6 +99,8 @@ extern void * memchr(const void *,int,__kernel_size_t);
 
 extern char *kstrdup(const char *s, gfp_t gfp);
 
+extern char *strerror(int errnum);
+
 #ifdef __cplusplus
 }
 #endif

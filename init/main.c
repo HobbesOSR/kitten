@@ -100,6 +100,6 @@ start_kernel()
 	 */
 	printk(KERN_INFO "Loading PCT...\n");
 	status = arch_load_pct();  /* This should not return */
-	panic("Failed to load PCT! status=%d\n", status);
+	panic("Failed to load PCT! error=%d (%s)\n", status, strerror(status));
 }
 
