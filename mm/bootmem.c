@@ -462,6 +462,21 @@ alloc_bootmem_aligned(unsigned long size, unsigned long align)
 }
 
 /**
+ * Allocates a block of memory of the specified size and alignment from the
+ * user memory pool (umem).  Normal alloc_bootmem() calls allocate the first
+ * chunk of memory available, whether or not it is in the kernel memory pool
+ * (kmem) or umem.  alloc_bootmem_from_umem() is intended to be used when
+ * allocating a large chunk of boot-time memory that would otherwise use
+ * virtually all of the kmem pool.  In other words, this version steals
+ * application memory rather than kernel memory.
+ */
+void * __init
+alloc_bootmem_from_umem(unsigned long size, unsigned long align)
+{
+	return __alloc_bootmem(size, align, kmem_size);
+}
+
+/**
  * Initializes the kernel memory subsystem.
  */
 void
