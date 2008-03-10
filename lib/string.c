@@ -19,6 +19,7 @@
  * -  Kissed strtok() goodbye
  */
 
+#include <lwk/kernel.h>
 #include <lwk/types.h>
 #include <lwk/string.h>
 #include <lwk/ctype.h>
@@ -605,3 +606,22 @@ void *memchr(const void *s, int c, size_t n)
 }
 EXPORT_SYMBOL(memchr);
 #endif
+
+
+/**
+ * Converts error code into human readable string.
+ */
+char *
+strerror(int errnum)
+{
+	if (errnum < 0)
+		errnum *= -1;
+
+	switch (errnum) {
+		case ENOMEM:	return "Out of memory";
+		case EINVAL:	return "Invalid argument";
+	}
+
+	return "unknown";
+}
+
