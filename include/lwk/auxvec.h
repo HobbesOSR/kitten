@@ -1,7 +1,20 @@
-#ifndef _LINUX_AUXVEC_H
-#define _LINUX_AUXVEC_H
+#ifndef _LWK_AUXVEC_H
+#define _LWK_AUXVEC_H
 
-#include <asm/auxvec.h>
+#ifdef __KERNEL__
+/**
+ * Auxiliary info table entry.  A table of these entries gets placed at the
+ * top of a new task's stack so user-space can figure out things that are
+ * difficult or impossible to determine otherwise (e.g., its base load
+ * address).
+ */
+struct aux_ent {
+	unsigned long id;
+	unsigned long val;
+};
+#endif
+
+#include <arch/auxvec.h>
 
 /* Symbolic values for the entries in the auxiliary table
    put on the initial stack */
@@ -26,6 +39,6 @@
 
 #define AT_SECURE 23   /* secure mode boolean */
 
-#define AT_VECTOR_SIZE  44 /* Size of auxiliary table.  */
+#define AT_ENTRIES  22 /* Number of entries in the auxiliary table */
 
-#endif /* _LINUX_AUXVEC_H */
+#endif /* _LWK_AUXVEC_H */

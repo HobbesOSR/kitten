@@ -4,6 +4,7 @@
 #include <lwk/log2.h>
 #include <lwk/aspace.h>
 #include <lwk/elf.h>
+#include <lwk/auxvec.h>
 
 
 /**
@@ -120,52 +121,64 @@ elf_print_phdr(struct elf_phdr *hdr)
 
 
 /**
- * Copies the argument array and environment array to the top of the user stack
- * in the format that the C library expects them. Eventually the arguments get
- * passed to the application's main(argc, argv, envp) function.
+ * Copies the argument array, environment array, and auxiliary info table to
+ * the top of the user stack in the format that the C library expects them.
+ * Eventually the arguments get passed to the application's
+ * main(argc, argv, envp) function.
  *
  * This routine is careful to only write to the kernel mapping of the stack
  * (all writes are via kstack_top). All pointers written to the stack are
  * converted to user pointers relative to ustack_top.
  *
- * This returns the new value of the user stack pointer after the arguments and
- * environment have been pushed onto it.
+ * The new value of the user stack pointer is returned.
  */
 static unsigned long
 copy_args_to_stack(
-	unsigned long	kstack_top,  /* kernel virtual addr of stack top */
-	unsigned long	ustack_top,  /* user virtual addr of stack top */
-	char *		argv[], 
-	char *		envp[]
+	unsigned long   kstack_top,  /* kernel virtual addr of stack top */
+	unsigned long   ustack_top,  /* user virtual addr of stack top */
+	char *          argv[],      /* arguments */
+	char *          envp[],      /* environment variables */
+	struct aux_ent  auxp[]       /* auxiliary information */
 )
 {
 	int argc = 0;
 	int envc = 0;
-	int space = 0;
-	int len;
+	int auxc = 0;
+	unsigned long space;
+	unsigned long len;
 	int i;
 	char *arg_sptr, *env_sptr;
 	char **arg_ptr, **env_ptr;
+	struct aux_ent *aux_sptr;
 	unsigned long stack = kstack_top;
 
-	/* put a NULL pointer here for case were there are 0 args and envs */ 
-	stack -= sizeof(char *);
-	*((char *)stack) = 0;
+	/* Calculate how much stack memory is needed for auxiliary info */
+	while (auxp[auxc].id != AT_NULL) {
+		++auxc;
+	}
+	space = (auxc + 1) * sizeof(struct aux_ent);  /* +1 for AT_NULL */
+	aux_sptr = (struct aux_ent *)(stack -= round_up(space, 16));
 
-	/* Calculate how much stack memory to reserve for argument strings */
+	/* Calculate how much stack memory is needed for argument strings */
+	space = 0;
 	while ((len = strlen(argv[argc])) != 0) {
 		space += len + 1;
 		++argc;
 	}
 	arg_sptr = (char *)(stack -= round_up(space, 16));
 
-	/* Calculate how much stack memory to reserve for environment strings */
+	/* Calculate how much stack memory is needed for environment strings */
 	space = 0;
 	while ((len = strlen(envp[envc])) != 0) {
 		space += len + 1;
 		++envc;
 	}
 	env_sptr = (char *)(stack -= round_up(space, 16));
+
+	/* Push auxiliary information onto user stack */ 
+	for (i = 0; i <= auxc; i++) {
+		aux_sptr[i] = auxp[i];
+	}
 
 	/* Push environment variables onto user stack */
 	env_ptr  = (char **)(stack -= sizeof(void *) * (envc+1));
@@ -203,6 +216,22 @@ copy_args_to_stack(
 	*((int *)(stack -= sizeof(void *))) = argc;
 
 	return ustack_top - (kstack_top - stack);
+}
+
+
+/**
+ * Writes an auxiliary info table entry.
+ */
+static void
+write_aux(
+	struct aux_ent * table,
+	int              index,
+	unsigned long    id,
+	unsigned long    val
+)
+{
+	table[index].id  = id;
+	table[index].val = val;
 }
 
 
@@ -252,6 +281,10 @@ elf_load_executable(
 	unsigned long     stack_top;
 	void *            kmem;
 	unsigned long     src, dst;
+	int               auxc = 0;
+	struct aux_ent    auxp[AT_ENTRIES];
+	unsigned long     load_addr = 0;
+	int               load_addr_set = 0;
 
 	BUG_ON(!elf_image||!argv||!envp||!aspace||!entry_point||!stack_ptr);
 	BUG_ON((heap_size == 0) || (stack_size == 0));
@@ -284,6 +317,12 @@ elf_load_executable(
 		/* Need to keep track of where heap should start */
 		if (end > heap_start)
 			heap_start = end;
+
+		/* Remember the first load address */
+		if (!load_addr_set) {
+			load_addr_set = 1;
+			load_addr = phdr->p_vaddr - phdr->p_offset;
+		}
 
 		/* Set up an address space region for the program segment */
 		status = aspace_kmem_alloc_region(
@@ -357,11 +396,20 @@ elf_load_executable(
 	if (status)
 		return status;
 
-	/* Copy arguments and environment to the top of the stack */
+	/* Build the auxiliary info table */
+	write_aux(auxp, auxc++, AT_PHDR, load_addr + ehdr->e_phoff);
+	write_aux(auxp, auxc++, AT_PHENT, sizeof(struct elf_phdr));
+	write_aux(auxp, auxc++, AT_PHNUM, ehdr->e_phnum);
+	write_aux(auxp, auxc++, AT_BASE, 0);
+	write_aux(auxp, auxc++, AT_FLAGS, 0);
+	write_aux(auxp, auxc++, AT_ENTRY, ehdr->e_entry);
+	write_aux(auxp, auxc++, AT_NULL, 0);
+
+	/* Copy arguments, environment, and auxiliary info to user stack */
 	stack_top = copy_args_to_stack(
 			(unsigned long)kmem + extent,
 			end,
-			argv, envp
+			argv, envp, auxp
 	);
 
 	/* Return initial entry point and stack pointer */
