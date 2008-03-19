@@ -12,7 +12,7 @@
 #include <arch/unistd.h>
 
 /**
- * Setup for the include of <arch/unistd.h> in the syscall_table[]
+ * Setup for the include of <arch/unistd.h> in the sys_call_table[]
  * definition below.
  */
 #undef __SYSCALL
@@ -44,7 +44,7 @@ long syscall_not_implemented(void)
  * uses this table to determine the handler function to call for each
  * system call.  The table is indexed by system call number.
  */
-const syscall_ptr_t syscall_table[__NR_syscall_max+1] = {
+const syscall_ptr_t sys_call_table[__NR_syscall_max+1] = {
 	[0 ... __NR_syscall_max] = syscall_not_implemented,
 	#include <arch/unistd.h>
 };

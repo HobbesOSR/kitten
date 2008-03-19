@@ -94,7 +94,7 @@ ENTRY(asm_syscall)
 	movq %r10, %rcx			/* Per x86_64 C ABI, RCX holds ARG3  */
 	cmp $__NR_syscall_max, %rax	/* Make sure syscall # is in range   */
 	jg 1f
-	call *syscall_table(,%rax,8)	/* Call the system call handler      */
+	call *sys_call_table(,%rax,8)	/* Call the system call handler      */
 	jmp 2f
 1:
 	call syscall_not_implemented	/* Print error and return            */
