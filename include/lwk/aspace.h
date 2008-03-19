@@ -73,6 +73,14 @@ struct aspace {
 	 */
 	unsigned long mmap_brk;
 
+	/**
+ 	 * ELF load information
+ 	 */
+	void __user * entry_point;  /* user address of first instruction */
+	void __user * stack_ptr;    /* user address of initial stack ptr */
+	void __user * e_phdr;       /* user address of ELF program header */
+	unsigned long e_phnum;      /* number of ELF program headers */
+
 	struct arch_aspace arch;        /* Architecture specific data */
 };
 

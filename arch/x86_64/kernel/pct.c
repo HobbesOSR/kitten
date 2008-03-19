@@ -93,7 +93,6 @@ arch_load_pct(void)
 	struct task_struct *pct_task;
 	char *argv[MAX_NUM_STRS] = { "pct" };
 	char *envp[MAX_NUM_STRS];
-	unsigned long entry_point, stack_ptr;
 	struct pt_regs *regs;
 
 	if (init_str_array(MAX_NUM_STRS-1, argv+1, pct_argv_str))
@@ -120,14 +119,18 @@ arch_load_pct(void)
 	aspace_dump(pct_task->aspace);
 
 	status = elf_load_executable(
+			pct_task,
 			pct_elf_image,
-			pct_heap_size,
+			pct_heap_size
+	         );
+	if (status)
+		return status;
+
+	status = setup_initial_stack(
+			pct_task,
 			pct_stack_size,
 			argv,
-			envp,
-			pct_task->aspace,
-			&entry_point,
-			&stack_ptr
+			envp
 	         );
 	if (status)
 		return status;
@@ -139,8 +142,8 @@ arch_load_pct(void)
 	regs->cs                   = __USER_CS;
 	regs->ss                   = __USER_DS;
 
-	regs->rip                  = entry_point;
-	regs->rsp                  = stack_ptr;
+	regs->rip                  = (uint64_t)pct_task->aspace->entry_point;
+	regs->rsp                  = (uint64_t)pct_task->aspace->stack_ptr;
 	regs->eflags               = (1 << 9 );
 
 	/* Set the PCT as the current process */

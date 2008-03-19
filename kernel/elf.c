@@ -5,6 +5,8 @@
 #include <lwk/aspace.h>
 #include <lwk/elf.h>
 #include <lwk/auxvec.h>
+#include <arch/uaccess.h>
+#include <arch/param.h>
 
 
 /**
@@ -121,155 +123,32 @@ elf_print_phdr(struct elf_phdr *hdr)
 
 
 /**
- * Copies the argument array, environment array, and auxiliary info table to
- * the top of the user stack in the format that the C library expects them.
- * Eventually the arguments get passed to the application's
- * main(argc, argv, envp) function.
+ * Loads an ELF executable image into the specified task's address space. The
+ * address space passed in (task->aspace) must have been previously created
+ * with aspace_create(). 
  *
- * This routine is careful to only write to the kernel mapping of the stack
- * (all writes are via kstack_top). All pointers written to the stack are
- * converted to user pointers relative to ustack_top.
- *
- * The new value of the user stack pointer is returned.
- */
-static unsigned long
-copy_args_to_stack(
-	unsigned long   kstack_top,  /* kernel virtual addr of stack top */
-	unsigned long   ustack_top,  /* user virtual addr of stack top */
-	char *          argv[],      /* arguments */
-	char *          envp[],      /* environment variables */
-	struct aux_ent  auxp[]       /* auxiliary information */
-)
-{
-	int argc = 0;
-	int envc = 0;
-	int auxc = 0;
-	unsigned long space;
-	unsigned long len;
-	int i;
-	char *arg_sptr, *env_sptr;
-	char **arg_ptr, **env_ptr;
-	struct aux_ent *aux_sptr;
-	unsigned long stack = kstack_top;
-
-	/* Calculate how much stack memory is needed for auxiliary info */
-	while (auxp[auxc].id != AT_NULL) {
-		++auxc;
-	}
-	space = (auxc + 1) * sizeof(struct aux_ent);  /* +1 for AT_NULL */
-	aux_sptr = (struct aux_ent *)(stack -= round_up(space, 16));
-
-	/* Calculate how much stack memory is needed for argument strings */
-	space = 0;
-	while ((len = strlen(argv[argc])) != 0) {
-		space += len + 1;
-		++argc;
-	}
-	arg_sptr = (char *)(stack -= round_up(space, 16));
-
-	/* Calculate how much stack memory is needed for environment strings */
-	space = 0;
-	while ((len = strlen(envp[envc])) != 0) {
-		space += len + 1;
-		++envc;
-	}
-	env_sptr = (char *)(stack -= round_up(space, 16));
-
-	/* Push auxiliary information onto user stack */ 
-	for (i = 0; i <= auxc; i++) {
-		aux_sptr[i] = auxp[i];
-	}
-
-	/* Push environment variables onto user stack */
-	env_ptr  = (char **)(stack -= sizeof(void *) * (envc+1));
-	for (i = 0; i < envc; i++) {
-		/*
- 		 * Write a pointer to the environment string to the 
- 		 * stack... need to be careful to convert the kernel
- 		 * pointer to a user pointer.
- 		 */
-		env_ptr[i] = (char *)(
-		    ustack_top - (kstack_top - (unsigned long)env_sptr)
-		);
-		strcpy(env_sptr, envp[i]);
-		env_sptr += strlen(envp[i]) + 1;
-	} 
-	env_ptr[i] = 0;
-
-	/* Push arguments onto user stack */
-	arg_ptr = (char **)(stack -= sizeof(void *) * (argc+1));
-	for (i = 0; i < argc; i++) {
-		/*
- 		 * Write a pointer to the argument string to the stack...
- 		 * need to be careful to convert the kernel pointer to a
- 		 * user pointer.
- 		 */
-		arg_ptr[i] = (char *)(
-		    ustack_top - (kstack_top - (unsigned long)arg_sptr)
-		);
-		strcpy(arg_sptr, argv[i]);
-		arg_sptr += strlen(argv[i]) + 1;
-	} 
-	arg_ptr[i] = 0;
-
-	/* Push the number of arguments onto user stack */
-	*((int *)(stack -= sizeof(void *))) = argc;
-
-	return ustack_top - (kstack_top - stack);
-}
-
-
-/**
- * Writes an auxiliary info table entry.
- */
-static void
-write_aux(
-	struct aux_ent * table,
-	int              index,
-	unsigned long    id,
-	unsigned long    val
-)
-{
-	table[index].id  = id;
-	table[index].val = val;
-}
-
-
-/**
- * Loads an ELF executable image into the specified address space. The address
- * space passed in (aspace) must have previously been created with
- * aspace_create(). 
- *
- * If successful, the initial entry point and stack pointer are returned to the
- * caller. The caller should use these when it launches the executable (e.g.,
- * for the x86-64 architecture set %rip=entry_point and %rsp=stack_ptr).
+ * If successful, the initial entry point is returned in
+ * task->aspace->entry_point.  The caller will need the entry point address
+ * when it starts the task running (e.g., for the x86-64 architecture set
+ * %rip=task->aspace->entry_point).
  *
  * Arguments:
+ *       [INOUT] task:        Task to load ELF image into 
  *       [IN]    elf_image:   Pointer to an ELF image
  *       [IN]    heap_size:   Number of bytes to allocate for heap
- *       [IN]    stack_size:  Number of bytes to allocate for stack
- *       [IN]    argv[]:      Array of pointers to argument strings
- *       [IN]    envp[]:      Array of pointers to environment strings
- *       [INOUT] aspace:      Address space to load ELF image into
- *       [OUT]   entry_point: Initial instruction pointer value
- *       [OUT]   stack_ptr:   Initial stack pointer value
  *
  * Returns:
  *       Success: 0
- *       Failure: Error Code, the address space passed in should be destroyed.
+ *       Failure: Error Code, task->aspace should be destroyed by caller.
  */
 int
 elf_load_executable(
-	void *		elf_image,
-	unsigned long	heap_size,
-	unsigned long	stack_size,
-	char *		argv[],
-	char *		envp[],
-	struct aspace *	aspace,
-	unsigned long *	entry_point,
-	unsigned long *	stack_ptr
+	struct task_struct * task,
+	void *		     elf_image,
+	unsigned long	     heap_size
 )
 {
+	struct aspace *   aspace;
 	struct elfhdr *   ehdr;
 	struct elf_phdr * phdr_array;
 	struct elf_phdr * phdr;
@@ -278,16 +157,15 @@ elf_load_executable(
 	unsigned long     start, end, extent;
 	unsigned int      num_load_segments = 0;
 	unsigned long     heap_start = 0;
-	unsigned long     stack_top;
 	void *            kmem;
 	unsigned long     src, dst;
-	int               auxc = 0;
-	struct aux_ent    auxp[AT_ENTRIES];
 	unsigned long     load_addr = 0;
 	int               load_addr_set = 0;
 
-	BUG_ON(!elf_image||!argv||!envp||!aspace||!entry_point||!stack_ptr);
-	BUG_ON((heap_size == 0) || (stack_size == 0));
+	BUG_ON(!task||!elf_image||!heap_size);
+
+	aspace = task->aspace;
+	BUG_ON(!aspace);
 
 	/* Make sure ELF header is sane */
 	ehdr = elf_image;
@@ -380,6 +258,243 @@ elf_load_executable(
 	/* Anonymous mmap() requests are satisfied from the top of the heap */
 	aspace->mmap_brk = aspace->heap_end;
 
+	/* Remember ELF load information */
+	aspace->entry_point = (void __user *)ehdr->e_entry;
+	aspace->e_phdr      = (void __user *)(load_addr + ehdr->e_phoff);
+	aspace->e_phnum     = ehdr->e_phnum;
+
+	return 0;
+}
+
+
+/**
+ * Pushes the architecture's platform string to the user stack.
+ * User-level uses this to determine what type of platform it is running on.
+ */
+static int
+push_platform_string(
+	void ** stack_ptr,
+	void ** platform_ptr
+)
+{
+	unsigned long sp = (unsigned long)(*stack_ptr);
+	const char *platform_str = ELF_PLATFORM;
+	unsigned long len;
+
+	/* Nothing to do if the arch doesn't have a platform string */
+	if (!platform_str)
+		return 0;
+
+	/* Push the platform string onto the user stack */
+	len = strlen(platform_str) + 1;
+	sp -= round_up(len, 16);
+	if (copy_to_user((void __user *)sp, platform_str, len))
+		return -ENOMEM;
+
+	*stack_ptr = *platform_ptr = (void *)sp;
+	return 0;
+}
+
+
+/**
+ * Writes an auxiliary info table entry.
+ */
+static void
+write_aux(
+	struct aux_ent * table,
+	int              index,
+	unsigned long    id,
+	unsigned long    val
+)
+{
+	table[index].id  = id;
+	table[index].val = val;
+}
+
+
+/**
+ * Pushes auxiliary information onto the user stack.  Some of this information
+ * is difficult for user-space to obtain by different means, so the kernel
+ * passes it on the top of the user's stack.  
+ */
+static int
+push_aux_info(
+	void **              stack_ptr,
+	struct task_struct * task,
+	void *               platform_ptr
+)
+{
+	unsigned long sp = (unsigned long)(*stack_ptr);
+	struct aux_ent auxv[AT_ENTRIES];
+	int auxc = 0;
+	unsigned long len;
+
+	/* Build the auxiliary info table */
+	write_aux(auxv, auxc++, AT_HWCAP, ELF_HWCAP);
+	write_aux(auxv, auxc++, AT_PAGESZ, ELF_EXEC_PAGESIZE);
+	write_aux(auxv, auxc++, AT_CLKTCK, CLOCKS_PER_SEC);
+	write_aux(auxv, auxc++, AT_PHDR,
+	                        (unsigned long)task->aspace->e_phdr);
+	write_aux(auxv, auxc++, AT_PHENT, sizeof(struct elf_phdr));
+	write_aux(auxv, auxc++, AT_PHNUM, task->aspace->e_phnum);
+	write_aux(auxv, auxc++, AT_BASE, 0);
+	write_aux(auxv, auxc++, AT_FLAGS, 0);
+	write_aux(auxv, auxc++, AT_ENTRY,
+	                        (unsigned long)task->aspace->entry_point);
+	write_aux(auxv, auxc++, AT_UID, task->uid);
+	write_aux(auxv, auxc++, AT_EUID, task->uid);
+	write_aux(auxv, auxc++, AT_GID, task->gid);
+	write_aux(auxv, auxc++, AT_EGID, task->gid);
+	write_aux(auxv, auxc++, AT_SECURE, 0);
+	if (platform_ptr) {
+		write_aux(auxv, auxc++, AT_PLATFORM,
+		                        (unsigned long)platform_ptr);
+	}
+	write_aux(auxv, auxc++, AT_NULL, 0);
+
+	/* Push the auxiliary info table onto the user stack */
+	len = auxc * sizeof(struct aux_ent);
+	sp -= round_up(len, 16);
+	if (copy_to_user((void __user *)sp, auxv, len))
+		return -ENOMEM;
+
+	*stack_ptr = (void *)sp;
+	return 0;
+}
+
+
+/**
+ * Pushes arguments and environment variables onto the user stack.
+ */
+static int
+push_args_and_env(
+	void ** stack_ptr,
+	char *  argv[],
+	char *  envp[]
+)
+{
+	unsigned long sp = (unsigned long)(*stack_ptr);
+	int i, idx;
+	unsigned long argc = 0;
+	unsigned long envc = 0;
+	unsigned long space, len;
+	char __user *argstr_uptr;
+	char __user *envstr_uptr;
+	unsigned long __user *stack;
+
+	/* Calculate how much stack memory is needed for argument strings */
+	space = 0;
+	while ((len = strlen(argv[argc])) != 0) {
+		space += (len + 1);
+		++argc;
+	}
+	argstr_uptr = (char *)(sp -= round_up(space, 16));
+
+	/* Calculate how much stack memory is needed for environment strings */
+	space = 0;
+	while ((len = strlen(envp[envc])) != 0) {
+		space += (len + 1);
+		++envc;
+	}
+	envstr_uptr = (char *)(sp -= round_up(space, 16));
+
+	/* Make room on the stack for argv[], envp[], and argc */
+	space = ((argc + envc + 3) * sizeof(unsigned long));
+	sp -= round_up(space, 16);
+
+	/* Get ready to push values onto stack */
+	stack = (unsigned long __user *)sp;
+	idx = 0;
+
+	/* Push argc onto the user stack */
+	if (put_user(argc, &stack[idx++]))
+		return -EFAULT;
+
+	/* Push argv[] onto the user stack */
+	for (i = 0; i < argc; i++) {
+		len = strlen(argv[i]) + 1;
+		/* Copy arg string to user stack */
+		if (copy_to_user(argstr_uptr, argv[i], len))
+			return -EFAULT;
+		/* argv[] pointer to arg string */
+		if (put_user(argstr_uptr, &stack[idx++]))
+			return -EFAULT;
+		argstr_uptr += len;
+	}
+	/* NULL terminate argv[] */
+	if (put_user(0, &stack[idx++]))
+		return -EFAULT;
+	
+	/* Push envp[] onto the user stack */
+	for (i = 0; i < envc; i++) {
+		len = strlen(envp[i]) + 1;
+		/* Copy env string to user stack */
+		if (copy_to_user(envstr_uptr, envp[i], len))
+			return -EFAULT;
+		/* envp[] pointer to env string */
+		if (put_user(envstr_uptr, &stack[idx++]))
+			return -EFAULT;
+		envstr_uptr += len;
+	}
+	/* NULL terminate envp[] */
+	if (put_user(0, &stack[idx++]))
+		return -EFAULT;
+
+	*stack_ptr = (void *)sp;
+	return 0;
+}
+
+
+/**
+ * Sets up the initial stack for a new task.  This includes storing the
+ * argv[] argument array, envp[] environment array, and auxiliary info table
+ * to the top of the user stack in the format that the C library expects them.
+ * Eventually the arguments get passed to the application's
+ * main(argc, argv, envp) function.
+ * 
+ * If successful, the initial stack pointer value that should be used when
+ * starting the new task is returned in task->aspace->stack_ptr.  
+ *
+ * This function sets up the initial stack as follows (stack grows down):
+ *
+ *                 Platform String
+ *                 Auxiliary Info Table
+ *                 Environment Strings
+ *                 Argument Strings
+ *                 envp[]
+ *                 argv[]
+ *                 argc
+ *
+ * Arguments:
+ *       [INOUT] task:        Task to initialize
+ *       [IN]    stack_size:  Number of bytes to allocate for stack
+ *       [IN]    argv[]:      Array of pointers to argument strings
+ *       [IN]    envp[]:      Array of pointers to environment strings
+ *
+ * Returns:
+ *       Success: 0
+ *       Failure: Error Code, task->aspace should be destroyed by caller.
+ */
+int
+setup_initial_stack(
+	struct task_struct * task,
+	unsigned long        stack_size,
+	char *               argv[],
+	char *               envp[]
+)
+{
+	int status, status2;
+	struct aspace * aspace;
+	unsigned long start, end, extent;
+	void * kmem;
+	void __user * stack_ptr;
+	void __user * platform_ptr = NULL;
+
+	BUG_ON(!task||!stack_size||!argv||!envp);
+
+	aspace = task->aspace;
+	BUG_ON(!aspace);
+
 	/* Set up an address space region for the stack */
 	end    = PAGE_OFFSET - PAGE_SIZE; /* one guard page */
 	start  = round_down(end - stack_size, PAGE_SIZE);
@@ -393,30 +508,36 @@ elf_load_executable(
 			"Stack",
 			&kmem
 	);
-	if (status)
+	if (status) {
+		printk(KERN_WARNING
+		       "Failed to allocate stack, size=0x%lx\n", stack_size);
 		return status;
+	}
 
-	/* Build the auxiliary info table */
-	write_aux(auxp, auxc++, AT_PHDR, load_addr + ehdr->e_phoff);
-	write_aux(auxp, auxc++, AT_PHENT, sizeof(struct elf_phdr));
-	write_aux(auxp, auxc++, AT_PHNUM, ehdr->e_phnum);
-	write_aux(auxp, auxc++, AT_BASE, 0);
-	write_aux(auxp, auxc++, AT_FLAGS, 0);
-	write_aux(auxp, auxc++, AT_ENTRY, ehdr->e_entry);
-	write_aux(auxp, auxc++, AT_NULL, 0);
+	/* Set the initial user stack pointer */
+	stack_ptr = (void *)end;
 
-	/* Copy arguments, environment, and auxiliary info to user stack */
-	stack_top = copy_args_to_stack(
-			(unsigned long)kmem + extent,
-			end,
-			argv, envp, auxp
-	);
+	status = push_platform_string(&stack_ptr, &platform_ptr);
+	if (status)
+		goto error;
 
-	/* Return initial entry point and stack pointer */
-	*entry_point = ehdr->e_entry;
-	*stack_ptr   = stack_top;
+	status = push_aux_info(&stack_ptr, task, platform_ptr);
+	if (status)
+		goto error;
+
+	status = push_args_and_env(&stack_ptr, argv, envp);
+	if (status)
+		goto error;
+
+	/* Remember the initial stack pointer */
+	aspace->stack_ptr = stack_ptr;
 
 	return 0;
-}
 
+error:
+	status2 = aspace_del_region(aspace, start, extent);
+	if (status2)
+		panic("aspace_del_region() failed, status=%d", status2);
+	return status;
+}
 

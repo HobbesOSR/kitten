@@ -398,14 +398,17 @@ static inline void arch_write_notes(struct file *file) { }
 
 extern int
 elf_load_executable(
-	void *		elf_image,
-	unsigned long	heap_size,
-	unsigned long	stack_size,
-	char *		argv[],
-	char *		envp[],
-	struct aspace *	aspace,
-	unsigned long *	entry_point,
-	unsigned long *	stack_ptr
+	struct task_struct * task,
+	void *               elf_image,
+	unsigned long        heap_size
+);
+
+extern int
+setup_initial_stack(
+	struct task_struct * task,
+	unsigned long        stack_size,
+	char *               argv[],
+	char *               envp[]
 );
 
 #endif /* _LWK_ELF_H */

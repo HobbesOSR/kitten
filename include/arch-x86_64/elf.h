@@ -131,7 +131,7 @@ typedef struct user_i387_struct elf_fpregset_t;
    instruction set this CPU supports.  This could be done in user space,
    but it's not easy, and we've already done it here.  */
 
-#define ELF_HWCAP	(boot_cpu_data.x86_capability[0])
+#define ELF_HWCAP	(boot_cpu_data.arch.x86_capability[0])
 
 /* This yields a string that ld.so will use to load implementation
    specific libraries for optimization.  This is more specific in
