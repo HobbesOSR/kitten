@@ -65,19 +65,19 @@ arch_aspace_destroy(
 	/* Walk and then free the Page Global Directory */
 	pgd = aspace->arch.pgd;
 	for (i = 0; i < pgd_index(PAGE_OFFSET); i++) {
-		if (pgd[i].present)
+		if (!pgd[i].present)
 			continue;
 
 		/* Walk and then free the Page Upper Directory */
 		pud = __va(pgd[i].base_paddr << 12);
 		for (j = 0; j < 512; j++) {
-			if (pud[j].present || pud[j].pagesize)
+			if (!pud[j].present || pud[j].pagesize)
 				continue;
 
 			/* Walk and then free the Page Middle Directory */
 			pmd = __va(pud[j].base_paddr << 12);
 			for (k = 0; k < 512; k++) {
-				if (pmd[k].present || pmd[k].pagesize)
+				if (!pmd[k].present || pmd[k].pagesize)
 					continue;
 				
 				/* Free the last level Page Table Directory */
