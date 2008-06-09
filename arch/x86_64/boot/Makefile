@@ -61,12 +61,17 @@ FDINITRD = app.bin
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 
-# This require being root or having syslinux 2.02 or higher installed
+# This requires being root or having syslinux 2.02 or higher installed
 isoimage: $(BOOTIMAGE)
 	-rm -rf $(obj)/isoimage
 	mkdir $(obj)/isoimage
-	cp `echo /usr/lib*/syslinux/isolinux.bin | awk '{ print $1; }'` \
-		$(obj)/isoimage
+	for i in lib lib64 share end ; do \
+		if [ -f /usr/$$i/syslinux/isolinux.bin ] ; then \
+			cp /usr/$$i/syslinux/isolinux.bin $(obj)/isoimage ; \
+			break ; \
+		fi ; \
+		if [ $$i = end ] ; then exit 1 ; fi ; \
+	done
 	cp $(BOOTIMAGE) $(obj)/isoimage/lwk
 	echo '$(image_cmdline)' > $(obj)/isoimage/isolinux.cfg
 	if [ -f '$(FDINITRD)' ] ; then \
