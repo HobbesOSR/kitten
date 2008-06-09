@@ -238,7 +238,7 @@ aspace_add_region(
 
 	/* Region must not overlap with any existing regions */
 	list_for_each_entry(cur, &aspace->region_list, link) {
-		if ((start < cur->end) && (end >= cur->start)) {
+		if ((start < cur->end) && (end > cur->start)) {
 			printk(KERN_WARNING
 				"Region overlaps with existing region.\n");
 			return -EINVAL;
