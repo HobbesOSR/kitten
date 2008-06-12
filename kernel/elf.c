@@ -268,35 +268,6 @@ elf_load_executable(
 
 
 /**
- * Pushes the architecture's platform string to the user stack.
- * User-level uses this to determine what type of platform it is running on.
- */
-static int
-push_platform_string(
-	void ** stack_ptr,
-	void ** platform_ptr
-)
-{
-	unsigned long sp = (unsigned long)(*stack_ptr);
-	const char *platform_str = ELF_PLATFORM;
-	unsigned long len;
-
-	/* Nothing to do if the arch doesn't have a platform string */
-	if (!platform_str)
-		return 0;
-
-	/* Push the platform string onto the user stack */
-	len = strlen(platform_str) + 1;
-	sp -= round_up(len, 16);
-	if (copy_to_user((void __user *)sp, platform_str, len))
-		return -ENOMEM;
-
-	*stack_ptr = *platform_ptr = (void *)sp;
-	return 0;
-}
-
-
-/**
  * Writes an auxiliary info table entry.
  */
 static void
@@ -313,139 +284,6 @@ write_aux(
 
 
 /**
- * Pushes auxiliary information onto the user stack.  Some of this information
- * is difficult for user-space to obtain by different means, so the kernel
- * passes it on the top of the user's stack.  
- */
-static int
-push_aux_info(
-	void **              stack_ptr,
-	struct task_struct * task,
-	void *               platform_ptr
-)
-{
-	unsigned long sp = (unsigned long)(*stack_ptr);
-	struct aux_ent auxv[AT_ENTRIES];
-	int auxc = 0;
-	unsigned long len;
-
-	/* Build the auxiliary info table */
-	write_aux(auxv, auxc++, AT_HWCAP, ELF_HWCAP);
-	write_aux(auxv, auxc++, AT_PAGESZ, ELF_EXEC_PAGESIZE);
-	write_aux(auxv, auxc++, AT_CLKTCK, CLOCKS_PER_SEC);
-	write_aux(auxv, auxc++, AT_PHDR,
-	                        (unsigned long)task->aspace->e_phdr);
-	write_aux(auxv, auxc++, AT_PHENT, sizeof(struct elf_phdr));
-	write_aux(auxv, auxc++, AT_PHNUM, task->aspace->e_phnum);
-	write_aux(auxv, auxc++, AT_BASE, 0);
-	write_aux(auxv, auxc++, AT_FLAGS, 0);
-	write_aux(auxv, auxc++, AT_ENTRY,
-	                        (unsigned long)task->aspace->entry_point);
-	write_aux(auxv, auxc++, AT_UID, task->uid);
-	write_aux(auxv, auxc++, AT_EUID, task->uid);
-	write_aux(auxv, auxc++, AT_GID, task->gid);
-	write_aux(auxv, auxc++, AT_EGID, task->gid);
-	write_aux(auxv, auxc++, AT_SECURE, 0);
-	if (platform_ptr) {
-		write_aux(auxv, auxc++, AT_PLATFORM,
-		                        (unsigned long)platform_ptr);
-	}
-	write_aux(auxv, auxc++, AT_NULL, 0);
-
-	/* Push the auxiliary info table onto the user stack */
-	len = auxc * sizeof(struct aux_ent);
-	sp -= round_up(len, 16);
-	if (copy_to_user((void __user *)sp, auxv, len))
-		return -ENOMEM;
-
-	*stack_ptr = (void *)sp;
-	return 0;
-}
-
-
-/**
- * Pushes arguments and environment variables onto the user stack.
- */
-static int
-push_args_and_env(
-	void ** stack_ptr,
-	char *  argv[],
-	char *  envp[]
-)
-{
-	unsigned long sp = (unsigned long)(*stack_ptr);
-	int i, idx;
-	unsigned long argc = 0;
-	unsigned long envc = 0;
-	unsigned long space, len;
-	char __user *argstr_uptr;
-	char __user *envstr_uptr;
-	unsigned long __user *stack;
-
-	/* Calculate how much stack memory is needed for argument strings */
-	space = 0;
-	while ((len = strlen(argv[argc])) != 0) {
-		space += (len + 1);
-		++argc;
-	}
-	argstr_uptr = (char *)(sp -= round_up(space, 16));
-
-	/* Calculate how much stack memory is needed for environment strings */
-	space = 0;
-	while ((len = strlen(envp[envc])) != 0) {
-		space += (len + 1);
-		++envc;
-	}
-	envstr_uptr = (char *)(sp -= round_up(space, 16));
-
-	/* Make room on the stack for argv[], envp[], and argc */
-	space = ((argc + envc + 3) * sizeof(unsigned long));
-	sp -= round_up(space, 16);
-
-	/* Get ready to push values onto stack */
-	stack = (unsigned long __user *)sp;
-	idx = 0;
-
-	/* Push argc onto the user stack */
-	if (put_user(argc, &stack[idx++]))
-		return -EFAULT;
-
-	/* Push argv[] onto the user stack */
-	for (i = 0; i < argc; i++) {
-		len = strlen(argv[i]) + 1;
-		/* Copy arg string to user stack */
-		if (copy_to_user(argstr_uptr, argv[i], len))
-			return -EFAULT;
-		/* argv[] pointer to arg string */
-		if (put_user(argstr_uptr, &stack[idx++]))
-			return -EFAULT;
-		argstr_uptr += len;
-	}
-	/* NULL terminate argv[] */
-	if (put_user(0, &stack[idx++]))
-		return -EFAULT;
-	
-	/* Push envp[] onto the user stack */
-	for (i = 0; i < envc; i++) {
-		len = strlen(envp[i]) + 1;
-		/* Copy env string to user stack */
-		if (copy_to_user(envstr_uptr, envp[i], len))
-			return -EFAULT;
-		/* envp[] pointer to env string */
-		if (put_user(envstr_uptr, &stack[idx++]))
-			return -EFAULT;
-		envstr_uptr += len;
-	}
-	/* NULL terminate envp[] */
-	if (put_user(0, &stack[idx++]))
-		return -EFAULT;
-
-	*stack_ptr = (void *)sp;
-	return 0;
-}
-
-
-/**
  * Sets up the initial stack for a new task.  This includes storing the
  * argv[] argument array, envp[] environment array, and auxiliary info table
  * to the top of the user stack in the format that the C library expects them.
@@ -457,10 +295,10 @@ push_args_and_env(
  *
  * This function sets up the initial stack as follows (stack grows down):
  *
- *                 Platform String
- *                 Auxiliary Info Table
  *                 Environment Strings
  *                 Argument Strings
+ *                 Platform String
+ *                 Auxiliary Info Table
  *                 envp[]
  *                 argv[]
  *                 argc
@@ -484,12 +322,30 @@ setup_initial_stack(
 )
 {
 	int status, status2;
+	unsigned long i, len;
 	struct aspace * aspace;
 	unsigned long start, end, extent;
 	void * kmem;
-	void __user * stack_ptr;
-	void __user * platform_ptr = NULL;
+	unsigned long sp;
 
+	const char *platform_str = ELF_PLATFORM;
+	struct aux_ent auxv[AT_ENTRIES];
+
+	unsigned long argc = 0;
+	unsigned long envc = 0;
+	unsigned long auxc = 0;
+	unsigned long arg_len = 0;
+	unsigned long env_len = 0;
+	unsigned long auxv_len = 0;
+	unsigned long platform_str_len = 0;
+
+	char __user *strings_uptr;
+	char __user *platform_str_uptr;
+	unsigned long __user *auxv_uptr;
+	unsigned long __user *envp_uptr;
+	unsigned long __user *argv_uptr;
+	unsigned long __user *argc_uptr;
+	
 	BUG_ON(!task||!stack_size||!argv||!envp);
 
 	aspace = task->aspace;
@@ -514,23 +370,110 @@ setup_initial_stack(
 		return status;
 	}
 
-	/* Set the initial user stack pointer */
-	stack_ptr = (void *)end;
+	/* Set the initial stack pointer */
+	sp = end;
 
-	status = push_platform_string(&stack_ptr, &platform_ptr);
-	if (status)
+	/* Count # of arguments and their total string length */
+	while ((len = strlen(argv[argc])) != 0) {
+		arg_len += (len + 1);
+		++argc;
+	}
+
+	/* Count # of environment variables and their total string length */
+	while ((len = strlen(envp[envc])) != 0) {
+		env_len += (len + 1);
+		++envc;
+	}
+
+	/* Calculate length of the arch's platform string, if there is one */
+	if (platform_str)
+		platform_str_len = strlen(platform_str) + 1;
+
+	/* Make room on stack for arg, env, and platform strings */
+	sp -= (arg_len + env_len + platform_str_len);
+	strings_uptr = (void *) sp;
+
+	/* Build the auxilliary information table */
+	write_aux(auxv, auxc++, AT_HWCAP, ELF_HWCAP);
+	write_aux(auxv, auxc++, AT_PAGESZ, ELF_EXEC_PAGESIZE);
+	write_aux(auxv, auxc++, AT_CLKTCK, CLOCKS_PER_SEC);
+	write_aux(auxv, auxc++, AT_PHDR,
+	                        (unsigned long)task->aspace->e_phdr);
+	write_aux(auxv, auxc++, AT_PHENT, sizeof(struct elf_phdr));
+	write_aux(auxv, auxc++, AT_PHNUM, task->aspace->e_phnum);
+	write_aux(auxv, auxc++, AT_BASE, 0);
+	write_aux(auxv, auxc++, AT_FLAGS, 0);
+	write_aux(auxv, auxc++, AT_ENTRY,
+	                        (unsigned long)task->aspace->entry_point);
+	write_aux(auxv, auxc++, AT_UID, task->uid);
+	write_aux(auxv, auxc++, AT_EUID, task->uid);
+	write_aux(auxv, auxc++, AT_GID, task->gid);
+	write_aux(auxv, auxc++, AT_EGID, task->gid);
+	write_aux(auxv, auxc++, AT_SECURE, 0);
+	if (platform_str) {
+		platform_str_uptr = strings_uptr;
+		write_aux(auxv, auxc++, AT_PLATFORM,
+		                        (unsigned long)platform_str_uptr);
+	}
+	write_aux(auxv, auxc++, AT_NULL, 0);
+
+	/* Make room on stack for aux info table */
+	auxv_len = auxc * sizeof(struct aux_ent);
+	sp -= auxv_len;
+
+	/* Make room on stack for argc, argv[], envp[] */
+	sp -= ((1 + (argc + 1) + (envc + 1)) * sizeof(unsigned long));
+
+	/* Align stack to 16-byte boundary */
+	sp = round_down(sp, 16);
+
+	/* Calculate stack address to store argc, argv[], envp[], and auxv[] */
+	argc_uptr = (void *) sp;
+	argv_uptr = argc_uptr + 1;
+	envp_uptr = argv_uptr + argc + 1;
+	auxv_uptr = envp_uptr + envc + 1;
+
+	/* Store arch's platform string, if there is one */
+	if (platform_str) {
+		if (copy_to_user(strings_uptr, platform_str, platform_str_len))
+			goto error;
+		strings_uptr += platform_str_len;
+	}
+
+	/* Store the auxiliary information array */
+	if (copy_to_user(auxv_uptr, auxv, auxv_len))
 		goto error;
 
-	status = push_aux_info(&stack_ptr, task, platform_ptr);
-	if (status)
+	/* Store argv[] */
+	for (i = 0; i < argc; i++) {
+		len = strlen(argv[i]) + 1;
+		if (copy_to_user(strings_uptr, argv[i], len))
+			goto error;
+		if (put_user(strings_uptr, argv_uptr++))
+			goto error;
+		strings_uptr += len;
+	}
+	if (put_user(0, argv_uptr))  /* NULL terminate argv[] */
 		goto error;
 
-	status = push_args_and_env(&stack_ptr, argv, envp);
-	if (status)
+	/* Store envp[] */
+	for (i = 0; i < envc; i++) {
+		len = strlen(envp[i]) + 1;
+		if (copy_to_user(strings_uptr, envp[i], len))
+			goto error;
+		if (put_user(strings_uptr, envp_uptr++))
+			goto error;
+		strings_uptr += len;
+	}
+	if (put_user(0, envp_uptr))  /* NULL terminate envp[] */
+		goto error;
+
+	/* Store argc */
+	if (put_user(argc, argc_uptr))
 		goto error;
 
 	/* Remember the initial stack pointer */
-	aspace->stack_ptr = stack_ptr;
+	aspace->stack_ptr = (void *) sp;
 
 	return 0;
 
@@ -538,6 +481,6 @@ error:
 	status2 = aspace_del_region(aspace, start, extent);
 	if (status2)
 		panic("aspace_del_region() failed, status=%d", status2);
-	return status;
+	return -EFAULT;
 }
 
