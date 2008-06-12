@@ -321,7 +321,7 @@ setup_initial_stack(
 	char *               envp[]
 )
 {
-	int status, status2;
+	int status;
 	unsigned long i, len;
 	struct aspace * aspace;
 	unsigned long start, end, extent;
@@ -478,9 +478,9 @@ setup_initial_stack(
 	return 0;
 
 error:
-	status2 = aspace_del_region(aspace, start, extent);
-	if (status2)
-		panic("aspace_del_region() failed, status=%d", status2);
+	status = aspace_del_region(aspace, start, extent);
+	if (status)
+		panic("aspace_del_region() failed, status=%d", status);
 	return -EFAULT;
 }
 
