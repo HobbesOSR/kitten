@@ -216,7 +216,7 @@ __SYSCALL(__NR_lchown, syscall_not_implemented)
 __SYSCALL(__NR_umask, syscall_not_implemented)
 
 #define __NR_gettimeofday                       96
-__SYSCALL(__NR_gettimeofday, syscall_not_implemented)
+__SYSCALL(__NR_gettimeofday, sys_gettimeofday)
 #define __NR_getrlimit                          97
 __SYSCALL(__NR_getrlimit, syscall_not_implemented)
 #define __NR_getrusage                          98
@@ -373,7 +373,7 @@ __SYSCALL(__NR_sync, syscall_not_implemented)
 __SYSCALL(__NR_acct, syscall_not_implemented)
 
 #define __NR_settimeofday                      164
-__SYSCALL(__NR_settimeofday, syscall_not_implemented)
+__SYSCALL(__NR_settimeofday, sys_settimeofday)
 
 #define __NR_mount                             165
 __SYSCALL(__NR_mount, syscall_not_implemented)

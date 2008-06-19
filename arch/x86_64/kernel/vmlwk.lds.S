@@ -70,6 +70,39 @@ SECTIONS
   	*(.data.read_mostly)
   }
 
+#define VSYSCALL_ADDR (-10*1024*1024)
+#define VSYSCALL_PHYS_ADDR ((LOADADDR(.data.read_mostly) + SIZEOF(.data.read_mostly) + 4095) & ~(4095))
+#define VSYSCALL_VIRT_ADDR ((ADDR(.data.read_mostly) + SIZEOF(.data.read_mostly) + 4095) & ~(4095))
+
+#define VLOAD_OFFSET (VSYSCALL_ADDR - VSYSCALL_PHYS_ADDR)
+#define VLOAD(x) (ADDR(x) - VLOAD_OFFSET)
+
+#define VVIRT_OFFSET (VSYSCALL_ADDR - VSYSCALL_VIRT_ADDR)
+#define VVIRT(x) (ADDR(x) - VVIRT_OFFSET)
+
+  . = VSYSCALL_ADDR;
+  .vsyscall_0 :	 AT(VSYSCALL_PHYS_ADDR) { *(.vsyscall_0) } :user
+  __vsyscall_0 = VSYSCALL_VIRT_ADDR;
+
+  .vsyscall_1 ADDR(.vsyscall_0) + 1024: AT(VLOAD(.vsyscall_1))
+		{ *(.vsyscall_1) }
+
+  .vsyscall_2 ADDR(.vsyscall_0) + 2048: AT(VLOAD(.vsyscall_2))
+		{ *(.vsyscall_2) }
+
+  .vsyscall_3 ADDR(.vsyscall_0) + 3072: AT(VLOAD(.vsyscall_3))
+		{ *(.vsyscall_3) }
+
+  . = VSYSCALL_VIRT_ADDR + PAGE_SIZE;
+
+#undef VSYSCALL_ADDR
+#undef VSYSCALL_PHYS_ADDR
+#undef VSYSCALL_VIRT_ADDR
+#undef VLOAD_OFFSET
+#undef VLOAD
+#undef VVIRT_OFFSET
+#undef VVIRT
+
   . = ALIGN(8192);		/* init_task */
   .data.init_task : AT(ADDR(.data.init_task) - LOAD_OFFSET) {
 	*(.data.init_task)

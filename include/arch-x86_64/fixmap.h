@@ -14,6 +14,7 @@
 #include <lwk/kernel.h>
 #include <arch/apicdef.h>
 #include <arch/page.h>
+#include <arch/vsyscall.h>
 
 /*
  * Here we define all the compile-time 'special' virtual
@@ -21,9 +22,9 @@
  * compile time, but to set the physical address only
  * in the boot process.
  *
- * these 'compile-time allocated' memory buffers are
+ * These 'compile-time allocated' memory buffers are
  * fixed-size 4k pages. (or larger if used with an increment
- * highger than 1) use fixmap_set(idx,phys) to associate
+ * higher than 1). Use fixmap_set(idx,phys) to associate
  * physical memory with fixmap indices.
  *
  * TLB entries of such buffers will not be flushed across
@@ -31,7 +32,8 @@
  */
 
 enum fixed_addresses {
-	FIX_HPET_BASE,
+	VSYSCALL_LAST_PAGE,
+	VSYSCALL_FIRST_PAGE = VSYSCALL_LAST_PAGE + ((VSYSCALL_END-VSYSCALL_START) >> PAGE_SHIFT) - 1,
 	FIX_APIC_BASE,	/* local (CPU) APIC) */
 	FIX_IO_APIC_BASE_0,
 	FIX_IO_APIC_BASE_END = FIX_IO_APIC_BASE_0 + MAX_IO_APICS-1,
@@ -49,7 +51,7 @@ extern void __set_fixmap(enum fixed_addresses fixmap_index,
 #define set_fixmap_nocache(idx, phys) \
 		__set_fixmap(idx, phys, PAGE_KERNEL_NOCACHE)
 
-#define FIXADDR_TOP	(0xffffffffffe00000ul - PAGE_SIZE)
+#define FIXADDR_TOP	(VSYSCALL_END-PAGE_SIZE)
 #define FIXADDR_SIZE	(__end_of_fixed_addresses << PAGE_SHIFT)
 #define FIXADDR_START	(FIXADDR_TOP - FIXADDR_SIZE)
 
@@ -80,7 +82,7 @@ static __always_inline unsigned long fix_to_virt(const unsigned int idx)
 	if (idx >= __end_of_fixed_addresses)
 		__this_fixmap_does_not_exist();
 
-        return __fix_to_virt(idx);
+	return __fix_to_virt(idx);
 }
 
 #endif

@@ -281,6 +281,15 @@ setup_arch(void)
 	lapic_map();
 	ioapic_map();
 
+	/*
+	 * Initialize the virtual system call code/data page.
+	 * The vsyscall page is mapped into every task's address space at a
+	 * well-known address.  User code can call functions in this page
+	 * directly, providing a light-weight mechanism for read-only system
+	 * calls such as gettimeofday().
+	 */
+	vsyscall_map();
+
 	cpu_init();
 	ioapic_init();
 }

@@ -3,8 +3,8 @@
 #include <lwk/spinlock.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/smp.h>
+#include <lwk/time.h>
 #include <arch/io.h>
-#include <arch/tsc.h>
 #include <arch/apic.h>
 
 #ifdef CONFIG_PC
@@ -164,6 +164,8 @@ time_init(void)
 	cpu_info[cpu_id()].arch.max_cpu_khz = cpu_khz;
 	cpu_info[cpu_id()].arch.min_cpu_khz = cpu_khz;
 	cpu_info[cpu_id()].arch.tsc_khz     = cpu_khz;
+
+	init_cycles2ns(cpu_khz);
 
 	/*
 	 * Detect the Local APIC timer's base clock frequency
