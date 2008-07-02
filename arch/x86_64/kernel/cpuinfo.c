@@ -179,9 +179,15 @@ early_identify_cpu(struct cpuinfo *c)
 	uint32_t misc;
 
 	/*
+ 	 * Zero structure, except apic_id should have already been filled in.
+ 	 */
+	uint8_t apic_id = a->apic_id;
+	memset(a, 0, sizeof(*a));
+	a->apic_id = apic_id;
+
+	/*
  	 * Set some defaults to begin with.
  	 */
-	memset(a, 0, sizeof(*a));
 	a->x86_vendor_id[0]	=	'\0';  /* Unset */
 	a->x86_model_id[0]	=	'\0';  /* Unset */
 	a->x86_clflush_size	=	64;

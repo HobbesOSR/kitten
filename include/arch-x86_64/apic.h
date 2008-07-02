@@ -35,21 +35,15 @@ struct pt_regs;
  * Basic functions accessing APICs.
  */
 
-static __inline void apic_write(unsigned long reg, unsigned int v)
+static __inline void apic_write(unsigned long reg, uint32_t val)
 {
-	*((volatile unsigned int *)(APIC_BASE+reg)) = v;
+	*((volatile uint32_t *)(APIC_BASE+reg)) = val;
 }
 
-static __inline unsigned int apic_read(unsigned long reg)
+static __inline uint32_t apic_read(unsigned long reg)
 {
-	return *((volatile unsigned int *)(APIC_BASE+reg));
+	return *((volatile uint32_t *)(APIC_BASE+reg));
 }
-
-static __inline__ void lapic_wait4_icr_idle(void)
-{
-	while ( apic_read( APIC_ICR ) & APIC_ICR_BUSY );
-}
-extern unsigned int lapic_wait4_icr_idle_safe(void);
 
 static inline void lapic_ack_interrupt(void)
 {
@@ -62,7 +56,6 @@ static inline void lapic_ack_interrupt(void)
 	apic_write(APIC_EOI, 0);
 }
 
-extern unsigned int lapic_get_maxlvt(void);
 extern void clear_local_APIC (void);
 extern void connect_bsp_APIC (void);
 extern void disconnect_bsp_APIC (int virt_wire_setup);
@@ -116,5 +109,6 @@ extern unsigned int lapic_calibrate_timer(void);
 extern void lapic_dump(void);
 extern void lapic_send_init_ipi(unsigned int cpu);
 extern void lapic_send_startup_ipi(unsigned int cpu, unsigned long start_rip);
+extern void lapic_send_ipi(unsigned int cpu, unsigned int vector);
 
 #endif /* __ASM_APIC_H */

@@ -208,12 +208,13 @@ lapic_calibrate_timer(void)
 	return (apic_Hz / 1000);
 }
 
-unsigned int
-lapic_wait4_icr_idle_safe(void)
+static uint32_t
+lapic_wait4_icr_idle(void)
 {
-	unsigned int send_status;
+	uint32_t send_status;
 	int timeout;
 
+	/* Wait up to 100 milliseconds */
 	timeout = 0;
 	do {
 		send_status = apic_read(APIC_ICR) & APIC_ICR_BUSY;
@@ -231,7 +232,7 @@ lapic_wait4_icr_idle_safe(void)
  * This should return 5 or higher on all x86_64 CPUs.
  * 6 is returned if the APIC Thermal Interrupt is supported, 5 otherwise.
  */
-unsigned int
+static uint32_t
 lapic_get_maxlvt(void)
 {
 	return GET_APIC_MAXLVT(apic_read(APIC_LVR));
@@ -251,7 +252,7 @@ lapic_send_init_ipi(unsigned int cpu)
 	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
 	apic_write(APIC_ICR, APIC_INT_LEVELTRIG | APIC_INT_ASSERT
 				| APIC_DM_INIT);
-	status = lapic_wait4_icr_idle_safe();
+	status = lapic_wait4_icr_idle();
 	if (status)
 		panic("INIT IPI ERROR: failed to assert INIT. (%x)", status);
 	mdelay(10);
@@ -259,7 +260,7 @@ lapic_send_init_ipi(unsigned int cpu)
 	/* Turn off INIT at target CPU */
 	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
 	apic_write(APIC_ICR, APIC_INT_LEVELTRIG | APIC_DM_INIT);
-	status = lapic_wait4_icr_idle_safe();
+	status = lapic_wait4_icr_idle();
 	if (status)
 		panic("INIT IPI ERROR: failed to deassert INIT. (%x)", status);
 }
@@ -289,7 +290,7 @@ lapic_send_startup_ipi(
 	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
 	apic_write(APIC_ICR, APIC_DM_STARTUP | (start_rip >> 12));
 	udelay(300);  /* Give AP CPU some time to accept the IPI */
-	status = lapic_wait4_icr_idle_safe();
+	status = lapic_wait4_icr_idle();
 	if (status)
 		panic("STARTUP IPI ERROR: failed to send. (%x)", status);
 	udelay(300);  /* Give AP CPU some time to accept the IPI */
@@ -302,6 +303,36 @@ lapic_send_startup_ipi(
 	status = (apic_read(APIC_ESR) & 0xEF);
 	if (status)
 		panic("STARTUP IPI ERROR: failed to accept. (%x)", status);
+}
+
+/**
+ * Sends an inter-processor interrupt (IPI) to the specified CPU.
+ * Note that the IPI has not necessarily been delivered when this function
+ * returns.
+ */
+void
+lapic_send_ipi(
+	unsigned int	cpu,		/* Logical CPU ID */
+	unsigned int	vector		/* Interrupt vector to send */
+)
+{
+	uint32_t status;
+	unsigned int apic_id;
+
+	/* Wait for idle */
+	status = lapic_wait4_icr_idle();
+	if (status)
+		panic("lapic_wait4_icr_idle() timed out. (%x)", status);
+
+	/* Set target CPU */
+	apic_id = cpu_info[cpu].arch.apic_id;
+	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+
+	/* Send the IPI */
+	if (unlikely(vector == NMI_VECTOR))
+		apic_write(APIC_ICR, APIC_DEST_PHYSICAL|APIC_DM_NMI);
+	else
+		apic_write(APIC_ICR, APIC_DEST_PHYSICAL|APIC_DM_FIXED|vector);
 }
 
 /**

@@ -4,6 +4,7 @@
 #include <arch/desc.h>
 #include <arch/idt_vectors.h>
 #include <arch/show.h>
+#include <arch/xcall.h>
 
 typedef void (*idtvec_handler_t)(struct pt_regs *regs, unsigned int vector);
 
@@ -14,8 +15,14 @@ extern void asm_idtvec_table(void);
 void
 do_unhandled_idt_vector(struct pt_regs *regs, unsigned int vector)
 {
-	printk(KERN_EMERG "Unhandled IDT Vector! (vector=%u, irq=%u)\n",
-	                  vector, vector-48);
+	if ((vector >= IRQ0_VECTOR) && (vector <= IRQ15_VECTOR)) {
+		printk(KERN_EMERG
+		       "Unhandled Interrupt! (vector=%u, isa_irq=%u)\n",
+		       vector, vector - IRQ0_VECTOR);
+	} else {
+		printk(KERN_EMERG
+		       "Unhandled Interrupt! (vector=%u)\n", vector);
+	}
 }
 
 void
@@ -281,6 +288,11 @@ interrupts_init(void)
 	set_idtvec_handler( APIC_THERMAL_VECTOR,      &do_apic_thermal      );
 	set_idtvec_handler( APIC_ERROR_VECTOR,        &do_apic_error        );
 	set_idtvec_handler( APIC_SPURIOUS_VECTOR,     &do_apic_spurious     );
+
+	/*
+	 * Register handlers for inter-CPU interrupts (cross calls).
+	 */
+	set_idtvec_handler( XCALL_FUNCTION_VECTOR, &arch_xcall_function_interrupt );
 }
 
 

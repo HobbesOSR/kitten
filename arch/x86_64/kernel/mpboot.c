@@ -55,8 +55,8 @@ arch_boot_cpu(unsigned int cpu)
 	/*
 	 * Allocate memory for the new CPU's GDT.
 	 */
-	cpu_gdt_descr[cpu].address = (unsigned long)
-	                             alloc_bootmem_aligned(PAGE_SIZE, PAGE_SIZE);
+	cpu_gdt_descr[cpu].address =
+		(unsigned long) alloc_bootmem_aligned(PAGE_SIZE, PAGE_SIZE);
 
 	/*
 	 * Allocate memory for the new CPU's idle task.
