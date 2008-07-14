@@ -10,6 +10,11 @@
 #define NULL ((void *)0)
 #endif
 
+enum {
+	false = 0,
+	true  = 1
+};
+
 #undef offsetof
 #ifdef __compiler_offsetof
 #define offsetof(TYPE,MEMBER) __compiler_offsetof(TYPE,MEMBER)

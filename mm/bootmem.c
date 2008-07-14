@@ -14,6 +14,7 @@
 #include <lwk/bootmem.h>
 #include <lwk/params.h>
 #include <lwk/log2.h>
+#include <lwk/pmem.h>
 #include <lwk/kmem.h>
 #include <lwk/bitops.h>
 #include <arch/io.h>
@@ -320,32 +321,33 @@ found:
 	return ret;
 }
 
-static unsigned long __init
+static void __init
 free_all_bootmem_core(struct bootmem_data *bdata)
 {
 	unsigned long pfn;
 	unsigned long vaddr;
-	unsigned long i, count, total = 0;
-	unsigned long idx;
+	unsigned long i, m, count;
+	unsigned long bootmem_total=0, kmem_total=0, umem_total=0;
+	unsigned long kmem_max_idx, max_idx;
 	unsigned long *map; 
+	struct pmem_region rgn;
 
 	BUG_ON(!bdata->node_bootmem_map);
 
-	count = 0;
-	/* first extant page of the node */
-	pfn = bdata->node_boot_start >> PAGE_SHIFT;
-	idx = (kmem_size >> PAGE_SHIFT) - (bdata->node_boot_start >> PAGE_SHIFT);
-	map = bdata->node_bootmem_map;
+	kmem_max_idx = (kmem_size >> PAGE_SHIFT) - (bdata->node_boot_start >> PAGE_SHIFT);
+	max_idx = bdata->node_low_pfn - (bdata->node_boot_start >> PAGE_SHIFT);
+	BUG_ON(kmem_max_idx > max_idx);
 
-	/* Release memory to the kernel pool */
-	for (i = 0; i < idx; ) {
+	/* Create the initial kernel managed memory pool (kmem) */
+	count = 0;
+	pfn = bdata->node_boot_start >> PAGE_SHIFT;  /* first extant page of node */
+	map = bdata->node_bootmem_map;
+	for (i = 0; i < kmem_max_idx; ) {
 		unsigned long v = ~map[i / BITS_PER_LONG];
 
 		if (v) {
-			unsigned long m;
-
 			vaddr = (unsigned long) __va(pfn << PAGE_SHIFT);
-			for (m = 1; m && i < idx; m<<=1, vaddr+=PAGE_SIZE, i++) {
+			for (m = 1; m && i < kmem_max_idx; m<<=1, vaddr+=PAGE_SIZE, i++) {
 				if (v & m) {
 					count++;
 					kmem_add_memory(vaddr, PAGE_SIZE);
@@ -356,7 +358,50 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 		}
 		pfn += BITS_PER_LONG;
 	}
-	total += count;
+	BUG_ON(count == 0);
+
+	/*
+	 * At this point, kmem_alloc() will work. The physical memory tracking
+	 * code relies on kmem_alloc(), so it cannot be initialized until now.
+	 *
+	 * Tell the physical memory tracking subsystem about the kernel-managed
+	 * pool and the remaining memory that will be managed by user-space.
+	 */
+	pfn = bdata->node_boot_start >> PAGE_SHIFT;  /* first extant page of node */
+	map = bdata->node_bootmem_map;
+	pmem_region_unset_all(&rgn);
+	rgn.type_is_set = true;
+	rgn.allocated_is_set = true;
+	for (i = 0; i < max_idx; ) {
+		unsigned long v = ~map[i / BITS_PER_LONG];
+		unsigned long paddr = (unsigned long) __pa(pfn << PAGE_SHIFT);
+
+		for (m = 1; m && i < max_idx; m<<=1, paddr+=PAGE_SIZE, i++) {
+			rgn.start = paddr;
+			rgn.end   = paddr + PAGE_SIZE;
+
+			if (v & m) {
+				if (i < kmem_max_idx) {
+					rgn.type = PMEM_TYPE_KMEM;
+					rgn.allocated = true;
+					++kmem_total;
+				} else {
+					rgn.type = PMEM_TYPE_UMEM;
+					rgn.allocated = false;
+					++umem_total;
+				}
+			} else {
+				rgn.type = PMEM_TYPE_BOOTMEM;
+				rgn.allocated = true;
+				++bootmem_total;
+			}
+
+			if (pmem_add(&rgn))
+				BUG();
+		}
+
+		pfn += BITS_PER_LONG;
+	}
 
 	/*
 	 * Now free the allocator bitmap itself, it's not
@@ -364,14 +409,46 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	 */
 	vaddr = (unsigned long)bdata->node_bootmem_map;
 	count = 0;
+	pmem_region_unset_all(&rgn);
+	rgn.type_is_set = true;
+	rgn.allocated_is_set = true;
 	for (i = 0; i < ((bdata->node_low_pfn-(bdata->node_boot_start >> PAGE_SHIFT))/8 + PAGE_SIZE-1)/PAGE_SIZE; i++,vaddr+=PAGE_SIZE) {
 		count++;
-		kmem_add_memory(vaddr, PAGE_SIZE);
+
+		rgn.start = __pa(vaddr);
+		rgn.end   = rgn.start + PAGE_SIZE;
+
+		if (i < kmem_max_idx) {
+			kmem_add_memory(vaddr, PAGE_SIZE);
+			rgn.type = PMEM_TYPE_KMEM;
+			rgn.allocated = true;
+		} else {
+			rgn.type = PMEM_TYPE_UMEM;
+			rgn.allocated = false;
+		}
+
+		pmem_add(&rgn);
 	}
-	total += count;
+	BUG_ON(count == 0);
+
+	/* Mark the bootmem allocator as dead */
 	bdata->node_bootmem_map = NULL;
 
-	return total;
+	printk(KERN_DEBUG
+	       "The boot-strap bootmem allocator has been destroyed.\n");
+	printk(KERN_DEBUG
+	       "Of the %lu bytes that were managed by the bootmem allocator:\n",
+	       max_idx << PAGE_SHIFT);
+	printk(KERN_DEBUG
+	       "  %lu bytes released to the kernel-managed memory pool (kmem)\n",
+	       kmem_total << PAGE_SHIFT);
+	printk(KERN_DEBUG
+	       "  %lu bytes released to the user-managed memory pool (umem)\n",
+	       umem_total << PAGE_SHIFT);
+	printk(KERN_DEBUG
+	       "  %lu bytes were in-use and could not be released\n",
+	       bootmem_total << PAGE_SHIFT);
+	pmem_dump();
 }
 
 /**
@@ -404,10 +481,10 @@ free_bootmem(unsigned long addr, unsigned long size)
 	free_bootmem_core(&bootmem_data, addr, size);
 }
 
-unsigned long __init
+void __init
 free_all_bootmem(void)
 {
-	return free_all_bootmem_core(&bootmem_data);
+	free_all_bootmem_core(&bootmem_data);
 }
 
 static void * __init
@@ -482,8 +559,6 @@ alloc_bootmem_from_umem(unsigned long size, unsigned long align)
 void
 memsys_init(void)
 {
-	unsigned long kmem_pages;
-
 	/* We like powers of two */
 	if (!is_power_of_2(kmem_size)) {
 		printk(KERN_WARNING "kmem_size must be a power of two.");
@@ -496,10 +571,6 @@ memsys_init(void)
 
 	/* Initialize the kernel memory pool */
 	kmem_create_zone(PAGE_OFFSET, kmem_size);
-	kmem_pages = free_all_bootmem();
-
-	printk(KERN_DEBUG
-	       "Released %lu bootmem pages to the kernel memory pool.\n",
-	       kmem_pages);
+	free_all_bootmem();
 }
 

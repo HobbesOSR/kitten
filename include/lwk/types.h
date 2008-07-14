@@ -38,6 +38,9 @@ typedef __kernel_loff_t		loff_t;
 /* _Bool is a base type in C99... what a bad name! */
 typedef _Bool			bool;
 
+/* Locality group ID */
+typedef unsigned int		lgroup_t;
+
 /*
  * The following typedefs are also protected by individual ifdefs for
  * historical reasons:
