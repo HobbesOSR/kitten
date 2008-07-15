@@ -435,19 +435,13 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	bdata->node_bootmem_map = NULL;
 
 	printk(KERN_DEBUG
-	       "The boot-strap bootmem allocator has been destroyed.\n");
-	printk(KERN_DEBUG
-	       "Of the %lu bytes that were managed by the bootmem allocator:\n",
-	       max_idx << PAGE_SHIFT);
+	       "The boot-strap bootmem allocator has been destroyed:\n");
 	printk(KERN_DEBUG
 	       "  %lu bytes released to the kernel-managed memory pool (kmem)\n",
 	       kmem_total << PAGE_SHIFT);
 	printk(KERN_DEBUG
 	       "  %lu bytes released to the user-managed memory pool (umem)\n",
 	       umem_total << PAGE_SHIFT);
-	printk(KERN_DEBUG
-	       "  %lu bytes were in-use and could not be released\n",
-	       bootmem_total << PAGE_SHIFT);
 	pmem_dump();
 }
 
