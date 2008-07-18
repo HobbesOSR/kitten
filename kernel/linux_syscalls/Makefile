@@ -1,2 +1,2 @@
-obj-y := sys_uname.o sys_brk.o sys_write.o sys_id.o sys_fstat.o sys_mmap.o \
-		sys_gettimeofday.o sys_settimeofday.o
+obj-y := uname.o brk.o write.o id.o fstat.o mmap.o \
+		gettimeofday.o settimeofday.o
