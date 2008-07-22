@@ -57,12 +57,12 @@ $(obj)/compressed/vmlwk: FORCE
 # Set this if you want to pass append arguments to the isoimage kernel
 FDARGS = console=vga,serial debug_mptable=1 pct_argv="one two three" pct_envp="one=1 two=2 three=3"
 # Set this if you want an initrd included with the isoimage kernel
-FDINITRD = app.bin
+FDINITRD = init_task
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 
 # This requires being root or having syslinux 2.02 or higher installed
-isoimage: $(BOOTIMAGE)
+isoimage: $(BOOTIMAGE) $(FDINITRD)
 	-rm -rf $(obj)/isoimage
 	mkdir $(obj)/isoimage
 	for i in lib lib64 share end ; do \

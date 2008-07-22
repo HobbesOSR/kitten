@@ -369,9 +369,10 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	 */
 	pfn = bdata->node_boot_start >> PAGE_SHIFT;  /* first extant page of node */
 	map = bdata->node_bootmem_map;
-	pmem_region_unset_all(&rgn);
+	memset(&rgn, 0, sizeof(rgn));
 	rgn.type_is_set = true;
 	rgn.allocated_is_set = true;
+	rgn.lgroup_is_set = true;
 	for (i = 0; i < max_idx; ) {
 		unsigned long v = ~map[i / BITS_PER_LONG];
 		unsigned long paddr = (unsigned long) __pa(pfn << PAGE_SHIFT);
@@ -384,15 +385,18 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 				if (i < kmem_max_idx) {
 					rgn.type = PMEM_TYPE_KMEM;
 					rgn.allocated = true;
+					rgn.lgroup = 0;
 					++kmem_total;
 				} else {
 					rgn.type = PMEM_TYPE_UMEM;
 					rgn.allocated = false;
+					rgn.lgroup = 0;
 					++umem_total;
 				}
 			} else {
 				rgn.type = PMEM_TYPE_BOOTMEM;
 				rgn.allocated = true;
+				rgn.lgroup = 0;
 				++bootmem_total;
 			}
 
@@ -409,9 +413,10 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	 */
 	vaddr = (unsigned long)bdata->node_bootmem_map;
 	count = 0;
-	pmem_region_unset_all(&rgn);
+	memset(&rgn, 0, sizeof(rgn));
 	rgn.type_is_set = true;
 	rgn.allocated_is_set = true;
+	rgn.lgroup_is_set = true;
 	for (i = 0; i < ((bdata->node_low_pfn-(bdata->node_boot_start >> PAGE_SHIFT))/8 + PAGE_SIZE-1)/PAGE_SIZE; i++,vaddr+=PAGE_SIZE) {
 		count++;
 
@@ -422,9 +427,11 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 			kmem_add_memory(vaddr, PAGE_SIZE);
 			rgn.type = PMEM_TYPE_KMEM;
 			rgn.allocated = true;
+			rgn.lgroup = 0;
 		} else {
 			rgn.type = PMEM_TYPE_UMEM;
 			rgn.allocated = false;
+			rgn.lgroup = 0;
 		}
 
 		pmem_add(&rgn);
@@ -442,7 +449,6 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	printk(KERN_DEBUG
 	       "  %lu bytes released to the user-managed memory pool (umem)\n",
 	       umem_total << PAGE_SHIFT);
-	pmem_dump();
 }
 
 /**

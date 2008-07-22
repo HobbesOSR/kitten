@@ -463,11 +463,13 @@ else
 include/lwk/autoconf.h: ;
 endif
 
+DEFAULT_EXTRA_TARGETS=vmlwk.bin vmlwk.asm init_task
+
 # The all: target is the default when no target is given on the
 # command line.
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults vmlwk but it is usually overriden in the arch makefile
-all: vmlwk vmlwk.bin vmlwk.asm
+all: vmlwk $(DEFAULT_EXTRA_TARGETS)
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 CFLAGS		+= -Os
@@ -989,6 +991,7 @@ clean: archclean $(clean-dirs)
 	 	\( -name '*.[oas]' -o -name '*.ko' -o -name '.*.cmd' \
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \) \
 		-type f -print | xargs rm -f
+	@rm -f init_task
 
 # mrproper - Delete all generated files, including .config
 #
@@ -1373,6 +1376,14 @@ endif
 clean := -f $(if $(KBUILD_SRC),$(srctree)/)scripts/Makefile.clean obj
 
 endif	# skip-makefile
+
+# Build LWK user-space libraries and example programs
+user: FORCE
+	cd user/; $(MAKE) all
+
+# A simple user-space app for the LWK to launch at boot
+init_task: user FORCE
+	cp user/hello_world/hello_world ./init_task
 
 PHONY += FORCE
 FORCE:

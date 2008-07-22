@@ -65,10 +65,10 @@ all: bzImage
 BOOTIMAGE                     := arch/x86_64/boot/bzImage
 KBUILD_IMAGE                  := $(BOOTIMAGE)
 
-bzImage: vmlwk
+bzImage: vmlwk $(DEFAULT_EXTRA_TARGETS)
 	$(Q)$(MAKE) $(build)=$(boot) $(BOOTIMAGE)
 
-isoimage: vmlwk
+isoimage: vmlwk $(DEFAULT_EXTRA_TARGETS)
 	$(Q)$(MAKE) $(build)=$(boot) BOOTIMAGE=$(BOOTIMAGE) $@
 
 archclean:

@@ -98,10 +98,11 @@ start_kernel()
 	local_irq_enable();
 
 	/*
-	 * Load the Process Control Task.
+	 * Load the initial user-level task
 	 */
-	printk(KERN_INFO "Loading PCT...\n");
+	printk(KERN_INFO "Loading the initial user-level task...\n");
 	status = arch_load_pct();  /* This should not return */
-	panic("Failed to load PCT! error=%d (%s)\n", status, strerror(status));
+	panic("Failed to load initial user-level task! error=%d (%s)\n",
+	      status, strerror(status));
 }
 

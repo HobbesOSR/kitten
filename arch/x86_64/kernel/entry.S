@@ -86,7 +86,7 @@ ENTRY(asm_syscall)
 	movq %r8,   3*8(%rsp)		/* Save user-space R8  (ARG4)        */
 	movq %r9,   2*8(%rsp)		/* Save user-space R9  (ARG5)        */
 	movq %r10,  1*8(%rsp)		/* Save user-space R10 (ARG3)        */
-	movq %r11,     (%rsp)		/* R11 is clobbered, save anyways    */
+	movq %r11,     (%rsp)		/* Save user-space RFLAGS            */
 
 	/*
 	 * Call the system call handler

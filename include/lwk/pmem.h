@@ -1,3 +1,5 @@
+/* Copyright (c) 2008, Sandia National Laboratories */
+
 #ifndef _LWK_PMEM_H
 #define _LWK_PMEM_H
 
@@ -38,11 +40,15 @@ int pmem_add(const struct pmem_region *rgn);
 int pmem_update(const struct pmem_region *update);
 int pmem_query(const struct pmem_region *query, struct pmem_region *result);
 
+#ifdef __KERNEL__
+
 /**
- * Convenience functions.
+ * System call handlers.
  */
-void pmem_region_unset_all(struct pmem_region *rgn);
+int sys_pmem_add(const struct pmem_region __user * rgn);
+int sys_pmem_update(const struct pmem_region __user * update);
+int sys_pmem_query(const struct pmem_region __user * query,
+                   struct pmem_region __user * result);
 
-void pmem_dump(void);
-
+#endif
 #endif

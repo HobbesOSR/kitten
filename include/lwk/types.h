@@ -35,12 +35,6 @@ typedef __kernel_uid_t		uid_t;
 typedef __kernel_gid_t		gid_t;
 typedef __kernel_loff_t		loff_t;
 
-/* _Bool is a base type in C99... what a bad name! */
-typedef _Bool			bool;
-
-/* Locality group ID */
-typedef unsigned int		lgroup_t;
-
 /*
  * The following typedefs are also protected by individual ifdefs for
  * historical reasons:
@@ -114,10 +108,20 @@ typedef		__s64		int64_t;
 
 #endif /* __KERNEL_STRICT_NAMES */
 
+#ifdef __KERNEL__
+/* _Bool is a base type in C99... what a bad name! */
+typedef _Bool			bool;
+#else
+#include <stdbool.h>
+#endif
+
 /*
  * Below are truly LWK-specific types that should never collide with
  * any application/library that wants lwk/types.h.
  */
+
+/* Locality group ID */
+typedef unsigned int		lgroup_t;
 
 #ifdef __CHECKER__
 #define __bitwise__ __attribute__((bitwise))

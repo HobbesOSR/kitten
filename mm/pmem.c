@@ -1,7 +1,10 @@
+/* Copyright (c) 2008, Sandia National Laboratories */
+
 #include <lwk/kernel.h>
 #include <lwk/string.h>
 #include <lwk/list.h>
 #include <lwk/pmem.h>
+#include <arch/uaccess.h>
 
 static LIST_HEAD(pmem_list);
 
@@ -200,6 +203,20 @@ pmem_add(const struct pmem_region *rgn)
 }
 
 int
+sys_pmem_add(const struct pmem_region __user *rgn)
+{
+	struct pmem_region _rgn;
+
+	if (current->uid != 0)
+		return -EPERM;
+
+	if (copy_from_user(&_rgn, rgn, sizeof(_rgn)))
+		return -EINVAL;
+
+	return pmem_add(&_rgn);
+}
+
+int
 pmem_update(const struct pmem_region *update)
 {
 	struct pmem_list_entry *entry, *head, *tail;
@@ -245,6 +262,20 @@ pmem_update(const struct pmem_region *update)
 }
 
 int
+sys_pmem_update(const struct pmem_region __user *update)
+{
+	struct pmem_region _update;
+
+	if (current->uid != 0)
+		return -EPERM;
+
+	if (copy_from_user(&_update, update, sizeof(_update)))
+		return -EINVAL;
+
+	return pmem_update(&_update);
+}
+
+int
 pmem_query(const struct pmem_region *query, struct pmem_region *result)
 {
 	struct pmem_list_entry *entry;
@@ -267,40 +298,24 @@ pmem_query(const struct pmem_region *query, struct pmem_region *result)
 	return -ENOENT;
 }
 
-void
-pmem_region_unset_all(struct pmem_region *rgn)
+int
+sys_pmem_query(const struct pmem_region __user *query,
+               struct pmem_region __user *result)
 {
-	rgn->type_is_set      = false;
-	rgn->lgroup_is_set    = false;
-	rgn->allocated_is_set = false;
-	rgn->name_is_set      = false;
-}
+	struct pmem_region _query, _result;
+	int status;
 
-static const char *
-pmem_type_to_string(int type)
-{
-	switch(type) {
-		case PMEM_TYPE_BOOTMEM:  return "BOOTMEM"; break;
-		case PMEM_TYPE_KMEM:     return "KERNEL"; break;
-		case PMEM_TYPE_UMEM:     return "USER"; break;
-	}
-	return "UNKNOWN";
-}
+	if (current->uid != 0)
+		return -EPERM;
 
-void
-pmem_dump(void)
-{
-	struct pmem_list_entry *entry;
-	struct pmem_region *rgn;
+	if (copy_from_user(&_query, query, sizeof(_query)))
+		return -EINVAL;
 
-	printk(KERN_DEBUG "PHYSICAL MEMORY MAP:\n");
-	list_for_each_entry(entry, &pmem_list, link) {
-		rgn = &entry->rgn;
-		printk(KERN_DEBUG
-			"  [0x%016lx, 0x%016lx) %s\n",
-			rgn->start, rgn->end,
-			(rgn->type_is_set)
-				? pmem_type_to_string(rgn->type) : "NOT SET"
-		);
-	}
+	if ((status = pmem_query(query, &_result)) != 0)
+		return status;
+
+	if (copy_to_user(result, &_result, sizeof(*result)))
+		return -EINVAL;
+
+	return 0;
 }

@@ -632,4 +632,14 @@ __SYSCALL(__NR_eventfd, syscall_not_implemented)
 #define __NR_fallocate		285
 __SYSCALL(__NR_fallocate, syscall_not_implemented)
 
+/**
+ * LWK specific system calls.
+ */
+#define __NR_pmem_add		286
+__SYSCALL(__NR_pmem_add, sys_pmem_add)
+#define __NR_pmem_update	287
+__SYSCALL(__NR_pmem_update, sys_pmem_update)
+#define __NR_pmem_query		288
+__SYSCALL(__NR_pmem_query, sys_pmem_query)
+
 #endif

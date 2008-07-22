@@ -10,10 +10,10 @@
 #define NULL ((void *)0)
 #endif
 
-enum {
-	false = 0,
-	true  = 1
-};
+#ifdef __KERNEL__
+#define false 0
+#define true  1
+#endif
 
 #undef offsetof
 #ifdef __compiler_offsetof

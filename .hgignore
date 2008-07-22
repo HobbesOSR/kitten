@@ -36,6 +36,11 @@ scripts/kconfig/zconf.hash.c
 scripts/kconfig/zconf.tab.c
 scripts/kallsyms
 .tmp_*
+include/arch
+init_task
+user/hello_world/hello_world
+user/liblwk/liblwk.a
+
 
 syntax: regexp
 ^include/config
