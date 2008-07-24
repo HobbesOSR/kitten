@@ -42,15 +42,12 @@ print_physical_memory_map(void)
 	pmem_region_unset_all(&query);
 
 	while ((status = pmem_query(&query, &result)) == 0) {
-		printf("  [%#016lx, %#016lx) %-7s lgroup=%d\n",
+		printf("  [%#016lx, %#016lx) %-11s\n",
 			result.start,
 			result.end,
 			(result.type_is_set)
 				? pmem_type_to_string(result.type)
-				: "UNSET",
-			(result.lgroup_is_set)
-				? result.lgroup
-				: -1
+				: "UNSET"
 		);
 
 		if (result.type == PMEM_TYPE_UMEM)

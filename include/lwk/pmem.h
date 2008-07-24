@@ -8,8 +8,10 @@
  */
 typedef enum {
 	PMEM_TYPE_BOOTMEM     = 0,  /* memory allocated at boot-time */
-	PMEM_TYPE_KMEM        = 1,  /* memory managed by the kernel */
-	PMEM_TYPE_UMEM        = 2,  /* memory managed by user-space */
+	PMEM_TYPE_BIGPHYSAREA = 1,  /* memory set-aside for a device/driver */
+	PMEM_TYPE_INIT_TASK   = 2,  /* memory used by the initial task */
+	PMEM_TYPE_KMEM        = 3,  /* memory managed by the kernel */
+	PMEM_TYPE_UMEM        = 4,  /* memory managed by user-space */
 } pmem_type_t;
 
 /**

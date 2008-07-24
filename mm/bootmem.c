@@ -17,7 +17,9 @@
 #include <lwk/pmem.h>
 #include <lwk/kmem.h>
 #include <lwk/bitops.h>
+#include <lwk/liblwk.h>
 #include <arch/io.h>
+
 
 /**
  * Access to this subsystem has to be serialized externally.
@@ -369,7 +371,7 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	 */
 	pfn = bdata->node_boot_start >> PAGE_SHIFT;  /* first extant page of node */
 	map = bdata->node_bootmem_map;
-	memset(&rgn, 0, sizeof(rgn));
+	pmem_region_unset_all(&rgn);
 	rgn.type_is_set = true;
 	rgn.allocated_is_set = true;
 	rgn.lgroup_is_set = true;
@@ -413,7 +415,7 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	 */
 	vaddr = (unsigned long)bdata->node_bootmem_map;
 	count = 0;
-	memset(&rgn, 0, sizeof(rgn));
+	pmem_region_unset_all(&rgn);
 	rgn.type_is_set = true;
 	rgn.allocated_is_set = true;
 	rgn.lgroup_is_set = true;
