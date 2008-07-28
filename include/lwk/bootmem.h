@@ -29,8 +29,6 @@ extern void __init reserve_bootmem(unsigned long addr, unsigned long size);
 extern void * __init alloc_bootmem(unsigned long size);
 extern void * __init alloc_bootmem_aligned(unsigned long size,
                                            unsigned long alignment);
-extern void * __init alloc_bootmem_from_umem(unsigned long size,
-                                             unsigned long align);
 extern void __init free_bootmem(unsigned long addr, unsigned long size);
 extern void __init free_all_bootmem(void);
 
