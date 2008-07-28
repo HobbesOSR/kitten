@@ -17,7 +17,6 @@
 #include <lwk/pmem.h>
 #include <lwk/kmem.h>
 #include <lwk/bitops.h>
-#include <lwk/liblwk.h>
 #include <arch/io.h>
 
 

@@ -45,6 +45,12 @@ int pmem_alloc(unsigned long size, unsigned long alignment,
                const struct pmem_region *constraint,
                struct pmem_region *result);
 
+/**
+ * Convenience functions.
+ */
+void pmem_region_unset_all(struct pmem_region *rgn);
+const char *pmem_type_to_string(pmem_type_t type);
+
 #ifdef __KERNEL__
 
 /**

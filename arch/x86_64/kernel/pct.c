@@ -6,7 +6,6 @@
 #include <lwk/ctype.h>
 #include <lwk/ptrace.h>
 #include <lwk/pmem.h>
-#include <lwk/liblwk.h>
 #include <arch/proto.h>
 
 
