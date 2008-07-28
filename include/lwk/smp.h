@@ -80,4 +80,7 @@ void smp_prepare_boot_cpu(void);
  */
 #define cpu_id() smp_processor_id()
 
+void __init arch_boot_cpu(unsigned int cpu);
+void __init cpu_init(void);
+
 #endif /* _LWK_SMP_H */

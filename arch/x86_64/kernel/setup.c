@@ -2,11 +2,11 @@
 #include <lwk/init.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/bootmem.h>
+#include <lwk/smp.h>
 #include <arch/bootsetup.h>
 #include <arch/e820.h>
 #include <arch/page.h>
 #include <arch/sections.h>
-#include <arch/smp.h>
 #include <arch/proto.h>
 #include <arch/mpspec.h>
 #include <arch/pda.h>

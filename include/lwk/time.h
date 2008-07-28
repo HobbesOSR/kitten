@@ -2,6 +2,7 @@
 #define _LWK_TIME_H
 
 #include <lwk/types.h>
+#include <lwk/init.h>
 #include <arch/time.h>
 
 #define NSEC_PER_SEC  1000000000L
@@ -18,6 +19,7 @@ struct timezone {
 	int		tz_dsttime;	/* type of dst correction */
 };
 
+void __init time_init(void);
 void init_cycles2ns(uint32_t khz);
 uint64_t cycles2ns(uint64_t cycles);
 uint64_t get_time(void);
