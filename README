@@ -1,3 +1,14 @@
+make config
+make
+make isoimage
+qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio
+
+(Can add -smp 4 option as well, but the BIOS my version of QEMU is using
+ doesn't appear to provide an MP table, which Kitten depends on.  KVM seems
+ to work fine with -smp 4 arg... all cpus are detected and initialized.)
+
+----------------------------------------------------------------------------
+
 Scripts for building cross-compiler toolchains are in scripts/toolchain.
 E.g., to build an x86-64 toolchain:
 
