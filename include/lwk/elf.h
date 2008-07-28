@@ -400,13 +400,15 @@ extern int
 elf_load_executable(
 	struct task_struct * task,
 	void *               elf_image,
-	unsigned long        heap_size
+	unsigned long        heap_size,
+	void * (*alloc_mem)(size_t size, size_t alignment)
 );
 
 extern int
 setup_initial_stack(
 	struct task_struct * task,
 	unsigned long        stack_size,
+	void * (*alloc_mem)(size_t size, size_t alignment),
 	char *               argv[],
 	char *               envp[]
 );

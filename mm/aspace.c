@@ -439,34 +439,38 @@ aspace_unmap_memory(
 
 /**
  * Convenience function that adds the specified region to an address space,
- * allocates memory for it using kmem_alloc(), and maps the memory into the
- * address space.
+ * allocates memory for it using the alloc_mem() function passed in, and maps
+ * the memory into the address space.
  *
  * Arguments:
- *       [IN] aspace: Address space to add the region to.
- *       [IN] start:  Starting address of region, must be pagesz aligned.
- *       [IN] extent: Size of the region in bytes, must be multiple of pagesz.
- *       [IN] flags:  Permissions, memory type, etc. (e.g., VM_WRITE | VM_READ).
- *       [IN] pagesz: Page size that should be used to map the region.
- *       [IN] name:   Human readable name of the region.
+ *   [IN]  aspace:    Address space to add the region to.
+ *   [IN]  start:     Starting address of region, must be pagesz aligned.
+ *   [IN]  extent:    Size of the region in bytes, must be multiple of pagesz.
+ *   [IN]  flags:     Permissions, memory type, etc. (e.g., VM_WRITE | VM_READ).
+ *   [IN]  pagesz:    Page size that should be used to map the region.
+ *   [IN]  name:      Human readable name of the region.
+ *   [IN]  alloc_mem: Function pointer to use to allocate memory for the region.
+ *                    alloc_mem() returns kernel virtual addr of mem allocated.
+ *   [OUT] mem:       Kernel virtual address of the memory allocated.
  *
  * Returns:
- *       Success: 0
- *       Failure: Error Code, address space may be partially modified, YMMV.
+ *   Success: 0
+ *   Failure: Error Code, address space may be partially modified, YMMV.
  */
 int
-aspace_kmem_alloc_region(
+aspace_alloc_region(
 	struct aspace *	aspace,
 	unsigned long	start,
 	unsigned long	extent,
 	unsigned long	flags,
 	unsigned long	pagesz,
 	const char *	name,
-	void **		kmem
+	void * (*alloc_mem)(size_t size, size_t alignment),
+	void **		mem
 )
 {
 	int status;
-	void *mem;
+	void *_mem;
 
 	/* Add the region to the address space */
 	status = aspace_add_region(
@@ -481,23 +485,23 @@ aspace_kmem_alloc_region(
 		return status;
 
 	/* Allocate memory for the region */
-	mem = kmem_get_pages(ilog2(roundup_pow_of_two(extent/pagesz)));
-	if (mem == NULL)
+	_mem = (*alloc_mem)(extent, pagesz);
+	if (_mem == NULL)
 		return -ENOMEM;
 
 	/* Map the memory to the region */
 	status = aspace_map_memory(
 			aspace,
 			start,
-			__pa(mem),
+			__pa(_mem),
 			extent
 	);
 	if (status)
 		return status;
 
 	/* Return pointer to the kernel mapping of the memory allocated */
-	if (kmem)
-		*kmem = mem;
+	if (mem)
+		*mem = _mem;
 
 	return 0;
 }

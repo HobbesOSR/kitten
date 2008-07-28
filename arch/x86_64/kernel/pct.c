@@ -5,6 +5,8 @@
 #include <lwk/aspace.h>
 #include <lwk/ctype.h>
 #include <lwk/ptrace.h>
+#include <lwk/pmem.h>
+#include <lwk/liblwk.h>
 #include <arch/proto.h>
 
 
@@ -78,6 +80,29 @@ init_str_array(
 	return 0;
 }
 
+static void *
+alloc_mem_for_init_task(size_t size, size_t alignment)
+{
+	int status;
+	struct pmem_region constraint, result;
+
+	/* Find and allocate an unallocated chunk of physical memory */
+	pmem_region_unset_all(&constraint);
+	constraint.start = 0;
+	constraint.end   = ULONG_MAX;
+	constraint.type_is_set = true;  constraint.type = PMEM_TYPE_UMEM;
+	constraint.allocated   = false; constraint.allocated_is_set = true;
+
+	status = pmem_alloc(size, alignment, &constraint, &result);
+	if (status)
+		return NULL;
+
+	/* Mark the memory as being used by the init task */
+	result.type = PMEM_TYPE_INIT_TASK;
+	BUG_ON(pmem_update(&result));
+
+	return (void *) __va(result.start);
+}
 
 #define MAX_NUM_STRS 16
 
@@ -121,7 +146,8 @@ arch_load_pct(void)
 	status = elf_load_executable(
 			pct_task,
 			pct_elf_image,
-			pct_heap_size
+			pct_heap_size,
+			&alloc_mem_for_init_task
 	         );
 	if (status)
 		return status;
@@ -129,6 +155,7 @@ arch_load_pct(void)
 	status = setup_initial_stack(
 			pct_task,
 			pct_stack_size,
+			&alloc_mem_for_init_task,
 			argv,
 			envp
 	         );

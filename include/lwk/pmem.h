@@ -41,6 +41,9 @@ struct pmem_region {
 int pmem_add(const struct pmem_region *rgn);
 int pmem_update(const struct pmem_region *update);
 int pmem_query(const struct pmem_region *query, struct pmem_region *result);
+int pmem_alloc(unsigned long size, unsigned long alignment,
+               const struct pmem_region *constraint,
+               struct pmem_region *result);
 
 #ifdef __KERNEL__
 
@@ -51,6 +54,9 @@ int sys_pmem_add(const struct pmem_region __user * rgn);
 int sys_pmem_update(const struct pmem_region __user * update);
 int sys_pmem_query(const struct pmem_region __user * query,
                    struct pmem_region __user * result);
+int sys_pmem_alloc(unsigned long size, unsigned long alignment,
+                   const struct pmem_region __user *constraint,
+                   struct pmem_region __user *result);
 
 #endif
 #endif

@@ -641,5 +641,7 @@ __SYSCALL(__NR_pmem_add, sys_pmem_add)
 __SYSCALL(__NR_pmem_update, sys_pmem_update)
 #define __NR_pmem_query		288
 __SYSCALL(__NR_pmem_query, sys_pmem_query)
+#define __NR_pmem_alloc		289
+__SYSCALL(__NR_pmem_alloc, sys_pmem_alloc)
 
 #endif

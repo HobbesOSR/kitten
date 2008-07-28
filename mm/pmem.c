@@ -3,6 +3,7 @@
 #include <lwk/kernel.h>
 #include <lwk/string.h>
 #include <lwk/list.h>
+#include <lwk/log2.h>
 #include <lwk/pmem.h>
 #include <arch/uaccess.h>
 
@@ -62,6 +63,9 @@ static bool
 region_is_sane(const struct pmem_region *rgn)
 {
 	int i;
+
+	if (!rgn)
+		return false;
 
 	if (rgn->end <= rgn->start)
 		return false;
@@ -290,8 +294,10 @@ pmem_query(const struct pmem_region *query, struct pmem_region *result)
 			continue;
 
 		/* match found, update result */
-		*result = *rgn;
-		calc_overlap(query, rgn, result);
+		if (result) {
+			*result = *rgn;
+			calc_overlap(query, rgn, result);
+		}
 		return 0;
 	}
 
@@ -311,10 +317,78 @@ sys_pmem_query(const struct pmem_region __user *query,
 	if (copy_from_user(&_query, query, sizeof(_query)))
 		return -EINVAL;
 
-	if ((status = pmem_query(query, &_result)) != 0)
+	if ((status = pmem_query(&_query, &_result)) != 0)
 		return status;
 
-	if (copy_to_user(result, &_result, sizeof(*result)))
+	if (result && copy_to_user(result, &_result, sizeof(*result)))
+		return -EINVAL;
+
+	return 0;
+}
+
+int
+pmem_alloc(unsigned long size, unsigned long alignment,
+           const struct pmem_region *constraint,
+           struct pmem_region *result)
+{
+	int status;
+	struct pmem_region query;
+	struct pmem_region candidate;
+
+	if (size == 0)
+		return -EINVAL;
+
+	if (alignment && !is_power_of_2(alignment))
+		return -EINVAL;
+
+	if (!region_is_sane(constraint))
+		return -EINVAL;
+
+	query = *constraint;
+
+	while ((status = pmem_query(&query, &candidate)) == 0) {
+		if (alignment) {
+			candidate.start = round_up(candidate.start, alignment);
+			if (candidate.start >= candidate.end)
+				continue;
+		}
+
+		if ((candidate.end - candidate.start) >= size) {
+			candidate.end = candidate.start + size;
+			candidate.allocated_is_set = true;
+			candidate.allocated = true;
+			status = pmem_update(&candidate);
+			BUG_ON(status);
+			if (result)
+				*result = candidate;
+			return 0;
+		}
+
+		query.start = candidate.end;
+	}
+	BUG_ON(status != -ENOENT);
+
+	return -ENOMEM;
+}
+
+int
+sys_pmem_alloc(unsigned long size, unsigned long alignment,
+               const struct pmem_region __user *constraint,
+               struct pmem_region __user *result)
+{
+	struct pmem_region _constraint, _result;
+	int status;
+
+	if (current->uid != 0)
+		return -EPERM;
+
+	if (copy_from_user(&_constraint, constraint, sizeof(_constraint)))
+		return -EINVAL;
+
+	if ((status = pmem_alloc(size, alignment, &_constraint, &_result)) != 0)
+		return status;
+
+	if (result && copy_to_user(result, &_result, sizeof(*result)))
 		return -EINVAL;
 
 	return 0;

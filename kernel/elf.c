@@ -133,9 +133,12 @@ elf_print_phdr(struct elf_phdr *hdr)
  * %rip=task->aspace->entry_point).
  *
  * Arguments:
- *       [INOUT] task:        Task to load ELF image into 
- *       [IN]    elf_image:   Pointer to an ELF image
- *       [IN]    heap_size:   Number of bytes to allocate for heap
+ *       [INOUT] task:        Task to load ELF image into.
+ *       [IN]    elf_image:   Pointer to an ELF image.
+ *       [IN]    heap_size:   Number of bytes to allocate for heap.
+ *       [IN]    alloc_mem:   Function pointer to use to allocate memory for
+ *                            the region.  alloc_mem() returns kernel virtual.
+ *                            address of the memory allocated.
  *
  * Returns:
  *       Success: 0
@@ -145,7 +148,8 @@ int
 elf_load_executable(
 	struct task_struct * task,
 	void *		     elf_image,
-	unsigned long	     heap_size
+	unsigned long	     heap_size,
+	void * (*alloc_mem)(size_t size, size_t alignment)
 )
 {
 	struct aspace *   aspace;
@@ -157,7 +161,7 @@ elf_load_executable(
 	unsigned long     start, end, extent;
 	unsigned int      num_load_segments = 0;
 	unsigned long     heap_start = 0;
-	void *            kmem;
+	void *            mem;
 	unsigned long     src, dst;
 	unsigned long     load_addr = 0;
 	int               load_addr_set = 0;
@@ -203,20 +207,21 @@ elf_load_executable(
 		}
 
 		/* Set up an address space region for the program segment */
-		status = aspace_kmem_alloc_region(
+		status = aspace_alloc_region(
 				aspace,
 				start,
 				extent,
 				elf_to_vm_flags(phdr->p_flags),
 				PAGE_SIZE,
 				"ELF PT_LOAD",
-				&kmem
+				alloc_mem,
+				&mem
 		);
 		if (status)
 			return status;
 
 		/* Copy segment data from ELF image into the address space */
-		dst = (unsigned long)kmem + 
+		dst = (unsigned long)mem + 
 			(phdr->p_vaddr - round_down(phdr->p_vaddr, PAGE_SIZE));
 		src = (unsigned long)elf_image + phdr->p_offset;
 		memcpy(
@@ -236,13 +241,14 @@ elf_load_executable(
 	start  = heap_start;
 	end    = round_up(heap_start + heap_size, PAGE_SIZE);
 	extent = end - start;	
-	status = aspace_kmem_alloc_region(
+	status = aspace_alloc_region(
 			aspace,
 			start,
 			extent,
 			VM_READ | VM_WRITE | VM_USER,
 			PAGE_SIZE,
 			"Heap",
+			alloc_mem,
 			NULL
 	);
 	if (status)
@@ -304,10 +310,13 @@ write_aux(
  *                 argc
  *
  * Arguments:
- *       [INOUT] task:        Task to initialize
- *       [IN]    stack_size:  Number of bytes to allocate for stack
- *       [IN]    argv[]:      Array of pointers to argument strings
- *       [IN]    envp[]:      Array of pointers to environment strings
+ *       [INOUT] task:        Task to initialize.
+ *       [IN]    stack_size:  Number of bytes to allocate for stack.
+ *       [IN]    alloc_mem:   Function pointer to use to allocate memory for
+ *                            the region.  alloc_mem() returns kernel virtual.
+ *                            address of the memory allocated.
+ *       [IN]    argv[]:      Array of pointers to argument strings.
+ *       [IN]    envp[]:      Array of pointers to environment strings.
  *
  * Returns:
  *       Success: 0
@@ -317,6 +326,7 @@ int
 setup_initial_stack(
 	struct task_struct * task,
 	unsigned long        stack_size,
+	void * (*alloc_mem)(size_t size, size_t alignment),
 	char *               argv[],
 	char *               envp[]
 )
@@ -325,7 +335,6 @@ setup_initial_stack(
 	unsigned long i, len;
 	struct aspace * aspace;
 	unsigned long start, end, extent;
-	void * kmem;
 	unsigned long sp;
 
 	const char *platform_str = ELF_PLATFORM;
@@ -355,14 +364,15 @@ setup_initial_stack(
 	end    = PAGE_OFFSET - PAGE_SIZE; /* one guard page */
 	start  = round_down(end - stack_size, PAGE_SIZE);
 	extent = end - start;
-	status = aspace_kmem_alloc_region(
+	status = aspace_alloc_region(
 			aspace,
 			start,
 			extent,
 			VM_READ | VM_WRITE | VM_USER,
 			PAGE_SIZE,
 			"Stack",
-			&kmem
+			alloc_mem,
+			NULL
 	);
 	if (status) {
 		printk(KERN_WARNING

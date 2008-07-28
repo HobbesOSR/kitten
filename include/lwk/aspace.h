@@ -125,14 +125,15 @@ aspace_unmap_memory(
 );
 
 extern int
-aspace_kmem_alloc_region(
+aspace_alloc_region(
 	struct aspace *	aspace,
 	unsigned long	start,
 	unsigned long	extent,
 	unsigned long	flags,
 	unsigned long	pagesz,
 	const char *	name,
-	void **		kmem
+	void * (*alloc_mem)(size_t size, size_t alignment),
+	void **		mem
 );
 
 extern void aspace_dump(struct aspace *aspace);

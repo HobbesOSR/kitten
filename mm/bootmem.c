@@ -377,7 +377,7 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	rgn.lgroup_is_set = true;
 	for (i = 0; i < max_idx; ) {
 		unsigned long v = ~map[i / BITS_PER_LONG];
-		unsigned long paddr = (unsigned long) __pa(pfn << PAGE_SHIFT);
+		unsigned long paddr = (unsigned long) pfn << PAGE_SHIFT;
 
 		for (m = 1; m && i < max_idx; m<<=1, paddr+=PAGE_SIZE, i++) {
 			rgn.start = paddr;
