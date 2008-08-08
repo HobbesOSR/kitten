@@ -40,6 +40,7 @@ cflags-y += -ffunction-sections
 # actually it makes the kernel smaller too.
 cflags-y += -fno-reorder-blocks
 cflags-y += -Wno-sign-compare
+cflags-y += -Wno-unused-parameter
 # -funit-at-a-time shrinks the kernel .text considerably
 # unfortunately it makes reading oopses harder.
 cflags-y += $(call cc-option,-funit-at-a-time)
