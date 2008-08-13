@@ -25,6 +25,36 @@ printk_address(unsigned long address)
 		address, symname, offset, symsize);
 }
 
+
+/**
+ * Print a stack trace of the context.
+ */
+void
+kstack_trace(
+	void *			rbp_v
+)
+{
+#ifndef CONFIG_FRAME_POINTER
+	printk( "Unable to generate stack trace "
+		"(recompile with CONFIG_FRAME_POINTER)\n" );
+	return;
+#endif
+
+	uint64_t * rbp = rbp_v;
+	if( rbp == 0 )
+		asm( "mov %%rbp, %0" : "=r"(rbp) );
+
+	int max_depth = 16;
+	printk( "Stack trace from RBP %p\n", rbp );
+
+	while( rbp && max_depth-- )
+	{
+		printk_address( rbp[1] );
+		rbp = (uint64_t*) *rbp;
+	}
+}
+
+
 /**
  * Prints x86_64 general purpose registers and friends to the console.
  * NOTE: This prints the CPU register values contained in the passed in
@@ -74,5 +104,7 @@ show_registers(struct pt_regs * regs)
 	       fs, fsindex, gs, gsindex, shadowgs);
 	printk("CS:  %04x DS: %04x ES: %04x CR0: %016lx\n", cs, ds, es, cr0);
 	printk("CR2: %016lx CR3: %016lx CR4: %016lx\n", cr2, cr3, cr4);
+
+	kstack_trace( (void *) regs->rbp );
 }
 

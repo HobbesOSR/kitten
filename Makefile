@@ -502,9 +502,6 @@ include $(srctree)/arch/$(ARCH)/Makefile
 NOSTDINC_FLAGS += -nostdinc -isystem $(shell $(CC) -print-file-name=include)
 CHECKFLAGS     += $(NOSTDINC_FLAGS)
 
-# warn about C99 declaration after statement
-CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
-
 # disable pointer signedness warnings in gcc 4.0
 CFLAGS += $(call cc-option,-Wno-pointer-sign,)
 
