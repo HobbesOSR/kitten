@@ -35,20 +35,20 @@ typedef struct {
 
 #ifdef CONFIG_DEBUG_SPINLOCK
 # define SPIN_LOCK_UNLOCKED						\
-	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED,	\
+			{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED,	\
 				.magic = SPINLOCK_MAGIC,		\
 				.owner = SPINLOCK_OWNER_INIT,		\
 				.owner_cpu = -1 }
 #define RW_LOCK_UNLOCKED						\
-	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED,	\
+			{	.raw_lock = __RAW_RW_LOCK_UNLOCKED,	\
 				.magic = RWLOCK_MAGIC,			\
 				.owner = SPINLOCK_OWNER_INIT,		\
 				.owner_cpu = -1 }
 #else
 # define SPIN_LOCK_UNLOCKED \
-	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED }
+			{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED }
 #define RW_LOCK_UNLOCKED \
-	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED }
+			{	.raw_lock = __RAW_RW_LOCK_UNLOCKED }
 #endif
 
 #define DEFINE_SPINLOCK(x)	spinlock_t x = SPIN_LOCK_UNLOCKED

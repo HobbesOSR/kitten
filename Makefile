@@ -306,11 +306,16 @@ LWKINCLUDE      := -Iinclude \
 
 CPPFLAGS        := -D__KERNEL__ $(LWKINCLUDE)
 
-CFLAGS 		:= -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-	  	   -fno-strict-aliasing -fno-common
+CFLAGS 		:= -std=gnu99 \
+		   -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+		   -fno-strict-aliasing -fno-common
 
 ifeq ($(call cc-option-yn, -fstack-protector),y)
 CFLAGS		+= -fno-stack-protector
+endif
+
+ifeq ($(call cc-option-yn, -fgnu89-inline),y)
+CFLAGS		+= -fgnu89-inline
 endif
 
 AFLAGS		:= -D__ASSEMBLY__
