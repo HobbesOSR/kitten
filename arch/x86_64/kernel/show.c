@@ -67,12 +67,15 @@ show_registers(struct pt_regs * regs)
 	unsigned long cr0 = 0L, cr2 = 0L, cr3 = 0L, cr4 = 0L, fs, gs, shadowgs;
 	unsigned int fsindex, gsindex;
 	unsigned int ds, cs, es;
+	bool user_fault = (regs->rip < PAGE_OFFSET);
+	char namebuf[128];
 
 	printk("Task ID: %d, Task Name: %.20s %s\n",
 		current->task_id, current->task_name, UTS_RELEASE);
-	printk("RIP: %04lx:[<%016lx>] ", regs->cs & 0xffff, regs->rip);
-	printk_address(regs->rip);
-	printk("RSP: %04lx:%016lx  EFLAGS: %08lx  ERR: %08lx\n",
+	printk("RIP: %04lx:%016lx (%s)\n", regs->cs & 0xffff, regs->rip,
+	       (user_fault) ? "user-context"
+	                    : kallsyms_lookup(regs->rip, NULL, NULL, namebuf));
+	printk("RSP: %04lx:%016lx EFLAGS: %08lx ERR: %08lx\n",
 		regs->ss, regs->rsp, regs->eflags, regs->orig_rax);
 	printk("RAX: %016lx RBX: %016lx RCX: %016lx\n",
 	       regs->rax, regs->rbx, regs->rcx);
@@ -105,6 +108,7 @@ show_registers(struct pt_regs * regs)
 	printk("CS:  %04x DS: %04x ES: %04x CR0: %016lx\n", cs, ds, es, cr0);
 	printk("CR2: %016lx CR3: %016lx CR4: %016lx\n", cr2, cr3, cr4);
 
-	kstack_trace( (void *) regs->rbp );
+	if (!user_fault)
+		kstack_trace( (void *) regs->rbp );
 }
 

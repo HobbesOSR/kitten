@@ -125,7 +125,8 @@ arch_load_pct(void)
 	if (init_str_array(MAX_NUM_STRS, envp, pct_envp_str))
 		panic("Too many PCT ENVP strings.");
 
-	BUG_ON(pct_elf_image == NULL);
+	if (pct_elf_image == NULL)
+		panic("Could not locate initial task ELF image.");
 
 	new_task = kmem_get_pages(TASK_ORDER);
 	if (!new_task)
@@ -194,6 +195,8 @@ arch_load_pct(void)
 	/* PCT runs as root */
 	pct_task->uid = 0;
 	pct_task->gid = 0;
+
+	strcpy(pct_task->task_name, "INIT-TASK");
 
 	asm_run_task(regs);  /* this does not return */
 }
