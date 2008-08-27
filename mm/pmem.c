@@ -184,6 +184,13 @@ merge_pmem_list(void)
 	}
 }
 
+static void
+zero_pmem(const struct pmem_region *rgn)
+{
+	/* access pmem region via the kernel's identity map */
+	memset(__va(rgn->start), 0, rgn->end - rgn->start);
+}
+
 int
 pmem_add(const struct pmem_region *rgn)
 {
@@ -359,6 +366,7 @@ pmem_alloc(unsigned long size, unsigned long alignment,
 			candidate.allocated = true;
 			status = pmem_update(&candidate);
 			BUG_ON(status);
+			zero_pmem(&candidate);
 			if (result)
 				*result = candidate;
 			return 0;
