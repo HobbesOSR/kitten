@@ -85,7 +85,7 @@ region_is_known(const struct pmem_region *rgn)
 {
 	struct pmem_list_entry *entry;
 	struct pmem_region overlap;
-	unsigned long size;
+	size_t size;
 
 	size = rgn->end - rgn->start;
 	list_for_each_entry(entry, &pmem_list, link) {
@@ -334,7 +334,7 @@ sys_pmem_query(const struct pmem_region __user *query,
 }
 
 int
-pmem_alloc(unsigned long size, unsigned long alignment,
+pmem_alloc(size_t size, size_t alignment,
            const struct pmem_region *constraint,
            struct pmem_region *result)
 {
@@ -380,7 +380,7 @@ pmem_alloc(unsigned long size, unsigned long alignment,
 }
 
 int
-sys_pmem_alloc(unsigned long size, unsigned long alignment,
+sys_pmem_alloc(size_t size, size_t alignment,
                const struct pmem_region __user *constraint,
                struct pmem_region __user *result)
 {

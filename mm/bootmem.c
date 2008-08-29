@@ -542,7 +542,7 @@ alloc_bootmem_aligned(unsigned long size, unsigned long align)
 /**
  * Initializes the kernel memory subsystem.
  */
-void
+void __init
 memsys_init(void)
 {
 	/* We like powers of two */
@@ -558,5 +558,6 @@ memsys_init(void)
 	/* Initialize the kernel memory pool */
 	kmem_create_zone(PAGE_OFFSET, kmem_size);
 	free_all_bootmem();
+	arch_memsys_init(kmem_size);
 }
 

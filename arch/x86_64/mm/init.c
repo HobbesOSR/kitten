@@ -1,9 +1,12 @@
 #include <lwk/kernel.h>
 #include <lwk/bootmem.h>
+#include <lwk/string.h>
+#include <lwk/pmem.h>
 #include <arch/page.h>
 #include <arch/pgtable.h>
 #include <arch/e820.h> 
 #include <arch/tlbflush.h>
+#include <arch/proto.h>
 
 /**
  * Start and end page frame numbers of the kernel page tables.
@@ -298,5 +301,46 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 		((table_end - table_start) << PAGE_SHIFT) / 1024,
 		table_start << PAGE_SHIFT,
 		table_end   << PAGE_SHIFT);
+}
+
+/**
+ * This performs architecture-specific memory subsystem initialization. It is
+ * called from the platform-independent memsys_init(). For x86_64, the only
+ * thing that needs to be done is to relocate the initrd image to user memory.
+ */
+void __init
+arch_memsys_init(size_t kmem_size)
+{
+	struct pmem_region query, result;
+	size_t initrd_size, umem_size;
+
+	if (!initrd_start)
+		return;
+
+	initrd_size = initrd_end - initrd_start;
+	umem_size   = round_up(initrd_size, PAGE_SIZE);
+
+	/* Relocate the initrd image to an unallocated chunk of umem */
+	if (pmem_alloc_umem(umem_size, PAGE_SIZE, &result))
+		panic("Failed to allocate umem for initrd image.");
+	result.type = PMEM_TYPE_INITRD;
+	pmem_update(&result);
+	memmove(__va(result.start), (void *)initrd_start, initrd_size);
+
+	/* Free the memory used by the old initrd location */
+	pmem_region_unset_all(&query);
+	query.start = round_down( __pa(initrd_start), PAGE_SIZE );
+	query.end   = round_up(   __pa(initrd_end),   PAGE_SIZE );
+	while (pmem_query(&query, &result) == 0) {
+		result.type = (result.start < kmem_size) ? PMEM_TYPE_KMEM
+		                                         : PMEM_TYPE_UMEM;
+		result.allocated = false;
+		BUG_ON(pmem_update(&result));
+		query.start = result.end;
+	}
+	
+	/* Update initrd_start and initrd_end to their new values */
+	initrd_start = (uintptr_t) __va(result.start);
+	initrd_end   = initrd_start + initrd_size;
 }
 

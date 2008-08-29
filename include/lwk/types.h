@@ -103,6 +103,8 @@ typedef		__u64		u_int64_t;
 typedef		__s64		int64_t;
 #endif
 
+typedef		unsigned long	uintptr_t;
+
 /* this is a special 64bit data type that is 8-byte aligned */
 #define aligned_u64 unsigned long long __attribute__((aligned(8)))
 

@@ -156,3 +156,5 @@ int name(type1 arg1, type2 arg2, type3 arg3, type4 arg4,	\
 SYSCALL1(pmem_add, const struct pmem_region *);
 SYSCALL1(pmem_update, const struct pmem_region *);
 SYSCALL2(pmem_query, const struct pmem_region *, struct pmem_region *);
+SYSCALL4(pmem_alloc, size_t, size_t,
+         const struct pmem_region *, struct pmem_region *);

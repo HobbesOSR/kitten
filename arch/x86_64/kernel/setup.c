@@ -26,14 +26,14 @@ unsigned long mmu_cr4_features;
 /**
  * Start and end addresses of the initrd image.
  */
-unsigned long initrd_start;
-unsigned long initrd_end;
+uintptr_t __initdata initrd_start;
+uintptr_t __initdata initrd_end;
 
 /**
  * Base address and size of the Extended BIOS Data Area.
  */
-unsigned long __initdata ebda_addr;
-unsigned long __initdata ebda_size;
+uintptr_t __initdata ebda_addr;
+uintptr_t __initdata ebda_size;
 #define EBDA_ADDR_POINTER 0x40E
 
 /**
@@ -126,7 +126,6 @@ reserve_memory(void)
 			initrd_start =
 				INITRD_START ? INITRD_START + PAGE_OFFSET : 0;
 			initrd_end = initrd_start+INITRD_SIZE;
-			pct_elf_image = (void *)initrd_start;
 		} else {
 			printk(KERN_ERR
 			       "initrd extends beyond end of memory "
@@ -150,7 +149,7 @@ static void __init
 setup_per_cpu_areas(void)
 { 
 	int i;
-	unsigned long size;
+	size_t size;
 
 	/*
  	 * There is an ELF section containing all per-CPU variables

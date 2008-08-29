@@ -9,17 +9,18 @@
 typedef enum {
 	PMEM_TYPE_BOOTMEM     = 0,  /* memory allocated at boot-time */
 	PMEM_TYPE_BIGPHYSAREA = 1,  /* memory set-aside for a device/driver */
-	PMEM_TYPE_INIT_TASK   = 2,  /* memory used by the initial task */
-	PMEM_TYPE_KMEM        = 3,  /* memory managed by the kernel */
-	PMEM_TYPE_UMEM        = 4,  /* memory managed by user-space */
+	PMEM_TYPE_INITRD      = 2,  /* initrd image provided by bootloader */
+	PMEM_TYPE_INIT_TASK   = 3,  /* memory used by the initial task */
+	PMEM_TYPE_KMEM        = 4,  /* memory managed by the kernel */
+	PMEM_TYPE_UMEM        = 5,  /* memory managed by user-space */
 } pmem_type_t;
 
 /**
  * Defines a physical memory region.
  */
 struct pmem_region {
-	unsigned long   start;             /* region occupies: [start, end) */
-	unsigned long   end;
+	uintptr_t       start;             /* region occupies: [start, end) */
+	uintptr_t       end;
 
 	bool            type_is_set;       /* type field is set? */
 	pmem_type_t     type;              /* physical memory type */
@@ -41,7 +42,7 @@ struct pmem_region {
 int pmem_add(const struct pmem_region *rgn);
 int pmem_update(const struct pmem_region *update);
 int pmem_query(const struct pmem_region *query, struct pmem_region *result);
-int pmem_alloc(unsigned long size, unsigned long alignment,
+int pmem_alloc(size_t size, size_t alignment,
                const struct pmem_region *constraint,
                struct pmem_region *result);
 
@@ -50,6 +51,7 @@ int pmem_alloc(unsigned long size, unsigned long alignment,
  */
 void pmem_region_unset_all(struct pmem_region *rgn);
 const char *pmem_type_to_string(pmem_type_t type);
+int pmem_alloc_umem(size_t size, size_t alignment, struct pmem_region *rgn);
 
 #ifdef __KERNEL__
 
@@ -60,7 +62,7 @@ int sys_pmem_add(const struct pmem_region __user * rgn);
 int sys_pmem_update(const struct pmem_region __user * update);
 int sys_pmem_query(const struct pmem_region __user * query,
                    struct pmem_region __user * result);
-int sys_pmem_alloc(unsigned long size, unsigned long alignment,
+int sys_pmem_alloc(size_t size, size_t alignment,
                    const struct pmem_region __user *constraint,
                    struct pmem_region __user *result);
 

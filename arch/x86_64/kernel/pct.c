@@ -38,12 +38,6 @@ static char pct_envp_str[BOOT_ARG_LEN] = { 0 };
 param_string(pct_envp, pct_envp_str, sizeof(pct_envp_str));
 
 
-/**
- * Address of the PCT ELF executable image.
- */
-void *pct_elf_image;
-
-
 static int
 init_str_array(
 	int	size,
@@ -82,18 +76,9 @@ init_str_array(
 static void *
 alloc_mem_for_init_task(size_t size, size_t alignment)
 {
-	int status;
-	struct pmem_region constraint, result;
+	struct pmem_region result;
 
-	/* Find and allocate an unallocated chunk of physical memory */
-	pmem_region_unset_all(&constraint);
-	constraint.start = 0;
-	constraint.end   = ULONG_MAX;
-	constraint.type_is_set = true;  constraint.type = PMEM_TYPE_UMEM;
-	constraint.allocated   = false; constraint.allocated_is_set = true;
-
-	status = pmem_alloc(size, alignment, &constraint, &result);
-	if (status)
+	if (pmem_alloc_umem(size, alignment, &result))
 		return NULL;
 
 	/* Mark the memory as being used by the init task */
@@ -118,6 +103,7 @@ arch_load_pct(void)
 	char *argv[MAX_NUM_STRS] = { "pct" };
 	char *envp[MAX_NUM_STRS];
 	struct pt_regs *regs;
+	void *pct_elf_image = (void *)initrd_start;
 
 	if (init_str_array(MAX_NUM_STRS-1, argv+1, pct_argv_str))
 		panic("Too many PCT ARGV strings.");
