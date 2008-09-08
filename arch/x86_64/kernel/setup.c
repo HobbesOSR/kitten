@@ -26,14 +26,14 @@ unsigned long mmu_cr4_features;
 /**
  * Start and end addresses of the initrd image.
  */
-uintptr_t __initdata initrd_start;
-uintptr_t __initdata initrd_end;
+paddr_t __initdata initrd_start;
+paddr_t __initdata initrd_end;
 
 /**
  * Base address and size of the Extended BIOS Data Area.
  */
-uintptr_t __initdata ebda_addr;
-uintptr_t __initdata ebda_size;
+paddr_t __initdata ebda_addr;
+size_t  __initdata ebda_size;
 #define EBDA_ADDR_POINTER 0x40E
 
 /**
@@ -123,8 +123,7 @@ reserve_memory(void)
 			       (unsigned long) INITRD_START,
 			       (unsigned long) INITRD_SIZE);
 			reserve_bootmem(INITRD_START, INITRD_SIZE);
-			initrd_start =
-				INITRD_START ? INITRD_START + PAGE_OFFSET : 0;
+			initrd_start = INITRD_START;
 			initrd_end = initrd_start+INITRD_SIZE;
 		} else {
 			printk(KERN_ERR

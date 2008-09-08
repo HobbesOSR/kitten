@@ -33,7 +33,7 @@ pmem_alloc_umem(size_t size, size_t alignment, struct pmem_region *rgn)
 	/* Find and allocate a chunk of PMEM_TYPE_UMEM physical memory */
 	pmem_region_unset_all(&constraint);
 	constraint.start     = 0;
-	constraint.end       = (uintptr_t)(-1);
+	constraint.end       = (paddr_t)(-1);
 	constraint.type      = PMEM_TYPE_UMEM; constraint.type_is_set = true;
 	constraint.allocated = false;          constraint.allocated_is_set = true;
 

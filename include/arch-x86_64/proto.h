@@ -26,6 +26,6 @@ extern unsigned long __phys_addr(unsigned long virt_addr);
 
 void __init interrupts_init(void);
 
-extern uintptr_t initrd_start, initrd_end;
+extern paddr_t initrd_start, initrd_end;
 
 #endif

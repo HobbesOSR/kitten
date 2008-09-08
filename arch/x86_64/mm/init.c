@@ -325,12 +325,12 @@ arch_memsys_init(size_t kmem_size)
 		panic("Failed to allocate umem for initrd image.");
 	result.type = PMEM_TYPE_INITRD;
 	pmem_update(&result);
-	memmove(__va(result.start), (void *)initrd_start, initrd_size);
+	memmove(__va(result.start), __va(initrd_start), initrd_size);
 
 	/* Free the memory used by the old initrd location */
 	pmem_region_unset_all(&query);
-	query.start = round_down( __pa(initrd_start), PAGE_SIZE );
-	query.end   = round_up(   __pa(initrd_end),   PAGE_SIZE );
+	query.start = round_down( initrd_start, PAGE_SIZE );
+	query.end   = round_up(   initrd_end,   PAGE_SIZE );
 	while (pmem_query(&query, &result) == 0) {
 		result.type = (result.start < kmem_size) ? PMEM_TYPE_KMEM
 		                                         : PMEM_TYPE_UMEM;
@@ -340,7 +340,7 @@ arch_memsys_init(size_t kmem_size)
 	}
 	
 	/* Update initrd_start and initrd_end to their new values */
-	initrd_start = (uintptr_t) __va(result.start);
+	initrd_start = result.start;
 	initrd_end   = initrd_start + initrd_size;
 }
 

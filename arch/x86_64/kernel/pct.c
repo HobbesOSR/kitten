@@ -103,7 +103,7 @@ arch_load_pct(void)
 	char *argv[MAX_NUM_STRS] = { "pct" };
 	char *envp[MAX_NUM_STRS];
 	struct pt_regs *regs;
-	void *pct_elf_image = (void *)initrd_start;
+	void *pct_elf_image = __va(initrd_start);
 
 	if (init_str_array(MAX_NUM_STRS-1, argv+1, pct_argv_str))
 		panic("Too many PCT ARGV strings.");

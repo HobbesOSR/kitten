@@ -54,6 +54,11 @@ typedef __kernel_ssize_t	ssize_t;
 typedef __kernel_ptrdiff_t	ptrdiff_t;
 #endif
 
+#ifndef _UINTPTR_T
+#define _UINTPTR_T
+typedef __kernel_uintptr_t	uintptr_t;
+#endif
+
 #ifndef _TIME_T
 #define _TIME_T
 typedef __kernel_time_t		time_t;
@@ -103,8 +108,6 @@ typedef		__u64		u_int64_t;
 typedef		__s64		int64_t;
 #endif
 
-typedef		unsigned long	uintptr_t;
-
 /* this is a special 64bit data type that is 8-byte aligned */
 #define aligned_u64 unsigned long long __attribute__((aligned(8)))
 
@@ -121,6 +124,11 @@ typedef _Bool			bool;
  * Below are truly LWK-specific types that should never collide with
  * any application/library that wants lwk/types.h.
  */
+
+/* Address types */
+typedef	__kernel_uintptr_t	paddr_t;	/* physical address */
+typedef	__kernel_uintptr_t	kaddr_t;	/* kernel virtual address */
+typedef	__kernel_uintptr_t	uaddr_t;	/* user virtual address */
 
 /* Locality group ID */
 typedef unsigned int		lgroup_t;

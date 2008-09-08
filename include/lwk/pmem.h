@@ -19,8 +19,8 @@ typedef enum {
  * Defines a physical memory region.
  */
 struct pmem_region {
-	uintptr_t       start;             /* region occupies: [start, end) */
-	uintptr_t       end;
+	paddr_t         start;             /* region occupies: [start, end) */
+	paddr_t         end;
 
 	bool            type_is_set;       /* type field is set? */
 	pmem_type_t     type;              /* physical memory type */
