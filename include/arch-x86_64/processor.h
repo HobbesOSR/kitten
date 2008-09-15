@@ -21,7 +21,6 @@
 /* #include <lwk/personality.h> */
 #include <lwk/cpumask.h>
 #include <lwk/cache.h>
-#include <lwk/cpuinfo.h>
 
 #define TF_MASK		0x00000100
 #define IF_MASK		0x00000200
@@ -45,39 +44,6 @@
  */
 #define current_text_addr() ({ void *pc; asm volatile("leaq 1f(%%rip),%0\n1:":"=r"(pc)); pc; })
 
-/*
- *  CPU type and hardware bug flags. Kept separately for each CPU.
- */
-
-struct cpuinfo_x86 {
-	__u8	x86;		/* CPU family */
-	__u8	x86_vendor;	/* CPU vendor */
-	__u8	x86_model;
-	__u8	x86_mask;
-	int	cpuid_level;	/* Maximum supported CPUID level, -1=no CPUID */
-	__u32	x86_capability[NCAPINTS];
-	char	x86_vendor_id[16];
-	char	x86_model_id[64];
-	int 	x86_cache_size;  /* in KB */
-	int	x86_clflush_size;
-	int	x86_cache_alignment;
-	int	x86_tlbsize;	/* number of 4K pages in DTLB/ITLB combined(in pages)*/
-        __u8    x86_virt_bits, x86_phys_bits;
-	__u8	x86_max_cores;	/* cpuid returned max cores value */
-        __u32   x86_power; 	
-	__u32   extended_cpuid_level;	/* Max extended CPUID function supported */
-	unsigned long loops_per_jiffy;
-	cpumask_t llc_shared_map;	/* cpus sharing the last level cache */
-	__u8	apicid;
-	__u8	booted_cores;	/* number of cores as seen by OS */
-
-	__u8	logical_id;	/* logical ID of this CPU */
-	__u8	socket_id;      /* ID of the socket/package containing this CPU */
-	__u8	socket_core_id; /* ID of the core in the enclosing socket/package */
-	__u8	core_thread_id; /* ID of the hw_thread in the enclosing core */
-	__u32	max_freq;	/* Maximum frequency of this CPU in KHz */
-} ____cacheline_aligned;
-
 #define X86_VENDOR_INTEL 0
 #define X86_VENDOR_CYRIX 1
 #define X86_VENDOR_AMD 2
@@ -89,14 +55,9 @@ struct cpuinfo_x86 {
 #define X86_VENDOR_NUM 8
 #define X86_VENDOR_UNKNOWN 0xff
 
-extern struct cpuinfo_x86 cpu_data[];
-#define current_cpu_data cpu_data[smp_processor_id()]
-
 extern char ignore_irq13;
 
 extern void identify_cpu(void);
-extern void print_cpu_info(struct cpuinfo_x86 *);
-extern unsigned int init_intel_cacheinfo(struct cpuinfo_x86 *c);
 
 /*
  * EFLAGS bits

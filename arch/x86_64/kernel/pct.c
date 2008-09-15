@@ -104,6 +104,7 @@ arch_load_pct(void)
 	char *envp[MAX_NUM_STRS];
 	struct pt_regs *regs;
 	void *pct_elf_image = __va(initrd_start);
+	id_t aspace_id;
 
 	if (init_str_array(MAX_NUM_STRS-1, argv+1, pct_argv_str))
 		panic("Too many PCT ARGV strings.");
@@ -121,13 +122,14 @@ arch_load_pct(void)
 	pct_task = &new_task->task_info;
 	pct_task->arch.addr_limit = PAGE_OFFSET;
 
-	pct_task->aspace = aspace_create();
+	if (aspace_create(ANY_ID, "INIT_TASK", &aspace_id))
+		panic("Failed to create aspace for init task.");
+
+	pct_task->aspace = aspace_acquire(aspace_id);
 	BUG_ON(!pct_task->aspace);
 
 	printk("switching to new aspace's page table.\n");
-	aspace_activate(pct_task->aspace);
-
-	aspace_dump(pct_task->aspace);
+	arch_aspace_activate(pct_task->aspace);
 
 	status = elf_load_executable(
 			pct_task,
@@ -140,6 +142,7 @@ arch_load_pct(void)
 
 	status = setup_initial_stack(
 			pct_task,
+			pct_elf_image,
 			pct_stack_size,
 			&alloc_mem_for_init_task,
 			argv,
@@ -148,16 +151,16 @@ arch_load_pct(void)
 	if (status)
 		return status;
 
-	aspace_dump(pct_task->aspace);
+	aspace_dump2console(pct_task->aspace->id);
 
 	regs = &user_contexts[0];
 
 	regs->cs                   = __USER_CS;
 	regs->ss                   = __USER_DS;
 
-	regs->rip                  = (uint64_t)pct_task->aspace->entry_point;
-	regs->rsp                  = (uint64_t)pct_task->aspace->stack_ptr;
-	regs->eflags               = (1 << 9 );
+	regs->rip                  = pct_task->entry_point;
+	regs->rsp                  = pct_task->stack_ptr;
+	regs->eflags               = (1 << 9);
 
 	/* Set the PCT as the current process */
 	write_pda(pcurrent, pct_task);

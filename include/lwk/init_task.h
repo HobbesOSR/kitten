@@ -11,7 +11,7 @@
  */
 #define INIT_TASK(name) \
 	.task_id	=	0,					\
-	.task_name	=	"idle task",				\
+	.task_name	=	"bootstrap",				\
 	.cpu		=	0,					\
 	.aspace		=	&init_aspace,				\
 

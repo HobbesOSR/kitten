@@ -54,6 +54,9 @@ struct task_struct {
 	unsigned long		ptrace;
 	uint32_t		flags;
 
+	vaddr_t			entry_point;
+	vaddr_t			stack_ptr;
+
 	struct arch_task	arch;       /* arch specific task info */
 };
 

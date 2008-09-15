@@ -644,4 +644,25 @@ __SYSCALL(__NR_pmem_query, sys_pmem_query)
 #define __NR_pmem_alloc		289
 __SYSCALL(__NR_pmem_alloc, sys_pmem_alloc)
 
+#define __NR_aspace_get_myid	290
+__SYSCALL(__NR_aspace_get_myid, sys_aspace_get_myid)
+#define __NR_aspace_create	291
+__SYSCALL(__NR_aspace_create, sys_aspace_create)
+#define __NR_aspace_destroy	292
+__SYSCALL(__NR_aspace_destroy, sys_aspace_destroy)
+#define __NR_aspace_add_region	293
+__SYSCALL(__NR_aspace_add_region, sys_aspace_add_region)
+#define __NR_aspace_del_region	294
+__SYSCALL(__NR_aspace_del_region, sys_aspace_del_region)
+#define __NR_aspace_map_pmem	295
+__SYSCALL(__NR_aspace_map_pmem, sys_aspace_map_pmem)
+#define __NR_aspace_unmap_pmem	296
+__SYSCALL(__NR_aspace_unmap_pmem, sys_aspace_unmap_pmem)
+#define __NR_aspace_smartmap	297
+__SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
+#define __NR_aspace_unsmartmap	298
+__SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
+#define __NR_aspace_dump2console 299
+__SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
+
 #endif

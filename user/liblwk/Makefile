@@ -1,7 +1,7 @@
 TARGET = liblwk.a
 
 LIBS-y += $(TARGET)
-OBJS-y += syscalls.o pmem.o
+OBJS-y += syscalls.o pmem.o elf.o
 
 INCLUDES += -I./include -I../../include
 

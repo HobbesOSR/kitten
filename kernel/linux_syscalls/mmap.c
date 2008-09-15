@@ -1,6 +1,7 @@
 #include <lwk/kernel.h>
 #include <lwk/task.h>
 #include <lwk/aspace.h>
+#include <arch/mman.h>
 
 long
 sys_mmap(

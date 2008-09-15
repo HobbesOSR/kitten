@@ -5,8 +5,58 @@
 #include <lwk/aspace.h>
 #include <lwk/elf.h>
 #include <lwk/auxvec.h>
+#include <lwk/cpuinfo.h>
 #include <arch/uaccess.h>
 #include <arch/param.h>
+
+int
+aspace_alloc_region(
+	struct aspace *	aspace,
+	vaddr_t		start,
+	size_t		extent,
+	vmflags_t	flags,
+	vmpagesize_t	pagesz,
+	const char *	name,
+	void * (*alloc_mem)(size_t size, size_t alignment),
+	void **		mem
+)
+{
+	int status;
+	void *_mem;
+
+	/* Add the region to the address space */
+	status = aspace_add_region(
+			aspace->id,
+			start,
+			extent,
+			flags,
+			pagesz,
+			name
+	);
+	if (status)
+		return status;
+
+	/* Allocate memory for the region */
+	_mem = (*alloc_mem)(extent, pagesz);
+	if (_mem == NULL)
+		return -ENOMEM;
+
+	/* Map the memory to the region */
+	status = aspace_map_pmem(
+			aspace->id,
+			__pa(_mem),
+			start,
+			extent
+	);
+	if (status)
+		return status;
+
+	/* Return pointer to the kernel mapping of the memory allocated */
+	if (mem)
+		*mem = _mem;
+
+	return 0;
+}
 
 
 /**
@@ -15,111 +65,6 @@
 int elf_debug = 0;
 param(elf_debug, int);
 
-
-/**
- * Verifies that an ELF header is sane.
- * Returns 0 if header is sane and random non-zero values if header is insane.
- */
-static int
-elf_check(struct elfhdr *hdr)
-{
-	if (memcmp(hdr->e_ident, ELFMAG, SELFMAG) != 0) {
-		printk(KERN_ERR "bad e_ident %#x\n",
-		                *((unsigned int *)hdr->e_ident));
-		return -1;
-	}
-	if (hdr->e_ident[EI_CLASS] != ELF_CLASS) {
-		printk(KERN_ERR "bad e_ident[EI_CLASS] %#x\n",
-		                (unsigned int)hdr->e_ident[EI_CLASS]);
-		return -1;
-	}
-	if (hdr->e_ident[EI_DATA] != ELF_DATA) {
-		printk(KERN_ERR "bad e_ident[EI_DATA] %#x\n",
-		                (unsigned int)hdr->e_ident[EI_DATA]);
-		return -1;
-	}
-	if (hdr->e_ident[EI_VERSION] != EV_CURRENT) {
-		printk(KERN_ERR "bad e_ident[EI_VERSION] %#x\n",
-		                (unsigned int)hdr->e_ident[EI_VERSION]);
-		return -1;
-	}
-	if (hdr->e_ident[EI_OSABI] != ELF_OSABI) {
-		printk(KERN_ERR "bad e_dent[EI_OSABI] %#x\n",
-		                (unsigned int)hdr->e_ident[EI_OSABI]);
-		return -1;
-	}
-	if (hdr->e_type != ET_EXEC) {
-		printk(KERN_ERR "bad e_type %#x\n",
-		                (unsigned int)hdr->e_type);
-		return -1;
-	}
-	if (hdr->e_machine != ELF_ARCH) {
-		printk(KERN_ERR "bad e_machine %#x\n",
-		                (unsigned int)hdr->e_machine);
-		return -1;
-	}
-	if (hdr->e_version != EV_CURRENT) {
-		printk(KERN_ERR "bad e_version %#x\n",
-		                (unsigned int)hdr->e_version);
-		return -1;
-	}
-	if (hdr->e_flags != 0) {
-		printk(KERN_ERR "bad e_flags %#x\n",
-		                (unsigned int)hdr->e_flags);
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/**
- * Converts ELF flags to the corresponding kernel memory subsystem flags.
- */
-static uint32_t
-elf_to_vm_flags(unsigned int elf_flags)
-{
-	uint32_t vm_flags = VM_USER;
-
-	if ( elf_flags & PF_R ) vm_flags |= VM_READ;
-	if ( elf_flags & PF_W ) vm_flags |= VM_WRITE;
-	if ( elf_flags & PF_X ) vm_flags |= VM_EXEC;
-
-	return vm_flags;
-}
-
-
-/**
- * Prints the contents of an ELF program header to the console.
- */
-static void
-elf_print_phdr(struct elf_phdr *hdr)
-{
-	char *name;
-
-	switch (hdr->p_type) {
-		case PT_NULL:    name = "NULL";    break;
-		case PT_LOAD:    name = "LOAD";    break;
-		case PT_DYNAMIC: name = "DYNAMIC"; break;
-		case PT_INTERP:  name = "INTERP";  break;
-		case PT_NOTE:    name = "NOTE";    break;
-		case PT_SHLIB:   name = "SHLIB";   break;
-		case PT_PHDR:    name = "PHDR";    break;
-		case PT_LOPROC:  name = "LOPROC";  break;
-		case PT_HIPROC:  name = "HIPROC";  break;
-		default:         name = "UNDEFINED TYPE";
-	}
-
-	printk(KERN_DEBUG "ELF Program Segment Header:\n");
-	printk(KERN_DEBUG "  type   %s\n", name);
-	printk(KERN_DEBUG "  flags  %0#10x\n",  (unsigned int)  hdr->p_flags  );
-	printk(KERN_DEBUG "  offset %0#18lx\n", (unsigned long) hdr->p_offset );
-	printk(KERN_DEBUG "  vaddr  %0#18lx\n", (unsigned long) hdr->p_vaddr  );
-	printk(KERN_DEBUG "  paddr  %0#18lx\n", (unsigned long) hdr->p_paddr  );
-	printk(KERN_DEBUG "  filesz %0#18lx\n", (unsigned long) hdr->p_filesz );
-	printk(KERN_DEBUG "  memsz  %0#18lx\n", (unsigned long) hdr->p_memsz  );
-	printk(KERN_DEBUG "  align  %0#18lx\n", (unsigned long) hdr->p_align  );
-}
 
 
 /**
@@ -173,7 +118,7 @@ elf_load_executable(
 
 	/* Make sure ELF header is sane */
 	ehdr = elf_image;
-	if (elf_check(ehdr)) {
+	if (elf_check_hdr(ehdr)) {
 		printk(KERN_ERR "Bad ELF image.\n");
 		return -EINVAL;
 	}
@@ -211,7 +156,7 @@ elf_load_executable(
 				aspace,
 				start,
 				extent,
-				elf_to_vm_flags(phdr->p_flags),
+				elf_pflags_to_vmflags(phdr->p_flags),
 				PAGE_SIZE,
 				"ELF PT_LOAD",
 				alloc_mem,
@@ -264,10 +209,8 @@ elf_load_executable(
 	/* Anonymous mmap() requests are satisfied from the top of the heap */
 	aspace->mmap_brk = aspace->heap_end;
 
-	/* Remember ELF load information */
-	aspace->entry_point = (void __user *)ehdr->e_entry;
-	aspace->e_phdr      = (void __user *)(load_addr + ehdr->e_phoff);
-	aspace->e_phnum     = ehdr->e_phnum;
+	/* Remember the entry point */
+	task->entry_point = elf_entry_point(elf_image);
 
 	return 0;
 }
@@ -297,7 +240,7 @@ write_aux(
  * main(argc, argv, envp) function.
  * 
  * If successful, the initial stack pointer value that should be used when
- * starting the new task is returned in task->aspace->stack_ptr.  
+ * starting the new task is returned in >stack_ptr.  
  *
  * This function sets up the initial stack as follows (stack grows down):
  *
@@ -325,6 +268,7 @@ write_aux(
 int
 setup_initial_stack(
 	struct task_struct * task,
+	void *		     elf_image,
 	unsigned long        stack_size,
 	void * (*alloc_mem)(size_t size, size_t alignment),
 	char *               argv[],
@@ -361,7 +305,7 @@ setup_initial_stack(
 	BUG_ON(!aspace);
 
 	/* Set up an address space region for the stack */
-	end    = PAGE_OFFSET - PAGE_SIZE; /* one guard page */
+	end    = SMARTMAP_ALIGN - PAGE_SIZE; /* one guard page */
 	start  = round_down(end - stack_size, PAGE_SIZE);
 	extent = end - start;
 	status = aspace_alloc_region(
@@ -407,14 +351,12 @@ setup_initial_stack(
 	write_aux(auxv, auxc++, AT_HWCAP, ELF_HWCAP);
 	write_aux(auxv, auxc++, AT_PAGESZ, ELF_EXEC_PAGESIZE);
 	write_aux(auxv, auxc++, AT_CLKTCK, CLOCKS_PER_SEC);
-	write_aux(auxv, auxc++, AT_PHDR,
-	                        (unsigned long)task->aspace->e_phdr);
+	write_aux(auxv, auxc++, AT_PHDR, elf_phdr_table_addr(elf_image));
 	write_aux(auxv, auxc++, AT_PHENT, sizeof(struct elf_phdr));
-	write_aux(auxv, auxc++, AT_PHNUM, task->aspace->e_phnum);
+	write_aux(auxv, auxc++, AT_PHNUM, elf_num_phdrs(elf_image));
 	write_aux(auxv, auxc++, AT_BASE, 0);
 	write_aux(auxv, auxc++, AT_FLAGS, 0);
-	write_aux(auxv, auxc++, AT_ENTRY,
-	                        (unsigned long)task->aspace->entry_point);
+	write_aux(auxv, auxc++, AT_ENTRY, elf_entry_point(elf_image));
 	write_aux(auxv, auxc++, AT_UID, task->uid);
 	write_aux(auxv, auxc++, AT_EUID, task->uid);
 	write_aux(auxv, auxc++, AT_GID, task->gid);
@@ -483,12 +425,12 @@ setup_initial_stack(
 		goto error;
 
 	/* Remember the initial stack pointer */
-	aspace->stack_ptr = (void *) sp;
+	task->stack_ptr = sp;
 
 	return 0;
 
 error:
-	status = aspace_del_region(aspace, start, extent);
+	status = aspace_del_region(aspace->id, start, extent);
 	if (status)
 		panic("aspace_del_region() failed, status=%d", status);
 	return -EFAULT;

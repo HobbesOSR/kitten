@@ -1,4 +1,4 @@
-/* Copyright (c) 2007, Sandia National Laboratories */
+/* Copyright (c) 2007,2008 Sandia National Laboratories */
 
 #include <lwk/kernel.h>
 #include <lwk/aspace.h>
@@ -18,25 +18,11 @@ arch_aspace_create(
 	struct aspace *	aspace
 )
 {
-	int status;
 	unsigned int i;
 
 	/* Allocate a root page table for the address space */
 	if ((aspace->arch.pgd = kmem_get_pages(0)) == NULL)
 		return -ENOMEM;
-
-	/* Create a region for the kernel portion of the address space */
-	status =
-	aspace_add_region(
-		aspace,
-		PAGE_OFFSET,
-		ULONG_MAX - PAGE_OFFSET + 1, /* # bytes to end of memory */
-		0,
-		PAGE_SIZE,
-		"Kernel"
-	);
-	if (status)
-		return status;
 	
 	/* Copy the current kernel page tables into the address space */
 	for (i = pgd_index(PAGE_OFFSET); i < PTRS_PER_PGD; i++)
@@ -144,8 +130,8 @@ alloc_page_table(
 static xpte_t *
 find_or_create_pte(
 	struct aspace *	aspace,
-	unsigned long	vaddr,
-	unsigned long	pagesz
+	vaddr_t		vaddr,
+	vmpagesize_t	pagesz
 )
 {
 	xpte_t *pgd;	/* Page Global Directory: level 0 (root of tree) */
@@ -232,8 +218,8 @@ try_to_free_table(
 static void
 find_and_delete_pte(
 	struct aspace *	aspace,
-	unsigned long	vaddr,
-	unsigned long	pagesz
+	vaddr_t		vaddr,
+	vmpagesize_t	pagesz
 )
 {
 	xpte_t *pgd;	/* Page Global Directory: level 0 (root of tree) */
@@ -327,9 +313,9 @@ find_and_delete_pte(
 static void
 write_pte(
 	xpte_t *	pte,
-	unsigned long	paddr,
-	unsigned long	flags,
-	unsigned long	pagesz
+	paddr_t		paddr,
+	vmflags_t	flags,
+	vmpagesize_t	pagesz
 )
 {
 	xpte_t _pte;
@@ -378,10 +364,10 @@ write_pte(
 int
 arch_aspace_map_page(
 	struct aspace *	aspace,
-	unsigned long	start,
-	unsigned long	paddr,
-	unsigned long	flags,
-	unsigned long	pagesz
+	vaddr_t		start,
+	paddr_t		paddr,
+	vmflags_t	flags,
+	vmpagesize_t	pagesz
 )
 {
 	xpte_t *pte;
@@ -409,11 +395,55 @@ arch_aspace_map_page(
 void
 arch_aspace_unmap_page(
 	struct aspace *	aspace,
-	unsigned long	start,
-	unsigned long	pagesz
+	vaddr_t		start,
+	vmpagesize_t	pagesz
 )
 {
 	find_and_delete_pte(aspace, start, pagesz);
 }
 
+int
+arch_aspace_smartmap(struct aspace *src, struct aspace *dst,
+                     vaddr_t start, size_t extent)
+{
+	size_t n = extent / SMARTMAP_ALIGN;
+	size_t i;
+	xpte_t *src_pgd = src->arch.pgd;
+	xpte_t *dst_pgd = dst->arch.pgd;
+	xpte_t *src_pge, *dst_pge;
 
+	/* Make sure all of the source PGD entries are present */
+	for (i = 0; i < n; i++) {
+		src_pge = &src_pgd[i];
+		if (!src_pge->present && !alloc_page_table(src_pge))
+			return -ENOMEM;
+	}
+
+	/* Perform the SMARTMAP... just copy src PGEs to the dst PGD */
+	for (i = 0; i < n; i++) {
+		src_pge = &src_pgd[i];
+		dst_pge = &dst_pgd[(start >> 39) & 0x1FF];
+		BUG_ON(dst_pge->present);
+		dst_pge = src_pge;
+	}
+
+	return 0;
+}
+
+int
+arch_aspace_unsmartmap(struct aspace *src, struct aspace *dst,
+                       vaddr_t start, size_t extent)
+{
+	size_t n = extent / SMARTMAP_ALIGN;
+	size_t i;
+	xpte_t *dst_pgd = dst->arch.pgd;
+	xpte_t *dst_pge;
+
+	/* Unmap the SMARTMAP PGEs */
+	for (i = 0; i < n; i++) {
+		dst_pge = &dst_pgd[(start >> 39) & 0x1FF];
+		dst_pge->present = 0;
+	}
+
+	return 0;
+}

@@ -8,6 +8,7 @@
 #include <lwk/cpuinfo.h>
 #include <lwk/delay.h>
 #include <lwk/bootmem.h>
+#include <lwk/aspace.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -91,6 +92,11 @@ start_kernel()
 	 * instead (e.g., kmem_alloc() and kmem_free()).
 	 */
 	memsys_init();
+
+	/*
+ 	 * Initialize the address space management subsystem.
+ 	 */
+	aspace_init();
 
 	/*
 	 * LWK is fully initialized. Enable external interrupts.

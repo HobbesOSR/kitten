@@ -13,6 +13,7 @@
 #include <lwk/kmem.h>
 #include <lwk/errno.h>
 #include <lwk/utsname.h>
+#include <lwk/print.h>
 #include <arch/byteorder.h>
 #include <arch/bug.h>
 
@@ -32,39 +33,12 @@ extern struct utsname linux_utsname;
 #define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 
-#define KERN_EMERG	"<0>"	/* system is unusable                   */
-#define KERN_ALERT	"<1>"	/* action must be taken immediately     */
-#define KERN_CRIT	"<2>"	/* critical conditions                  */
-#define KERN_ERR	"<3>"	/* error conditions                     */
-#define KERN_WARNING	"<4>"	/* warning conditions                   */
-#define KERN_NOTICE	"<5>"	/* normal but significant condition     */
-#define KERN_INFO	"<6>"	/* informational                        */
-#define KERN_DEBUG	"<7>"	/* debug-level messages                 */
-#define KERN_USERMSG	"<8>"	/* message from user-space		*/
-
 void panic(const char * fmt, ...);
 
 extern unsigned long simple_strtoul(const char *,char **,unsigned int);
 extern long simple_strtol(const char *,char **,unsigned int);
 extern unsigned long long simple_strtoull(const char *,char **,unsigned int);
 extern long long simple_strtoll(const char *,char **,unsigned int);
-extern int sprintf(char * buf, const char * fmt, ...)
-	__attribute__ ((format (printf, 2, 3)));
-extern int vsprintf(char *buf, const char *, va_list)
-	__attribute__ ((format (printf, 2, 0)));
-extern int snprintf(char * buf, size_t size, const char * fmt, ...)
-	__attribute__ ((format (printf, 3, 4)));
-extern int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
-	__attribute__ ((format (printf, 3, 0)));
-extern int scnprintf(char * buf, size_t size, const char * fmt, ...)
-	__attribute__ ((format (printf, 3, 4)));
-extern int vscnprintf(char *buf, size_t size, const char *fmt, va_list args)
-	__attribute__ ((format (printf, 3, 0)));
-extern int vprintk(const char *fmt, va_list args)
-        __attribute__ ((format (printf, 1, 0)));
-extern int printk(const char * fmt, ...)
-        __attribute__ ((format (printf, 1, 2)));
-
 extern int get_option(char **str, int *pint);
 extern char *get_options(const char *str, int nints, int *ints);
 extern unsigned long long memparse(char *ptr, char **retptr);

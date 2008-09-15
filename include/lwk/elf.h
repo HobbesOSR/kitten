@@ -396,6 +396,7 @@ static inline void arch_write_notes(struct file *file) { }
 #define ELF_CORE_WRITE_EXTRA_NOTES arch_write_notes(file)
 #endif /* ARCH_HAVE_EXTRA_ELF_NOTES */
 
+#ifdef __KERNEL__
 extern int
 elf_load_executable(
 	struct task_struct * task,
@@ -407,10 +408,22 @@ elf_load_executable(
 extern int
 setup_initial_stack(
 	struct task_struct * task,
+	void *               elf_image,
 	unsigned long        stack_size,
 	void * (*alloc_mem)(size_t size, size_t alignment),
 	char *               argv[],
 	char *               envp[]
 );
+#endif
+
+#include <lwk/aspace.h>
+
+int elf_check_hdr(const struct elfhdr *hdr);
+void elf_print_elfhdr(const struct elfhdr *hdr);
+void elf_print_phdr(const struct elf_phdr *hdr);
+vmflags_t elf_pflags_to_vmflags(unsigned int elf_flags);
+vaddr_t elf_entry_point(const void *elf_image);
+vaddr_t elf_phdr_table_addr(const void *elf_image);
+unsigned int elf_num_phdrs(const void *elf_image);
 
 #endif /* _LWK_ELF_H */

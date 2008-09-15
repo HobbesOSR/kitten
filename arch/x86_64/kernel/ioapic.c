@@ -3,6 +3,7 @@
 #include <lwk/resource.h>
 #include <lwk/bootmem.h>
 #include <lwk/spinlock.h>
+#include <lwk/cpuinfo.h>
 #include <arch/io.h>
 #include <arch/pgtable.h>
 #include <arch/fixmap.h>

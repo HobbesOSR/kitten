@@ -70,7 +70,7 @@ show_registers(struct pt_regs * regs)
 	bool user_fault = (regs->rip < PAGE_OFFSET);
 	char namebuf[128];
 
-	printk("Task ID: %d, Task Name: %.20s %s\n",
+	printk("Task ID: %d   Task Name: %s   UTS_RELEASE: %s\n",
 		current->task_id, current->task_name, UTS_RELEASE);
 	printk("RIP: %04lx:%016lx (%s)\n", regs->cs & 0xffff, regs->rip,
 	       (user_fault) ? "user-context"

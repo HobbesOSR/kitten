@@ -205,8 +205,10 @@ const char *kallsyms_lookup(unsigned long addr,
 				                       : (unsigned long)_etext;
 		}
 
-		*symbolsize = symbol_end - kallsyms_addresses[low];
-		*offset = addr - kallsyms_addresses[low];
+		if (symbolsize)
+			*symbolsize = symbol_end - kallsyms_addresses[low];
+		if (offset)
+			*offset = addr - kallsyms_addresses[low];
 		return namebuf;
 	}
 

@@ -39,6 +39,11 @@ static inline void INIT_LIST_HEAD(struct list_head *list)
 	list->prev = list;
 }
 
+static inline void list_head_init(struct list_head *list)
+{
+	INIT_LIST_HEAD(list);
+}
+
 /*
  * Insert a new entry between two known consecutive entries.
  *
@@ -389,6 +394,11 @@ static inline void INIT_HLIST_NODE(struct hlist_node *h)
 {
 	h->next = NULL;
 	h->pprev = NULL;
+}
+
+static inline void hlist_node_init(struct hlist_node *h)
+{
+	INIT_HLIST_NODE(h);
 }
 
 static inline int hlist_unhashed(const struct hlist_node *h)

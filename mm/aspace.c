@@ -1,17 +1,30 @@
-/* Copyright (c) 2007, Sandia National Laboratories */
+/* Copyright (c) 2007,2008 Sandia National Laboratories */
 
 #include <lwk/kernel.h>
+#include <lwk/task.h>
+#include <lwk/spinlock.h>
+#include <lwk/string.h>
 #include <lwk/aspace.h>
+#include <lwk/idspace.h>
+#include <lwk/htable.h>
 #include <lwk/log2.h>
-
+#include <lwk/cpuinfo.h>
+#include <arch/uaccess.h>
 
 /**
- * Mask specifying which page sizes are supported. This needs to be set by the
- * architecture's bootstrap code. Each set bit represents that a page size of
- * 2^bit is supported.
+ * ID space used to allocate address space IDs.
  */
-unsigned long supported_pagesz_mask;
+static idspace_t idspace;
 
+/**
+ * Hash table used to lookup address space structures by ID.
+ */
+static htable_t htable;
+
+/**
+ * Lock for serializing access to the htable.
+ */
+static DEFINE_SPINLOCK(htable_lock);
 
 /**
  * Memory region structure. A memory region represents a contiguous region 
@@ -21,14 +34,14 @@ struct region {
 	struct aspace *  aspace;   /* Address space this region belongs to */
 	struct list_head link;     /* Linkage in the aspace->region_list */
 
-	unsigned long    start;    /* Starting address of the region */
-	unsigned long    end;      /* 1st byte after end of the region */
-	unsigned long    flags;    /* Permissions, caching, etc. */
-	unsigned long    pagesz;   /* Allowed page sizes... 2^bit */
-
+	vaddr_t          start;    /* Starting address of the region */
+	vaddr_t          end;      /* 1st byte after end of the region */
+	vmflags_t        flags;    /* Permissions, caching, etc. */
+	vmpagesize_t     pagesz;   /* Allowed page sizes... 2^bit */
+	id_t             smartmap; /* If (flags & VM_SMARTMAP), ID of the
+	                              aspace this region is mapped to */
 	char             name[16]; /* Human-readable name of the region */
 };
-
 
 /**
  * This calculates a region's end address. Normally end is the address of the
@@ -36,24 +49,20 @@ struct region {
  * memory, that is not possible so set end to the last valid address,
  * ULONG_MAX.
  */
-static unsigned long
-calc_end(unsigned long start, unsigned long extent)
+static vaddr_t
+calc_end(vaddr_t start, size_t extent)
 {
-	unsigned long end = start + extent;
+	vaddr_t end = start + extent;
 	if (end == 0)
 		end = ULONG_MAX;
 	return end;
 }
 
-
 /**
  * Locates the region covering the specified address.
  */
 static struct region *
-find_region(
-	struct aspace *	aspace,
-	unsigned long	addr
-)
+find_region(struct aspace *aspace, vaddr_t addr)
 {
 	struct region *rgn;
 	
@@ -64,138 +73,302 @@ find_region(
 	return NULL;
 }
 
+/**
+ * Locates the region that is SMARTMAP'ed to the specified aspace ID.
+ */
+static struct region *
+find_smartmap_region(struct aspace *aspace, id_t src_aspace)
+{
+	struct region *rgn;
+	
+	list_for_each_entry(rgn, &aspace->region_list, link) {
+		if ((rgn->flags & VM_SMARTMAP) && (rgn->smartmap == src_aspace))
+			return rgn;
+	}
+	return NULL;
+}
 
 /**
- * Allocates and initializes a new address space object. The aspace returned
- * maps all kernel memory and may be switched to immediately. No user regions
- * are mapped in the returned aspace -- the range [0, PAGE_OFFSET) is
- * completely empty.
- *
- * Returns:
- *       Success: Pointer to a new address space.
- *       Failure: NULL
+ * Looks up an aspace object by ID and returns it with its spinlock locked.
  */
-struct aspace *
-aspace_create(void)
+static struct aspace *
+lookup_and_lock(id_t id)
 {
 	struct aspace *aspace;
-	int status;
 
-	if ((aspace = kmem_alloc(sizeof(struct aspace))) == NULL)
+	/* Lock the hash table, lookup aspace object by ID */
+	spin_lock(&htable_lock);
+	if ((aspace = htable_lookup(htable, id)) == NULL) {
+		spin_unlock(&htable_lock);
 		return NULL;
+	}
+
+	/* Lock the identified aspace */
+	spin_lock(&aspace->lock);
+
+	/* Unlock the hash table, others may now use it */
+	spin_unlock(&htable_lock);
+
+	return aspace;
+}
+
+/**
+ * Like lookup_and_lock(), but looks up two address spaces instead of one.
+ */
+static int
+lookup_and_lock_two(id_t a, id_t b,
+                    struct aspace **aspace_a, struct aspace **aspace_b)
+{
+	/* Lock the hash table, lookup aspace objects by ID */
+	spin_lock(&htable_lock);
+	if ((*aspace_a = htable_lookup(htable, a)) == NULL) {
+		spin_unlock(&htable_lock);
+		return -ENOENT;
+	}
+
+	if ((*aspace_b = htable_lookup(htable, b)) == NULL) {
+		spin_unlock(&htable_lock);
+		return -ENOENT;
+	}
+
+	/* Lock the identified aspaces */
+	spin_lock(&(*aspace_a)->lock);
+	spin_lock(&(*aspace_b)->lock);
+
+	/* Unlock the hash table, others may now use it */
+	spin_unlock(&htable_lock);
+
+	return 0;
+}
+
+int
+aspace_init(void)
+{
+	if (idspace_create(ASPACE_MIN_ID, ASPACE_MAX_ID, &idspace))
+		panic("Failed to create aspace ID space.");
+
+	if (htable_create(7 /* 2^7 bins */,
+	                  offsetof(struct aspace, id),
+	                  offsetof(struct aspace, htlink),
+	                  &htable))
+		panic("Failed to create aspace hash table.");
+
+	return 0;
+}
+
+int
+aspace_get_myid(id_t *id)
+{
+	*id = current->aspace->id;
+	return 0;
+}
+
+int
+sys_aspace_get_myid(id_t __user *id)
+{
+	int status;
+	id_t _id;
+
+	if ((status = aspace_get_myid(&_id)) != 0)
+		return status;
+
+	if (id && copy_to_user(id, &_id, sizeof(*id)))
+		return -EINVAL;
+
+	return 0;
+}
+
+int
+aspace_create(id_t id_request, const char *name, id_t *id)
+{
+	int status;
+	id_t new_id;
+	struct aspace *aspace;
+	unsigned long flags;
+
+	if ((status = idspace_alloc_id(idspace, id_request, &new_id)) != 0)
+		return status;
+
+	if ((aspace = kmem_alloc(sizeof(*aspace))) == NULL) {
+		idspace_free_id(idspace, new_id);
+		return -ENOMEM;
+	}
 
 	/*
 	 * Initialize the address space. kmem_alloc() allocates zeroed memory
 	 * so fields with an initial state of zero do not need to be explicitly
 	 * initialized.
 	 */
-	INIT_LIST_HEAD(&aspace->region_list);
-	aspace->refcnt = 1;
+	aspace->id = new_id;
+	spin_lock_init(&aspace->lock);
+	list_head_init(&aspace->region_list);
+	hlist_node_init(&aspace->htlink);
+	if (name)
+		strlcpy(aspace->name, name, sizeof(aspace->name));
 
-	/* Perform architecture specific address space initialization */
-	status = arch_aspace_create(aspace);
-	if (status) {
-		kmem_free(aspace);
-		return NULL;
-	}
+	/* Create a region for the kernel portion of the address space */
+	status =
+	__aspace_add_region(
+		aspace,
+		PAGE_OFFSET,
+		ULONG_MAX-PAGE_OFFSET+1, /* # bytes to end of memory */
+		VM_KERNEL,
+		PAGE_SIZE,
+		"Kernel"
+	);
+	if (status)
+		goto error1;
 
-	return aspace;
+	/* Do architecture-specific initialization */
+	if ((status = arch_aspace_create(aspace)) != 0)
+		goto error2;
+
+	/* Add new address space to a hash table, for quick lookups by ID */
+	spin_lock_irqsave(&htable_lock, flags);
+	BUG_ON(htable_add(htable, aspace));
+	spin_unlock_irqrestore(&htable_lock, flags);
+
+	*id = new_id;
+	return 0;
+
+error2:
+	BUG_ON(__aspace_del_region(aspace,PAGE_OFFSET,ULONG_MAX-PAGE_OFFSET+1));
+error1:
+	idspace_free_id(idspace, aspace->id);
+	kmem_free(aspace);
+	return status;
 }
 
-
-/**
- * Destroys an address space. This frees all memory used by the aspace.
- */
-void
-aspace_destroy(struct aspace *aspace)
+int
+sys_aspace_create(id_t id_request, const char __user *name, id_t __user *id)
 {
-	struct list_head *pos;
-	struct list_head *tmp;
+	int status;
+	char _name[16];
+	id_t _id;
+
+	if (current->uid != 0)
+		return -EPERM;
+
+	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)
+		return -EFAULT;
+	_name[sizeof(_name) - 1] = '\0';
+
+	if ((status = aspace_create(id_request, _name, &_id)) != 0)
+		return status;
+
+	if (id && copy_to_user(id, &_id, sizeof(*id)))
+		return -EFAULT;
+
+	return 0;
+}
+
+int
+aspace_destroy(id_t id)
+{
+	struct aspace *aspace;
+	struct list_head *pos, *tmp;
 	struct region *rgn;
+	unsigned long irqstate;
 
-	BUG_ON(aspace->refcnt);
+	/* Lock the hash table, lookup aspace object by ID */
+	spin_lock_irqsave(&htable_lock, irqstate);
+	if ((aspace = htable_lookup(htable, id)) == NULL) {
+		spin_unlock_irqrestore(&htable_lock, irqstate);
+		return -EINVAL;
+	}
 
-	/* Free all of the address space's regions */
+	/* Lock the identified aspace */
+	spin_lock(&aspace->lock);
+
+	if (aspace->refcnt) {
+		spin_unlock(&aspace->lock);
+		spin_unlock_irqrestore(&htable_lock, irqstate);
+		return -EBUSY;
+	}
+
+	/* Remove aspace from hash table, preventing others from finding it */
+	BUG_ON(htable_del(htable, aspace));
+
+	/* Unlock the hash table, others may now use it */
+	spin_unlock_irqrestore(&htable_lock, irqstate);
+	spin_unlock(&aspace->lock);
+ 
+	/* Finish up destroying the aspace, we have the only reference */
 	list_for_each_safe(pos, tmp, &aspace->region_list) {
 		rgn = list_entry(pos, struct region, link);
+		/* Must drop our reference on all SMARTMAP'ed aspaces */
+		if (rgn->flags & VM_SMARTMAP) {
+			struct aspace *src;
+			spin_lock_irqsave(&htable_lock, irqstate);
+			src = htable_lookup(htable, rgn->smartmap);
+			BUG_ON(src == NULL);
+			spin_lock(&src->lock);
+			--src->refcnt;
+			spin_unlock(&src->lock);
+			spin_unlock_irqrestore(&htable_lock, irqstate);
+		}
 		list_del(&rgn->link);
 		kmem_free(rgn);
 	}
-
-	/* Perform architecture specific address space destruction */
 	arch_aspace_destroy(aspace);
-
-	/* Free the address space object */
+	BUG_ON(idspace_free_id(idspace, aspace->id));
 	kmem_free(aspace);
+	return 0;
 }
 
+int
+sys_aspace_destroy(id_t id)
+{
+	if (current->uid != 0)
+		return -EPERM;
+	return aspace_destroy(id);
+}
 
 /**
- * Activates the address space on the calling CPU. After aspace_activate()
- * returns, the CPU is executing in the address space.
+ * Acquires an address space object. The object is guaranteed not to be
+ * deleted until it is released via aspace_release().
+ */
+struct aspace *
+aspace_acquire(id_t id)
+{
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	if ((aspace = lookup_and_lock(id)) != NULL) {
+		++aspace->refcnt;
+		spin_unlock(&aspace->lock);
+	}
+	local_irq_restore(irqstate);
+	return aspace;
+}
+
+/**
+ * Releases an aspace object that was previously acquired via aspace_acquire().
+ * The aspace object passed in must be unlocked.
  */
 void
-aspace_activate(
-	struct aspace *	aspace
-)
-{
-	arch_aspace_activate(aspace);
-}
-
-
-/**
- * Increments an address space's reference count. Returns the new value.
- */
-int
-aspace_aquire(struct aspace *aspace)
-{
-	return ++aspace->refcnt;
-}
-
-
-/**
- * Decrements an address space's reference count. Returns the new value.
- */
-int
 aspace_release(struct aspace *aspace)
 {
+	unsigned long irqstate;
+	spin_lock_irqsave(&aspace->lock, irqstate);
 	--aspace->refcnt;
-	BUG_ON(aspace->refcnt < 0);
-	return aspace->refcnt;
+	spin_unlock_irqrestore(&aspace->lock, irqstate);
 }
 
-
-/**
- * Adds a new region to an address space. The region must not overlap with any
- * existing regions. The region must also be aligned to the page size specified
- * and have an extent that is a multiple of the page size.
- *
- * Arguments:
- *       [IN] aspace: Address space to add the region to.
- *       [IN] start:  Starting address of region, must be pagesz aligned.
- *       [IN] extent: Size of the region in bytes, must be multiple of pagesz.
- *       [IN] flags:  Permissions, memory type, etc. (e.g., VM_WRITE | VM_READ).
- *       [IN] pagesz: Page size that should be used to map the region.
- *       [IN] name:   Human readable name of the region.
- *
- * Returns:
- *       Success: 0
- *       Failure: Error Code, aspace is unmodified.
- */
 int
-aspace_add_region(
-	struct aspace *	aspace,
-	unsigned long	start,
-	unsigned long	extent,
-	unsigned long	flags,
-	unsigned long	pagesz,
-	const char *	name
-)
+__aspace_add_region(struct aspace *aspace,
+                    vaddr_t start, size_t extent,
+                    vmflags_t flags, vmpagesize_t pagesz,
+                    const char *name)
 {
 	struct region *rgn;
 	struct region *cur;
 	struct list_head *pos;
-	unsigned long end = calc_end(start, extent);
+	vaddr_t end = calc_end(start, extent);
+
+	if (!aspace)
+		return -EINVAL;
 
 	/* Region must have non-zero size */
 	if (extent == 0) {
@@ -206,33 +379,33 @@ aspace_add_region(
 	/* Region must have a positive size */
 	if (start >= end) {
 		printk(KERN_WARNING
-			"Invalid region size (start=0x%lx, extent=0x%lx).\n",
-			start, extent);
+		       "Invalid region size (start=0x%lx, extent=0x%lx).\n",
+		       start, extent);
 		return -EINVAL;
 	}
 
 	/* Architecture must support the page size specified */
-	if ((pagesz & supported_pagesz_mask) == 0) {
+	if ((pagesz & cpu_info[0].pagesz_mask) == 0) {
 		printk(KERN_WARNING
 			"Invalid page size specified (pagesz=0x%lx).\n",
 			pagesz);
 		return -EINVAL;
 	}
-	pagesz &= supported_pagesz_mask;
+	pagesz &= cpu_info[0].pagesz_mask;
 
 	/* Only one page size may be specified */
 	if (!is_power_of_2(pagesz)) {
 		printk(KERN_WARNING
-			"More than one page size specified (pagesz=0x%lx).\n",
-			pagesz);
+		       "More than one page size specified (pagesz=0x%lx).\n",
+		       pagesz);
 		return -EINVAL;
 	}
 
 	/* Region must be aligned to at least the specified page size */
 	if ((start & (pagesz-1)) || ((end!=ULONG_MAX) && (end & (pagesz-1)))) {
 		printk(KERN_WARNING
-			"Region is misaligned (start=0x%lx, end=0x%lx).\n",
-			start, end);
+		       "Region is misaligned (start=0x%lx, end=0x%lx).\n",
+		       start, end);
 		return -EINVAL;
 	}
 
@@ -240,7 +413,7 @@ aspace_add_region(
 	list_for_each_entry(cur, &aspace->region_list, link) {
 		if ((start < cur->end) && (end > cur->start)) {
 			printk(KERN_WARNING
-				"Region overlaps with existing region.\n");
+			       "Region overlaps with existing region.\n");
 			return -EINVAL;
 		}
 	}
@@ -254,10 +427,15 @@ aspace_add_region(
 	rgn->end    = end;
 	rgn->flags  = flags;
 	rgn->pagesz = pagesz;
+	if (name)
+		strlcpy(rgn->name, name, sizeof(rgn->name));
 
-	if (name) {
-		memcpy(rgn->name, name, sizeof(rgn->name));
-		rgn->name[sizeof(rgn->name)-1] = '\0';
+	/* The heap region is special, remember its bounds */
+	if (flags & VM_HEAP) {
+		aspace->heap_start = start;
+		aspace->heap_end   = end;
+		aspace->brk        = aspace->heap_start;
+		aspace->mmap_brk   = aspace->heap_end;
 	}
 
 	/* Insert region into address space's sorted region list */
@@ -267,43 +445,68 @@ aspace_add_region(
 			break;
 	}
 	list_add_tail(&rgn->link, pos);
-
 	return 0;
 }
 
-
-/**
- * Deletes a region from an address space.
- *
- * Arguments:
- *       [IN] aspace: Address space to remove region from.
- *       [IN] start:  Starting address of the region being removed.
- *       [IN] extent: Size of the region being removed, in bytes.
- *
- * Returns:
- *       Success: 0
- *       Failure: Error Code, the region was not removed.
- */
 int
-aspace_del_region(
-	struct aspace *	aspace,
-	unsigned long	start,
-	unsigned long	extent
-)
+aspace_add_region(id_t id,
+                  vaddr_t start, size_t extent,
+                  vmflags_t flags, vmpagesize_t pagesz,
+                  const char *name)
 {
-	struct region *rgn;
-	unsigned long end = calc_end(start, extent);
 	int status;
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	aspace = lookup_and_lock(id);
+	status = __aspace_add_region(aspace, start, extent, flags, pagesz, name);
+	if (aspace) spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_add_region(id_t id,
+                      vaddr_t start, size_t extent,
+                      vmflags_t flags, vmpagesize_t pagesz,
+                      const char __user *name)
+{
+	char _name[16];
+
+	if (current->uid != 0)
+		return -EPERM;
+
+	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)
+		return -EFAULT;
+	_name[sizeof(_name) - 1] = '\0';
+
+	return aspace_add_region(id, start, extent, flags, pagesz, _name);
+}
+
+
+int
+__aspace_del_region(struct aspace *aspace, vaddr_t start, size_t extent)
+{
+	int status;
+	struct region *rgn;
+	vaddr_t end = calc_end(start, extent);
+
+	if (!aspace)
+		return -EINVAL;
 
 	/* Locate the region to delete */
 	rgn = find_region(aspace, start);
-	if (!rgn || (rgn->start != start) || (rgn->end != end))
+	if (!rgn || (rgn->start != start) || (rgn->end != end)
+	     || (rgn->flags & VM_KERNEL))
 		return -EINVAL;
 
-	/* Unmap all of the memory that was mapped to the region */
-	status = aspace_unmap_memory(aspace, start, extent);
-	if (status)
-		return status;
+	if (!(rgn->flags & VM_SMARTMAP)) {
+		/* Unmap all of the memory that was mapped to the region */
+		status = __aspace_unmap_pmem(aspace, start, extent);
+		if (status)
+			return status;
+	}
 
 	/* Remove the region from the address space */
 	list_del(&rgn->link);
@@ -311,31 +514,38 @@ aspace_del_region(
 	return 0;
 }
 
-
-/**
- * Maps memory into an address space. The memory must be mapped to valid
- * regions of the address space (i.e., regions added with aspace_add_region()).
- *
- * Arguments:
- *       [IN] aspace: Address space to map memory into.
- *       [IN] start:  Starting address in the aspace to start mapping from.
- *       [IN] paddr:  Starting physical address of memory to map.
- *       [IN] extent: Number of bytes to map.
- *
- * Returns:
- *       Success: 0
- *       Failure: Error Code, some of the memory may have been mapped, YMMV.
- */
 int
-aspace_map_memory(
-	struct aspace *	aspace,
-	unsigned long	start,
-	unsigned long	paddr,
-	unsigned long	extent
-)
+aspace_del_region(id_t id, vaddr_t start, size_t extent)
 {
-	struct region *rgn;
 	int status;
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	aspace = lookup_and_lock(id);
+	status = __aspace_del_region(aspace, start, extent);
+	if (aspace) spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_del_region(id_t id, vaddr_t start, size_t extent)
+{
+	if (current->uid != 0)
+		return -EPERM;
+	return aspace_del_region(id, start, extent);
+}
+
+int
+__aspace_map_pmem(struct aspace *aspace,
+                  paddr_t pmem, vaddr_t start, size_t extent)
+{
+	int status;
+	struct region *rgn;
+
+	if (!aspace)
+		return -EINVAL;
 
 	while (extent) {
 		/* Find region covering the address */
@@ -347,12 +557,19 @@ aspace_map_memory(
 			return -EINVAL;
 		}
 
+		/* Can't map anything to kernel or SMARTMAP regions */
+		if ((rgn->flags & VM_KERNEL) || (rgn->flags & VM_SMARTMAP)) {
+			printk(KERN_WARNING
+				"Trying to map memory to protected region.\n");
+			return -EINVAL;
+		}
+
 		/* addresses must be aligned to region's page size */
-		if ((start & (rgn->pagesz-1)) || (paddr & (rgn->pagesz-1))) {
+		if ((start & (rgn->pagesz-1)) || (pmem & (rgn->pagesz-1))) {
 			printk(KERN_WARNING
 				"Misalignment "
-				"(start=0x%lx, paddr=0x%lx, pagesz=0x%lx).\n",
-				start, paddr, rgn->pagesz);
+				"(start=0x%lx, pmem=0x%lx, pagesz=0x%lx).\n",
+				start, pmem, rgn->pagesz);
 			return -EINVAL;
 		}
 
@@ -363,7 +580,7 @@ aspace_map_memory(
 			arch_aspace_map_page(
 				aspace,
 				start,
-				paddr,
+				pmem,
 				rgn->flags,
 				rgn->pagesz
 			);
@@ -372,34 +589,43 @@ aspace_map_memory(
 
 			extent -= rgn->pagesz;
 			start  += rgn->pagesz;
-			paddr  += rgn->pagesz;
+			pmem   += rgn->pagesz;
 		}
 	}
 
 	return 0;
 }
 
-
-/**
- * Unmaps memory from an address space.
- *
- * Arguments:
- *       [IN] aspace: Address space to unmap memory from.
- *       [IN] start:  Starting address in the aspace to begin unmapping at.
- *       [IN] extent: Number of bytes to unmap.
- *
- * Returns:
- *       Success: 0
- *       Failure: Error Code, some of the memory may have been unmapped, YMMV.
- */
 int
-aspace_unmap_memory(
-	struct aspace *	aspace,
-	unsigned long	start,
-	unsigned long	extent
-)
+aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
+{
+	int status;
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	aspace = lookup_and_lock(id);
+	status = __aspace_map_pmem(aspace, pmem, start, extent);
+	if (aspace) spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
+{
+	if (current->uid != 0)
+		return -EPERM;
+	return aspace_map_pmem(id, pmem, start, extent);
+}
+
+int
+__aspace_unmap_pmem(struct aspace *aspace, vaddr_t start, size_t extent)
 {
 	struct region *rgn;
+
+	if (!aspace)
+		return -EINVAL;
 
 	while (extent) {
 		/* Find region covering the address */
@@ -408,6 +634,13 @@ aspace_unmap_memory(
 			printk(KERN_WARNING
 				"Failed to find region covering addr=0x%lx.\n",
 				start);
+			return -EINVAL;
+		}
+
+		/* Can't unmap anything from kernel or SMARTMAP regions */
+		if ((rgn->flags & VM_KERNEL) || (rgn->flags & VM_SMARTMAP)) {
+			printk(KERN_WARNING
+				"Trying to map memory to protected region.\n");
 			return -EINVAL;
 		}
 
@@ -436,86 +669,168 @@ aspace_unmap_memory(
 	return 0;
 }
 
-
-/**
- * Convenience function that adds the specified region to an address space,
- * allocates memory for it using the alloc_mem() function passed in, and maps
- * the memory into the address space.
- *
- * Arguments:
- *   [IN]  aspace:    Address space to add the region to.
- *   [IN]  start:     Starting address of region, must be pagesz aligned.
- *   [IN]  extent:    Size of the region in bytes, must be multiple of pagesz.
- *   [IN]  flags:     Permissions, memory type, etc. (e.g., VM_WRITE | VM_READ).
- *   [IN]  pagesz:    Page size that should be used to map the region.
- *   [IN]  name:      Human readable name of the region.
- *   [IN]  alloc_mem: Function pointer to use to allocate memory for the region.
- *                    alloc_mem() returns kernel virtual addr of mem allocated.
- *   [OUT] mem:       Kernel virtual address of the memory allocated.
- *
- * Returns:
- *   Success: 0
- *   Failure: Error Code, address space may be partially modified, YMMV.
- */
 int
-aspace_alloc_region(
-	struct aspace *	aspace,
-	unsigned long	start,
-	unsigned long	extent,
-	unsigned long	flags,
-	unsigned long	pagesz,
-	const char *	name,
-	void * (*alloc_mem)(size_t size, size_t alignment),
-	void **		mem
-)
+aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
 {
 	int status;
-	void *_mem;
+	struct aspace *aspace;
+	unsigned long irqstate;
 
-	/* Add the region to the address space */
-	status = aspace_add_region(
-			aspace,
-			start,
-			extent,
-			flags,
-			pagesz,
-			name
-	);
-	if (status)
+	local_irq_save(irqstate);
+	aspace = lookup_and_lock(id);
+	status = __aspace_unmap_pmem(aspace, start, extent);
+	if (aspace) spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
+{
+	if (current->uid != 0)
+		return -EPERM;
+	return aspace_unmap_pmem(id, start, extent);
+}
+
+int
+__aspace_smartmap(struct aspace *src, struct aspace *dst,
+                  vaddr_t start, size_t extent)
+{
+	int status;
+	vaddr_t end = start + extent;
+	char name[16];
+	struct region *rgn;
+
+	/* Can only SMARTMAP a given aspace in once */
+	if (find_smartmap_region(dst, src->id))
+		return -EINVAL;
+
+	if (start >= end)
+		return -EINVAL;
+
+	if ((start & (SMARTMAP_ALIGN-1)) || (end & (SMARTMAP_ALIGN-1)))
+		return -EINVAL;
+
+	snprintf(name, sizeof(name), "SMARTMAP-%u", (unsigned int)src->id);
+	if ((status = __aspace_add_region(dst, start, extent,
+	                                  VM_SMARTMAP, PAGE_SIZE, name)))
 		return status;
 
-	/* Allocate memory for the region */
-	_mem = (*alloc_mem)(extent, pagesz);
-	if (_mem == NULL)
-		return -ENOMEM;
-
-	/* Map the memory to the region */
-	status = aspace_map_memory(
-			aspace,
-			start,
-			__pa(_mem),
-			extent
-	);
-	if (status)
+	/* Do architecture-specific SMARTMAP initialization */
+	if ((status = arch_aspace_smartmap(src, dst, start, extent))) {
+		BUG_ON(__aspace_del_region(dst, start, extent));
 		return status;
+	}
 
-	/* Return pointer to the kernel mapping of the memory allocated */
-	if (mem)
-		*mem = _mem;
+	/* Remember the source aspace that the SMARTMAP region is mapped to */
+	rgn = find_region(dst, start);
+	BUG_ON(!rgn);
+	rgn->smartmap = src->id;
+
+	/* Ensure source aspace doesn't go away while we have it SMARTMAP'ed */
+	++src->refcnt;
 
 	return 0;
 }
 
+int
+aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
+{
+	int status;
+	struct aspace *src_spc, *dst_spc;
+	unsigned long irqstate;
 
-/**
- * Dumps the state of an address space object to the console.
- */
-void
-aspace_dump(struct aspace *aspace)
+	/* Don't allow self SMARTMAP'ing */
+	if (src == dst)
+		return -EINVAL;
+
+	local_irq_save(irqstate);
+	if ((status = lookup_and_lock_two(src, dst, &src_spc, &dst_spc))) {
+		local_irq_restore(irqstate);
+		return status;
+	}
+	status = __aspace_smartmap(src_spc, dst_spc, start, extent);
+	spin_unlock(&src_spc->lock);
+	spin_unlock(&dst_spc->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
+{
+	if (current->uid != 0)
+		return -EPERM;
+	return aspace_smartmap(src, dst, start, extent);
+}
+
+int
+__aspace_unsmartmap(struct aspace *src, struct aspace *dst)
 {
 	struct region *rgn;
+	size_t extent;
 
-	printk(KERN_DEBUG "ADDRESS SPACE DUMP:\n");
+	if ((rgn = find_smartmap_region(dst, src->id)) == NULL)
+		return -EINVAL;
+	extent = rgn->end - rgn->start;
+
+	/* Do architecture-specific SMARTMAP unmapping */
+	BUG_ON(arch_aspace_unsmartmap(src, dst, rgn->start, extent));
+
+	/* Delete the SMARTMAP region and release our reference on the source */
+	BUG_ON(__aspace_del_region(dst, rgn->start, extent));
+	--src->refcnt;
+
+	return 0;
+}
+
+int
+aspace_unsmartmap(id_t src, id_t dst)
+{
+	int status;
+	struct aspace *src_spc, *dst_spc;
+	unsigned long irqstate;
+
+	/* Don't allow self SMARTMAP'ing */
+	if (src == dst)
+		return -EINVAL;
+
+	local_irq_save(irqstate);
+	if ((status = lookup_and_lock_two(src, dst, &src_spc, &dst_spc))) {
+		local_irq_restore(irqstate);
+		return status;
+	}
+	status = __aspace_unsmartmap(src_spc, dst_spc);
+	spin_unlock(&src_spc->lock);
+	spin_unlock(&dst_spc->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_unsmartmap(id_t src, id_t dst)
+{
+	if (current->uid != 0)
+		return -EPERM;
+	return aspace_unsmartmap(src, dst);
+}
+
+int
+aspace_dump2console(id_t id)
+{
+	struct aspace *aspace;
+	struct region *rgn;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+
+	if ((aspace = lookup_and_lock(id)) == NULL) {
+		local_irq_restore(irqstate);
+		return -EINVAL;
+	}
+
+	printk(KERN_DEBUG "DUMP OF ADDRESS SPACE %u:\n", aspace->id);
+	printk(KERN_DEBUG "  name:    %s\n", aspace->name);
 	printk(KERN_DEBUG "  refcnt:  %d\n", aspace->refcnt);
 	printk(KERN_DEBUG "  regions:\n");
 	list_for_each_entry(rgn, &aspace->region_list, link) {
@@ -527,6 +842,14 @@ aspace_dump(struct aspace *aspace)
 			rgn->name
 		);
 	}
+
+	spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return 0;
 }
 
-
+int
+sys_aspace_dump2console(id_t id)
+{
+	return aspace_dump2console(id);
+}

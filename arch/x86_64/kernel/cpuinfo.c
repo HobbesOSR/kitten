@@ -252,8 +252,8 @@ early_identify_cpu(struct cpuinfo *c)
 	 */
 	a->initial_lapic_id = (misc >> 24) & 0xff;
 
-	/* TODO: determine which page sizes are supported by the CPU */
-	supported_pagesz_mask = (VM_PAGE_4KB | VM_PAGE_2MB);
+	/* TODO: determine page sizes supported via CPUID */
+	c->pagesz_mask = (VM_PAGE_4KB | VM_PAGE_2MB);
 }
 
 /*

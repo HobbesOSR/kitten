@@ -58,8 +58,8 @@ extern int __lockfunc generic__raw_read_trylock(raw_rwlock_t *lock);
  */
 # include <arch/spinlock.h>
 
-#define spin_lock_init(lock)	do { *(lock) = SPIN_LOCK_UNLOCKED; } while (0)
-#define rwlock_init(lock)	do { *(lock) = RW_LOCK_UNLOCKED; } while (0)
+#define spin_lock_init(lock)	do { *(lock) = (spinlock_t)SPIN_LOCK_UNLOCKED; } while (0)
+#define rwlock_init(lock)	do { *(lock) = (rwlock_t)RW_LOCK_UNLOCKED; } while (0)
 
 #define spin_is_locked(lock)	__raw_spin_is_locked(&(lock)->raw_lock)
 
