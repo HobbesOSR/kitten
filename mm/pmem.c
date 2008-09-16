@@ -1,6 +1,7 @@
 /* Copyright (c) 2008, Sandia National Laboratories */
 
 #include <lwk/kernel.h>
+#include <lwk/spinlock.h>
 #include <lwk/string.h>
 #include <lwk/list.h>
 #include <lwk/log2.h>
@@ -8,6 +9,7 @@
 #include <arch/uaccess.h>
 
 static LIST_HEAD(pmem_list);
+static DEFINE_SPINLOCK(pmem_list_lock);
 
 struct pmem_list_entry {
 	struct list_head	link;
@@ -191,8 +193,8 @@ zero_pmem(const struct pmem_region *rgn)
 	memset(__va(rgn->start), 0, rgn->end - rgn->start);
 }
 
-int
-pmem_add(const struct pmem_region *rgn)
+static int
+__pmem_add(const struct pmem_region *rgn)
 {
 	struct pmem_list_entry *entry;
 
@@ -214,6 +216,19 @@ pmem_add(const struct pmem_region *rgn)
 }
 
 int
+pmem_add(const struct pmem_region *rgn)
+{
+	int status;
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&pmem_list_lock, irqstate);
+	status = __pmem_add(rgn);
+	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
+
+	return status;
+}
+
+int
 sys_pmem_add(const struct pmem_region __user *rgn)
 {
 	struct pmem_region _rgn;
@@ -227,8 +242,8 @@ sys_pmem_add(const struct pmem_region __user *rgn)
 	return pmem_add(&_rgn);
 }
 
-int
-pmem_update(const struct pmem_region *update)
+static int
+__pmem_update(const struct pmem_region *update, bool umem_only)
 {
 	struct pmem_list_entry *entry, *head, *tail;
 	struct pmem_region overlap;
@@ -242,6 +257,10 @@ pmem_update(const struct pmem_region *update)
 	list_for_each_entry(entry, &pmem_list, link) {
 		if (!calc_overlap(update, &entry->rgn, &overlap))
 			continue;
+
+		if (umem_only && entry->rgn.type_is_set &&
+		     (entry->rgn.type != PMEM_TYPE_UMEM))
+			return -EPERM;
 
 		/* Handle head of entry non-overlap */
 		if (entry->rgn.start < overlap.start) {
@@ -272,6 +291,25 @@ pmem_update(const struct pmem_region *update)
 	return 0;
 }
 
+static int
+_pmem_update(const struct pmem_region *update, bool umem_only)
+{
+	int status;
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&pmem_list_lock, irqstate);
+	status = __pmem_update(update, umem_only);
+	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
+
+	return status;
+}
+
+int
+pmem_update(const struct pmem_region *update)
+{
+	return _pmem_update(update, false);
+}
+
 int
 sys_pmem_update(const struct pmem_region __user *update)
 {
@@ -283,11 +321,11 @@ sys_pmem_update(const struct pmem_region __user *update)
 	if (copy_from_user(&_update, update, sizeof(_update)))
 		return -EINVAL;
 
-	return pmem_update(&_update);
+	return _pmem_update(&_update, true);
 }
 
-int
-pmem_query(const struct pmem_region *query, struct pmem_region *result)
+static int
+__pmem_query(const struct pmem_region *query, struct pmem_region *result)
 {
 	struct pmem_list_entry *entry;
 	struct pmem_region *rgn;
@@ -312,6 +350,19 @@ pmem_query(const struct pmem_region *query, struct pmem_region *result)
 }
 
 int
+pmem_query(const struct pmem_region *query, struct pmem_region *result)
+{
+	int status;
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&pmem_list_lock, irqstate);
+	status = __pmem_query(query, result);
+	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
+
+	return status;
+}
+
+int
 sys_pmem_query(const struct pmem_region __user *query,
                struct pmem_region __user *result)
 {
@@ -333,10 +384,10 @@ sys_pmem_query(const struct pmem_region __user *query,
 	return 0;
 }
 
-int
-pmem_alloc(size_t size, size_t alignment,
-           const struct pmem_region *constraint,
-           struct pmem_region *result)
+static int
+__pmem_alloc(size_t size, size_t alignment,
+             const struct pmem_region *constraint,
+             struct pmem_region *result)
 {
 	int status;
 	struct pmem_region query;
@@ -351,9 +402,12 @@ pmem_alloc(size_t size, size_t alignment,
 	if (!region_is_sane(constraint))
 		return -EINVAL;
 
+	if (constraint->allocated_is_set && constraint->allocated)
+		return -EINVAL;
+
 	query = *constraint;
 
-	while ((status = pmem_query(&query, &candidate)) == 0) {
+	while ((status = __pmem_query(&query, &candidate)) == 0) {
 		if (alignment) {
 			candidate.start = round_up(candidate.start, alignment);
 			if (candidate.start >= candidate.end)
@@ -364,7 +418,7 @@ pmem_alloc(size_t size, size_t alignment,
 			candidate.end = candidate.start + size;
 			candidate.allocated_is_set = true;
 			candidate.allocated = true;
-			status = pmem_update(&candidate);
+			status = __pmem_update(&candidate, false);
 			BUG_ON(status);
 			zero_pmem(&candidate);
 			if (result)
@@ -377,6 +431,21 @@ pmem_alloc(size_t size, size_t alignment,
 	BUG_ON(status != -ENOENT);
 
 	return -ENOMEM;
+}
+
+int
+pmem_alloc(size_t size, size_t alignment,
+           const struct pmem_region *constraint,
+           struct pmem_region *result)
+{
+	int status;
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&pmem_list_lock, irqstate);
+	status = __pmem_alloc(size, alignment, constraint, result);
+	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
+
+	return status;
 }
 
 int
