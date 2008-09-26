@@ -67,7 +67,7 @@ extern void setup_arch(void);
 
 extern void start_kernel(void);
 
-extern int arch_load_pct(void);
+extern int arch_create_init_task(void);
 
 #endif /* !__ASSEMBLY__ */
   

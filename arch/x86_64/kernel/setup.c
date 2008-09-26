@@ -289,6 +289,11 @@ setup_arch(void)
 	vsyscall_map();
 
 	cpu_init();
+
+	current->cpumask = cpu_present_map;
+
 	ioapic_init();
+
+	lapic_set_timer(1000000000);
 }
 

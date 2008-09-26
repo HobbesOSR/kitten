@@ -91,13 +91,13 @@ param(elf_debug, int);
  */
 int
 elf_load_executable(
-	struct task_struct * task,
+	struct aspace *      aspace,
 	void *		     elf_image,
 	unsigned long	     heap_size,
-	void * (*alloc_mem)(size_t size, size_t alignment)
+	void * (*alloc_mem)(size_t size, size_t alignment),
+	vaddr_t *entry_point
 )
 {
-	struct aspace *   aspace;
 	struct elfhdr *   ehdr;
 	struct elf_phdr * phdr_array;
 	struct elf_phdr * phdr;
@@ -111,10 +111,7 @@ elf_load_executable(
 	unsigned long     load_addr = 0;
 	int               load_addr_set = 0;
 
-	BUG_ON(!task||!elf_image||!heap_size);
-
-	aspace = task->aspace;
-	BUG_ON(!aspace);
+	BUG_ON(!aspace||!elf_image||!heap_size);
 
 	/* Make sure ELF header is sane */
 	ehdr = elf_image;
@@ -209,8 +206,7 @@ elf_load_executable(
 	/* Anonymous mmap() requests are satisfied from the top of the heap */
 	aspace->mmap_brk = aspace->heap_end;
 
-	/* Remember the entry point */
-	task->entry_point = elf_entry_point(elf_image);
+	*entry_point = elf_entry_point(elf_image);
 
 	return 0;
 }
@@ -267,17 +263,19 @@ write_aux(
  */
 int
 setup_initial_stack(
-	struct task_struct * task,
+	struct aspace *      aspace,
 	void *		     elf_image,
 	unsigned long        stack_size,
 	void * (*alloc_mem)(size_t size, size_t alignment),
 	char *               argv[],
-	char *               envp[]
+	char *               envp[],
+	uid_t uid,
+	gid_t gid,
+	vaddr_t *stack_ptr
 )
 {
 	int status;
 	unsigned long i, len;
-	struct aspace * aspace;
 	unsigned long start, end, extent;
 	unsigned long sp;
 
@@ -299,10 +297,7 @@ setup_initial_stack(
 	unsigned long __user *argv_uptr;
 	unsigned long __user *argc_uptr;
 	
-	BUG_ON(!task||!stack_size||!argv||!envp);
-
-	aspace = task->aspace;
-	BUG_ON(!aspace);
+	BUG_ON(!aspace||!stack_size||!argv||!envp);
 
 	/* Set up an address space region for the stack */
 	end    = SMARTMAP_ALIGN - PAGE_SIZE; /* one guard page */
@@ -357,10 +352,10 @@ setup_initial_stack(
 	write_aux(auxv, auxc++, AT_BASE, 0);
 	write_aux(auxv, auxc++, AT_FLAGS, 0);
 	write_aux(auxv, auxc++, AT_ENTRY, elf_entry_point(elf_image));
-	write_aux(auxv, auxc++, AT_UID, task->uid);
-	write_aux(auxv, auxc++, AT_EUID, task->uid);
-	write_aux(auxv, auxc++, AT_GID, task->gid);
-	write_aux(auxv, auxc++, AT_EGID, task->gid);
+	write_aux(auxv, auxc++, AT_UID, uid);
+	write_aux(auxv, auxc++, AT_EUID, uid);
+	write_aux(auxv, auxc++, AT_GID, gid);
+	write_aux(auxv, auxc++, AT_EGID, gid);
 	write_aux(auxv, auxc++, AT_SECURE, 0);
 	if (platform_str) {
 		platform_str_uptr = strings_uptr;
@@ -424,8 +419,7 @@ setup_initial_stack(
 	if (put_user(argc, argc_uptr))
 		goto error;
 
-	/* Remember the initial stack pointer */
-	task->stack_ptr = sp;
+	*stack_ptr = sp;
 
 	return 0;
 

@@ -4,20 +4,20 @@
 #include <lwk/aspace.h>
 #include <arch/processor.h>
 
-struct aspace init_aspace = {
-	INIT_ASPACE(init_aspace)
+struct aspace bootstrap_aspace = {
+	BOOTSTRAP_ASPACE(bootstrap_aspace)
 	.arch = {
 		.pgd = (xpte_t *) init_level4_pgt
 	}
 };
 
-union task_union init_task_union
-	__attribute__((__section__(".data.init_task"))) =
+union task_union bootstrap_task_union
+	__attribute__((__section__(".data.bootstrap_task"))) =
 		{
 			/* Initialize task_union.task_info */
 			{
 				/* arch independent portion */
-				INIT_TASK(init_task_union.task_info)
+				BOOTSTRAP_TASK(bootstrap_task_union.task_info)
 
 				/* x86_64 specific portion */
 				.arch = {
@@ -34,6 +34,6 @@ union task_union init_task_union
  * .data.cacheline_aligned section. Since TSS's are completely CPU-local, we
  * want them on exact cacheline boundaries, to eliminate cacheline ping-pong.
  */
-DEFINE_PER_CPU(struct tss_struct, init_tss)
-____cacheline_internodealigned_in_smp = INIT_TSS;
+DEFINE_PER_CPU(struct tss_struct, tss)
+____cacheline_internodealigned_in_smp = BOOTSTRAP_TSS;
 

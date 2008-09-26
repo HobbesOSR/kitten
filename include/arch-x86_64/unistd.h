@@ -665,4 +665,9 @@ __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
 #define __NR_aspace_dump2console 299
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
 
+#define __NR_task_get_myid      300
+__SYSCALL(__NR_task_get_myid, sys_task_get_myid)
+#define __NR_task_create        301
+__SYSCALL(__NR_task_create, sys_task_create)
+
 #endif

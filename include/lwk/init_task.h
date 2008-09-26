@@ -4,18 +4,19 @@
 /**
  * Initializes architecture-independent fields in the initial address space.
  */
-#define INIT_ASPACE(name)
+#define BOOTSTRAP_ASPACE(name)
 
 /**
  * Initializes architecture-independent fields in the initial task structure.
  */
-#define INIT_TASK(name) \
-	.task_id	=	0,					\
-	.task_name	=	"bootstrap",				\
-	.cpu		=	0,					\
-	.aspace		=	&init_aspace,				\
+#define BOOTSTRAP_TASK(task_info) \
+	.id		=	0,					\
+	.name		=	"bootstrap",				\
+	.cpu_id		=	0,					\
+	.aspace		=	&bootstrap_aspace,			\
+	.sched_link	=	LIST_HEAD_INIT(task_info.sched_link),	\
 
-#define init_task  init_task_union.task_info
-#define init_stack init_task_union.stack
+#define bootstrap_task  bootstrap_task_union.task_info
+#define bootstrap_stack bootstrap_task_union.stack
 
 #endif

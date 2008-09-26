@@ -397,6 +397,27 @@ static inline void arch_write_notes(struct file *file) { }
 #endif /* ARCH_HAVE_EXTRA_ELF_NOTES */
 
 #ifdef __KERNEL__
+int
+elf_load_executable(
+	struct aspace *      aspace,
+	void *		     elf_image,
+	unsigned long	     heap_size,
+	void * (*alloc_mem)(size_t size, size_t alignment),
+	vaddr_t *entry_point
+);
+int
+setup_initial_stack(
+	struct aspace *      aspace,
+	void *		     elf_image,
+	unsigned long        stack_size,
+	void * (*alloc_mem)(size_t size, size_t alignment),
+	char *               argv[],
+	char *               envp[],
+	uid_t uid,
+	gid_t gid,
+	vaddr_t *stack_ptr
+);
+#if 0
 extern int
 elf_load_executable(
 	struct task_struct * task,
@@ -414,6 +435,7 @@ setup_initial_stack(
 	char *               argv[],
 	char *               envp[]
 );
+#endif
 #endif
 
 #include <lwk/aspace.h>

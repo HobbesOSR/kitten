@@ -9,6 +9,8 @@
 #include <lwk/delay.h>
 #include <lwk/bootmem.h>
 #include <lwk/aspace.h>
+#include <lwk/task.h>
+#include <lwk/sched.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -54,11 +56,39 @@ start_kernel()
 	 * This detects memory, CPUs, etc.
 	 */
 	setup_arch();
-	printk(KERN_INFO "Number of CPUs detected: %d\n", num_cpus());
 
 	/*
-	 * Boot all CPUs in the system, one at a time.
+	 * Initialize the kernel memory subsystem. Up until now, the simple
+	 * boot-time memory allocator (bootmem) has been used for all dynamic
+	 * memory allocation. Here, the bootmem allocator is destroyed and all
+	 * of the free pages it was managing are added to the kernel memory
+	 * pool (kmem) or the user memory pool (umem).
+	 *
+	 * After this point, any use of the bootmem allocator will cause a
+	 * kernel panic. The normal kernel memory subsystem API should be used
+	 * instead (e.g., kmem_alloc() and kmem_free()).
 	 */
+	memsys_init();
+
+	/*
+ 	 * Initialize the address space management subsystem.
+ 	 */
+	aspace_init();
+
+	/*
+ 	 * Initialize the task management subsystem.
+ 	 */
+	task_init();
+
+	/*
+ 	 * Initialize the task scheduling subsystem.
+ 	 */
+	sched_init();
+
+	/*
+	 * Boot all of the other CPUs in the system, one at a time.
+	 */
+	printk(KERN_INFO "Number of CPUs detected: %d\n", num_cpus());
 	for_each_cpu_mask(cpu, cpu_present_map) {
 		/* The bootstrap CPU (that's us) is already booted. */
 		if (cpu == 0) {
@@ -81,34 +111,12 @@ start_kernel()
 	}
 
 	/*
-	 * Initialize the kernel memory subsystem. Up until now, the simple
-	 * boot-time memory allocator (bootmem) has been used for all dynamic
-	 * memory allocation. Here, the bootmem allocator is destroyed and all
-	 * of the free pages it was managing are added to the kernel memory
-	 * pool (kmem) or the user memory pool (umem).
-	 *
-	 * After this point, any use of the bootmem allocator will cause a
-	 * kernel panic. The normal kernel memory subsystem API should be used
-	 * instead (e.g., kmem_alloc() and kmem_free()).
+	 * Start up user-space...
 	 */
-	memsys_init();
-
-	/*
- 	 * Initialize the address space management subsystem.
- 	 */
-	aspace_init();
-
-	/*
-	 * LWK is fully initialized. Enable external interrupts.
-	 */
-	local_irq_enable();
-
-	/*
-	 * Load the initial user-level task
-	 */
-	printk(KERN_INFO "Loading the initial user-level task...\n");
-	status = arch_load_pct();  /* This should not return */
-	panic("Failed to load initial user-level task! error=%d (%s)\n",
-	      status, strerror(status));
+	printk(KERN_INFO "Loading initial user-level task (init_task)...\n");
+	status = arch_create_init_task();
+	if (status)
+		panic("Failed to create init_task (status=%d).", status);
+	schedule();  /* This should not return */
+	BUG();
 }
-

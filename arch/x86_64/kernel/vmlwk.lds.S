@@ -103,9 +103,9 @@ SECTIONS
 #undef VVIRT_OFFSET
 #undef VVIRT
 
-  . = ALIGN(8192);		/* init_task */
-  .data.init_task : AT(ADDR(.data.init_task) - LOAD_OFFSET) {
-	*(.data.init_task)
+  . = ALIGN(8192);		/* bootstrap_task */
+  .data.bootstrap_task : AT(ADDR(.data.bootstrap_task) - LOAD_OFFSET) {
+	*(.data.bootstrap_task)
   }:data.init
 
   . = ALIGN(4096);

@@ -8,32 +8,39 @@
 #include <arch/aspace.h>
 
 /**
- * Valid address space IDs are in interval [ASPACE_MIN_ID, ASPACE_MAX_ID].
+ * Valid user-space created address space IDs are in interval
+ * [ASPACE_MIN_ID, ASPACE_MAX_ID].
  */
-#define ASPACE_MIN_ID   0
-#define ASPACE_MAX_ID   4095
+#define ASPACE_MIN_ID     0
+#define ASPACE_MAX_ID     4094
+
+/**
+ * The address space ID to use for the init_task.
+ * Put it at the top of the space to keep it out of the way.
+ */
+#define INIT_ASPACE_ID    ASPACE_MAX_ID
 
 /**
  * Protection and memory type flags.
  */
-#define VM_READ         (1 << 0)
-#define VM_WRITE        (1 << 1)
-#define VM_EXEC         (1 << 2)
-#define VM_NOCACHE      (1 << 3)
-#define VM_WRITETHRU    (1 << 4)
-#define VM_GLOBAL       (1 << 5)
-#define VM_USER         (1 << 6)
-#define VM_KERNEL       (1 << 7)
-#define VM_HEAP         (1 << 8)
-#define VM_SMARTMAP     (1 << 9)
+#define VM_READ           (1 << 0)
+#define VM_WRITE          (1 << 1)
+#define VM_EXEC           (1 << 2)
+#define VM_NOCACHE        (1 << 3)
+#define VM_WRITETHRU      (1 << 4)
+#define VM_GLOBAL         (1 << 5)
+#define VM_USER           (1 << 6)
+#define VM_KERNEL         (1 << 7)
+#define VM_HEAP           (1 << 8)
+#define VM_SMARTMAP       (1 << 9)
 typedef unsigned long vmflags_t;
 
 /**
  * Page sizes.
  */
-#define VM_PAGE_4KB     (1 << 12)
-#define VM_PAGE_2MB     (1 << 21)
-#define VM_PAGE_1GB     (1 << 30)
+#define VM_PAGE_4KB       (1 << 12)
+#define VM_PAGE_2MB       (1 << 21)
+#define VM_PAGE_1GB       (1 << 30)
 typedef unsigned long vmpagesize_t;
 
 /**
@@ -74,10 +81,10 @@ struct aspace {
 
 	id_t               id;          /* The address space's ID */
 	char               name[16];    /* Address space's name */
-
+	struct hlist_node  ht_link;     /* Adress space hash table linkage */
 	int                refcnt;      /* # of users of this address space */
+
 	struct list_head   region_list; /* Sorted non-overlapping region list */
-	struct hlist_node  htlink;      /* Hash table linkage */
 
 	/**
 	 * The address space's "Heap" region spans from:
@@ -117,6 +124,17 @@ struct aspace {
 	 */
 	struct arch_aspace arch;
 };
+
+/**
+ * Valid address space IDs are in interval [__ASPACE_MIN_ID, __ASPACE_MAX_ID].
+ */
+#define __ASPACE_MIN_ID   ASPACE_MIN_ID
+#define __ASPACE_MAX_ID   ASPACE_MAX_ID+1  /* +1 for KERNEL_ASPACE_ID */
+
+/**
+ * ID of the address space used by kernel threads.
+ */
+#define KERNEL_ASPACE_ID  ASPACE_MAX_ID+1
 
 /**
  * Kernel-only unlocked versions of the core adress space management API.

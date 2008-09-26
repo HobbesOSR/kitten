@@ -1,8 +1,11 @@
 #include <lwk/kernel.h>
+#include <lwk/smp.h>
 #include <lwk/params.h>
 #include <lwk/task.h>
 #include <lwk/elf.h>
 #include <lwk/aspace.h>
+#include <lwk/task.h>
+#include <lwk/sched.h>
 #include <lwk/ctype.h>
 #include <lwk/ptrace.h>
 #include <lwk/pmem.h>
@@ -88,106 +91,69 @@ alloc_mem_for_init_task(size_t size, size_t alignment)
 	return (void *) __va(result.start);
 }
 
-#define MAX_NUM_STRS 16
-
-struct pt_regs user_contexts[4];
-
-extern void ATTRIB_NORET asm_run_task(struct pt_regs *context);
+#define MAX_NUM_STRS 32
 
 int
-arch_load_pct(void)
+arch_create_init_task(void)
 {
 	int status;
-	union task_union *new_task;
-	struct task_struct *pct_task;
-	char *argv[MAX_NUM_STRS] = { "pct" };
+	char *argv[MAX_NUM_STRS] = { "init_task" };
 	char *envp[MAX_NUM_STRS];
-	struct pt_regs *regs;
-	void *pct_elf_image = __va(initrd_start);
+	void *init_task_elf_image = __va(initrd_start);
 	id_t aspace_id;
+	start_state_t start_state;
+	vaddr_t entry_point, stack_ptr;
+	struct task_struct *init_task;
 
 	if (init_str_array(MAX_NUM_STRS-1, argv+1, pct_argv_str))
-		panic("Too many PCT ARGV strings.");
+		panic("Too many ARGV strings for init_task.");
 
 	if (init_str_array(MAX_NUM_STRS, envp, pct_envp_str))
-		panic("Too many PCT ENVP strings.");
+		panic("Too many ENVP strings for init_task.");
 
-	if (pct_elf_image == NULL)
+	if (init_task_elf_image == NULL)
 		panic("Could not locate initial task ELF image.");
 
-	new_task = kmem_get_pages(TASK_ORDER);
-	if (!new_task)
-		panic("Failed to allocate new task.");
+	if (aspace_create(INIT_ASPACE_ID, "init_task", &aspace_id))
+		panic("Failed to create aspace for init_task.");
 
-	pct_task = &new_task->task_info;
-	pct_task->arch.addr_limit = PAGE_OFFSET;
+{
+	struct aspace *aspace = aspace_acquire(aspace_id);
 
-	if (aspace_create(ANY_ID, "INIT_TASK", &aspace_id))
-		panic("Failed to create aspace for init task.");
-
-	pct_task->aspace = aspace_acquire(aspace_id);
-	BUG_ON(!pct_task->aspace);
-
-	printk("switching to new aspace's page table.\n");
-	arch_aspace_activate(pct_task->aspace);
+	arch_aspace_activate(aspace);
 
 	status = elf_load_executable(
-			pct_task,
-			pct_elf_image,
-			pct_heap_size,
-			&alloc_mem_for_init_task
-	         );
-	if (status)
-		return status;
-
-	status = setup_initial_stack(
-			pct_task,
-			pct_elf_image,
-			pct_stack_size,
-			&alloc_mem_for_init_task,
-			argv,
-			envp
-	         );
-	if (status)
-		return status;
-
-	aspace_dump2console(pct_task->aspace->id);
-
-	regs = &user_contexts[0];
-
-	regs->cs                   = __USER_CS;
-	regs->ss                   = __USER_DS;
-
-	regs->rip                  = pct_task->entry_point;
-	regs->rsp                  = pct_task->stack_ptr;
-	regs->eflags               = (1 << 9);
-
-	/* Set the PCT as the current process */
-	write_pda(pcurrent, pct_task);
-
-	/* Initialize the PCT's FPU state */
-	memset(
-		&pct_task->arch.thread.i387.fxsave,
-		0,
-		sizeof(struct i387_fxsave_struct)
+		aspace,
+		init_task_elf_image,
+		pct_heap_size, 
+		&alloc_mem_for_init_task,
+		&entry_point
 	);
-	pct_task->arch.thread.i387.fxsave.cwd = 0x37f;
-	pct_task->arch.thread.i387.fxsave.mxcsr = 0x1f80;
-
-	/*
-	 * Clear the task switch flag... if not cleared we'll get
-	 * a "Device Not Available" interrupt when the first FPU/SSE
-	 * instruction is executed.
-	 */
-	clts();
-
-	/* PCT runs as root */
-	pct_task->uid = 0;
-	pct_task->gid = 0;
-
-	strcpy(pct_task->task_name, "INIT-TASK");
-
-	asm_run_task(regs);  /* this does not return */
+	status = setup_initial_stack(
+		aspace,
+		init_task_elf_image,
+		pct_stack_size,
+		&alloc_mem_for_init_task,
+		argv,
+		envp,
+		0, /* uid */
+		0, /* gid */
+		&stack_ptr
+	);
+	aspace_release(aspace);
 }
 
+	start_state.uid         = 0;
+	start_state.gid         = 0;
+	start_state.aspace_id   = aspace_id;
+	start_state.entry_point = entry_point;
+	start_state.stack_ptr   = stack_ptr;
+	start_state.cpu_id      = cpu_id();
+	start_state.cpumask     = NULL;
 
+	if (__task_create(INIT_TASK_ID, "init_task", &start_state, &init_task))
+		panic("Failed to create init_task.");
+
+	sched_add_task(init_task);
+	return 0;
+}

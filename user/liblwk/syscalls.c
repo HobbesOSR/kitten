@@ -173,3 +173,9 @@ SYSCALL3(aspace_unmap_pmem, id_t, vaddr_t, size_t);
 SYSCALL4(aspace_smartmap, id_t, id_t, vaddr_t, size_t);
 SYSCALL2(aspace_unsmartmap, id_t, id_t);
 SYSCALL1(aspace_dump2console, id_t);
+
+/**
+ * Task management.
+ */
+SYSCALL1(task_get_myid, id_t *);
+SYSCALL4(task_create, id_t, const char *, const start_state_t *, id_t *);

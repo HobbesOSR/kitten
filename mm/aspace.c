@@ -141,17 +141,31 @@ lookup_and_lock_two(id_t a, id_t b,
 	return 0;
 }
 
+static bool
+id_ok(id_t id)
+{
+	return ((id >= ASPACE_MIN_ID) && (id <= ASPACE_MAX_ID));
+}
+
 int
 aspace_init(void)
 {
-	if (idspace_create(ASPACE_MIN_ID, ASPACE_MAX_ID, &idspace))
-		panic("Failed to create aspace ID space.");
+	int status;
 
-	if (htable_create(7 /* 2^7 bins */,
-	                  offsetof(struct aspace, id),
-	                  offsetof(struct aspace, htlink),
-	                  &htable))
-		panic("Failed to create aspace hash table.");
+	/* Create an ID space for allocating address space IDs */
+	if ((status = idspace_create(__ASPACE_MIN_ID, __ASPACE_MAX_ID, &idspace)))
+		panic("Failed to create aspace ID space (status=%d).", status);
+
+	/* Create a hash table that will be used for quick ID->aspace lookups */
+	if ((status = htable_create(7 /* 2^7 bins */,
+	                            offsetof(struct aspace, id),
+	                            offsetof(struct aspace, ht_link),
+	                            &htable)))
+		panic("Failed to create aspace hash table (status=%d).", status);
+
+	/* Create an aspace for use by kernel threads */
+	if ((status = aspace_create(KERNEL_ASPACE_ID, "kernel", NULL)))
+		panic("Failed to create kernel aspace (status=%d).", status);
 
 	return 0;
 }
@@ -202,7 +216,7 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	aspace->id = new_id;
 	spin_lock_init(&aspace->lock);
 	list_head_init(&aspace->region_list);
-	hlist_node_init(&aspace->htlink);
+	hlist_node_init(&aspace->ht_link);
 	if (name)
 		strlcpy(aspace->name, name, sizeof(aspace->name));
 
@@ -214,7 +228,7 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 		ULONG_MAX-PAGE_OFFSET+1, /* # bytes to end of memory */
 		VM_KERNEL,
 		PAGE_SIZE,
-		"Kernel"
+		"kernel"
 	);
 	if (status)
 		goto error1;
@@ -228,7 +242,8 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	BUG_ON(htable_add(htable, aspace));
 	spin_unlock_irqrestore(&htable_lock, flags);
 
-	*id = new_id;
+	if (id)
+		*id = new_id;
 	return 0;
 
 error2:
@@ -249,12 +264,17 @@ sys_aspace_create(id_t id_request, const char __user *name, id_t __user *id)
 	if (current->uid != 0)
 		return -EPERM;
 
+	if ((id_request != ANY_ID) && !id_ok(id_request))
+		return -EINVAL;
+
 	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)
 		return -EFAULT;
 	_name[sizeof(_name) - 1] = '\0';
 
 	if ((status = aspace_create(id_request, _name, &_id)) != 0)
 		return status;
+
+	BUG_ON(!id_ok(_id));
 
 	if (id && copy_to_user(id, &_id, sizeof(*id)))
 		return -EFAULT;
@@ -321,6 +341,8 @@ sys_aspace_destroy(id_t id)
 {
 	if (current->uid != 0)
 		return -EPERM;
+	if (!id_ok(id))
+		return -EINVAL;
 	return aspace_destroy(id);
 }
 
@@ -477,6 +499,9 @@ sys_aspace_add_region(id_t id,
 	if (current->uid != 0)
 		return -EPERM;
 
+	if (!id_ok(id))
+		return -EINVAL;
+
 	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)
 		return -EFAULT;
 	_name[sizeof(_name) - 1] = '\0';
@@ -534,6 +559,8 @@ sys_aspace_del_region(id_t id, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
+	if (!id_ok(id))
+		return -EINVAL;
 	return aspace_del_region(id, start, extent);
 }
 
@@ -616,6 +643,8 @@ sys_aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
+	if (!id_ok(id))
+		return -EINVAL;
 	return aspace_map_pmem(id, pmem, start, extent);
 }
 
@@ -689,6 +718,8 @@ sys_aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
+	if (!id_ok(id))
+		return -EINVAL;
 	return aspace_unmap_pmem(id, start, extent);
 }
 
@@ -761,6 +792,8 @@ sys_aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
+	if (!id_ok(src) || !id_ok(dst))
+		return -EINVAL;
 	return aspace_smartmap(src, dst, start, extent);
 }
 
@@ -812,6 +845,8 @@ sys_aspace_unsmartmap(id_t src, id_t dst)
 {
 	if (current->uid != 0)
 		return -EPERM;
+	if (!id_ok(src) || !id_ok(dst))
+		return -EINVAL;
 	return aspace_unsmartmap(src, dst);
 }
 

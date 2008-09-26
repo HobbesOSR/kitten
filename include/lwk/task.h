@@ -2,22 +2,74 @@
 #define _LWK_TASK_H
 
 #include <lwk/types.h>
+#include <lwk/idspace.h>
+#include <lwk/cpumask.h>
+
+/**
+ * Valid user-space created task IDs are in interval
+ * [TASK_MIN_ID, TASK_MAX_ID].
+ */
+#define TASK_MIN_ID                    0
+#define TASK_MAX_ID                    4094
+
+/**
+ * The task ID to use for the init_task.
+ * Put it at the top of the space to keep it out of the way.
+ */
+#define INIT_TASK_ID                   TASK_MAX_ID
+
+/**
+ * Task states
+ */
+#define TASKSTATE_READY                1
+#define TASKSTATE_BLOCKED	       2
+#define TASKSTATE_TERMINATED           3
+typedef unsigned int taskstate_t;
+
+/**
+ * Events that tasks may wait for and be sent.
+ */
+#define LWKEVENT_CHILD_TASK_EXITED     (1 << 0)
+#define LWKEVENT_PORTALS_EVENT_POSTED  (1 << 1)
+typedef unsigned long event_t;
+
+/**
+ * Initial conditions to use for new task.
+ */
+typedef struct {
+	uid_t                  uid;
+	uid_t                  gid;
+	id_t                   aspace_id;
+	vaddr_t                entry_point;
+	vaddr_t                stack_ptr;
+	id_t                   cpu_id;
+	const user_cpumask_t * cpumask;
+} start_state_t;
+
+/**
+ * Core task management API.
+ * These are accessible from both kernel-space and user-space (via syscalls).
+ */
+extern int task_get_myid(id_t *id);
+extern int task_create(id_t id_request, const char *name,
+                       const start_state_t *start_state, id_t *id);
+//extern int task_destroy(id_t id);
+//extern int task_waitfor_event(event_t mask, event_t *event, unsigned long *arg);
+
+#ifdef __KERNEL__
+
+#include <lwk/types.h>
 #include <lwk/spinlock.h>
 #include <lwk/list.h>
 #include <lwk/seqlock.h>
 #include <lwk/signal.h>
+#include <lwk/idspace.h>
 #include <arch/atomic.h>
 #include <arch/page.h>
 #include <arch/processor.h>
 #include <arch/task.h>
 #include <arch/current.h>
 #include <arch/mmu.h>
-
-/**
- * Length of human readable task name.
- * Task name excludes path.
- */
-#define TASK_NAME_LENGTH	16
 
 /**
  * Flags for task_struct.flags field.
@@ -37,27 +89,33 @@ struct sighand_struct {
 /**
  * Task structure (aka Process Control Block).
  * There is one of these for each OS-managed thread of execution in the
- * system.  A task is a generic "context of execution"... it can either
- * represent a process, thread, or something in-between.
+ * system.  A task is a generic "context of execution"... it either
+ * represents a user-level process, user-level thread, or kernel thread.
  */
 struct task_struct {
-	uint32_t		task_id;
-	char			task_name[TASK_NAME_LENGTH];
+	id_t                    id;              /* The task's ID */
+	char                    name[16];        /* The task's name */
+	struct hlist_node       ht_link;         /* Task hash table linkage */
+	int                     refcnt;          /* # of users of this task */
 
-	uid_t			uid;        /* user ID */
-	gid_t			gid;        /* group ID */
+	taskstate_t             state;           /* The task's current state */
 
-	struct aspace		*aspace;    /* Address space the task runs in */
-	struct sighand_struct   *sighand;   /* signal handler info */
+	uid_t                   uid;             /* user ID */
+	gid_t                   gid;             /* group ID */
 
-	uint32_t		cpu;        /* CPU task is running on */
+	struct aspace *         aspace;          /* Address space task is in */
+	struct sighand_struct * sighand;         /* signal handler info */
+
+	cpumask_t               cpumask;         /* CPUs this task may migrate
+	                                            to and create tasks on */
+	id_t                    cpu_id;          /* CPU this task is bound to */
+
+	struct list_head        sched_link;      /* For per-CPU scheduling lists */
+
 	unsigned long		ptrace;
 	uint32_t		flags;
 
-	vaddr_t			entry_point;
-	vaddr_t			stack_ptr;
-
-	struct arch_task	arch;       /* arch specific task info */
+	struct arch_task	arch;            /* arch specific task info */
 };
 
 union task_union {
@@ -65,8 +123,19 @@ union task_union {
 	unsigned long		stack[TASK_SIZE/sizeof(long)];
 };
 
-extern union task_union init_task_union;
-extern struct aspace init_aspace;
+extern union task_union bootstrap_task_union;
+extern struct aspace bootstrap_aspace;
+
+/**
+ * Valid task IDs are in interval [__TASK_MIN_ID, __TASK_MAX_ID].
+ */
+#define __TASK_MIN_ID   TASK_MIN_ID
+#define __TASK_MAX_ID   TASK_MAX_ID+1  /* +1 for IDLE_TASK_ID */
+
+/**
+ * ID of the idle task.
+ */
+#define IDLE_TASK_ID    TASK_MAX_ID+1
 
 /**
  * Checks to see if a task structure is the init task.
@@ -75,7 +144,7 @@ extern struct aspace init_aspace;
 static inline int
 is_init(struct task_struct *tsk)
 {
-	return (tsk->task_id == 1);
+	return (tsk->id == 1);
 }
 
 #define clear_stopped_child_used_math(child) do { (child)->flags &= ~PF_USED_MATH; } while (0)
@@ -92,4 +161,19 @@ is_init(struct task_struct *tsk)
 #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
 #define used_math() tsk_used_math(current)
 
+extern int task_init(void);
+extern int task_send_event(id_t id, event_t event, uint64_t arg);
+extern int arch_task_create(struct task_struct *task,
+                            const start_state_t *start_state);
+
+extern int sys_task_get_myid(id_t __user *id);
+extern int sys_task_create(id_t id_request, const char __user *name,
+                           const start_state_t __user *start_state,
+                           id_t __user *id);
+
+extern int __task_create(id_t id_request, const char *name,
+                         const start_state_t *start_state,
+                         struct task_struct **new_task);
+
+#endif
 #endif

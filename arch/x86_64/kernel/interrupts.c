@@ -1,10 +1,13 @@
 #include <lwk/kernel.h>
 #include <lwk/init.h>
 #include <lwk/kallsyms.h>
+#include <lwk/task.h>
+#include <lwk/sched.h>
 #include <arch/desc.h>
 #include <arch/idt_vectors.h>
 #include <arch/show.h>
 #include <arch/xcall.h>
+#include <arch/i387.h>
 
 typedef void (*idtvec_handler_t)(struct pt_regs *regs, unsigned int vector);
 
@@ -76,9 +79,10 @@ do_invalid_op(struct pt_regs *regs, unsigned int vector)
 void
 do_device_not_available(struct pt_regs *regs, unsigned int vector)
 {
-	printk("Device Not Available Exception\n");
-	show_registers(regs);
-	while (1) {}
+	BUG_ON(current->arch.flags & TF_USED_FPU);
+	current->arch.flags |= TF_USED_FPU;
+	clts();
+	fpu_restore_state(current);
 }
 
 void
@@ -180,7 +184,8 @@ do_simd_coprocessor_error(struct pt_regs *regs, unsigned int vector)
 void
 do_apic_timer(struct pt_regs *regs, unsigned int vector)
 {
-	printk("Got APIC Timer Interrupt, vector=%u\n", vector);
+	lapic_ack_interrupt();
+	schedule();
 }
 
 void

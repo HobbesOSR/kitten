@@ -4,20 +4,95 @@
 #include <arch/asm-offsets.h>
 #include <arch/idt_vectors.h>
 #include <arch/dwarf2.h>
+#include <arch/task.h>
 
 
 /**
- * This starts a task executing.
- * extern void ATTRIB_NORET asm_run_task(struct pt_regs *context)
+ * This performs the architecture-specific portion of a context switch.
+ * Normally, this is called in the context of prev and returns in the
+ * context of next. However, new tasks are handled differently. Since
+ * new tasks do not yet have a kernel context (rather, their kernel
+ * stack just has the pt_regs to use for the new task), execution returns
+ * directly to the new task, rather than context_switch().
+ *
+ * Input Registers: 
+ *     RDI = prev
+ *     RSI = next
+ *
+ * Output Registers::
+ *     RAX = prev (same value as on entry)
+ *
+ * C Prototype:
+ *     struct task_struct *arch_context_switch(struct task_struct *prev,
+ *                                             struct task_struct *next);
+ *     arch_context_switch() returns prev
  */
-ENTRY(asm_run_task)
-	swapgs			/* Install the user PDA */
-	mov $0, %rdx		/* crt1 expects this to be addr of rtld_fini */
-	pop %rax		/* Pop the return address */
-	mov %rdi, %rsp		/* Point stack pointer at pt_regs input arg */
-	add $128, %rsp		/* Bump to point to the RIP slot in pt_regs */
-	iretq			/* Start the task executing */
-END(asm_run_task)
+ENTRY(arch_context_switch)
+	/* Save prev's callee saved registers (others saved by caller) */
+	pushf
+	pushq %rbp
+	pushq %rbx
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
+
+	/* Switch to next's stack */
+	movq %rsp, tsk_arch_rsp(%rdi)
+	movq tsk_arch_rsp(%rsi), %rsp
+
+	/* Call C code to do more stuff (save/restore FPU, update PDA, ...) */
+	call __arch_context_switch
+	/* returns with %rax set to prev */
+	movq %rax, %rdi
+	movq %gs:pda_pcurrent, %rsi
+
+	/* New tasks need to be kick-started */
+	lock btr $_TF_NEW_TASK_BIT, tsk_arch_flags(%rsi)
+	jc kickstart_new_task
+
+	/* Restore next's callee saved registers */
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %rbx
+	popq %rbp
+	popf;
+
+	/* Return to context_switch(), with new task active */
+	retq
+
+kickstart_new_task:
+	call schedule_new_task_tail /* Finish up schedule(), drop locks, etc. */
+	testl $3, CS(%rsp)          /* Sets ZF=1 if returning to kernel-space */
+	je 1f                       /*     If ZF=1, leave kernel PDA in place */
+	swapgs                      /* Install the user PDA                   */
+	movq $0, %rax               /* Zero all of the segment registers      */
+	movl %eax, %ds
+	movl %eax, %es
+	movl %eax, %fs
+	movl %eax, %gs
+1:
+	movq     (%rsp), %r15       /* Unpack the pt_regs struct that         */
+	movq  1*8(%rsp), %r14       /* __arch_context_switch() put at the top */
+	movq  2*8(%rsp), %r13       /* of the new task's kernel stack.        */
+	movq  3*8(%rsp), %r12
+	movq  4*8(%rsp), %rbp
+	movq  5*8(%rsp), %rbx
+	movq  6*8(%rsp), %r11
+	movq  7*8(%rsp), %r10
+	movq  8*8(%rsp), %r9
+	movq  9*8(%rsp), %r8
+	movq 10*8(%rsp), %rax
+	movq 11*8(%rsp), %rcx
+	movq 12*8(%rsp), %rdx
+	movq 13*8(%rsp), %rsi
+	movq 14*8(%rsp), %rdi
+	add $128, %rsp              /* Bump to point to RIP slot in pt_regs   */
+	iretq                       /* Start the new task running             */
+
+END(arch_context_switch)
 
 
 /**

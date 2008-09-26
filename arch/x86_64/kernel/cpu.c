@@ -150,7 +150,7 @@ static void __init
 tss_init(void)
 {
 	unsigned int       cpu  = cpu_id();
-	struct tss_struct  *tss = &per_cpu(init_tss, cpu);
+	struct tss_struct  *tss = &per_cpu(tss, cpu);
 	int i;
 
 	/*
@@ -251,7 +251,7 @@ cpu_init(void)
  	 * CPUs other than the boot CPU (id=0). pda_init() is called below.
  	 */
 	struct task_struct *me = get_current_via_RSP();
-	unsigned int       cpu = me->cpu; /* logical ID */
+	unsigned int       cpu = me->cpu_id; /* logical ID */
 
 	if (cpu_test_and_set(cpu, cpu_initialized_map))
 		panic("CPU#%u already initialized!\n", cpu);
@@ -270,14 +270,3 @@ cpu_init(void)
 	time_init();		/* detects CPU frequency, udelay(), etc. */
 	barrier();		/* compiler memory barrier, avoids reordering */
 }
-
-void
-cpu_idle(void)
-{
-	printk(KERN_DEBUG "Entering Idle Loop\n");
-	while (1) {
-		//while (!need_resched) {}
-	}
-}
-
-

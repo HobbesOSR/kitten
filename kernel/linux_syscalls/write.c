@@ -23,8 +23,8 @@ sys_write(unsigned int fd, const char __user * buf, size_t count)
 
 	/* Write the string to the local console */
 	printk(KERN_USERMSG
-		"(TSK-%u) %s%s",
-		current->task_id,
+		"(%s) %s%s",
+		current->name,
 		kbuf,
 		(kcount != count) ? " <TRUNCATED>" : ""
 	);

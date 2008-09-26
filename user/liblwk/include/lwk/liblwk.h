@@ -8,6 +8,7 @@
 #include <lwk/print.h>
 #include <lwk/pmem.h>
 #include <lwk/aspace.h>
+#include <lwk/task.h>
 #include <lwk/elf.h>
 
 #endif

@@ -284,7 +284,7 @@ initial_code:
 	.quad	x86_64_start_kernel
 	.globl init_rsp
 init_rsp:
-	.quad  init_task_union+TASK_SIZE-8
+	.quad  bootstrap_task_union+TASK_SIZE-8
 
 bad_address:
 	jmp bad_address

@@ -174,7 +174,7 @@ struct tss_struct {
 	unsigned long io_bitmap[IO_BITMAP_LONGS + 1];
 } __attribute__((packed)) ____cacheline_aligned;
 
-DECLARE_PER_CPU(struct tss_struct,init_tss);
+DECLARE_PER_CPU(struct tss_struct,tss);
 
 #ifdef CONFIG_X86_VSMP
 #define ARCH_MIN_TASKALIGN	(1 << INTERNODE_CACHE_SHIFT)
@@ -211,12 +211,12 @@ struct thread_struct {
 	u64 tls_array[GDT_ENTRY_TLS_ENTRIES];
 } __attribute__((aligned(16)));
 
-#define INIT_THREAD  { \
-	.rsp0 = (unsigned long)&init_stack + sizeof(init_stack) \
+#define BOOTSTRAP_THREAD  { \
+	.rsp0 = (unsigned long)&bootstrap_stack + sizeof(bootstrap_stack) \
 }
 
-#define INIT_TSS  { \
-	.rsp0 = (unsigned long)&init_stack + sizeof(init_stack) \
+#define BOOTSTRAP_TSS  { \
+	.rsp0 = (unsigned long)&bootstrap_stack + sizeof(bootstrap_stack) \
 }
 
 #define INIT_MMAP \

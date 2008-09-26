@@ -81,12 +81,44 @@
  *    inside a macro, the way we do the other calls.
  */
 
+/**
+ * Fixed size cpumask structure for user-space.
+ * As long as CPU_MAX_ID >= NR_CPUS, we're good to go... 
+ * otherwise we need to bump up CPU_MAX_ID and therefore break
+ * user-level binary compatibility, causing a flag day.
+ */
+
+#define CPU_MIN_ID 0
+#define CPU_MAX_ID 2047
+typedef struct {
+	unsigned long bits[(CPU_MAX_ID+1)/(sizeof(unsigned long) * 8)];
+} user_cpumask_t;
+
+#ifdef __KERNEL__
+
 #include <lwk/kernel.h>
 #include <lwk/bitmap.h>
 #include <lwk/cpu.h>
 
+#if (CPU_MAX_ID + 1 < NR_CPUS)
+#error "NR_CPUS must be <= CPU_MAX_ID"
+#endif
+
 typedef struct { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
 extern cpumask_t _unused_cpumask_arg_;
+
+static inline void
+cpumask_kernel2user(const cpumask_t *kernel, user_cpumask_t *user)
+{
+	memset(user, 0, sizeof(user_cpumask_t));
+	memcpy(user, kernel, sizeof(*kernel));
+}
+
+static inline void
+cpumask_user2kernel(const user_cpumask_t *user, cpumask_t *kernel)
+{
+	memcpy(kernel, user, sizeof(*kernel));
+}
 
 #define cpu_set(cpu, dst) __cpu_set((cpu), &(dst))
 static inline void __cpu_set(int cpu, volatile cpumask_t *dstp)
@@ -387,4 +419,5 @@ int __any_online_cpu(const cpumask_t *mask);
 #define for_each_online_cpu(cpu)  for_each_cpu_mask((cpu), cpu_online_map)
 #define for_each_present_cpu(cpu) for_each_cpu_mask((cpu), cpu_present_map)
 
+#endif
 #endif /* _LWK_CPUMASK_H */

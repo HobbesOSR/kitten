@@ -5,6 +5,7 @@
 #include <lwk/delay.h>
 #include <lwk/bootmem.h>
 #include <lwk/task.h>
+#include <lwk/sched.h>
 #include <arch/atomic.h>
 #include <arch/apicdef.h>
 #include <arch/apic.h>
@@ -28,11 +29,8 @@ start_secondary(void)
 {
 	cpu_init();
 	cpu_set(cpu_id(), cpu_online_map);
-
-	lapic_set_timer(1000000000);
-	local_irq_enable();
-
-	cpu_idle();
+	schedule(); /* runs idle_task, since that's the only task
+	             * on the CPU's run queue at this point */
 }
 
 void __init
@@ -55,24 +53,22 @@ arch_boot_cpu(unsigned int cpu)
 	/*
 	 * Allocate memory for the new CPU's GDT.
 	 */
-	cpu_gdt_descr[cpu].address =
-		(unsigned long) alloc_bootmem_aligned(PAGE_SIZE, PAGE_SIZE);
+	cpu_gdt_descr[cpu].address = (unsigned long) kmem_get_pages(0);
 
 	/*
-	 * Allocate memory for the new CPU's idle task.
+	 * Allocate memory for the new CPU's bootstrap task.
 	 */
-	new_task_union = alloc_bootmem_aligned( sizeof(*new_task_union),
-	                                        sizeof(*new_task_union) );
-	memset(new_task_union, 0, sizeof(*new_task_union));
+	new_task_union = kmem_get_pages(TASK_ORDER);
 	new_task = &new_task_union->task_info;
 
 	/*
-	 * Initialize the bare minimum info needed to boot the new CPU.
+	 * Initialize the bare minimum info needed to bootstrap the new CPU.
 	 */
-	new_task->task_id = 0;
-	new_task->aspace  = &init_aspace;
-	new_task->cpu     = cpu;
-	strcpy(new_task->task_name, "Idle Task");
+	new_task->id      = 0;
+	new_task->aspace  = &bootstrap_aspace;
+	new_task->cpu_id  = cpu;
+	strcpy(new_task->name, "bootstrap");
+	list_head_init(&new_task->sched_link);
 
 	/*
 	 * Set the initial kernel entry point and stack pointer for the new CPU.

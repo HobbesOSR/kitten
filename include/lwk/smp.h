@@ -6,9 +6,6 @@
  *		Alan Cox. <alan@redhat.com>
  */
 
-
-extern void cpu_idle(void);
-
 #include <lwk/kernel.h>
 #include <lwk/compiler.h>
 #include <arch/smp.h>

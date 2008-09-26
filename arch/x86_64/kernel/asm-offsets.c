@@ -45,12 +45,16 @@ int main(void)
 	ENTRY(flags); 
 	ENTRY(thread); 
 #endif
-	ENTRY(task_id);
+	ENTRY(id);
 	BLANK();
 #undef ENTRY
 #define ENTRY(entry) DEFINE(tsk_arch_ ## entry, offsetof(struct task_struct, arch) + offsetof(struct arch_task, entry))
+	ENTRY(flags);
 	ENTRY(addr_limit);
-	ENTRY(status);
+	BLANK();
+#undef ENTRY
+#define ENTRY(entry) DEFINE(tsk_arch_ ## entry, offsetof(struct task_struct, arch) + offsetof(struct arch_task, thread) + offsetof(struct thread_struct, entry))
+	ENTRY(rsp);
 	BLANK();
 #undef ENTRY
 #define ENTRY(entry) DEFINE(pda_ ## entry, offsetof(struct x8664_pda, entry))

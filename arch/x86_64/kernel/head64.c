@@ -109,7 +109,7 @@ x86_64_start_kernel(char * real_mode_data)
  	 */
 	for (i = 0; i < NR_CPUS; i++)
 		cpu_pda(i) = &boot_cpu_pda[i];
-	pda_init(0, &init_task_union.task_info);
+	pda_init(0, &bootstrap_task_union.task_info);
 
 	/*
 	 * Make a copy data passed by the bootloader.

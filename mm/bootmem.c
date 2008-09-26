@@ -19,6 +19,10 @@
 #include <lwk/bitops.h>
 #include <arch/io.h>
 
+/**
+ * Set to true once bootmem allocator has been destroyed.
+ */
+static bool bootmem_destoyed = false;
 
 /**
  * Access to this subsystem has to be serialized externally.
@@ -210,6 +214,9 @@ __alloc_bootmem_core(
 	unsigned long offset, remaining_size, areasize, preferred;
 	unsigned long i, start = 0, incr, eidx, end_pfn = bdata->node_low_pfn;
 	void *ret;
+
+	if (bootmem_destoyed)
+		panic("The bootmem allocator has been destroyed.");
 
 	if(!size) {
 		printk("__alloc_bootmem_core(): zero-sized request\n");
@@ -486,6 +493,7 @@ void __init
 free_all_bootmem(void)
 {
 	free_all_bootmem_core(&bootmem_data);
+	bootmem_destoyed = true;
 }
 
 static void * __init

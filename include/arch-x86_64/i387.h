@@ -22,17 +22,6 @@
 extern void fpu_init(void);
 extern unsigned int mxcsr_feature_mask;
 extern void mxcsr_feature_mask_init(void);
-extern void init_fpu(struct task_struct *child);
-extern int save_i387(struct _fpstate __user *buf);
-
-/*
- * FPU lazy state save handling...
- */
-
-#define unlazy_fpu(tsk) do { \
-	if (tsk->arch.status & TS_USEDFPU) \
-		save_init_fpu(tsk); \
-} while (0)
 
 /* Ignore delayed exceptions from user space */
 static inline void tolerant_fwait(void)
@@ -93,31 +82,6 @@ static inline void clear_fpu_state(struct i387_fxsave_struct *fx)
 	asm volatile ("fildl %gs:0");	/* load to clear state */
 }
 
-static inline int restore_fpu_checking(struct i387_fxsave_struct *fx) 
-{ 
-	int err;
-
-	asm volatile("1:  rex64/fxrstor (%[fx])\n\t"
-		     "2:\n"
-		     ".section .fixup,\"ax\"\n"
-		     "3:  movl $-1,%[err]\n"
-		     "    jmp  2b\n"
-		     ".previous\n"
-		     ".section __ex_table,\"a\"\n"
-		     "   .align 8\n"
-		     "   .quad  1b,3b\n"
-		     ".previous"
-		     : [err] "=r" (err)
-#if 0 /* See comment in __fxsave_clear() below. */
-		     : [fx] "r" (fx), "m" (*fx), "0" (0));
-#else
-		     : [fx] "cdaSDb" (fx), "m" (*fx), "0" (0));
-#endif
-	if (unlikely(err))
-		init_fpu(current);
-	return err;
-} 
-
 static inline int save_i387_checking(struct i387_fxsave_struct __user *fx) 
 { 
 	int err;
@@ -176,9 +140,8 @@ static inline void __fxsave_clear(struct task_struct *tsk)
 
 static inline void kernel_fpu_begin(void)
 {
-	if (current->arch.status & TS_USEDFPU) {
+	if (current->arch.flags & TF_USED_FPU) {
 		__fxsave_clear(current);
-		current->arch.status &= ~TS_USEDFPU;
 		return;
 	}
 	clts();
@@ -189,19 +152,19 @@ static inline void kernel_fpu_end(void)
 	stts();
 }
 
-static inline void save_init_fpu(struct task_struct *tsk)
+static inline void
+fpu_save_state(struct task_struct *task)
 {
- 	__fxsave_clear(tsk);
-	tsk->arch.status &= ~TS_USEDFPU;
-	stts();
+	__asm__ __volatile__("fxsaveq %0"
+			     : "=m" (task->arch.thread.i387.fxsave));
+	clear_fpu_state(&task->arch.thread.i387.fxsave);
 }
 
-/* 
- * This restores directly out of user space. Exceptions are handled.
- */
-static inline int restore_i387(struct _fpstate __user *buf)
+static inline void
+fpu_restore_state(struct task_struct *task)
 {
-	return restore_fpu_checking((__force struct i387_fxsave_struct *)buf);
+	__asm__ __volatile__("fxrstorq %0"
+			     ::"m" (task->arch.thread.i387.fxsave));
 }
 
 #endif /* _X86_64_I387_H */

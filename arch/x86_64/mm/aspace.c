@@ -26,7 +26,7 @@ arch_aspace_create(
 	
 	/* Copy the current kernel page tables into the address space */
 	for (i = pgd_index(PAGE_OFFSET); i < PTRS_PER_PGD; i++)
-		aspace->arch.pgd[i] = init_task.aspace->arch.pgd[i];
+		aspace->arch.pgd[i] = bootstrap_task.aspace->arch.pgd[i];
 
 	return 0;
 }
