@@ -22,8 +22,8 @@
  * Task states
  */
 #define TASKSTATE_READY                1
-#define TASKSTATE_BLOCKED	       2
-#define TASKSTATE_TERMINATED           3
+#define TASKSTATE_BLOCKED              2
+#define TASKSTATE_EXIT_ZOMBIE          3
 typedef unsigned int taskstate_t;
 
 /**
@@ -53,8 +53,8 @@ typedef struct {
 extern int task_get_myid(id_t *id);
 extern int task_create(id_t id_request, const char *name,
                        const start_state_t *start_state, id_t *id);
-//extern int task_destroy(id_t id);
-//extern int task_waitfor_event(event_t mask, event_t *event, unsigned long *arg);
+extern int task_exit(int status);
+extern int task_yield(void);
 
 #ifdef __KERNEL__
 
@@ -96,7 +96,6 @@ struct task_struct {
 	id_t                    id;              /* The task's ID */
 	char                    name[16];        /* The task's name */
 	struct hlist_node       ht_link;         /* Task hash table linkage */
-	int                     refcnt;          /* # of users of this task */
 
 	taskstate_t             state;           /* The task's current state */
 
@@ -114,6 +113,8 @@ struct task_struct {
 
 	unsigned long		ptrace;
 	uint32_t		flags;
+
+	int                     exit_status;     /* Reason the task exited */
 
 	struct arch_task	arch;            /* arch specific task info */
 };
@@ -162,7 +163,7 @@ is_init(struct task_struct *tsk)
 #define used_math() tsk_used_math(current)
 
 extern int task_init(void);
-extern int task_send_event(id_t id, event_t event, uint64_t arg);
+
 extern int arch_task_create(struct task_struct *task,
                             const start_state_t *start_state);
 
@@ -170,10 +171,13 @@ extern int sys_task_get_myid(id_t __user *id);
 extern int sys_task_create(id_t id_request, const char __user *name,
                            const start_state_t __user *start_state,
                            id_t __user *id);
+extern int sys_task_exit(int status);
+extern int sys_task_yield(void);
 
-extern int __task_create(id_t id_request, const char *name,
+extern int __task_reserve_id(id_t id);
+extern int __task_create(id_t id, const char *name,
                          const start_state_t *start_state,
-                         struct task_struct **new_task);
+                         struct task_struct **task);
 
 #endif
 #endif

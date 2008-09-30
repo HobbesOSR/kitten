@@ -103,7 +103,8 @@ idspace_alloc_id(idspace_t idspace, id_t request, id_t *id)
 		return -EBUSY;
 
 	++spc->ids_in_use;
-	*id = bit + spc->min_id;
+	if (id)
+		*id = bit + spc->min_id;
 
 	return 0;
 }

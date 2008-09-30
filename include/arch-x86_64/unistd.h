@@ -63,7 +63,7 @@ __SYSCALL(__NR_pipe, syscall_not_implemented)
 __SYSCALL(__NR_select, syscall_not_implemented)
 
 #define __NR_sched_yield                        24
-__SYSCALL(__NR_sched_yield, syscall_not_implemented)
+__SYSCALL(__NR_sched_yield, sys_task_yield)
 #define __NR_mremap                             25
 __SYSCALL(__NR_mremap, syscall_not_implemented)
 #define __NR_msync                              26
@@ -139,7 +139,7 @@ __SYSCALL(__NR_vfork, syscall_not_implemented)
 #define __NR_execve                             59
 __SYSCALL(__NR_execve, syscall_not_implemented)
 #define __NR_exit                               60
-__SYSCALL(__NR_exit, syscall_not_implemented)
+__SYSCALL(__NR_exit, sys_task_exit)
 #define __NR_wait4                              61
 __SYSCALL(__NR_wait4, syscall_not_implemented)
 #define __NR_kill                               62
@@ -669,5 +669,9 @@ __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
 __SYSCALL(__NR_task_get_myid, sys_task_get_myid)
 #define __NR_task_create        301
 __SYSCALL(__NR_task_create, sys_task_create)
+#define __NR_task_exit          302
+__SYSCALL(__NR_task_exit, sys_task_exit)
+#define __NR_task_yield         303
+__SYSCALL(__NR_task_yield, sys_task_yield)
 
 #endif

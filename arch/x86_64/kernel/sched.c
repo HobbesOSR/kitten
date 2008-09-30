@@ -73,11 +73,9 @@ __arch_context_switch(struct task_struct *prev_p, struct task_struct *next_p)
 }
 
 void
-arch_idle_task_loop(void)
+arch_idle_task_loop_body(void)
 {
-	while (1) {
-		local_irq_enable();
-		halt();
-		local_irq_disable();
-	}
+	/* Issue HALT instruction,
+	 * which should put CPU in a lower power mode */
+	halt();
 }

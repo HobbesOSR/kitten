@@ -13,6 +13,16 @@ struct run_queue {
 
 static DEFINE_PER_CPU(struct run_queue, run_queue);
 
+static void
+idle_task_loop(void) {
+	/* The (kernel-level) idle task runs with interrutps enabled,
+	 * just like user-level tasks. */
+	local_irq_enable();
+	while (1) {
+		arch_idle_task_loop_body();
+	}
+}
+
 int
 sched_init(void)
 {
@@ -21,6 +31,11 @@ sched_init(void)
 	struct task_struct *idle_task;
 	start_state_t start_state;
 	int status;
+
+	/* Reserve the idle tasks' ID. All idle tasks share the same ID. */
+	status = __task_reserve_id(IDLE_TASK_ID);
+	if (status)
+		panic("Failed to reserve IDLE_TASK_ID (status=%d).", status);
 
 	/* Initialize each CPU's run queue */
 	for_each_cpu_mask(cpu_id, cpu_present_map) {
@@ -37,7 +52,7 @@ sched_init(void)
 		start_state.uid         = 0;
 		start_state.gid         = 0;
 		start_state.aspace_id   = KERNEL_ASPACE_ID;
-		start_state.entry_point = (vaddr_t)arch_idle_task_loop;
+		start_state.entry_point = (vaddr_t)idle_task_loop;
 		start_state.stack_ptr   = 0; /* will be set automatically */
 		start_state.cpu_id      = cpu_id;
 		start_state.cpumask     = NULL;
@@ -116,7 +131,9 @@ schedule(void)
 	/* Move the currently running task to the end of the run queue */
 	if (!list_empty(&prev->sched_link)) {
 		list_del(&prev->sched_link);
-		list_add_tail(&prev->sched_link, &runq->task_list);
+		/* If the task has exited, don't re-link it */
+		if (prev->state != TASKSTATE_EXIT_ZOMBIE)
+			list_add_tail(&prev->sched_link, &runq->task_list);
 	}
 
 	/* Look for a ready to execute task */

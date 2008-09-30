@@ -21,42 +21,6 @@ static htable_t htable;
  */
 static DEFINE_SPINLOCK(htable_lock);
 
-#if 1
-/**
- * Looks up a task structure by ID and returns it with its spinlock locked.
- */
-struct task_struct *
-lookup_and_lock(id_t id)
-{
-	struct task_struct *task;
-
-	/* Lock the hash table, lookup task by ID */
-	spin_lock(&htable_lock);
-	if ((task = htable_lookup(htable, id)) == NULL) {
-		spin_unlock(&htable_lock);
-		return NULL;
-	}
-
-#if 0
-	/* Lock the identified task */
-	spin_lock(&task->lock);
-#endif
-
-	/* Unlock the hash table, others may now use it */
-	spin_unlock(&htable_lock);
-
-	return task;
-}
-#endif
-
-#if 0
-void
-sched_xcall(void *info)
-{
-	printk("Hello from sched xcall!\n");
-}
-#endif
-
 int
 task_init(void)
 {
@@ -95,77 +59,75 @@ sys_task_get_myid(id_t __user *id)
 }
 
 int
-__task_create(id_t id_request, const char *name,
+__task_reserve_id(id_t id)
+{
+	return idspace_alloc_id(idspace, id, NULL);
+}
+
+int
+__task_create(id_t id, const char *name,
               const start_state_t *start_state,
-              struct task_struct **new_task)
+              struct task_struct **task)
 {
 	int status;
-	id_t new_id;
 	union task_union *task_union;
-	struct task_struct *task;
+	struct task_struct *tsk;
 
-	if ((status = idspace_alloc_id(idspace, id_request, &new_id)) != 0) {
-		if (id_request != IDLE_TASK_ID)
-			return status;
-	}
-	
-	if ((task_union = kmem_get_pages(TASK_ORDER)) == NULL) {
-		idspace_free_id(idspace, new_id);
+	if ((task_union = kmem_get_pages(TASK_ORDER)) == NULL)
 		return -ENOMEM;
-	}
 
-	task = &task_union->task_info;
+	tsk = &task_union->task_info;
 
 	/*
 	 * Initialize the new task. kmem_alloc() allocates zeroed memory
 	 * so fields with an initial state of zero do not need to be explicitly
 	 * initialized.
 	 */
-	task->id = new_id;
+	tsk->id = id;
 	if (name)
-		strlcpy(task->name, name, sizeof(task->name));
-	hlist_node_init(&task->ht_link);
-	task->state = TASKSTATE_READY;
-	task->uid = start_state->uid;
-	task->gid = start_state->gid;
-	task->aspace = aspace_acquire(start_state->aspace_id);
-	if (!task->aspace) {
+		strlcpy(tsk->name, name, sizeof(tsk->name));
+	hlist_node_init(&tsk->ht_link);
+	tsk->state = TASKSTATE_READY;
+	tsk->uid = start_state->uid;
+	tsk->gid = start_state->gid;
+	tsk->aspace = aspace_acquire(start_state->aspace_id);
+	if (!tsk->aspace) {
 		status = -ENOENT;
 		goto error1;
 	}
-	task->sighand = NULL;
+	tsk->sighand = NULL;
 	if (start_state->cpumask) {
-		cpumask_user2kernel(start_state->cpumask, &task->cpumask);
-		if (!cpus_subset(task->cpumask, current->cpumask)) {
+		cpumask_user2kernel(start_state->cpumask, &tsk->cpumask);
+		if (!cpus_subset(tsk->cpumask, current->cpumask)) {
 			status = -EINVAL;
 			goto error2;
 		}
 	} else {
-		task->cpumask = current->cpumask;
+		tsk->cpumask = current->cpumask;
 	}
 	if ((start_state->cpu_id >= NR_CPUS)
-	     || !cpu_isset(start_state->cpu_id, task->cpumask)) {
+	     || !cpu_isset(start_state->cpu_id, tsk->cpumask)) {
 		status = -EINVAL;
 		goto error2;
 	}
-	task->cpu_id = start_state->cpu_id;
-	list_head_init(&task->sched_link);
-	task->ptrace = 0;
-	task->flags = 0;
+	tsk->cpu_id = start_state->cpu_id;
+	list_head_init(&tsk->sched_link);
+	tsk->ptrace = 0;
+	tsk->flags = 0;
+	tsk->exit_status = 0;
 
 	/* Do architecture-specific initialization */
-	if ((status = arch_task_create(task, start_state)) != 0)
+	if ((status = arch_task_create(tsk, start_state)) != 0)
 		goto error2;
 
-	if (new_task)
-		*new_task = task;
+	if (task)
+		*task = tsk;
 	return 0;
 
 error2:
-	if (task->aspace)
-		aspace_release(task->aspace);
+	if (tsk->aspace)
+		aspace_release(tsk->aspace);
 error1:
-	idspace_free_id(idspace, task->id);
 	kmem_free_pages(task_union, TASK_ORDER);
 	return status;
 }
@@ -174,27 +136,35 @@ int
 task_create(id_t id_request, const char *name,
             const start_state_t *start_state, id_t *id)
 {
-	struct task_struct *task;
+	id_t new_id;
+	struct task_struct *new_task;
 	int status;
-	unsigned long flags;
+	unsigned long irqstate;
 
-	/* Create and initialize a new task */
-	if ((status = __task_create(id_request, name, start_state, &task)))
+	/* Allocate an ID for the new task */
+	if ((status = idspace_alloc_id(idspace, id_request, &new_id)) != 0)
 		return status;
 
+	/* Create and initialize a new task */
+	if ((status = __task_create(new_id, name, start_state, &new_task))) {
+		idspace_free_id(idspace, new_id);
+		return status;
+	}
+
 	/* Add new task to a hash table, for quick lookups by ID */
-	spin_lock_irqsave(&htable_lock, flags);
-	BUG_ON(htable_add(htable, task));
-	spin_unlock_irqrestore(&htable_lock, flags);
+	spin_lock_irqsave(&htable_lock, irqstate);
+	BUG_ON(htable_add(htable, new_task));
+	spin_unlock_irqrestore(&htable_lock, irqstate);
 
 	/* Add the new task to the target CPU's run queue */
-	sched_add_task(task);
+	sched_add_task(new_task);
 
-	*id = task->id;
+	if (id)
+		*id = new_task->id;
 	return 0;
 }
 
-extern int
+int
 sys_task_create(id_t id_request, const char __user *name,
                 const start_state_t __user *start_state, id_t __user *id)
 {
@@ -207,10 +177,10 @@ sys_task_create(id_t id_request, const char __user *name,
 	if (current->uid != 0)
 		return -EPERM;
 
-	if (!start_state || (start_state->aspace_id == ANY_ID))
+	if (copy_from_user(&_start_state, start_state, sizeof(_start_state)))
 		return -EINVAL;
 
-	if (copy_from_user(&_start_state, start_state, sizeof(_start_state)))
+	if (_start_state.aspace_id == KERNEL_ASPACE_ID)
 		return -EINVAL;
 
 	if (_start_state.cpumask) {
@@ -232,84 +202,33 @@ sys_task_create(id_t id_request, const char __user *name,
 	return 0;
 }
 
-#if 0
 int
-task_run(id_t id)
+task_exit(int status)
 {
-#if 0
-	int status = 0;
-	struct task_struct *task;
-	id_t cpu_id = 0;
-	struct sched_info *sched;
-	unsigned long irqstate;
-	bool kick_target_cpu = false;
+	/* Mark the task as exited...
+	 * schedule() will remove it from the run queue */
+	current->exit_status = status;
+	current->state = TASKSTATE_EXIT_ZOMBIE;
+	schedule(); /* task is dead, so this should never return */
+	BUG();
+	while (1) {}
+}
 
-	/* First, figure out which CPU the task should be run on */
-	local_irq_save(irqstate);
-	if ((task = lookup_and_lock(id)) == NULL) {
-		status = -ENOENT;
-		goto out1;
-	}
-	cpu_id = task->cpu_id;
-	spin_unlock(&task->lock);
-	local_irq_restore(irqstate);
+int
+sys_task_exit(int status)
+{
+	return task_exit(status);
+}
 
-again:
-	local_irq_save(irqstate);
-	sched = &per_cpu(sched_info, cpu_id);
-	spin_lock(&sched->lock);
-
-	if ((task = lookup_and_lock(id)) == NULL) {
-		status = -ENOENT;
-		goto out2;
-	}
-
-	if (task->cpu_id != cpu_id) {
-		spin_unlock(&task->lock);
-		spin_unlock(&sched->lock);
-		local_irq_restore(irqstate);
-		goto again;
-	}
-
-	if (task->state == TASKSTATE_TERMINATED) {
-		status = -EINVAL;
-		goto out3;
-	}
-
-	if ((task->state == TASKSTATE_READY)
-	     || (task->state == TASKSTATE_RUNNING)) { 
-		goto out3;
-	}
-
-	task->state = TASKSTATE_READY;
-	list_add_tail(&task->ready_list_link, &sched->ready_list);
-	++sched->num_ready;
-	kick_target_cpu = true;
-
-out3:
-	spin_unlock(&task->lock);
-out2:
-	spin_unlock(&sched->lock);
-out1:
-	local_irq_restore(irqstate);
-
-	if (kick_target_cpu) {
-		cpumask_t mask;
-		cpus_clear(mask);
-		cpu_set(cpu_id, mask);
-		xcall_function(mask, sched_xcall, NULL, 1);
-	}
-
-	return status;
-#endif
+int
+task_yield(void)
+{
+	schedule();
 	return 0;
 }
 
 int
-sys_task_run(id_t id)
+sys_task_yield(void)
 {
-	if (current->uid != 0)
-		return -EPERM;
-	return task_run(id);
+	return task_yield();
 }
-#endif

@@ -13,6 +13,18 @@
  *             is assigned when it is declared.  Work-around by declaring
  *             and assigning on separate lines.
  */
+#define SYSCALL0(name) 						\
+int name(void) {						\
+	int status;						\
+	asm volatile(						\
+		"syscall"					\
+		: "=a" (status)					\
+		: "0" (__NR_##name)				\
+		: "memory", "rcx", "r11", "cc"			\
+	);							\
+	return status;						\
+}
+
 #define SYSCALL1(name, type1) 					\
 int name(type1 arg1) {						\
 	int status;						\
@@ -179,3 +191,5 @@ SYSCALL1(aspace_dump2console, id_t);
  */
 SYSCALL1(task_get_myid, id_t *);
 SYSCALL4(task_create, id_t, const char *, const start_state_t *, id_t *);
+SYSCALL1(task_exit, int);
+SYSCALL0(task_yield);
