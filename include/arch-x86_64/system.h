@@ -260,6 +260,8 @@ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
 	!(flags & (1<<9));		\
 })
 
+#define irqs_enabled() !irqs_disabled()
+
 /* For spinlocks etc */
 #define local_irq_save(x) 	do { warn_if_not_ulong(x); __asm__ __volatile__("# local_irq_save \n\t pushfq ; popq %0 ; cli":"=g" (x): /* no input */ :"memory"); } while (0)
 

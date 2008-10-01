@@ -12,7 +12,7 @@
  *       [IN] cpu_mask: The target CPUs of the cross-call.
  *       [IN] func:     The function to execute on each target CPU.
  *       [IN] info:     Argument to pass to func().
- *       [IN] wait:     1=wait for cross-call to fully complete, 0=don't wait.
+ *       [IN] wait:     true = wait for cross-call to fully complete.
  *
  * Returns:
  *       Success: 0
@@ -31,7 +31,7 @@ xcall_function(
 	cpumask_t	cpu_mask,
 	void		(*func)(void *info),
 	void *		info,
-	int		wait
+	bool		wait
 )
 {
 	BUG_ON(irqs_disabled());

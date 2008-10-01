@@ -13,7 +13,7 @@ struct xcall_data_struct {
 	void *		info;
 	atomic_t	started;
 	atomic_t	finished;
-	int		wait;
+	bool		wait;
 };
 
 /**
@@ -30,7 +30,7 @@ static DEFINE_SPINLOCK(xcall_data_lock);
  *       [IN] cpu_mask: The target CPUs of the cross-call.
  *       [IN] func:     The function to execute on each target CPU.
  *       [IN] info:     Argument to pass to func().
- *       [IN] wait:     1=wait for cross-call to fully complete, 0=don't wait.
+ *       [IN] wait:     true = wait for cross-call to fully complete.
  *
  * Returns:
  *       Success: 0
@@ -41,7 +41,7 @@ arch_xcall_function(
 	cpumask_t	cpu_mask,
 	void		(*func)(void *info),
 	void *		info,
-	int		wait
+	bool		wait
 )
 {
 	struct xcall_data_struct data;

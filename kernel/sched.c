@@ -3,6 +3,7 @@
 #include <lwk/percpu.h>
 #include <lwk/aspace.h>
 #include <lwk/sched.h>
+#include <lwk/xcall.h>
 
 struct run_queue {
 	spinlock_t           lock;
@@ -94,6 +95,37 @@ sched_del_task(struct task_struct *task)
 	spin_unlock_irqrestore(&runq->lock, irqstate);
 }
 
+int
+sched_wakeup_task(struct task_struct *task,
+                  taskstate_t valid_states, id_t *cpu_id)
+{
+	id_t cpu;
+	struct run_queue *runq;
+	int status;
+
+	BUG_ON(irqs_enabled());
+
+repeat_lock_runq:
+	cpu  = task->cpu_id;
+	runq = &per_cpu(run_queue, cpu);
+	spin_lock(&runq->lock);
+	if (cpu != task->cpu_id) {
+		spin_unlock(&runq->lock);
+		goto repeat_lock_runq;
+	}
+	if (task->state & valid_states) {
+		set_mb(task->state, TASKSTATE_READY);
+		status = 0;
+	} else {
+		status = -EINVAL;
+	}
+	spin_unlock(&runq->lock);
+
+	if (!status && cpu_id)
+		*cpu_id = cpu;
+	return status;
+}
+
 static void
 context_switch(struct task_struct *prev, struct task_struct *next)
 {
@@ -124,7 +156,7 @@ schedule(void)
 	struct run_queue *runq = &per_cpu(run_queue, cpu_id());
 	struct task_struct *prev = current, *next = NULL, *task;
 
-	BUG_ON(!irqs_disabled());
+	BUG_ON(irqs_enabled());
 
 	spin_lock(&runq->lock);
 
@@ -163,4 +195,30 @@ schedule_new_task_tail(void)
 {
 	struct run_queue *runq = &per_cpu(run_queue, cpu_id());
 	spin_unlock(&runq->lock);
+}
+
+static void
+schedule_xcall(void *info)
+{
+	schedule();
+}
+
+void
+reschedule_cpus(cpumask_t cpumask)
+{
+	bool contains_me;
+
+	/* Does the mask contain the CPU we're on? */
+	if ((contains_me = cpu_isset(cpu_id(), cpumask)))
+		cpu_clear(cpu_id(), cpumask);
+
+	/* Kick remote CPUs */
+	BUG_ON(irqs_enabled());
+	local_irq_enable();
+	xcall_function(cpumask, schedule_xcall, NULL, false);
+	local_irq_disable();
+
+	/* Kick local CPU */
+	if (contains_me)
+		schedule();
 }

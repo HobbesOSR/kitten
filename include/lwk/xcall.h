@@ -9,7 +9,7 @@ xcall_function(
 	cpumask_t	cpu_mask,
 	void		(*func)(void *info),
 	void *		info,
-	int		wait
+	bool		wait
 );
 
 int
@@ -17,7 +17,7 @@ arch_xcall_function(
 	cpumask_t	cpu_mask,
 	void		(*func)(void *info),
 	void *		info,
-	int		wait
+	bool		wait
 );
 
 #endif
