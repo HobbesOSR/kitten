@@ -55,11 +55,11 @@ __arch_context_switch(struct task_struct *prev_p, struct task_struct *next_p)
 	if (prev_p->arch.flags & TF_USED_FPU)
 		fpu_save_state(prev_p);
 	if (next_p->arch.flags & TF_USED_FPU) {
-		fpu_restore_state(next_p);
 		clts();
+		fpu_restore_state(next_p);
 	} else {
 		/*
-		 * Set the CW flag of CR0 so that FPU/MMX/SSE instructions
+		 * Set the TS flag of CR0 so that FPU/MMX/SSE instructions
 		 * will cause a "Device not available" exception. The exception
 		 * handler will then initialize the FPU state and set the
 		 * task's TF_USED_FPU flag.  From that point on, the task
