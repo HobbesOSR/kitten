@@ -206,19 +206,5 @@ schedule_xcall(void *info)
 void
 reschedule_cpus(cpumask_t cpumask)
 {
-	bool contains_me;
-
-	/* Does the mask contain the CPU we're on? */
-	if ((contains_me = cpu_isset(cpu_id(), cpumask)))
-		cpu_clear(cpu_id(), cpumask);
-
-	/* Kick remote CPUs */
-	BUG_ON(irqs_enabled());
-	local_irq_enable();
 	xcall_function(cpumask, schedule_xcall, NULL, false);
-	local_irq_disable();
-
-	/* Kick local CPU */
-	if (contains_me)
-		schedule();
 }
