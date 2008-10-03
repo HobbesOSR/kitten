@@ -2,6 +2,9 @@
 #include <lwk/smp.h>
 #include <lwk/xcall.h>
 
+/**
+ * Lock used to only allow one CPU at a time to initiate xcalls.
+ */
 static DEFINE_SPINLOCK(xcall_lock);
 
 /**
@@ -63,4 +66,3 @@ xcall_function(
 	spin_unlock(&xcall_lock);
 	return 0;
 }
-
