@@ -68,22 +68,22 @@ start_kernel()
 	 * kernel panic. The normal kernel memory subsystem API should be used
 	 * instead (e.g., kmem_alloc() and kmem_free()).
 	 */
-	memsys_init();
+	mem_subsys_init();
 
 	/*
  	 * Initialize the address space management subsystem.
  	 */
-	aspace_init();
+	aspace_subsys_init();
 
 	/*
  	 * Initialize the task management subsystem.
  	 */
-	task_init();
+	task_subsys_init();
 
 	/*
  	 * Initialize the task scheduling subsystem.
  	 */
-	sched_init();
+	sched_subsys_init();
 
 	/*
 	 * Boot all of the other CPUs in the system, one at a time.

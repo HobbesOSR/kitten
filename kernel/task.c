@@ -21,8 +21,8 @@ static htable_t htable;
  */
 static DEFINE_SPINLOCK(htable_lock);
 
-int
-task_init(void)
+int __init
+task_subsys_init(void)
 {
 	if (idspace_create(__TASK_MIN_ID, __TASK_MAX_ID, &idspace))
 		panic("Failed to create task ID space.");

@@ -71,6 +71,7 @@ extern int aspace_dump2console(id_t id);
 
 #include <lwk/spinlock.h>
 #include <lwk/list.h>
+#include <lwk/init.h>
 #include <arch/aspace.h>
 
 /**
@@ -160,7 +161,7 @@ extern int __aspace_unsmartmap(struct aspace *src, struct aspace *dst);
  * Kernel-only address space management API.
  * These are not accessible from user-space.
  */
-extern int aspace_init(void);
+extern int __init aspace_subsys_init(void);
 extern struct aspace *aspace_acquire(id_t id);
 extern void aspace_release(struct aspace *aspace);
 

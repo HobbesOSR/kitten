@@ -60,6 +60,7 @@ extern int task_yield(void);
 #ifdef __KERNEL__
 
 #include <lwk/types.h>
+#include <lwk/init.h>
 #include <lwk/spinlock.h>
 #include <lwk/list.h>
 #include <lwk/seqlock.h>
@@ -163,7 +164,7 @@ is_init(struct task_struct *tsk)
 #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
 #define used_math() tsk_used_math(current)
 
-extern int task_init(void);
+extern int __init task_subsys_init(void);
 
 extern int arch_task_create(struct task_struct *task,
                             const start_state_t *start_state);

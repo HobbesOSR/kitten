@@ -24,8 +24,8 @@ idle_task_loop(void) {
 	}
 }
 
-int
-sched_init(void)
+int __init
+sched_subsys_init(void)
 {
 	id_t cpu_id;
 	struct run_queue *runq;

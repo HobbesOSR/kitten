@@ -147,8 +147,8 @@ id_ok(id_t id)
 	return ((id >= ASPACE_MIN_ID) && (id <= ASPACE_MAX_ID));
 }
 
-int
-aspace_init(void)
+int __init
+aspace_subsys_init(void)
 {
 	int status;
 

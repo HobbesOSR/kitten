@@ -551,7 +551,7 @@ alloc_bootmem_aligned(unsigned long size, unsigned long align)
  * Initializes the kernel memory subsystem.
  */
 void __init
-memsys_init(void)
+mem_subsys_init(void)
 {
 	/* We like powers of two */
 	if (!is_power_of_2(kmem_size)) {
