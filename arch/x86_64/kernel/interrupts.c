@@ -184,8 +184,7 @@ do_simd_coprocessor_error(struct pt_regs *regs, unsigned int vector)
 void
 do_apic_timer(struct pt_regs *regs, unsigned int vector)
 {
-	lapic_ack_interrupt();
-	schedule();
+	// expire timers
 }
 
 void

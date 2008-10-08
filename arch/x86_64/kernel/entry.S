@@ -26,6 +26,8 @@
  *     struct task_struct *arch_context_switch(struct task_struct *prev,
  *                                             struct task_struct *next);
  *     arch_context_switch() returns prev
+ *
+ * NOTE: External interrupts are disabled on entry.
  */
 ENTRY(arch_context_switch)
 	/* Save prev's callee saved registers (others saved by caller) */
@@ -162,6 +164,7 @@ ENTRY(asm_syscall)
 	movq %r9,   2*8(%rsp)		/* Save user-space R9  (ARG5)        */
 	movq %r10,  1*8(%rsp)		/* Save user-space R10 (ARG3)        */
 	movq %r11,     (%rsp)		/* Save user-space RFLAGS            */
+	sti				/* Enable external interrupts        */
 
 	/*
 	 * Call the system call handler
@@ -176,9 +179,13 @@ ENTRY(asm_syscall)
 2:
 	movq %rax, 4*8(%rsp)		/* Save return code in stack frame   */
 
+	/* Reschedule, since we're returning to user space */
+	call schedule
+
 	/*
 	 * Return to user-space
 	 */
+	cli				/* Disable external interrupts       */
 	movq     (%rsp), %r11		/* Restore RFLAGS for SYSRET         */
 	movq  1*8(%rsp), %r10		/* Restore user-space R10 (ARG3)     */
 	movq  2*8(%rsp), %r9		/* Restore user-space R9  (ARG5)     */
@@ -274,13 +281,18 @@ ENTRY(asm_interrupt)
 	 * Call C code interrupt handler entry point
 	 */
 	movq %rsp, %rdi			/* ARG0: pointer to 'struct pt_regs' */
+	sti				/* Enable external interrupts        */
 	call do_interrupt		/* Call common C handler             */
+	cli				/* Disable external interrupts       */
 
 	/*
-	 * If returning to user-space, restore user-space GS
+	 * If returning to user-space, reschedule and restore user-space GS
 	 */
 	testl $3, CS(%rsp)		/* Sets ZF=1 if returning to kspace  */
-	je 2f				/* If ZF=1, leave PDA in place       */
+	je 2f				/* If ZF=1, jump forward to 2: below */
+	sti				/* Enable external interrupts        */
+	call schedule			/* Reschedule                        */
+	cli				/* Disable external interrupts       */
 	swapgs				/* Restore uspace GS register        */
 2:
 	/*

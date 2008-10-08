@@ -16,9 +16,6 @@ static DEFINE_PER_CPU(struct run_queue, run_queue);
 
 static void
 idle_task_loop(void) {
-	/* The (kernel-level) idle task runs with interrutps enabled,
-	 * just like user-level tasks. */
-	local_irq_enable();
 	while (1) {
 		arch_idle_task_loop_body();
 	}
@@ -102,15 +99,15 @@ sched_wakeup_task(struct task_struct *task,
 	id_t cpu;
 	struct run_queue *runq;
 	int status;
+	unsigned long irqstate;
 
-	BUG_ON(irqs_enabled());
-
+	/* Protect against the task being migrated to a different CPU */
 repeat_lock_runq:
 	cpu  = task->cpu_id;
 	runq = &per_cpu(run_queue, cpu);
-	spin_lock(&runq->lock);
+	spin_lock_irqsave(&runq->lock, irqstate);
 	if (cpu != task->cpu_id) {
-		spin_unlock(&runq->lock);
+		spin_unlock_irqrestore(&runq->lock, irqstate);
 		goto repeat_lock_runq;
 	}
 	if (task->state & valid_states) {
@@ -119,9 +116,9 @@ repeat_lock_runq:
 	} else {
 		status = -EINVAL;
 	}
-	spin_unlock(&runq->lock);
+	spin_unlock_irqrestore(&runq->lock, irqstate);
 
-	if (!status && cpu_id)
+	if (cpu_id)
 		*cpu_id = cpu;
 	return status;
 }
@@ -156,9 +153,7 @@ schedule(void)
 	struct run_queue *runq = &per_cpu(run_queue, cpu_id());
 	struct task_struct *prev = current, *next = NULL, *task;
 
-	BUG_ON(irqs_enabled());
-
-	spin_lock(&runq->lock);
+	spin_lock_irq(&runq->lock);
 
 	/* Move the currently running task to the end of the run queue */
 	if (!list_empty(&prev->sched_link)) {
@@ -183,18 +178,21 @@ schedule(void)
 	if (prev != next) {
 		context_switch(prev, next);
 		/* next is now running, since it may have changed CPUs while
-		 * it was sleeping, we need to refresh local variables. */
+		 * it was sleeping, we need to refresh local variables */
 		runq = &per_cpu(run_queue, cpu_id());
 	}
 
-	spin_unlock(&runq->lock);
+	spin_unlock_irq(&runq->lock);
 }
 
 void
 schedule_new_task_tail(void)
 {
 	struct run_queue *runq = &per_cpu(run_queue, cpu_id());
-	spin_unlock(&runq->lock);
+	BUG_ON(irqs_enabled());
+	spin_unlock(&runq->lock);  /* keep IRQs disabled, arch code will
+	                            * re-enable IRQs as part of starting
+	                            * the new task */
 }
 
 static void
