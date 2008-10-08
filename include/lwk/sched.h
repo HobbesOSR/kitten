@@ -8,9 +8,8 @@ extern int __init sched_subsys_init(void);
 extern void sched_add_task(struct task_struct *task);
 extern void sched_del_task(struct task_struct *task);
 extern int sched_wakeup_task(struct task_struct *task,
-                             taskstate_t valid_states, id_t *cpu_id);
+                             taskstate_t valid_states);
 extern void schedule(void); 
-extern void reschedule_cpus(cpumask_t cpumask);
 
 extern struct task_struct *arch_context_switch(struct task_struct *prev,
                                                struct task_struct *next);

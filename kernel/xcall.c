@@ -38,7 +38,7 @@ xcall_function(
 	bool contains_me;
 	int status;
 
-	BUG_ON(irqs_enabled());
+	BUG_ON(irqs_disabled());
 	BUG_ON(!func);
 
 	/* Spin with IRQs enabled */
@@ -55,7 +55,7 @@ xcall_function(
 
 	/* Perform xcall to remote CPUs */
 	if ((status = arch_xcall_function(cpu_mask, func, info, wait))) {
-		spin_unlock(&xcall_lock);
+		spin_unlock_irq(&xcall_lock);
 		return status;
 	}
 
@@ -63,6 +63,22 @@ xcall_function(
 	if (contains_me)
 		(*func)(info);
 
-	spin_unlock(&xcall_lock);
+	spin_unlock_irq(&xcall_lock);
 	return 0;
+}
+
+/**
+ * Sends a reschedule inter-processor interrupt to the target CPU.
+ * This causes the target CPU to call schedule().
+ *
+ * NOTE: It is safe to call this with locks held and interrupts
+ *       disabled so long as the caller will drop the locks and
+ *       re-enable interrupts "soon", independent of whether the
+ *       target actually receives the reschedule interrupt. 
+ *       Deadlock may occur if these conditions aren't met.
+ */
+void
+xcall_reschedule(id_t cpu)
+{
+	arch_xcall_reschedule(cpu);
 }

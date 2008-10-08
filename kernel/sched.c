@@ -69,14 +69,18 @@ sched_subsys_init(void)
 void
 sched_add_task(struct task_struct *task)
 {
+	id_t cpu = task->cpu_id;
 	struct run_queue *runq;
 	unsigned long irqstate;
 
-	runq = &per_cpu(run_queue, task->cpu_id);
+	runq = &per_cpu(run_queue, cpu);
 	spin_lock_irqsave(&runq->lock, irqstate);
 	list_add_tail(&task->sched_link, &runq->task_list);
 	++runq->num_tasks;
 	spin_unlock_irqrestore(&runq->lock, irqstate);
+
+	if (cpu != this_cpu)
+		xcall_reschedule(cpu);
 }
 
 void
@@ -93,8 +97,7 @@ sched_del_task(struct task_struct *task)
 }
 
 int
-sched_wakeup_task(struct task_struct *task,
-                  taskstate_t valid_states, id_t *cpu_id)
+sched_wakeup_task(struct task_struct *task, taskstate_t valid_states)
 {
 	id_t cpu;
 	struct run_queue *runq;
@@ -118,8 +121,9 @@ repeat_lock_runq:
 	}
 	spin_unlock_irqrestore(&runq->lock, irqstate);
 
-	if (cpu_id)
-		*cpu_id = cpu;
+	if (!status && (cpu != this_cpu))
+		xcall_reschedule(cpu);
+
 	return status;
 }
 
@@ -150,7 +154,7 @@ context_switch(struct task_struct *prev, struct task_struct *next)
 void
 schedule(void)
 {
-	struct run_queue *runq = &per_cpu(run_queue, cpu_id());
+	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
 	struct task_struct *prev = current, *next = NULL, *task;
 
 	spin_lock_irq(&runq->lock);
@@ -179,7 +183,7 @@ schedule(void)
 		context_switch(prev, next);
 		/* next is now running, since it may have changed CPUs while
 		 * it was sleeping, we need to refresh local variables */
-		runq = &per_cpu(run_queue, cpu_id());
+		runq = &per_cpu(run_queue, this_cpu);
 	}
 
 	spin_unlock_irq(&runq->lock);
@@ -188,21 +192,9 @@ schedule(void)
 void
 schedule_new_task_tail(void)
 {
-	struct run_queue *runq = &per_cpu(run_queue, cpu_id());
+	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
 	BUG_ON(irqs_enabled());
 	spin_unlock(&runq->lock);  /* keep IRQs disabled, arch code will
 	                            * re-enable IRQs as part of starting
 	                            * the new task */
-}
-
-static void
-schedule_xcall(void *info)
-{
-	schedule();
-}
-
-void
-reschedule_cpus(cpumask_t cpumask)
-{
-	xcall_function(cpumask, schedule_xcall, NULL, false);
 }

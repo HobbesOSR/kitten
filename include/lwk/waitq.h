@@ -41,16 +41,17 @@ extern void waitq_wakeup(waitq_t *waitq);
  * This must be a macro because condition is tested repeatedly, not just
  * when wait_event() is first called.
  */
-#define wait_event(waitq, condition)                                           \
-do {                                                                           \
-	DECLARE_WAITQ_ENTRY(__entry, current);                                 \
-	for (;;) {                                                             \
-		prepare_to_wait(&waitq, &__entry, TASKSTATE_UNINTERRUPTIBLE);  \
-		if (condition)                                                 \
-			break;                                                 \
-		schedule();                                                    \
-	}                                                                      \
-	finish_wait(&waitq, &__entry);                                         \
+#define wait_event(waitq, condition)                               \
+do {                                                               \
+	DECLARE_WAITQ_ENTRY(__entry, current);                     \
+	for (;;) {                                                 \
+		waitq_prepare_to_wait(&waitq, &__entry,            \
+		                      TASKSTATE_UNINTERRUPTIBLE);  \
+		if (condition)                                     \
+			break;                                     \
+		schedule();                                        \
+	}                                                          \
+	waitq_finish_wait(&waitq, &__entry);                       \
 } while (0)
 
 #endif

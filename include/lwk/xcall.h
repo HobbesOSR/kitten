@@ -2,6 +2,7 @@
 #define _LWK_XCALL_H
 
 #include <lwk/cpumask.h>
+#include <lwk/idspace.h>
 #include <arch/xcall.h>
 
 int
@@ -18,6 +19,16 @@ arch_xcall_function(
 	void		(*func)(void *info),
 	void *		info,
 	bool		wait
+);
+
+void
+xcall_reschedule(
+	id_t		cpu
+);
+
+void
+arch_xcall_reschedule(
+	id_t		cpu
 );
 
 #endif

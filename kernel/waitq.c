@@ -19,7 +19,14 @@ waitq_init_entry(waitq_entry_t *entry, struct task_struct *task)
 bool
 waitq_active(waitq_t *waitq)
 {
-	return !list_empty(&waitq->waitq);
+	bool active;
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&waitq->lock, irqstate);
+	active = !list_empty(&waitq->waitq);
+	spin_unlock_irqrestore(&waitq->lock, irqstate);
+
+	return active;
 }
 
 void
@@ -28,6 +35,7 @@ waitq_add_entry(waitq_t *waitq, waitq_entry_t *entry)
 	unsigned long irqstate;
 
 	spin_lock_irqsave(&waitq->lock, irqstate);
+	BUG_ON(!list_empty(&entry->link));
 	list_add(&entry->link, &waitq->waitq);
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
@@ -38,6 +46,7 @@ waitq_remove_entry(waitq_t *waitq, waitq_entry_t *entry)
 	unsigned long irqstate;
 
 	spin_lock_irqsave(&waitq->lock, irqstate);
+	BUG_ON(list_empty(&entry->link));
 	list_del_init(&entry->link);
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
@@ -64,27 +73,17 @@ waitq_finish_wait(waitq_t *waitq, waitq_entry_t *entry)
 void
 waitq_wakeup(waitq_t *waitq)
 {
-	int status;
 	unsigned long irqstate;
 	struct list_head *tmp;
 	waitq_entry_t *entry;
-	id_t cpu_id;
-	cpumask_t cpumask;
-
-	cpus_clear(cpumask);
 
 	spin_lock_irqsave(&waitq->lock, irqstate);
 	list_for_each(tmp, &waitq->waitq) {
-		entry = list_entry(tmp, waitq_entry_t, link);
-		status = sched_wakeup_task(
+		entry  = list_entry(tmp, waitq_entry_t, link);
+		sched_wakeup_task(
 			entry->task,
-			(TASKSTATE_UNINTERRUPTIBLE | TASKSTATE_INTERRUPTIBLE),
-			&cpu_id
+			(TASKSTATE_UNINTERRUPTIBLE | TASKSTATE_INTERRUPTIBLE)
 		);
-		if (status == 0)
-			cpu_set(cpu_id, cpumask);
 	}
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
-
-	reschedule_cpus(cpumask);
 }

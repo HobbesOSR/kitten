@@ -109,3 +109,24 @@ arch_xcall_function_interrupt(struct pt_regs *regs, unsigned int vector)
 	}
 }
 
+/**
+ * Sends a reschedule inter-processor interrupt to the target CPU.
+ * This causes the target CPU to call schedule().
+ */
+void
+arch_xcall_reschedule(id_t cpu)
+{
+	lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
+}
+
+/**
+ * The interrupt handler for inter-CPU reschedule calls.
+ */
+void
+arch_xcall_reschedule_interrupt(struct pt_regs *regs, unsigned int vector)
+{
+	/*
+	 * Nothing to do, schedule() will be automatically
+	 * called before returning to user-space
+	 */
+}

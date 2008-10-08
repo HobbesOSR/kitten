@@ -76,6 +76,7 @@ void smp_prepare_boot_cpu(void);
  * Returns the current CPU's logical ID.
  */
 #define cpu_id() smp_processor_id()
+#define this_cpu smp_processor_id()
 
 void __init arch_boot_cpu(unsigned int cpu);
 void __init cpu_init(void);
