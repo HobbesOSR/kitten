@@ -11,6 +11,7 @@
 #include <lwk/aspace.h>
 #include <lwk/task.h>
 #include <lwk/sched.h>
+#include <lwk/timer.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -84,6 +85,11 @@ start_kernel()
  	 * Initialize the task scheduling subsystem.
  	 */
 	sched_subsys_init();
+
+	/*
+ 	 * Initialize the task scheduling subsystem.
+ 	 */
+	timer_subsys_init();
 
 	/*
 	 * Boot all of the other CPUs in the system, one at a time.

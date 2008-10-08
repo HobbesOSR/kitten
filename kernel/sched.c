@@ -18,6 +18,7 @@ static void
 idle_task_loop(void) {
 	while (1) {
 		arch_idle_task_loop_body();
+		schedule();
 	}
 }
 

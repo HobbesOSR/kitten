@@ -3,6 +3,7 @@
 #include <lwk/kallsyms.h>
 #include <lwk/task.h>
 #include <lwk/sched.h>
+#include <lwk/timer.h>
 #include <arch/desc.h>
 #include <arch/idt_vectors.h>
 #include <arch/show.h>
@@ -184,7 +185,7 @@ do_simd_coprocessor_error(struct pt_regs *regs, unsigned int vector)
 void
 do_apic_timer(struct pt_regs *regs, unsigned int vector)
 {
-	// expire timers
+	expire_timers();
 }
 
 void

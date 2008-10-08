@@ -33,7 +33,7 @@ arch_task_create(struct task_struct *task,
 	if (start_state->aspace_id == KERNEL_ASPACE_ID) {
 		regs->ss     = __KERNEL_DS;
 		regs->rsp    = (vaddr_t)task + TASK_SIZE;
-		regs->eflags = 0;
+		regs->eflags = (1 << 9);  /* enable interrupts */
 		regs->cs     = __KERNEL_CS;
 	} else {
 		regs->ss     = __USER_DS;

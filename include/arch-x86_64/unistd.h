@@ -86,7 +86,7 @@ __SYSCALL(__NR_dup2, syscall_not_implemented)
 #define __NR_pause                              34
 __SYSCALL(__NR_pause, syscall_not_implemented)
 #define __NR_nanosleep                          35
-__SYSCALL(__NR_nanosleep, syscall_not_implemented)
+__SYSCALL(__NR_nanosleep, sys_nanosleep)
 #define __NR_getitimer                          36
 __SYSCALL(__NR_getitimer, syscall_not_implemented)
 #define __NR_alarm                              37

@@ -19,10 +19,18 @@ struct timezone {
 	int		tz_dsttime;	/* type of dst correction */
 };
 
+struct timespec {
+	time_t		tv_sec;		/* seconds */
+	long		tv_nsec;	/* nanoseconds */
+};
+
 void __init time_init(void);
 void init_cycles2ns(uint32_t khz);
 uint64_t cycles2ns(uint64_t cycles);
 uint64_t get_time(void);
 void set_time(uint64_t ns);
+
+#define timespec_is_valid(ts) \
+(((ts)->tv_sec >= 0) && (((unsigned long)(ts)->tv_nsec) < NSEC_PER_SEC))
 
 #endif
