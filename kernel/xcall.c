@@ -40,8 +40,8 @@ xcall_function(
 	cpus_and(cpu_mask, cpu_mask, cpu_online_map);
 
 	/* No need to xcall ourself... we'll just call func() directly */
-	if ((contains_me = cpu_isset(cpu_id(), cpu_mask)))
-		cpu_clear(cpu_id(), cpu_mask);
+	if ((contains_me = cpu_isset(this_cpu, cpu_mask)))
+		cpu_clear(this_cpu, cpu_mask);
 
 	/* Perform xcall to remote CPUs */
 	if ((status = arch_xcall_function(cpu_mask, func, info, wait)))

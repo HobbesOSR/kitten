@@ -263,7 +263,7 @@ void __init
 identify_cpu(void)
 {
 	int i;
-	struct cpuinfo *c = &cpu_info[cpu_id()];
+	struct cpuinfo *c = &cpu_info[this_cpu];
 	struct arch_cpuinfo *a = &c->arch;
 
 	early_identify_cpu(c);

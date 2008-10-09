@@ -111,7 +111,7 @@ cr4_init(void)
 static void __init
 gdt_init(void)
 {
-	unsigned int cpu = cpu_id();
+	unsigned int cpu = this_cpu;
 
 	/* The bootstrap CPU's GDT has already been setup */
 	if (cpu != 0)
@@ -149,7 +149,7 @@ idt_init(void)
 static void __init
 tss_init(void)
 {
-	unsigned int       cpu  = cpu_id();
+	unsigned int       cpu  = this_cpu;
 	struct tss_struct  *tss = &per_cpu(tss, cpu);
 	int i;
 

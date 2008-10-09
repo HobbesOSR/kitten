@@ -85,8 +85,8 @@ crayxt_detect_cpu_freq(void)
 {
 	unsigned int MHz = 200;
 	unsigned int lower, upper;
-	int amd_family = cpu_info[cpu_id()].arch.x86_family;
-	int amd_model  = cpu_info[cpu_id()].arch.x86_model;
+	int amd_family = cpu_info[this_cpu].arch.x86_family;
+	int amd_model  = cpu_info[this_cpu].arch.x86_model;
 
 	if (amd_family == 16) {
 		unsigned int fid; /* current frequency id */
@@ -160,26 +160,26 @@ time_init(void)
 	#error "In time_init(), unknown system architecture."
 #endif
 
-	cpu_info[cpu_id()].arch.cur_cpu_khz = cpu_khz;
-	cpu_info[cpu_id()].arch.max_cpu_khz = cpu_khz;
-	cpu_info[cpu_id()].arch.min_cpu_khz = cpu_khz;
-	cpu_info[cpu_id()].arch.tsc_khz     = cpu_khz;
+	cpu_info[this_cpu].arch.cur_cpu_khz = cpu_khz;
+	cpu_info[this_cpu].arch.max_cpu_khz = cpu_khz;
+	cpu_info[this_cpu].arch.min_cpu_khz = cpu_khz;
+	cpu_info[this_cpu].arch.tsc_khz     = cpu_khz;
 
 	init_cycles2ns(cpu_khz);
 
 	/*
 	 * Detect the Local APIC timer's base clock frequency
 	 */
-	if (cpu_id() == 0) {
+	if (this_cpu == 0) {
 		lapic_khz = lapic_calibrate_timer();
 	} else {
 		lapic_khz = cpu_info[0].arch.lapic_khz;
 	}
 
-	cpu_info[cpu_id()].arch.lapic_khz   = lapic_khz;
+	cpu_info[this_cpu].arch.lapic_khz   = lapic_khz;
 
 	printk(KERN_DEBUG "CPU %u: %u.%03u MHz, LAPIC bus %u.%03u MHz\n",
-		cpu_id(),
+		this_cpu,
 		cpu_khz / 1000, cpu_khz % 1000,
 		lapic_khz / 1000, lapic_khz % 1000
 	);

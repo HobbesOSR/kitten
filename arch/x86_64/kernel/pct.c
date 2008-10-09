@@ -148,7 +148,7 @@ arch_create_init_task(void)
 	start_state.aspace_id   = aspace_id;
 	start_state.entry_point = entry_point;
 	start_state.stack_ptr   = stack_ptr;
-	start_state.cpu_id      = cpu_id();
+	start_state.cpu_id      = this_cpu;
 	start_state.cpumask     = NULL;
 
 	if (__task_create(INIT_TASK_ID, "init_task", &start_state, &init_task))

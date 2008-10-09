@@ -28,7 +28,7 @@ void __init
 start_secondary(void)
 {
 	cpu_init();
-	cpu_set(cpu_id(), cpu_online_map);
+	cpu_set(this_cpu, cpu_online_map);
 	schedule(); /* runs idle_task, since that's the only task
 	             * on the CPU's run queue at this point */
 }

@@ -8,7 +8,7 @@ __arch_context_switch(struct task_struct *prev_p, struct task_struct *next_p)
 {
 	struct thread_struct *prev = &prev_p->arch.thread;
 	struct thread_struct *next = &next_p->arch.thread;
-	id_t cpu = cpu_id();
+	id_t cpu = this_cpu;
 	struct tss_struct *tss = &per_cpu(tss, cpu);
 
 	/* Update TSS */

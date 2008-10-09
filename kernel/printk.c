@@ -17,7 +17,7 @@ int printk(const char *fmt, ...)
 	*p = '\0';
 
 	/* Tack on the logical CPU ID */
-	len = sprintf(p, "[%u]:", cpu_id());
+	len = sprintf(p, "[%u]:", this_cpu);
 	p      += len;
 	remain -= len;
 

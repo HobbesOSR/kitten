@@ -126,7 +126,7 @@ lapic_init(void)
 	apic_write(APIC_LVT1, 0
 	             | APIC_DM_NMI         /* treat as non-maskable interrupt */
 	                                   /* NMIs are routed to IDT vector 2 */
-	             | ((cpu_id() != 0)
+	             | ((this_cpu != 0)
 	                 ? APIC_LVT_MASKED /* mask on all but bootstrap CPU */
 	                 : 0)              /* bootstrap CPU (0) receives NMIs */
 	);
@@ -201,7 +201,7 @@ lapic_calibrate_timer(void)
 	          ((apic_start - apic_now)  < tick_count) );
 
 	apic_Hz = (apic_start - apic_now) * 1000L *
-	          cpu_info[cpu_id()].arch.tsc_khz / (tsc_now - tsc_start);
+	          cpu_info[this_cpu].arch.tsc_khz / (tsc_now - tsc_start);
 
 	lapic_stop_timer();
 
@@ -370,7 +370,7 @@ lapic_dump(void)
 {
 	char buf[128];
 
-	printk(KERN_DEBUG "LOCAL APIC DUMP (LOGICAL CPU #%d):\n", cpu_id());
+	printk(KERN_DEBUG "LOCAL APIC DUMP (LOGICAL CPU #%d):\n", this_cpu);
 
 	/*
  	 * Lead off with the important stuff...
