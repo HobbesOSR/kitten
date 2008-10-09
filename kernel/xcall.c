@@ -3,11 +3,6 @@
 #include <lwk/xcall.h>
 
 /**
- * Lock used to only allow one CPU at a time to initiate xcalls.
- */
-static DEFINE_SPINLOCK(xcall_lock);
-
-/**
  * Carries out an inter-CPU function call. The specified function is executed
  * on all of the target CPUs that are currently online and executes in 
  * interrupt context with interrupts disabled... it must not block and should
@@ -41,11 +36,6 @@ xcall_function(
 	BUG_ON(irqs_disabled());
 	BUG_ON(!func);
 
-	/* Spin with IRQs enabled */
-	while (!spin_trylock_irq(&xcall_lock))
-		;
-	/* IRQs disabled, no other CPUs within xcall_function() */
-
 	/* Only target online CPUs */
 	cpus_and(cpu_mask, cpu_mask, cpu_online_map);
 
@@ -54,16 +44,13 @@ xcall_function(
 		cpu_clear(cpu_id(), cpu_mask);
 
 	/* Perform xcall to remote CPUs */
-	if ((status = arch_xcall_function(cpu_mask, func, info, wait))) {
-		spin_unlock_irq(&xcall_lock);
+	if ((status = arch_xcall_function(cpu_mask, func, info, wait)))
 		return status;
-	}
 
 	/* Call func() on the local CPU, if it was in cpu_mask */
 	if (contains_me)
 		(*func)(info);
 
-	spin_unlock_irq(&xcall_lock);
 	return 0;
 }
 

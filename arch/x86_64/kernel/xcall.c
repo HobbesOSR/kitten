@@ -47,7 +47,8 @@ arch_xcall_function(
 	struct xcall_data_struct data;
 	unsigned int num_cpus;
 	unsigned int cpu;
-	unsigned long irqstate;
+
+	BUG_ON(irqs_disabled());
 
 	/* Count how many CPUs are being targeted */
 	num_cpus = cpus_weight(cpu_mask);
@@ -62,8 +63,12 @@ arch_xcall_function(
 		atomic_set(&data.finished, 0);
 	data.wait = wait;
 
+	/* Spin with IRQs enabled */
+	while (!spin_trylock_irq(&xcall_data_lock))
+		;
+	/* IRQs are now disabled */
+
 	/* Set the global xcall data pointer */
-	spin_lock_irqsave(&xcall_data_lock, irqstate);
 	xcall_data = &data;
 	wmb();
 
@@ -80,7 +85,7 @@ arch_xcall_function(
 		while (atomic_read(&data.finished) != num_cpus)
 			cpu_relax();
 	}
-	spin_unlock_irqrestore(&xcall_data_lock, irqstate);
+	spin_unlock_irq(&xcall_data_lock);
 
 	return 0;
 }
