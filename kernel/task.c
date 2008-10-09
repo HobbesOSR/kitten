@@ -223,7 +223,10 @@ sys_task_exit(int status)
 int
 task_yield(void)
 {
-	schedule();
+	/*
+	 * Nothing to do, schedule() will be automatically
+	 * called before returning to user-space
+	 */
 	return 0;
 }
 

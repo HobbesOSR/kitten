@@ -63,7 +63,7 @@ __SYSCALL(__NR_pipe, syscall_not_implemented)
 __SYSCALL(__NR_select, syscall_not_implemented)
 
 #define __NR_sched_yield                        24
-__SYSCALL(__NR_sched_yield, sys_task_yield)
+__SYSCALL(__NR_sched_yield, sys_sched_yield)
 #define __NR_mremap                             25
 __SYSCALL(__NR_mremap, syscall_not_implemented)
 #define __NR_msync                              26
