@@ -103,7 +103,6 @@ arch_create_init_task(void)
 	id_t aspace_id;
 	start_state_t start_state;
 	vaddr_t entry_point, stack_ptr;
-	struct task_struct *init_task;
 
 	if (init_str_array(MAX_NUM_STRS-1, argv+1, pct_argv_str))
 		panic("Too many ARGV strings for init_task.");
@@ -151,9 +150,8 @@ arch_create_init_task(void)
 	start_state.cpu_id      = this_cpu;
 	start_state.cpumask     = NULL;
 
-	if (__task_create(INIT_TASK_ID, "init_task", &start_state, &init_task))
+	if (task_create(INIT_TASK_ID, "init_task", &start_state, NULL))
 		panic("Failed to create init_task.");
 
-	sched_add_task(init_task);
 	return 0;
 }
