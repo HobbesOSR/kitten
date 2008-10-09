@@ -100,7 +100,7 @@ arch_create_init_task(void)
 	char *argv[MAX_NUM_STRS] = { "init_task" };
 	char *envp[MAX_NUM_STRS];
 	void *init_task_elf_image = __va(initrd_start);
-	id_t aspace_id;
+	id_t aspace_id, task_id;
 	start_state_t start_state;
 	vaddr_t entry_point, stack_ptr;
 
@@ -150,7 +150,7 @@ arch_create_init_task(void)
 	start_state.cpu_id      = this_cpu;
 	start_state.cpumask     = NULL;
 
-	if (task_create(INIT_TASK_ID, "init_task", &start_state, NULL))
+	if (task_create(INIT_TASK_ID, "init_task", &start_state, &task_id))
 		panic("Failed to create init_task.");
 
 	return 0;
