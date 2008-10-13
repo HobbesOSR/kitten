@@ -396,48 +396,8 @@ static inline void arch_write_notes(struct file *file) { }
 #define ELF_CORE_WRITE_EXTRA_NOTES arch_write_notes(file)
 #endif /* ARCH_HAVE_EXTRA_ELF_NOTES */
 
-#ifdef __KERNEL__
-int
-elf_load_executable(
-	struct aspace *      aspace,
-	void *		     elf_image,
-	unsigned long	     heap_size,
-	void * (*alloc_mem)(size_t size, size_t alignment),
-	vaddr_t *entry_point
-);
-int
-setup_initial_stack(
-	struct aspace *      aspace,
-	void *		     elf_image,
-	unsigned long        stack_size,
-	void * (*alloc_mem)(size_t size, size_t alignment),
-	char *               argv[],
-	char *               envp[],
-	uid_t uid,
-	gid_t gid,
-	vaddr_t *stack_ptr
-);
-#if 0
-extern int
-elf_load_executable(
-	struct task_struct * task,
-	void *               elf_image,
-	unsigned long        heap_size,
-	void * (*alloc_mem)(size_t size, size_t alignment)
-);
-
-extern int
-setup_initial_stack(
-	struct task_struct * task,
-	void *               elf_image,
-	unsigned long        stack_size,
-	void * (*alloc_mem)(size_t size, size_t alignment),
-	char *               argv[],
-	char *               envp[]
-);
-#endif
-#endif
-
+#include <lwk/types.h>
+#include <lwk/idspace.h>
 #include <lwk/aspace.h>
 
 int elf_check_hdr(const struct elfhdr *hdr);
@@ -447,5 +407,29 @@ vmflags_t elf_pflags_to_vmflags(unsigned int elf_flags);
 vaddr_t elf_entry_point(const void *elf_image);
 vaddr_t elf_phdr_table_addr(const void *elf_image);
 unsigned int elf_num_phdrs(const void *elf_image);
+vaddr_t elf_heap_start(const void *elf_image);
+
+int
+elf_init_stack(
+	void *    elf_image,
+	void *    stack_mapping,
+	vaddr_t   stack_start,
+	size_t    stack_extent,
+	char *    argv[],
+	char *    envp[],
+	uid_t     uid,
+	gid_t     gid,
+	vaddr_t * stack_ptr
+);
+
+int
+elf_load_executable(
+	void *       elf_image,
+	paddr_t      elf_image_paddr,
+	id_t         aspace_id,
+	void *       aspace_mapping,
+	vmpagesize_t pagesz,
+	int (*alloc_pmem)(size_t size, size_t alignment, paddr_t *paddr)
+);
 
 #endif /* _LWK_ELF_H */

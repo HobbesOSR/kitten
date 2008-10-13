@@ -3,6 +3,10 @@
 
 /* We don't want strings.h stuff being used by user stuff by accident */
 
+#ifndef __KERNEL__
+#include <string.h>
+#endif
+
 #ifdef __KERNEL__
 
 #include <lwk/compiler.h>	/* for inline */

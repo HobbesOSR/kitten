@@ -1,7 +1,6 @@
 #ifndef _LWK_AUXVEC_H
 #define _LWK_AUXVEC_H
 
-#ifdef __KERNEL__
 /**
  * Auxiliary info table entry.  A table of these entries gets placed at the
  * top of a new task's stack so user-space can figure out things that are
@@ -12,7 +11,6 @@ struct aux_ent {
 	unsigned long id;
 	unsigned long val;
 };
-#endif
 
 #include <arch/auxvec.h>
 

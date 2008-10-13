@@ -43,6 +43,22 @@ typedef struct user_i387_struct elf_fpregset_t;
 #define ELF_DATA	ELFDATA2LSB
 #define ELF_ARCH	EM_X86_64
 
+/* I'm not sure if we can use '-' here */
+#define ELF_PLATFORM  ("x86_64")
+
+#define ELF_EXEC_PAGESIZE	4096
+
+/* This yields a mask that user programs can use to figure out what
+   instruction set this CPU supports.  This could be done in user space,
+   but it's not easy, and we've already done it here.  */
+
+#ifdef __KERNEL__
+#include <lwk/cpuinfo.h>
+#define ELF_HWCAP	(boot_cpu_data.arch.x86_capability[0])
+#else
+#define ELF_HWCAP 0
+#endif
+
 #ifdef __KERNEL__
 #include <arch/processor.h>
 
@@ -83,7 +99,6 @@ typedef struct user_i387_struct elf_fpregset_t;
 } while (0)
 
 #define USE_ELF_CORE_DUMP
-#define ELF_EXEC_PAGESIZE	4096
 
 /* This is the location that an ET_DYN program is loaded if exec'ed.  Typical
    use of this is to invoke "./ld.so someprog" to test out a new version of
@@ -127,21 +142,12 @@ typedef struct user_i387_struct elf_fpregset_t;
 	asm("movl %%gs,%0" : "=r" (v)); (pr_reg)[26] = v;	\
 } while(0);
 
-/* This yields a mask that user programs can use to figure out what
-   instruction set this CPU supports.  This could be done in user space,
-   but it's not easy, and we've already done it here.  */
-
-#define ELF_HWCAP	(boot_cpu_data.arch.x86_capability[0])
-
 /* This yields a string that ld.so will use to load implementation
    specific libraries for optimization.  This is more specific in
    intent than poking at uname or /proc/cpuinfo.
 
    For the moment, we have only optimizations for the Intel generations,
    but that could change... */
-
-/* I'm not sure if we can use '-' here */
-#define ELF_PLATFORM  ("x86_64")
 
 extern void set_personality_64bit(void);
 #define SET_PERSONALITY(ex, ibcs2) set_personality_64bit()

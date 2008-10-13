@@ -123,6 +123,11 @@ start_kernel()
 	status = arch_create_init_task();
 	if (status)
 		panic("Failed to create init_task (status=%d).", status);
+
+	/* This prevents the address space from being deleted by
+	 * user-space, since the kernel never releases this reference */
+	BUG_ON(!aspace_acquire(INIT_ASPACE_ID));
+
 	schedule();  /* This should not return */
 	BUG();
 }
