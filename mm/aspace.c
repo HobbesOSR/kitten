@@ -9,6 +9,7 @@
 #include <lwk/htable.h>
 #include <lwk/log2.h>
 #include <lwk/cpuinfo.h>
+#include <lwk/pmem.h>
 #include <arch/uaccess.h>
 
 /**
@@ -564,15 +565,24 @@ sys_aspace_del_region(id_t id, vaddr_t start, size_t extent)
 	return aspace_del_region(id, start, extent);
 }
 
-int
-__aspace_map_pmem(struct aspace *aspace,
-                  paddr_t pmem, vaddr_t start, size_t extent)
+static int
+map_pmem(struct aspace *aspace,
+         paddr_t pmem, vaddr_t start, size_t extent,
+         bool umem_only)
 {
 	int status;
 	struct region *rgn;
 
 	if (!aspace)
 		return -EINVAL;
+
+	if (umem_only && !pmem_is_umem(pmem, extent)) {
+		printk(KERN_WARNING
+		       "User-space tried to map non-UMEM "
+		       "(pmem=0x%lx, extent=0x%lx).\n",
+		       pmem, extent);
+		return -EPERM;
+	}
 
 	while (extent) {
 		/* Find region covering the address */
@@ -623,8 +633,10 @@ __aspace_map_pmem(struct aspace *aspace,
 	return 0;
 }
 
-int
-aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
+static int
+map_pmem_locked(id_t id,
+                paddr_t pmem, vaddr_t start, size_t extent,
+                bool umem_only)
 {
 	int status;
 	struct aspace *aspace;
@@ -632,10 +644,23 @@ aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
 
 	local_irq_save(irqstate);
 	aspace = lookup_and_lock(id);
-	status = __aspace_map_pmem(aspace, pmem, start, extent);
+	status = map_pmem(aspace, pmem, start, extent, umem_only);
 	if (aspace) spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
 	return status;
+}
+
+int
+__aspace_map_pmem(struct aspace *aspace,
+                  paddr_t pmem, vaddr_t start, size_t extent)
+{
+	return map_pmem(aspace, pmem, start, extent, false);
+}
+
+int
+aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
+{
+	return map_pmem_locked(id, pmem, start, extent, false);
 }
 
 int
@@ -645,7 +670,7 @@ sys_aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
 		return -EPERM;
 	if (!id_ok(id))
 		return -EINVAL;
-	return aspace_map_pmem(id, pmem, start, extent);
+	return map_pmem_locked(id, pmem, start, extent, true);
 }
 
 int

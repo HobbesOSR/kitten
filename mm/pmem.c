@@ -258,9 +258,15 @@ __pmem_update(const struct pmem_region *update, bool umem_only)
 		if (!calc_overlap(update, &entry->rgn, &overlap))
 			continue;
 
-		if (umem_only && entry->rgn.type_is_set &&
-		     (entry->rgn.type != PMEM_TYPE_UMEM))
-			return -EPERM;
+		/* Jail user-space to PMEM_TYPE_UMEM regions */
+		if (umem_only) {
+			if (!entry->rgn.type_is_set
+			     || (entry->rgn.type != PMEM_TYPE_UMEM))
+				return -EPERM;
+			if (!update->type_is_set
+			     || (update->type != PMEM_TYPE_UMEM))
+				return -EPERM;
+		}
 
 		/* Handle head of entry non-overlap */
 		if (entry->rgn.start < overlap.start) {

@@ -43,3 +43,25 @@ pmem_alloc_umem(size_t size, size_t alignment, struct pmem_region *rgn)
 	*rgn = result;
 	return 0;
 }
+
+bool
+pmem_is_umem(paddr_t start, size_t extent)
+{
+	struct pmem_region query, result;
+	int status;
+
+	pmem_region_unset_all(&query);
+	query.start = start;
+	query.end   = start + extent;
+	query.type  = PMEM_TYPE_UMEM; query.type_is_set = true; 
+	result.end  = 0;
+
+	while ((status = pmem_query(&query, &result)) == 0) {
+		if (result.start != query.start)
+			return false;
+		if (result.end == query.end)
+			break;
+		query.start = result.end;
+	}
+	return (status) ? false : true;
+}
