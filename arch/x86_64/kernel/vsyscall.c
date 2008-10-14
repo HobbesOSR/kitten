@@ -41,6 +41,17 @@ vgettimeofday(struct timeval *tv, struct timezone *tz)
 	return ret;
 }
 
+time_t __vsyscall(1)
+vtime(time_t *t)
+{
+	int ret;
+	asm volatile("syscall"
+		: "=a" (ret)
+		: "0" (__NR_time),"D" (t)
+		: __syscall_clobber );
+	return ret;
+}
+
 void __init
 vsyscall_map(void)
 {
@@ -54,5 +65,7 @@ vsyscall_map(void)
 
 	BUG_ON((unsigned long) &vgettimeofday !=
 			VSYSCALL_ADDR(__NR_vgettimeofday));
+	BUG_ON((unsigned long) &vtime !=
+			VSYSCALL_ADDR(__NR_vtime));
 }
 
