@@ -674,4 +674,7 @@ __SYSCALL(__NR_task_exit, sys_task_exit)
 #define __NR_task_yield         303
 __SYSCALL(__NR_task_yield, sys_task_yield)
 
+#define __NR_elf_hwcap          304
+__SYSCALL(__NR_task_yield, sys_elf_hwcap)
+
 #endif

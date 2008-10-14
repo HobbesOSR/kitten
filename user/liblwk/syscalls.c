@@ -193,3 +193,8 @@ SYSCALL1(task_get_myid, id_t *);
 SYSCALL4(task_create, id_t, const char *, const start_state_t *, id_t *);
 SYSCALL1(task_exit, int);
 SYSCALL0(task_yield);
+
+/**
+ * ELF related system calls.
+ */
+SYSCALL2(elf_hwcap, id_t, uint32_t *);

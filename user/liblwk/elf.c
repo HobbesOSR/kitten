@@ -265,6 +265,8 @@ sp_in_aspace(void *sp,
  *       [IN]  envp[]        Array of pointers to environment strings.
  *       [IN]  uid           User ID of the task
  *       [IN]  gid           Group ID of the task
+ *       [IN]  hwcap         Hardware capability bitfield
+ *                           (used for AT_HWCAP entry in aux info table)
  *       [OUT] stack_ptr     The initial stack pointer value for the new task.
  *                           (note this is an address in the target aspace)
  *
@@ -282,6 +284,7 @@ elf_init_stack(
 	char *    envp[],
 	uid_t     uid,
 	gid_t     gid,
+	uint32_t  hwcap,
 	vaddr_t * stack_ptr
 )
 {
@@ -322,7 +325,7 @@ elf_init_stack(
 	strings_sp = (void *) sp;
 
 	/* Build the auxilliary information table */
-	write_aux(auxv, auxc++, AT_HWCAP, ELF_HWCAP); /* TODO: fix this */
+	write_aux(auxv, auxc++, AT_HWCAP, hwcap);
 	write_aux(auxv, auxc++, AT_PAGESZ, ELF_EXEC_PAGESIZE);
 	write_aux(auxv, auxc++, AT_CLKTCK, 1000000l);
 	write_aux(auxv, auxc++, AT_PHDR, elf_phdr_table_addr(elf_image));

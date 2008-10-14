@@ -98,6 +98,9 @@ typedef		__s32		int32_t;
 
 #endif /* !(__BIT_TYPES_DEFINED__) */
 
+/* user-space uses stdint.h for these */
+#ifdef __KERNEL__
+
 typedef		__u8		uint8_t;
 typedef		__u16		uint16_t;
 typedef		__u32		uint32_t;
@@ -107,6 +110,8 @@ typedef		__u64		uint64_t;
 typedef		__u64		u_int64_t;
 typedef		__s64		int64_t;
 #endif
+
+#endif /* __KERNEL_ */
 
 /* this is a special 64bit data type that is 8-byte aligned */
 #define aligned_u64 unsigned long long __attribute__((aligned(8)))
@@ -118,6 +123,7 @@ typedef		__s64		int64_t;
 typedef _Bool			bool;
 #else
 #include <stdbool.h>
+#include <stdint.h>
 #endif
 
 /*

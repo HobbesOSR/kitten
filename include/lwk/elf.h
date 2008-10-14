@@ -419,6 +419,7 @@ elf_init_stack(
 	char *    envp[],
 	uid_t     uid,
 	gid_t     gid,
+	uint32_t  hwcap,
 	vaddr_t * stack_ptr
 );
 
@@ -431,5 +432,14 @@ elf_load_executable(
 	vmpagesize_t pagesz,
 	int (*alloc_pmem)(size_t size, size_t alignment, paddr_t *paddr)
 );
+
+/**
+ * ELF related system calls.
+ */
+extern int elf_hwcap(id_t cpu, uint32_t *hwcap);
+
+#ifdef __KERNEL__
+extern int sys_elf_hwcap(id_t cpu, uint32_t __user *hwcap);
+#endif
 
 #endif /* _LWK_ELF_H */

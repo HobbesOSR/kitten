@@ -43,21 +43,17 @@ typedef struct user_i387_struct elf_fpregset_t;
 #define ELF_DATA	ELFDATA2LSB
 #define ELF_ARCH	EM_X86_64
 
+/* This yields a string that ld.so will use to load implementation
+   specific libraries for optimization.  This is more specific in
+   intent than poking at uname or /proc/cpuinfo.
+
+   For the moment, we have only optimizations for the Intel generations,
+   but that could change... */
+
 /* I'm not sure if we can use '-' here */
 #define ELF_PLATFORM  ("x86_64")
 
 #define ELF_EXEC_PAGESIZE	4096
-
-/* This yields a mask that user programs can use to figure out what
-   instruction set this CPU supports.  This could be done in user space,
-   but it's not easy, and we've already done it here.  */
-
-#ifdef __KERNEL__
-#include <lwk/cpuinfo.h>
-#define ELF_HWCAP	(boot_cpu_data.arch.x86_capability[0])
-#else
-#define ELF_HWCAP 0
-#endif
 
 #ifdef __KERNEL__
 #include <arch/processor.h>
@@ -142,12 +138,11 @@ typedef struct user_i387_struct elf_fpregset_t;
 	asm("movl %%gs,%0" : "=r" (v)); (pr_reg)[26] = v;	\
 } while(0);
 
-/* This yields a string that ld.so will use to load implementation
-   specific libraries for optimization.  This is more specific in
-   intent than poking at uname or /proc/cpuinfo.
+/* This yields a mask that user programs can use to figure out what
+   instruction set this CPU supports.  This could be done in user space,
+   but it's not easy, and we've already done it here.  */
 
-   For the moment, we have only optimizations for the Intel generations,
-   but that could change... */
+#define ELF_HWCAP(cpu)	(cpu_info[cpu].arch.x86_capability[0])
 
 extern void set_personality_64bit(void);
 #define SET_PERSONALITY(ex, ibcs2) set_personality_64bit()

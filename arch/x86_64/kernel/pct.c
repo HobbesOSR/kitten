@@ -145,6 +145,7 @@ arch_create_init_task(void)
 	paddr_t heap_pmem, stack_pmem;
 	start_state_t start_state;
 	uid_t uid = 0; gid_t gid = 0;
+	uint32_t hwcap;
 
 	if (init_str_array(INIT_MAX_ARGC-1, argv+1, init_argv_str)) {
 		printk("Too many ARGV strings for init_task.");
@@ -219,6 +220,11 @@ arch_create_init_task(void)
 		printk("Failed to create init stack (status=%d).", status);
 		return status;
 	}
+	status = elf_hwcap(this_cpu, &hwcap);
+	if (status) {
+		printk("Failed to get hw capabilities (status=%d).", status);
+		return status;
+	}
 	status =
 	elf_init_stack(
 		init_elf_image,
@@ -227,6 +233,7 @@ arch_create_init_task(void)
 		stack_extent,
 		argv, envp,
 		uid, gid,
+		hwcap,
 		&stack_ptr
 	);
 	if (status) {
