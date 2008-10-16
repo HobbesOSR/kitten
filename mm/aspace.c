@@ -405,6 +405,9 @@ __aspace_find_hole(struct aspace *aspace,
 	if (!extent || !is_power_of_2(alignment))
 		return -EINVAL;
 
+	if (start_hint == 0)
+		start_hint = 1;
+
 	hole = round_up(start_hint, alignment);
 	while ((rgn = find_overlapping_region(aspace, hole, hole + extent))) {
 		if (rgn->end == ULONG_MAX)
@@ -470,7 +473,7 @@ __aspace_add_region(struct aspace *aspace,
 	struct list_head *pos;
 	vaddr_t end = calc_end(start, extent);
 
-	if (!aspace)
+	if (!aspace || !start)
 		return -EINVAL;
 
 	/* Region must have non-zero size */
