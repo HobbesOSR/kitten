@@ -177,7 +177,7 @@ SYSCALL4(pmem_alloc, size_t, size_t,
 SYSCALL1(aspace_get_myid, id_t *);
 SYSCALL3(aspace_create, id_t, const char *, id_t *);
 SYSCALL1(aspace_destroy, id_t);
-SYSCALL4(aspace_find_hole, id_t, size_t, size_t, vaddr_t *);
+SYSCALL5(aspace_find_hole, id_t, vaddr_t, size_t, size_t, vaddr_t *);
 SYSCALL6(aspace_add_region,
          id_t, vaddr_t, size_t, vmflags_t, vmpagesize_t, const char *);
 SYSCALL3(aspace_del_region, id_t, vaddr_t, size_t);

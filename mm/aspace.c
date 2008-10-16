@@ -396,14 +396,16 @@ aspace_release(struct aspace *aspace)
 
 int
 __aspace_find_hole(struct aspace *aspace,
-                   size_t extent, size_t alignment, vaddr_t *start)
+                   vaddr_t start_hint, size_t extent, size_t alignment,
+                   vaddr_t *start)
 {
 	struct region *rgn;
-	vaddr_t hole=0;
+	vaddr_t hole;
 
 	if (!extent || !is_power_of_2(alignment))
 		return -EINVAL;
 
+	hole = round_up(start_hint, alignment);
 	while ((rgn = find_overlapping_region(aspace, hole, hole + extent))) {
 		if (rgn->end == ULONG_MAX)
 			return -ENOENT;
@@ -417,7 +419,8 @@ __aspace_find_hole(struct aspace *aspace,
 
 int
 aspace_find_hole(id_t id,
-                 size_t extent, size_t alignment, vaddr_t *start)
+                 vaddr_t start_hint, size_t extent, size_t alignment,
+                 vaddr_t *start)
 {
 	int status;
 	struct aspace *aspace;
@@ -425,7 +428,8 @@ aspace_find_hole(id_t id,
 
 	local_irq_save(irqstate);
 	aspace = lookup_and_lock(id);
-	status = __aspace_find_hole(aspace, extent, alignment, start);
+	status = __aspace_find_hole(aspace, start_hint, extent, alignment,
+	                            start);
 	if (aspace) spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
 	return status;
@@ -433,7 +437,8 @@ aspace_find_hole(id_t id,
 
 int
 sys_aspace_find_hole(id_t id,
-                     size_t extent, size_t alignment, vaddr_t __user *start)
+                     vaddr_t start_hint, size_t extent, size_t alignment,
+                     vaddr_t __user *start)
 {
 	vaddr_t _start;
 	int status;
@@ -444,7 +449,8 @@ sys_aspace_find_hole(id_t id,
 	if (!id_ok(id))
 		return -EINVAL;
 
-	if ((status = aspace_find_hole(id, extent, alignment, &_start)) != 0)
+	status = aspace_find_hole(id, start_hint, extent, alignment, &_start);
+	if (status)
 		return status;
 	
 	if (start && copy_to_user(start, &_start, sizeof(_start)))
