@@ -650,31 +650,33 @@ __SYSCALL(__NR_aspace_get_myid, sys_aspace_get_myid)
 __SYSCALL(__NR_aspace_create, sys_aspace_create)
 #define __NR_aspace_destroy	292
 __SYSCALL(__NR_aspace_destroy, sys_aspace_destroy)
-#define __NR_aspace_add_region	293
+#define __NR_aspace_find_hole	293
+__SYSCALL(__NR_aspace_find_hole, sys_aspace_find_hole)
+#define __NR_aspace_add_region	294
 __SYSCALL(__NR_aspace_add_region, sys_aspace_add_region)
-#define __NR_aspace_del_region	294
+#define __NR_aspace_del_region	295
 __SYSCALL(__NR_aspace_del_region, sys_aspace_del_region)
-#define __NR_aspace_map_pmem	295
+#define __NR_aspace_map_pmem	296
 __SYSCALL(__NR_aspace_map_pmem, sys_aspace_map_pmem)
-#define __NR_aspace_unmap_pmem	296
+#define __NR_aspace_unmap_pmem	297
 __SYSCALL(__NR_aspace_unmap_pmem, sys_aspace_unmap_pmem)
-#define __NR_aspace_smartmap	297
+#define __NR_aspace_smartmap	298
 __SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
-#define __NR_aspace_unsmartmap	298
+#define __NR_aspace_unsmartmap	299
 __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
-#define __NR_aspace_dump2console 299
+#define __NR_aspace_dump2console 300
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
 
-#define __NR_task_get_myid      300
+#define __NR_task_get_myid      301
 __SYSCALL(__NR_task_get_myid, sys_task_get_myid)
-#define __NR_task_create        301
+#define __NR_task_create        302
 __SYSCALL(__NR_task_create, sys_task_create)
-#define __NR_task_exit          302
+#define __NR_task_exit          303
 __SYSCALL(__NR_task_exit, sys_task_exit)
-#define __NR_task_yield         303
+#define __NR_task_yield         304
 __SYSCALL(__NR_task_yield, sys_task_yield)
 
-#define __NR_elf_hwcap          304
+#define __NR_elf_hwcap          305
 __SYSCALL(__NR_task_yield, sys_elf_hwcap)
 
 #endif

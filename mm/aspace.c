@@ -75,6 +75,21 @@ find_region(struct aspace *aspace, vaddr_t addr)
 }
 
 /**
+ * Finds a region that overlaps the specified interval.
+ */
+static struct region *
+find_overlapping_region(struct aspace *aspace, vaddr_t start, vaddr_t end)
+{
+	struct region *rgn;
+
+	list_for_each_entry(rgn, &aspace->region_list, link) {
+		if ((start < rgn->end) && (end > rgn->start))
+			return rgn;
+	}
+	return NULL;
+}
+
+/**
  * Locates the region that is SMARTMAP'ed to the specified aspace ID.
  */
 static struct region *
@@ -377,6 +392,65 @@ aspace_release(struct aspace *aspace)
 	spin_lock_irqsave(&aspace->lock, irqstate);
 	--aspace->refcnt;
 	spin_unlock_irqrestore(&aspace->lock, irqstate);
+}
+
+int
+__aspace_find_hole(struct aspace *aspace,
+                   size_t extent, size_t alignment, vaddr_t *start)
+{
+	struct region *rgn;
+	vaddr_t hole=0;
+
+	if (!extent || !is_power_of_2(alignment))
+		return -EINVAL;
+
+	while ((rgn = find_overlapping_region(aspace, hole, hole + extent))) {
+		if (rgn->end == ULONG_MAX)
+			return -ENOENT;
+		hole = round_up(rgn->end, alignment);
+	}
+	
+	if (start)
+		*start = hole;
+	return 0;
+}
+
+int
+aspace_find_hole(id_t id,
+                 size_t extent, size_t alignment, vaddr_t *start)
+{
+	int status;
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	aspace = lookup_and_lock(id);
+	status = __aspace_find_hole(aspace, extent, alignment, start);
+	if (aspace) spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_find_hole(id_t id,
+                     size_t extent, size_t alignment, vaddr_t __user *start)
+{
+	vaddr_t _start;
+	int status;
+
+	if (current->uid != 0)
+		return -EPERM;
+
+	if (!id_ok(id))
+		return -EINVAL;
+
+	if ((status = aspace_find_hole(id, extent, alignment, &_start)) != 0)
+		return status;
+	
+	if (start && copy_to_user(start, &_start, sizeof(_start)))
+		return -EFAULT;
+
+	return 0;
 }
 
 int

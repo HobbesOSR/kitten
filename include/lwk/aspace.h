@@ -51,6 +51,9 @@ extern int aspace_get_myid(id_t *id);
 extern int aspace_create(id_t id_request, const char *name, id_t *id);
 extern int aspace_destroy(id_t id);
 
+extern int aspace_find_hole(id_t id,
+                            size_t extent, size_t alignment, vaddr_t *start);
+
 extern int aspace_add_region(id_t id,
                              vaddr_t start, size_t extent,
                              vmflags_t flags, vmpagesize_t pagesz,
@@ -150,6 +153,8 @@ struct aspace {
  * The caller must unlock the aspaces. The caller must also ensure that
  * interrupts are disabled before calling these functions.
  */
+extern int __aspace_find_hole(struct aspace *aspace,
+                              size_t extent, size_t alignment, vaddr_t *start);
 extern int __aspace_add_region(struct aspace *aspace,
                                vaddr_t start, size_t extent,
                                vmflags_t flags, vmpagesize_t pagesz,
@@ -196,6 +201,8 @@ extern int sys_aspace_get_myid(id_t __user *id);
 extern int sys_aspace_create(id_t id_request, const char __user *name,
                              id_t __user *id);
 extern int sys_aspace_destroy(id_t id);
+extern int sys_aspace_find_hole(id_t id, size_t extent, size_t alignment,
+                                vaddr_t __user *start);
 extern int sys_aspace_add_region(id_t id,
                                  vaddr_t start, size_t extent,
                                  vmflags_t flags, vmpagesize_t pagesz,
