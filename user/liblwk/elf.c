@@ -1,6 +1,7 @@
 /* Copyright (c) 2008, Sandia National Laboratories */
 
 #include <lwk/liblwk.h>
+#include <lwk/ctype.h>
 
 /**
  * Verifies that an ELF header is sane.
@@ -200,6 +201,45 @@ elf_heap_start(const void *elf_image)
 	}
 
 	return heap_start;
+}
+
+/**
+ * Given an argument string like "arg1=foo arg2=bar", parses it into
+ * an argv[] or envp[] style array of string pointers. Useful for
+ * constructing the argv and envp arguments to elf_init_stack().
+ */
+int
+elf_init_str_array(
+	size_t  size,
+	char *  ptrs[],
+	char *  str
+)
+{ 
+	size_t pos = 0;
+	char *tmp;
+
+	while (strlen(str)) {
+		/* move past white space */
+		while (*str && isspace(*str))
+			++str;
+
+		tmp = str;
+
+		/* find the end of the string */
+		while (*str && !isspace(*str))
+			++str;
+
+		*str++ = 0;
+
+		if (strlen(tmp)) {
+			if (pos == size - 1)
+				return -1;
+			ptrs[pos++] = tmp; 
+		}
+	
+	}
+	ptrs[pos] = "";
+	return 0;
 }
 
 /**
@@ -408,6 +448,26 @@ elf_init_stack(
 	return 0;
 }
 
+/**
+ * A "default" alloc_pmem() function for use with elf_load_executable().
+ * A user may wish to define a custom replacement alloc_pmem() function
+ * to, for example, keep track of the physical memory that is allocated.
+ */
+paddr_t
+elf_dflt_alloc_pmem(size_t size, size_t alignment, uintptr_t arg)
+{
+	struct pmem_region result;
+
+	if (pmem_alloc_umem(size, alignment, &result))
+		return 0;
+
+	/* Mark the memory as being used by the init task */
+	result.type = PMEM_TYPE_INIT_TASK;
+	BUG_ON(pmem_update(&result));
+	
+	return result.start;
+}
+
 static int
 load_writable_segment(
 	void *            elf_image,
@@ -586,4 +646,197 @@ elf_load_executable(
 	}
 
 	return (num_load_segments) ? 0 : -ENOENT;
+}
+
+static int
+make_region(
+	id_t         aspace_id,
+	vaddr_t      start,
+	size_t       extent,
+	vmflags_t    flags,
+	vmpagesize_t pagesz,
+	const char * name,
+	uintptr_t    alloc_pmem_arg,
+	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg),
+	paddr_t *    pmem
+)
+{
+	int status;
+
+	*pmem = alloc_pmem(extent, pagesz, alloc_pmem_arg);
+	if (*pmem == 0) {
+		print("Failed to allocate physical memory for %s.", name);
+		return -ENOMEM;
+	}
+
+	status = aspace_map_region(aspace_id, start, extent,
+	                           flags, pagesz,
+	                           name, *pmem);
+	if (status) {
+		print("Failed to map physical memory for %s (status=%d).",
+		       name, status);
+		return status;
+	}
+
+	return 0;
+}
+
+/**
+ * Maximum number of arguments and environment variables that may
+ * be passed to the new task created by elf_load().
+ */
+#define MAX_ARGC 32
+#define MAX_ENVC 32
+
+/**
+ * Kitchen-sink ELF image load function.
+ * If something more custom is desired, this function can be used as a guide
+ * for what needs to be done to load an ELF executable and setup the
+ * accompanying address space.
+ */
+int
+elf_load(
+	void *          elf_image,
+	paddr_t         elf_image_paddr,
+	const char *    name,
+	id_t            desired_aspace_id,
+	vmpagesize_t    pagesz,
+	size_t          heap_size,
+	size_t          stack_size,
+	char *          argv_str,
+	char *          envp_str,
+	start_state_t * start_state,
+	uintptr_t       alloc_pmem_arg,
+	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
+)
+{
+	int status;
+	char *argv[MAX_ARGC] = { (char *)name };
+	char *envp[MAX_ENVC];
+	id_t my_aspace_id, aspace_id;
+	vaddr_t heap_start, stack_start, stack_end, stack_ptr;
+	vaddr_t local_stack_start;
+	size_t heap_extent, stack_extent;
+	paddr_t heap_pmem, stack_pmem;
+	uint32_t hwcap;
+
+	if (!elf_image || !start_state || !alloc_pmem)
+		return -EINVAL;
+
+	if (elf_init_str_array(MAX_ARGC-1, argv+1, argv_str)) {
+		print("Too many ARGV strings.");
+		return -EINVAL;
+	}
+
+	if (elf_init_str_array(MAX_ENVC, envp, envp_str)) {
+		print("Too many ENVP strings.");
+		return -EINVAL;
+	}
+
+	if ((status = aspace_create(desired_aspace_id, "init_task", &aspace_id))) {
+		print("Failed to create aspace (status=%d).", status);
+		return status;
+	}
+
+	/* Load the ELF executable's LOAD segments */
+	status =
+	elf_load_executable(
+		elf_image,       /* where I can access the ELF image */
+		elf_image_paddr, /* where it is in physical memory */
+		aspace_id,       /* the address space to map it into */
+		pagesz,          /* page size to map it with */
+		0,               /* arg to pass to alloc_pmem */
+		alloc_pmem       /* func to use to allocate phys mem */
+	);
+	if (status) {
+		print("Failed to load ELF image (status=%d).", status);
+		return status;
+	}
+
+	/* Create the UNIX heap */
+	heap_start  = round_up(elf_heap_start(elf_image), pagesz);
+	heap_extent = round_up(heap_size, pagesz);
+	status =
+	make_region(
+		aspace_id,
+		heap_start,
+		heap_extent,
+		(VM_USER|VM_READ|VM_WRITE|VM_EXEC|VM_HEAP),
+		pagesz,
+		"heap",
+		alloc_pmem_arg,
+		alloc_pmem,
+		&heap_pmem
+	);
+	if (status) {
+		print("Failed to create heap (status=%d).", status);
+		return status;
+	}
+
+	/* Create the stack region */
+	stack_end    = SMARTMAP_ALIGN;
+	stack_start  = round_down(stack_end - stack_size, pagesz);
+	stack_extent = stack_end - stack_start;
+	status = 
+	make_region(
+		aspace_id,
+		stack_start,
+		stack_extent,
+		(VM_USER|VM_READ|VM_WRITE|VM_EXEC),
+		pagesz,
+		"stack",
+		alloc_pmem_arg,
+		alloc_pmem,
+		&stack_pmem
+	);
+	if (status) {
+		print("Failed to create stack (status=%d).", status);
+		return status;
+	}
+
+	/* Map the stack region into this address space */
+	if ((status = aspace_get_myid(&my_aspace_id)))
+		return status;
+	status =
+	aspace_map_region_anywhere(
+		my_aspace_id,
+		&local_stack_start,
+		stack_extent,
+		(VM_USER|VM_READ|VM_WRITE),
+		pagesz,
+		"temporary",
+		stack_pmem
+	);
+	if (status) {
+		print("Failed to map stack locally (status=%d).", status);
+		return status;
+	}
+
+	/* Initialize the stack */
+	status = elf_hwcap(start_state->cpu_id, &hwcap);
+	if (status) {
+		print("Failed to get hw capabilities (status=%d).", status);
+		return status;
+	}
+	status =
+	elf_init_stack(
+		elf_image,
+		(void *)local_stack_start,  /* Where I can access it */
+		stack_start,                /* Where it is in target aspace */
+		stack_extent,
+		argv, envp,
+		start_state->uid, start_state->gid,
+		hwcap,
+		&stack_ptr
+	);
+	if (status) {
+		print("Failed to initialize stack (status=%d).", status);
+		return status;
+	}
+
+	start_state->aspace_id   = aspace_id;
+	start_state->entry_point = elf_entry_point(elf_image);
+	start_state->stack_ptr   = stack_ptr;
+
+	return 0;
 }

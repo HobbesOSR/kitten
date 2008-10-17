@@ -2,6 +2,7 @@
 #define _LWK_ELF_H
 
 #include <lwk/types.h>
+#include <lwk/task.h>
 #include <lwk/elf-em.h>
 #include <arch/elf.h>
 
@@ -408,6 +409,8 @@ vaddr_t elf_entry_point(const void *elf_image);
 vaddr_t elf_phdr_table_addr(const void *elf_image);
 unsigned int elf_num_phdrs(const void *elf_image);
 vaddr_t elf_heap_start(const void *elf_image);
+int elf_init_str_array(size_t size, char *ptrs[], char *str);
+paddr_t elf_dflt_alloc_pmem(size_t size, size_t alignment, uintptr_t arg);
 
 int
 elf_init_stack(
@@ -430,6 +433,22 @@ elf_load_executable(
 	id_t         aspace_id,
 	vmpagesize_t pagesz,
 	uintptr_t    alloc_pmem_arg,
+	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
+);
+
+int
+elf_load(
+	void *          elf_image,
+	paddr_t         elf_image_paddr,
+	const char *    name,
+	id_t            desired_aspace_id,
+	vmpagesize_t    pagesz,
+	size_t          heap_size,
+	size_t          stack_size,
+	char *          argv_str,
+	char *          envp_str,
+	start_state_t * start_state,
+	uintptr_t       alloc_pmem_arg,
 	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
 );
 

@@ -120,13 +120,8 @@ start_kernel()
 	 * Start up user-space...
 	 */
 	printk(KERN_INFO "Loading initial user-level task (init_task)...\n");
-	status = arch_create_init_task();
-	if (status)
+	if ((status = create_init_task()) != 0)
 		panic("Failed to create init_task (status=%d).", status);
-
-	/* This prevents the address space from being deleted by
-	 * user-space, since the kernel never releases this reference */
-	BUG_ON(!aspace_acquire(INIT_ASPACE_ID));
 
 	schedule();  /* This should not return */
 	BUG();

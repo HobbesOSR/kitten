@@ -59,6 +59,8 @@
 
 #ifndef __ASSEMBLY__
 
+#include <lwk/types.h>
+
 /* Defined in init/main.c */
 extern char lwk_command_line[COMMAND_LINE_SIZE];
 
@@ -67,7 +69,8 @@ extern void setup_arch(void);
 
 extern void start_kernel(void);
 
-extern int arch_create_init_task(void);
+extern int create_init_task(void);
+extern paddr_t init_elf_image;
 
 #endif /* !__ASSEMBLY__ */
   
