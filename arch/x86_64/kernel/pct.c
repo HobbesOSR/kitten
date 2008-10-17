@@ -83,21 +83,19 @@ init_str_array(
 	return 0;
 }
 
-static int
-alloc_pmem(size_t size, size_t alignment, paddr_t *pmem)
+static paddr_t
+alloc_pmem(size_t size, size_t alignment, uintptr_t arg)
 {
 	struct pmem_region result;
 
 	if (pmem_alloc_umem(size, alignment, &result))
-		return -ENOMEM;
+		return 0;
 
 	/* Mark the memory as being used by the init task */
 	result.type = PMEM_TYPE_INIT_TASK;
 	BUG_ON(pmem_update(&result));
-
-	if (pmem)
-		*pmem = result.start;
-	return 0;
+	
+	return result.start;
 }
 
 static int
@@ -113,11 +111,10 @@ make_region(
 {
 	int status;
 
-	status = alloc_pmem(extent, PAGE_SIZE, pmem);
-	if (status) {
-		printk("Failed to allocate init_task %s (status=%d).",
-		       name, status);
-		return status;
+	*pmem = alloc_pmem(extent, PAGE_SIZE, 0);
+	if (*pmem == 0) {
+		printk("Failed to allocate init_task %s.", name);
+		return -ENOMEM;
 	}
 
 	status = aspace_map_region(aspace_id, start, extent,
@@ -167,16 +164,13 @@ arch_create_init_task(void)
 		return status;
 	}
 
-	/* TODO: remove */
-	arch_aspace_activate(aspace_acquire(aspace_id));
-
 	status =
 	elf_load_executable(
 		init_elf_image,       /* where I can access the ELF image */
 		__pa(init_elf_image), /* where it is in physical memory */
 		aspace_id,            /* the address space to map it into */
-		(void *)0,            /* where I can access the aspace */
 		PAGE_SIZE,            /* page size to map it with */
+		0,                    /* arg to pass to alloc_pmem */
 		&alloc_pmem           /* func to use to allocate phys mem */
 	);
 	if (status) {

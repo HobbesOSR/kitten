@@ -428,9 +428,9 @@ elf_load_executable(
 	void *       elf_image,
 	paddr_t      elf_image_paddr,
 	id_t         aspace_id,
-	void *       aspace_mapping,
 	vmpagesize_t pagesz,
-	int (*alloc_pmem)(size_t size, size_t alignment, paddr_t *paddr)
+	uintptr_t    alloc_pmem_arg,
+	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
 );
 
 /**

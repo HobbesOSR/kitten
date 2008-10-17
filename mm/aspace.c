@@ -183,6 +183,11 @@ aspace_subsys_init(void)
 	if ((status = aspace_create(KERNEL_ASPACE_ID, "kernel", NULL)))
 		panic("Failed to create kernel aspace (status=%d).", status);
 
+	/* Switch to the newly created kernel address space */
+	if ((current->aspace = aspace_acquire(KERNEL_ASPACE_ID)) == NULL)
+		panic("Failed to acquire kernel aspace.");
+	arch_aspace_activate(current->aspace);
+
 	return 0;
 }
 
@@ -402,7 +407,7 @@ __aspace_find_hole(struct aspace *aspace,
 	struct region *rgn;
 	vaddr_t hole;
 
-	if (!extent || !is_power_of_2(alignment))
+	if (!aspace || !extent || !is_power_of_2(alignment))
 		return -EINVAL;
 
 	if (start_hint == 0)
@@ -520,7 +525,7 @@ __aspace_add_region(struct aspace *aspace,
 		if ((start < cur->end) && (end > cur->start)) {
 			printk(KERN_WARNING
 			       "Region overlaps with existing region.\n");
-			return -EINVAL;
+			return -ENOTUNIQ;
 		}
 	}
 

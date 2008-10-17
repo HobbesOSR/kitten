@@ -408,37 +408,122 @@ elf_init_stack(
 	return 0;
 }
 
-/* TODO: fix this */
+static int
+load_writable_segment(
+	void *            elf_image,
+	struct elf_phdr * phdr,
+	id_t              aspace_id,
+	vaddr_t           start,
+	size_t            extent,
+	vmpagesize_t      pagesz,
+	uintptr_t         alloc_pmem_arg,
+	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
+)
+{
+	int status;
+	paddr_t pmem;
+	vaddr_t local_start;
+	vaddr_t src, dst;
+	id_t my_aspace_id;
+
+	/* Figure out my address space ID */
+	if ((status = aspace_get_myid(&my_aspace_id)))
+		return status;
+
+	/* Allocate physical memory for the segment */
+	if (!(pmem = alloc_pmem(extent, pagesz, alloc_pmem_arg)))
+		return -ENOMEM;
+
+	/* Map the segment into the target address space */
+	status =
+	aspace_map_region(
+		aspace_id,
+		start,
+		extent,
+		elf_pflags_to_vmflags(phdr->p_flags),
+		pagesz,
+		"ELF",
+		pmem
+	);
+	if (status)
+		return status;
+
+	/* Map the segment into this address space */
+	status =
+	aspace_map_region_anywhere(
+		my_aspace_id,
+		&local_start,
+		extent,
+		(VM_USER|VM_READ|VM_WRITE),
+		pagesz,
+		"temporary",
+		pmem
+	);
+	if (status)
+		return status;
+
+	/* Copy segment data from ELF image into the target address space
+ 	 * (via its temporary mapping in our address space) */
+	dst = local_start + (phdr->p_vaddr - start);
+	src = (vaddr_t)elf_image + phdr->p_offset;
+	memcpy((void *)dst, (void *)src, phdr->p_filesz);
+
+	/* Unmap the segment from this address space */
+	status = aspace_del_region(my_aspace_id, local_start, extent);
+	if (status)
+		return status;
+
+	return 0;
+}
+
+static int
+load_readonly_segment(
+	paddr_t           elf_image_paddr,
+	struct elf_phdr * phdr,
+	id_t              aspace_id,
+	vaddr_t           start,
+	size_t            extent,
+	vmpagesize_t      pagesz
+)
+{
+	return aspace_map_region(
+		aspace_id,
+		start,
+		extent,
+		elf_pflags_to_vmflags(phdr->p_flags),
+		pagesz,
+		"ELF (mapped)",
+		elf_image_paddr +
+			round_down(phdr->p_offset, pagesz)
+	);
+}
+
 /**
- * Loads an ELF executable image into the specified task's address space. The
- * address space passed in (task->aspace) must have been previously created
- * with aspace_create(). 
- *
- * If successful, the initial entry point is returned in
- * task->aspace->entry_point.  The caller will need the entry point address
- * when it starts the task running (e.g., for the x86-64 architecture set
- * %rip=task->aspace->entry_point).
+ * Loads an ELF executable image into the specified address space. 
  *
  * Arguments:
- *       [INOUT] task:        Task to load ELF image into.
- *       [IN]    elf_image:   Pointer to an ELF image.
- *       [IN]    heap_size:   Number of bytes to allocate for heap.
- *       [IN]    alloc_mem:   Function pointer to use to allocate memory for
- *                            the region.  alloc_mem() returns kernel virtual.
- *                            address of the memory allocated.
+ *       [IN]  elf_image:        Location of ELF image in this address space.
+ *       [IN]  elf_image_paddr:  Location of ELF image in physical memory.
+ *       [IN]  aspace_id:        Address space to load ELF image into.
+ *       [IN]  pagesz:           Page size to use when mapping ELF image.
+ *       [IN]  alloc_pmem_arg:   Argument to pass to alloc_pmem().
+ *       [IN]  alloc_pmem:       Function pointer to use to allocate physical
+ *                               memory for the region.  alloc_mem() returns 
+ *                               the physical address of the memory allocated.
  *
  * Returns:
  *       Success: 0
- *       Failure: Error Code, task->aspace should be destroyed by caller.
+ *       Failure: Error Code, the target address space is left in an
+ *                undefined state and should be destroyed.
  */
 int
 elf_load_executable(
 	void *       elf_image,
 	paddr_t      elf_image_paddr,
 	id_t         aspace_id,
-	void *       aspace_mapping,
 	vmpagesize_t pagesz,
-	int (*alloc_pmem)(size_t size, size_t alignment, paddr_t *paddr)
+	uintptr_t    alloc_pmem_arg,
+	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
 )
 {
 	struct elfhdr *   ehdr;
@@ -466,50 +551,33 @@ elf_load_executable(
 		extent = end - start;
 
 		if (phdr->p_flags & PF_W) {
-			paddr_t pmem;
-
-			if ((status = alloc_pmem(extent, pagesz, &pmem)))
-				return status;
-
-			/* Set up an address space region for the program segment */
-			status = aspace_add_region(aspace_id, start, extent,
-//			                           elf_pflags_to_vmflags(phdr->p_flags),
-			                           elf_pflags_to_vmflags(PF_R | PF_W | PF_X),
-			                           pagesz, "ELF");
+			/* Writable segments must be copied into the
+			 * target address space */
+			status =
+			load_writable_segment(
+				elf_image,
+				phdr,
+				aspace_id,
+				start,
+				extent,
+				pagesz,
+				alloc_pmem_arg,
+				alloc_pmem
+			);
 			if (status)
 				return status;
-
-			/* Read only sections are directly mapped from the ELF file */
-			status = aspace_map_pmem(aspace_id,
-			                         pmem,
-			                         start, extent);
-			if (status)
-				return status;
-
-			/* Copy segment data from ELF image into the address space */
-			uintptr_t dst, src;
-			dst = (uintptr_t)aspace_mapping + start
-			                          + (phdr->p_vaddr - start);
-			src = (uintptr_t)elf_image + phdr->p_offset;
-			memcpy((void *)dst, (void *)src, phdr->p_filesz);
-
 		} else {
-			/* The size in memory and in the ELF file must match */
-			if (round_up(phdr->p_vaddr + phdr->p_filesz, pagesz) != end)
-				return -EINVAL;
-
-			/* Set up an address space region for the program segment */
-			status = aspace_add_region(aspace_id, start, extent,
-			                           elf_pflags_to_vmflags(phdr->p_flags),
-			                           pagesz, "ELF (mapped)");
-			if (status)
-				return status;
-
-			/* Read only sections are directly mapped from the ELF file */
-			status = aspace_map_pmem(aspace_id,
-			                         elf_image_paddr + 
-				                     round_down(phdr->p_offset, pagesz),
-			                         start, extent);
+			/* Read-only segments are mapped directly
+			 * from the ELF image */
+			status =
+			load_readonly_segment(
+				elf_image_paddr,
+				phdr,
+				aspace_id,
+				start,
+				extent,
+				pagesz
+			);
 			if (status)
 				return status;
 		}

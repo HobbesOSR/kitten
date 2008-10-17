@@ -73,10 +73,27 @@ extern int aspace_dump2console(id_t id);
 /**
  * Convenience functions defined in liblwk.
  */
-extern int aspace_map_region(id_t id,
-                             vaddr_t start, size_t extent,
-                             vmflags_t flags, vmpagesize_t pagesz,
-                             const char *name, paddr_t pmem);
+extern int
+aspace_map_region(
+	id_t         id,
+	vaddr_t      start,
+	size_t       extent,
+	vmflags_t    flags,
+	vmpagesize_t pagesz,
+	const char * name,
+	paddr_t      pmem
+);
+
+extern int
+aspace_map_region_anywhere(
+	id_t         id,
+	vaddr_t *    start,
+	size_t       extent,
+	vmflags_t    flags,
+	vmpagesize_t pagesz,
+	const char * name,
+	paddr_t      pmem
+);
 
 #ifdef __KERNEL__
 
