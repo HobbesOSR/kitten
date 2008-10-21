@@ -235,3 +235,25 @@ sys_task_yield(void)
 {
 	return task_yield();
 }
+
+/**
+ * Looks up an aspace object by ID and returns it with its spinlock locked.
+ */
+struct task_struct *
+task_lookup(id_t id)
+{
+        struct task_struct *t;
+
+        /* Lock the hash table, lookup aspace object by ID */
+        spin_lock(&htable_lock);
+        if ((t = htable_lookup(htable, id)) == NULL) {
+                spin_unlock(&htable_lock);
+                return NULL;
+        }
+
+        /* Unlock the hash table, others may now use it */
+        spin_unlock(&htable_lock);
+
+        return t;
+}
+

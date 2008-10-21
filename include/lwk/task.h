@@ -181,5 +181,6 @@ extern int __task_create(id_t id, const char *name,
                          const start_state_t *start_state,
                          struct task_struct **task);
 
+extern struct task_struct *task_lookup(id_t id);
 #endif
 #endif

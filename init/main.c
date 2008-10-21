@@ -12,6 +12,7 @@
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <lwk/timer.h>
+#include <lwk/kgdb.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -115,6 +116,10 @@ start_kernel()
 		if (!cpu_isset(cpu, cpu_online_map))
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
+
+#ifdef CONFIG_KGDB
+        kgdb_initial_breakpoint();
+#endif
 
 	/*
 	 * Start up user-space...

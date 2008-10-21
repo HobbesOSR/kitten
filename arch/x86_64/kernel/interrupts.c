@@ -1,6 +1,7 @@
 #include <lwk/kernel.h>
 #include <lwk/init.h>
 #include <lwk/kallsyms.h>
+#include <lwk/kgdb.h>
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <lwk/timer.h>
@@ -48,9 +49,13 @@ do_nmi(struct pt_regs *regs, unsigned int vector)
 void
 do_int3(struct pt_regs *regs, unsigned int vector)
 {
-	printk("INT3 Exception\n");
-	show_registers(regs);
-	while (1) {}
+#ifdef CONFIG_KGDB
+        kgdb_exception_enter(vector, 0, regs);
+#else
+        printk("INT3 Exception\n");
+        show_registers(regs);
+        while (1) {}
+#endif
 }
 
 void
@@ -139,6 +144,9 @@ do_page_fault(struct pt_regs *regs, unsigned int vector)
 {
 	printk("Page Fault Exception\n");
 	show_registers(regs);
+#ifdef CONFIG_KGDB
+        kgdb_breakpoint();
+#endif
 	while (1) {}
 }
 
