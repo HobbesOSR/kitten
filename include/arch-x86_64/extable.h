@@ -1,6 +1,8 @@
 #ifndef _ASM_X86_64_EXTABLE_H
 #define _ASM_X86_64_EXTABLE_H
 
+#include <lwk/ptrace.h>
+
 /*
  * The exception table consists of pairs of addresses: the first is the
  * address of an instruction that is allowed to fault, and the second is
@@ -18,6 +20,8 @@ struct exception_table_entry
         unsigned long insn;	/* Instruction addr that is allowed to fault */
 	unsigned long fixup;	/* Fixup handler address */
 };
+
+extern int fixup_exception(struct pt_regs *regs);
 
 #define ARCH_HAS_SEARCH_EXTABLE
 

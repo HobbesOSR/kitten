@@ -11,6 +11,7 @@
 
 #include <lwk/init.h>
 #include <lwk/sort.h>
+#include <lwk/ptrace.h>
 #include <lwk/extable.h>
 
 #ifndef ARCH_HAS_SORT_EXTABLE

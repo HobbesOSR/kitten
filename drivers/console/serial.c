@@ -51,7 +51,7 @@ static unsigned int baud = 9600;
 
 #ifdef CONFIG_KGDB
 /** Whether to attach to kgdb or the normal console if KGDB is supported */
-static int kgdb = 1;
+static int kgdb = 0;
 #endif /* CONFIG_KGDB */
 
 /** Set when serial console has been initialized. */

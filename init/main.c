@@ -1,3 +1,4 @@
+#include <lwk/extable.h>
 #include <lwk/init.h>
 #include <lwk/kernel.h>
 #include <lwk/params.h>
@@ -52,7 +53,7 @@ start_kernel()
 	 */
 	printk(lwk_banner);
 	printk(KERN_DEBUG "%s\n", lwk_command_line);
-
+	sort_exception_table();
 	/*
 	 * Do architecture specific initialization.
 	 * This detects memory, CPUs, etc.

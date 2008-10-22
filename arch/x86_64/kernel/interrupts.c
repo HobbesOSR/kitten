@@ -6,6 +6,7 @@
 #include <lwk/sched.h>
 #include <lwk/timer.h>
 #include <arch/desc.h>
+#include <arch/extable.h>
 #include <arch/idt_vectors.h>
 #include <arch/show.h>
 #include <arch/xcall.h>
@@ -142,10 +143,18 @@ do_general_protection(struct pt_regs *regs, unsigned int vector)
 void
 do_page_fault(struct pt_regs *regs, unsigned int vector)
 {
+        /* Kernel space exception fixup check */
+        if (fixup_exception(regs)) {
+                return;
+	} else {
+		printk("Failed to fixup page fault exception!\n");
+	}
+
 	printk("Page Fault Exception\n");
-	show_registers(regs);
 #ifdef CONFIG_KGDB
         kgdb_breakpoint();
+#else
+	show_registers(regs);
 #endif
 	while (1) {}
 }

@@ -16,6 +16,7 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 #include <lwk/init.h>
+#include <lwk/ptrace.h>
 #include <lwk/extable.h>
 #include <arch/uaccess.h>
 #include <arch/sections.h>
@@ -26,6 +27,7 @@ extern struct exception_table_entry __stop___ex_table[];
 /* Sort the kernel's built-in exception table */
 void __init sort_exception_table(void)
 {
+	printk("Sorting kernel exception table.\n");
 	sort_extable(__start___ex_table, __stop___ex_table);
 }
 

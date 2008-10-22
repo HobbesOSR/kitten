@@ -1284,13 +1284,13 @@ static int kgdb_reenter_check(struct kgdb_state *ks)
 	kgdb_skipexception(ks->ex_vector, ks->lwk_regs);
 
 	if (exception_level > 1) {
-		printk("Recursive entry to debugger");
-		show_registers();
+		printk("Recursive entry to debugger!");
 		while(1) {}
 	}
 
 	printk(KERN_CRIT "KGDB: re-enter exception: ALL breakpoints killed\n");
-	panic("Recursive entry to debugger");
+	printk("Recursive entry to debugger");
+	while(1) {}
 
 	return 1;
 }
