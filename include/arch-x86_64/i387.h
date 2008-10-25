@@ -155,16 +155,15 @@ static inline void kernel_fpu_end(void)
 static inline void
 fpu_save_state(struct task_struct *task)
 {
-	__asm__ __volatile__("fxsaveq %0"
-			     : "=m" (task->arch.thread.i387.fxsave));
-	clear_fpu_state(&task->arch.thread.i387.fxsave);
+	__fxsave_clear(task);
 }
 
 static inline void
 fpu_restore_state(struct task_struct *task)
 {
-	__asm__ __volatile__("fxrstorq %0"
-			     ::"m" (task->arch.thread.i387.fxsave));
+	struct i387_fxsave_struct *fx = &task->arch.thread.i387.fxsave;
+	asm volatile("rex64/fxrstor (%[fx])\n\t"
+                     :: [fx] "cdaSDb" (fx), "m" (*fx));
 }
 
 #endif /* _X86_64_I387_H */
