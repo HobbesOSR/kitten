@@ -26,13 +26,13 @@ unsigned int ioapic_num;
  * Array containing the IDs of the IO APICs in the system.
  * The array is indexed by ioapic_index.
  */
-unsigned int ioapic_id[MAX_IO_APICS];
+unsigned int ioapic_id[MAX_IO_APICS] = { 1 };
 
 /**
  * Addresses of the IO APICs in the system.
  * The array is indexed by ioapic_index.
  */
-unsigned long ioapic_phys_addr[MAX_IO_APICS];
+uintptr_t ioapic_phys_addr[MAX_IO_APICS] = { 0xFEC00000 };
 
 /**
  * Resource entries for the IO APIC memory mapping.
@@ -250,7 +250,10 @@ ioapic_map(void)
 	char *name;
 
 	if (ioapic_num == 0)
-		return;
+	{
+		printk( "%s: Faking IO APIC\n", __func__ );
+		ioapic_num = 1;
+	}
 
 	/*
 	 * Allocate enough memory for one resource structure per detected IO

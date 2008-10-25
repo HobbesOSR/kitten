@@ -8,6 +8,22 @@
 int printk(const char *fmt, ...)
 {
 	va_list args;
+	va_start(args, fmt);
+	int rc = vprintk( fmt, args );
+	va_end(args);
+	return rc;
+}
+
+
+int printk_print_cpu_number;
+
+
+int
+vprintk(
+	const char *		fmt,
+	va_list			args
+)
+{
 	int len;
 	char buf[1024];
 	char *p = buf;
@@ -17,14 +33,15 @@ int printk(const char *fmt, ...)
 	*p = '\0';
 
 	/* Tack on the logical CPU ID */
-	len = sprintf(p, "[%u]:", this_cpu);
-	p      += len;
-	remain -= len;
+	if( printk_print_cpu_number )
+	{
+		len = sprintf(p, "[%u]:", this_cpu);
+		p      += len;
+		remain -= len;
+	}
 
 	/* Construct the string... */
-	va_start(args, fmt);
 	len = vscnprintf(p, remain, fmt, args);
-	va_end(args);
 
 	/* Pass the string to the console subsystem */
 	console_write(buf);

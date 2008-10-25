@@ -496,6 +496,11 @@ ifdef CONFIG_DEBUG_INFO
 CFLAGS		+= -g
 endif
 
+ifdef CONFIG_V3VEE
+CFLAGS += -I../palacios/include
+endif
+
+
 include $(srctree)/arch/$(ARCH)/Makefile
 
 # arch Makefile may override CC so keep this after arch Makefile is included
@@ -530,6 +535,7 @@ export MODLIB
 ifeq ($(KBUILD_EXTMOD),)
 #core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
 core-y		+= kernel/ mm/
+core-$(CONFIG_V3VEE) += palacios-glue/
 
 vmlwk-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
@@ -547,6 +553,9 @@ net-y		:= $(patsubst %/, %/built-in.o, $(net-y))
 libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
 libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
 libs-y		:= $(libs-y1) $(libs-y2)
+
+libs-$(CONFIG_V3VEE) += palacios/libv3vee.a
+libs-$(CONFIG_V3VEE) += palacios/libxed32e.a
 
 # Build vmlwk
 # ---------------------------------------------------------------------------

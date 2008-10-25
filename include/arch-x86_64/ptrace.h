@@ -116,6 +116,10 @@ enum {
         EF_ID   = 0x00200000,   /* id */
 };
 
+/* TODO: remove this */
+typedef void (*idtvec_handler_t)(struct pt_regs *regs, unsigned int vector);
+void set_idtvec_handler(unsigned int vector, idtvec_handler_t handler);
+
 #endif
 
 #endif

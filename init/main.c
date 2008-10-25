@@ -12,6 +12,7 @@
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <lwk/timer.h>
+#include <lwk/palacios.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -31,7 +32,6 @@ start_kernel()
 {
 	unsigned int cpu;
 	unsigned int timeout;
-	int status;
 
 	/*
  	 * Parse the kernel boot command line.
@@ -116,13 +116,20 @@ start_kernel()
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
 
+#ifdef CONFIG_V3VEE
+	v3vee_run_vmm();
+	printk( "%s: VMM returned.  We're spinning\n", __func__ );
+	while(1) { asm( "hlt" ); }
+#else
 	/*
 	 * Start up user-space...
 	 */
 	printk(KERN_INFO "Loading initial user-level task (init_task)...\n");
+	int status;
 	if ((status = create_init_task()) != 0)
 		panic("Failed to create init_task (status=%d).", status);
 
 	schedule();  /* This should not return */
 	BUG();
+#endif
 }

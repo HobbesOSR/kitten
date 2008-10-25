@@ -7,3 +7,6 @@ obj-y		:= percpu.o setup.o e820.o cpuinfo.o resource.o \
 		   task.o sched.o
 
 obj-$(CONFIG_CRAY_XT) += rca/
+obj-$(CONFIG_V3VEE) += bios.o
+
+

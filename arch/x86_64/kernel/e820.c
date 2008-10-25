@@ -319,10 +319,13 @@ void __init e820_print_map(char *who)
 {
 	int i;
 	char type[16];
+	size_t total_size = 0;
 
 	for (i = 0; i < e820.nr_map; i++) {
-		switch (e820.map[i].type) {
+		const struct e820entry * entry = &e820.map[i];
+		switch (entry->type) {
 		case E820_RAM:	sprintf(type, "(usable)\n");
+				total_size += entry->size;
 				break;
 		case E820_RESERVED:
 				sprintf(type, "(reserved)\n");
@@ -333,16 +336,19 @@ void __init e820_print_map(char *who)
 		case E820_NVS:
 				sprintf(type, "(ACPI NVS)\n");
 				break;
-		default:	sprintf(type, "type %u\n", e820.map[i].type);
+		default:	sprintf(type, "type %u\n", entry->type);
 				break;
 		}
 
 		printk(KERN_DEBUG
-			" %s: %016Lx - %016Lx %s", who,
-			(unsigned long long) e820.map[i].addr,
-			(unsigned long long) (e820.map[i].addr + e820.map[i].size),
+			" %s: %016Lx - %016Lx %s",
+			who,
+			(unsigned long long) entry->addr,
+			(unsigned long long) (entry->addr + entry->size),
 			type);
 	}
+
+	printk( KERN_DEBUG "Total usable memory %ld bytes\n", total_size );
 }
 
 /*
