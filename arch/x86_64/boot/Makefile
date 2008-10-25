@@ -55,8 +55,8 @@ $(obj)/compressed/vmlwk: FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/compressed IMAGE_OFFSET=$(IMAGE_OFFSET) $@
 
 # Set this if you want to pass append arguments to the isoimage kernel
-FDARGS = serial.baud=115200 serial.kgdb=1 console=vga kgdbwait=1 kgdboc_console=serial debug_mptable=1 init_argv="one two three" init_envp="one=1 two=2 three=3" 
-#FDARGS = console=vga,serial debug_mptable=1 init_argv="one two three" init_envp="one=1 two=2 three=3" 
+#FDARGS = serial.baud=115200 serial.kgdb=1 console=vga kgdbwait=1 kgdboc_console=serial debug_mptable=1 init_argv="one two three" init_envp="one=1 two=2 three=3" 
+FDARGS = console=vga,serial debug_mptable=1 init_argv="one two three" init_envp="one=1 two=2 three=3" 
 # Set this if you want an initrd included with the isoimage kernel
 FDINITRD = init_task
 
