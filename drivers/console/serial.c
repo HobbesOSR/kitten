@@ -167,4 +167,6 @@ driver_init(serial_console_init);
  */
 driver_param(port, uint);
 driver_param(baud, uint);
+#ifdef CONFIG_KGDB
 driver_param(kgdb, uint);
+#endif
