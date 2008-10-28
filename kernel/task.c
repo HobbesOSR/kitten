@@ -112,6 +112,7 @@ __task_create(id_t id, const char *name,
 	}
 	tsk->cpu_id = start_state->cpu_id;
 	list_head_init(&tsk->sched_link);
+	tsk->sched_irqs_on = false;
 	tsk->ptrace = 0;
 	tsk->flags = 0;
 	tsk->exit_status = 0;
