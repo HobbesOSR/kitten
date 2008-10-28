@@ -186,16 +186,21 @@ schedule(void)
 
 	if (prev != next) {
 		context_switch(prev, next);
-		/* next is now running, since it may have changed CPUs while
-		 * it was sleeping, we need to refresh local variables */
+		/* "next" is now running. Since it may have changed CPUs
+		 * while it was sleeping, we need to refresh local variables.
+		 * Also note that the 'next' variable is stale... it is
+		 * the value of next when the currently executing task
+		 * originally called schedule() (i.e., when it was prev).
+		 * 'current' should be used to refer to the currently
+		 * executing task. */
 		runq = &per_cpu(run_queue, this_cpu);
 	}
 
 	spin_unlock(&runq->lock);
 	BUG_ON(irqs_enabled());
 
-	/* Restore next's external interrupt state to
-	 * what what it was when it called schedule() */
+	/* Restore the scheduled task's external interrupt state
+	 * to what what it was when it originally called schedule() */
 	if (current->sched_irqs_on)
 		local_irq_enable();
 }
