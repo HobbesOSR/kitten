@@ -49,7 +49,10 @@ __arch_context_switch(struct task_struct *prev_p, struct task_struct *next_p)
 	}
 
 	/* Update the CPU's PDA (per-CPU data area) */
+	prev->userrsp = read_pda(oldrsp);
+	write_pda(oldrsp, next->userrsp);
 	write_pda(pcurrent, next_p);
+	write_pda(kernelstack, (vaddr_t)next_p + TASK_SIZE - PDA_STACKOFFSET);
 
 	/* If necessary, save and restore floating-point state */
 	if (prev_p->arch.flags & TF_USED_FPU)

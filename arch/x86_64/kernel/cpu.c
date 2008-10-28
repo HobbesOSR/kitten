@@ -84,7 +84,7 @@ pda_init(unsigned int cpu, struct task_struct *task)
 	pda->cpunumber     = cpu;
 	pda->pcurrent      = task;
 	pda->active_aspace = task->aspace;
-	pda->kernelstack   = (unsigned long)task - PDA_STACKOFFSET + TASK_SIZE;
+	pda->kernelstack   = (vaddr_t)task + TASK_SIZE - PDA_STACKOFFSET;
 	pda->mmu_state     = 0;
 }
 
