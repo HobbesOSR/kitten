@@ -112,6 +112,7 @@ struct task_struct {
 	id_t                    cpu_id;          /* CPU this task is bound to */
 
 	struct list_head        sched_link;      /* For per-CPU scheduling lists */
+	bool                    sched_irqs_on;   /* IRQs on at schedule() entry? */
 
 	unsigned long		ptrace;
 	uint32_t		flags;

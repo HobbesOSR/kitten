@@ -164,7 +164,6 @@ ENTRY(asm_syscall)
 	movq %r9,   2*8(%rsp)		/* Save user-space R9  (ARG5)        */
 	movq %r10,  1*8(%rsp)		/* Save user-space R10 (ARG3)        */
 	movq %r11,     (%rsp)		/* Save user-space RFLAGS            */
-	sti				/* Enable external interrupts        */
 
 	/*
 	 * Call the system call handler
@@ -172,7 +171,9 @@ ENTRY(asm_syscall)
 	movq %r10, %rcx			/* Per x86_64 C ABI, RCX holds ARG3  */
 	cmp $__NR_syscall_max, %rax	/* Make sure syscall # is in range   */
 	jg 1f
+	sti				/* Enable external interrupts        */
 	call *sys_call_table(,%rax,8)	/* Call the system call handler      */
+	cli				/* Disable external interrupts       */
 	jmp 2f
 1:
 	call syscall_not_implemented	/* Print error and return            */
@@ -185,7 +186,6 @@ ENTRY(asm_syscall)
 	/*
 	 * Return to user-space
 	 */
-	cli				/* Disable external interrupts       */
 	movq     (%rsp), %r11		/* Restore RFLAGS for SYSRET         */
 	movq  1*8(%rsp), %r10		/* Restore user-space R10 (ARG3)     */
 	movq  2*8(%rsp), %r9		/* Restore user-space R9  (ARG5)     */
@@ -281,18 +281,14 @@ ENTRY(asm_interrupt)
 	 * Call C code interrupt handler entry point
 	 */
 	movq %rsp, %rdi			/* ARG0: pointer to 'struct pt_regs' */
-	sti				/* Enable external interrupts        */
 	call do_interrupt		/* Call common C handler             */
-	cli				/* Disable external interrupts       */
 
 	/*
 	 * If returning to user-space, reschedule and restore user-space GS
 	 */
 	testl $3, CS(%rsp)		/* Sets ZF=1 if returning to kspace  */
 	je 2f				/* If ZF=1, jump forward to 2: below */
-	sti				/* Enable external interrupts        */
 	call schedule			/* Reschedule                        */
-	cli				/* Disable external interrupts       */
 	swapgs				/* Restore uspace GS register        */
 2:
 	/*

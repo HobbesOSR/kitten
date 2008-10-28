@@ -158,7 +158,11 @@ schedule(void)
 	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
 	struct task_struct *prev = current, *next = NULL, *task;
 
-	spin_lock_irq(&runq->lock);
+	/* Remember prev's external interrupt state */
+	prev->sched_irqs_on = irqs_enabled();
+
+	local_irq_disable();
+	spin_lock(&runq->lock);
 
 	/* Move the currently running task to the end of the run queue */
 	if (!list_empty(&prev->sched_link)) {
@@ -187,7 +191,13 @@ schedule(void)
 		runq = &per_cpu(run_queue, this_cpu);
 	}
 
-	spin_unlock_irq(&runq->lock);
+	spin_unlock(&runq->lock);
+	BUG_ON(irqs_enabled());
+
+	/* Restore next's external interrupt state to
+	 * what what it was when it called schedule() */
+	if (current->sched_irqs_on)
+		local_irq_enable();
 }
 
 void
