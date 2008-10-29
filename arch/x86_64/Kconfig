@@ -54,6 +54,14 @@ config V3VEE
 	help
 	  V3Vee guest OS instead of ELF image
 
+config V3VEE_PATH
+	string "Path to V3VEE source tree"
+	default "../palacios/palacios"
+	depends on V3VEE
+	help
+	  Path to the checkout of the Palacios tree for includes
+	  and pre-build libraries to link in.
+
 #
 # Define implied options from the CPU selection
 #
@@ -107,10 +115,25 @@ config SERIAL_CONSOLE
 
 config RCAL0_CONSOLE
 	bool "Cray XT3 L0 console support"
+	depends on CRAY_XT
 	default "y" if CRAY_XT
 	default "n"
 
+config INIT_TASK_IMAGE
+	string "Initial task image"
+	default "/opt/vmm-tools/isos/puppy.iso" if V3VEE
+	default "init_task"
+	help
+	  PCT ELF file for normal builds, iso for V3VEE builds.
 
+
+config INIT_TASK_ARGS
+	string "Arguments to the initial task"
+	default "" if V3VEE
+	default "console=serial debug_mptable=1 init_argv=\"one two three\" init_envp=\"one=1 two=2 three=3\""
+	help
+	  Command line arguments to be passed to the initial task.
+	  V3VEE does not use any.
 
 endmenu
 

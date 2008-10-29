@@ -9,4 +9,6 @@ obj-y		:= percpu.o setup.o e820.o cpuinfo.o resource.o \
 obj-$(CONFIG_CRAY_XT) += rca/
 obj-$(CONFIG_V3VEE) += bios.o
 
-
+$(obj)/bios.o :: EXTRA_AFLAGS = \
+	-DROMBIOS_PATH="\"$(CONFIG_V3VEE_PATH)/build/kitten/rombios\"" \
+	-DVGABIOS_PATH="\"$(CONFIG_V3VEE_PATH)/build/kitten/vgabios\"" \

@@ -55,13 +55,10 @@ $(obj)/compressed/vmlwk: FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/compressed IMAGE_OFFSET=$(IMAGE_OFFSET) $@
 
 # Set this if you want to pass append arguments to the isoimage kernel
-FDARGS = console=serial debug_mptable=1 init_argv="one two three" init_envp="one=1 two=2 three=3"
+FDARGS = $(CONFIG_INIT_TASK_ARGS)
 # Set this if you want an initrd included with the isoimage kernel
-ifdef CONFIG_V3VEE
-FDINITRD = /opt/vmm-tools/isos/puppy.iso
-else
-FDINITRD = init_task
-endif
+FDINITRD = $(CONFIG_INIT_TASK_IMAGE)
+$(FDINITRD):
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 

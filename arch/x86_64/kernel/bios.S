@@ -2,15 +2,16 @@
  *  ROM Bios images for V3Vee emulator
  */
 
+
 .data
 .globl rombios_start
 rombios_start:
-.incbin "../palacios/build/rombios"
+.incbin ROMBIOS_PATH
 .globl rombios_end
 rombios_end:
 
 .globl vgabios_start
 vgabios_start:
-.incbin "../palacios/build/vgabios"
+.incbin VGABIOS_PATH
 .globl vgabios_end
 vgabios_end:

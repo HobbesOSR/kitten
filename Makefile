@@ -497,7 +497,7 @@ CFLAGS		+= -g
 endif
 
 ifdef CONFIG_V3VEE
-CFLAGS += -I../palacios/include
+CFLAGS += -I$(CONFIG_V3VEE_PATH)/palacios/include
 endif
 
 
@@ -554,8 +554,8 @@ libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
 libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
 libs-y		:= $(libs-y1) $(libs-y2)
 
-libs-$(CONFIG_V3VEE) += palacios/libv3vee.a
-libs-$(CONFIG_V3VEE) += palacios/libxed32e.a
+libs-$(CONFIG_V3VEE) += $(CONFIG_V3VEE_PATH)/build/kitten/libv3vee.a
+libs-$(CONFIG_V3VEE) += $(CONFIG_V3VEE_PATH)/build/kitten/libxed32e.a
 
 # Build vmlwk
 # ---------------------------------------------------------------------------
