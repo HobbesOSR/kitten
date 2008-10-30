@@ -129,7 +129,7 @@ config INIT_TASK_IMAGE
 
 config INIT_TASK_ARGS
 	string "Arguments to the initial task"
-	default "" if V3VEE
+	default "console=serial debug_mptable=1" if V3VEE
 	default "console=serial debug_mptable=1 init_argv=\"one two three\" init_envp=\"one=1 two=2 three=3\""
 	help
 	  Command line arguments to be passed to the initial task.
