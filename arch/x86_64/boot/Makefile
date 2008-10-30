@@ -57,8 +57,7 @@ $(obj)/compressed/vmlwk: FORCE
 # Set this if you want to pass append arguments to the isoimage kernel
 FDARGS = $(CONFIG_INIT_TASK_ARGS)
 # Set this if you want an initrd included with the isoimage kernel
-FDINITRD = $(CONFIG_INIT_TASK_IMAGE)
-$(FDINITRD):
+FDINITRD = $(subst ",,$(CONFIG_INIT_TASK_IMAGE))#"
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 
@@ -75,8 +74,14 @@ isoimage: $(BOOTIMAGE) $(FDINITRD)
 	done
 	cp $(BOOTIMAGE) $(obj)/isoimage/lwk
 	echo '$(image_cmdline)' > $(obj)/isoimage/isolinux.cfg
-	if [ -f '$(FDINITRD)' ] ; then \
+	@if [ -f '$(FDINITRD)' ] ; then \
+		echo 'initrd: $(FDINITRD)'; \
 		cp '$(FDINITRD)' $(obj)/isoimage/initrd.img ; \
+	elif [ -z '$(FDINITRD)' ]; then \
+		echo "initrd: None"; \
+	else \
+		echo >&2 'initrd: $(FDINITRD) not found!'; \
+		exit 1; \
 	fi
 	mkisofs -J -r -o $(obj)/image.iso -b isolinux.bin -c boot.cat \
 		-no-emul-boot -boot-load-size 4 -boot-info-table \
