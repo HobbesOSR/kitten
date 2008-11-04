@@ -8,3 +8,14 @@ obj-y		:= percpu.o setup.o e820.o cpuinfo.o resource.o \
 obj-$(CONFIG_KGDB) += kgdb.o
 
 obj-$(CONFIG_CRAY_XT) += rca/
+
+ifdef CONFIG_PALACIOS
+# The palacios hypervisor requires a BIOS image in order to boot guest OSes
+obj-$(CONFIG_PALACIOS) += bios.o
+$(obj)/bios.o :: EXTRA_AFLAGS = \
+	-DROMBIOS_PATH="\"$(CONFIG_PALACIOS_PATH)/palacios/build/rombios\"" \
+	-DVGABIOS_PATH="\"$(CONFIG_PALACIOS_PATH)/palacios/build/vgabios\""
+
+# Interface glue between the LWK and Palacios
+obj-$(CONFIG_PALACIOS) += palacios.o
+endif

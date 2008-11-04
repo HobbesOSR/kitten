@@ -1,6 +1,8 @@
 #ifndef _X86_64_PROTO_H
 #define _X86_64_PROTO_H
 
+#include <arch/ptrace.h>
+
 /* misc architecture specific prototypes */
 
 extern void early_idt_handler(void);
@@ -27,5 +29,8 @@ extern unsigned long __phys_addr(unsigned long virt_addr);
 void __init interrupts_init(void);
 
 extern paddr_t initrd_start, initrd_end;
+
+typedef void (*idtvec_handler_t)(struct pt_regs *regs, unsigned int vector);
+void set_idtvec_handler(unsigned int vector, idtvec_handler_t handler);
 
 #endif

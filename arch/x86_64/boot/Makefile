@@ -54,11 +54,23 @@ $(obj)/setup $(obj)/bootsect: %: %.o FORCE
 $(obj)/compressed/vmlwk: FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/compressed IMAGE_OFFSET=$(IMAGE_OFFSET) $@
 
+# Arguments to pass to the kernel
+# The '$(shell echo ...)' is needed to get rid of the surrounding quotes
+# that Kconfig insists on adding to string types. Same trick used below.
+KERNEL_ARGS = $(shell echo $(CONFIG_KERNEL_ARGS))
+
+ifdef CONFIG_PALACIOS
+# The initrd is the ISO image to use for the guest OS booted by Palacios
+FDINITRD = $(shell echo $(CONFIG_PALACIOS_GUESTOS_IMAGE))
+# This prevents a make "no rule" error (isoimage target depends on FDINITRD)
+$(FDINITRD):
+else
+# The initrd is the ELF image to use for the initial user-level task
+FDINITRD = $(shell echo $(CONFIG_INIT_TASK_IMAGE))
+endif
+
 # Set this if you want to pass append arguments to the isoimage kernel
-#FDARGS = serial.baud=115200 serial.kgdb=1 console=vga kgdbwait=1 kgdboc_console=serial debug_mptable=1 init_argv="one two three" init_envp="one=1 two=2 three=3" 
-FDARGS = console=vga,serial debug_mptable=1 init_argv="one two three" init_envp="one=1 two=2 three=3" 
-# Set this if you want an initrd included with the isoimage kernel
-FDINITRD = init_task
+FDARGS = $(KERNEL_ARGS) init_argv=$(CONFIG_INIT_TASK_ARGS) init_envp=$(CONFIG_INIT_TASK_ENVS)
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 
@@ -75,8 +87,14 @@ isoimage: $(BOOTIMAGE) $(FDINITRD)
 	done
 	cp $(BOOTIMAGE) $(obj)/isoimage/lwk
 	echo '$(image_cmdline)' > $(obj)/isoimage/isolinux.cfg
-	if [ -f '$(FDINITRD)' ] ; then \
-		cp '$(FDINITRD)' $(obj)/isoimage/initrd.img ; \
+	@if [ -f '$(FDINITRD)' ] ; then \
+		echo 'initrd: $(FDINITRD)'; \
+		cp $(FDINITRD) $(obj)/isoimage/initrd.img ; \
+	elif [ -z '$(FDINITRD)' ]; then \
+		echo "initrd: None"; \
+	else \
+		echo >&2 'initrd: $(FDINITRD) not found!'; \
+		exit 1; \
 	fi
 	mkisofs -J -r -o $(obj)/image.iso -b isolinux.bin -c boot.cat \
 		-no-emul-boot -boot-load-size 4 -boot-info-table \

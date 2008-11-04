@@ -496,6 +496,10 @@ ifdef CONFIG_DEBUG_INFO
 CFLAGS		+= -g
 endif
 
+ifdef CONFIG_PALACIOS
+CFLAGS += -I$(CONFIG_PALACIOS_PATH)/palacios/include
+endif
+
 include $(srctree)/arch/$(ARCH)/Makefile
 
 # arch Makefile may override CC so keep this after arch Makefile is included
@@ -547,6 +551,10 @@ net-y		:= $(patsubst %/, %/built-in.o, $(net-y))
 libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
 libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
 libs-y		:= $(libs-y1) $(libs-y2)
+
+# Link the LWK with the Palacios hypervisor
+libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/kitten/palacios/libv3vee.a
+libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/kitten/palacios/libxed32e.a
 
 # Build vmlwk
 # ---------------------------------------------------------------------------

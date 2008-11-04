@@ -90,20 +90,43 @@ config PHYSICAL_START
 	hex
 	default "0x200000"
 
+config PALACIOS
+	bool "Include Palacios Hypervisor"
+	default "n"
+	help
+	  Include the Palacios hypervisor layer. This enables Kitten
+	  to run guest operating systems alongside native applications.
+
+config PALACIOS_PATH
+	string "Path to pre-built Palacios tree"
+	depends on PALACIOS
+	default "../palacios"
+	help
+	  Path to a built Palacios source tree. This path is used to
+	  find Palacios include files and libraries that need to be
+	  linked with the Kitten kernel image.
+
 endmenu
 
 
+#
+# Device Drivers
+#
 config VGA_CONSOLE
 	bool
 	default "y" if PC
+	default "n" if !PC
 
 config SERIAL_CONSOLE
 	bool
 	default "y" if PC
+	default "n" if !PC
 
 config RCAL0_CONSOLE
 	bool
+	depends on CRAY_XT
 	default "y" if CRAY_XT
-	default "n"
+	default "n" if !CRAY_XT
 
+source "arch/x86_64/boot/Kconfig"
 source "arch/x86_64/Kconfig.debug"

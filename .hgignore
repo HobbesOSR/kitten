@@ -32,8 +32,10 @@ scripts/basic/fixdep
 scripts/basic/split-include
 scripts/kconfig/conf
 scripts/kconfig/lex.zconf.c
+scripts/kconfig/mconf
 scripts/kconfig/zconf.hash.c
 scripts/kconfig/zconf.tab.c
+scripts/kconfig/lxdialog/lxdialog
 scripts/kallsyms
 .tmp_*
 include/arch

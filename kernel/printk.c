@@ -5,9 +5,27 @@
 /**
  * Prints a message to the console.
  */
-int printk(const char *fmt, ...)
+int printk(
+	const char *		fmt,
+	...
+)
 {
 	va_list args;
+	int chars_printed;
+
+	va_start(args, fmt);
+	chars_printed = vprintk(fmt, args);
+	va_end(args);
+
+	return chars_printed;
+}
+
+int
+vprintk(
+	const char *		fmt,
+	va_list			args
+)
+{
 	int len;
 	char buf[1024];
 	char *p = buf;
@@ -22,9 +40,7 @@ int printk(const char *fmt, ...)
 	remain -= len;
 
 	/* Construct the string... */
-	va_start(args, fmt);
 	len = vscnprintf(p, remain, fmt, args);
-	va_end(args);
 
 	/* Pass the string to the console subsystem */
 	console_write(buf);
@@ -32,4 +48,3 @@ int printk(const char *fmt, ...)
 	/* Return number of characters printed */
 	return len;
 }
-
