@@ -55,7 +55,7 @@ $(obj)/compressed/vmlwk: FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/compressed IMAGE_OFFSET=$(IMAGE_OFFSET) $@
 
 # Set this if you want to pass append arguments to the isoimage kernel
-FDARGS = $(CONFIG_INIT_TASK_ARGS)
+FDARGS = $(shell echo $(CONFIG_INIT_TASK_ARGS))
 # Set this if you want an initrd included with the isoimage kernel
 FDINITRD = $(subst ",,$(CONFIG_INIT_TASK_IMAGE))#"
 
