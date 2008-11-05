@@ -724,8 +724,18 @@ vmlwk: $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) $(kallsyms.o) FORCE
 	$(call if_changed_rule,vmlwk__)
 	$(Q)rm -f .old_version
 
+ifeq ($(CONFIG_CRAY_XT),y)
+# Generate the necessary padding to push the executable image
+# to the start address since the XT3 bootloader always loads
+# at 0x10000.
+vmlwk.bin: vmlwk FORCE
+	$(OBJCOPY) -O binary $< $@.tmp
+	( perl -e 'print chr(0x90) x (1<<20)' ; cat $@.tmp ) > $@
+	$(RM) $@.tmp
+else
 vmlwk.bin: vmlwk FORCE
 	$(OBJCOPY) -O binary $< $@
+endif
 
 vmlwk.asm: vmlwk
 	$(OBJDUMP) --disassemble $< > $@
