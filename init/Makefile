@@ -21,3 +21,4 @@ include/lwk/compile.h: FORCE
 	@echo '  CHK     $@'
 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/mkcompile_h $@ \
 	"$(UTS_MACHINE)" "$(CC) $(CFLAGS)"
+	@echo -n "Build time: "; grep  UTS_VERSION $@ | cut -d' ' -f3-
