@@ -3,6 +3,7 @@
 #include <lwk/kernel.h>
 #include <lwk/params.h>
 #include <lwk/console.h>
+#include <lwk/netdev.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/percpu.h>
 #include <lwk/smp.h>
@@ -95,6 +96,12 @@ start_kernel()
  	 * Initialize the task scheduling subsystem.
  	 */
 	timer_subsys_init();
+
+
+	/*
+	 * Bring up any network devices.
+	 */
+	netdev_init();
 
 	/*
 	 * Boot all of the other CPUs in the system, one at a time.
