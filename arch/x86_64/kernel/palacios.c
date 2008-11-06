@@ -30,11 +30,10 @@
 
 /**
  * Location of the ROM BIOS and VGA BIOS used by Palacios guests.
- * Need to take the address of these (e.g., &rombios_start) to get
- * the actual kernel virtual address of the image (see bios.S file).
+ * These are kernel virtual pointers to the memory.
  */
-extern uint8_t rombios_start, rombios_end;
-extern uint8_t vgabios_start, vgabios_end;
+extern uint8_t rombios_start[], rombios_end[];
+extern uint8_t vgabios_start[], vgabios_end[];
 
 /**
  * Global guest state... only one guest is supported currently.
@@ -303,10 +302,10 @@ palacios_run_guest(void)
 	Init_V3(&palacios_os_hooks, &v3_ops);
 
 	struct v3_vm_config vm_config = {
-		.rombios		= &rombios_start,
-		.rombios_size		= (&rombios_end)-(&rombios_start),
-		.vgabios		= &vgabios_start,
-		.vgabios_size		= (&vgabios_end)-(&vgabios_start),
+		.rombios		= rombios_start,
+		.rombios_size		= rombios_end - rombios_start,
+		.vgabios		= vgabios_start,
+		.vgabios_size		= vgabios_end - vgabios_start,
 		.use_ramdisk		= 1,
 		.ramdisk		= (void *) initrd_start,
 		.ramdisk_size		= initrd_end - initrd_start,
