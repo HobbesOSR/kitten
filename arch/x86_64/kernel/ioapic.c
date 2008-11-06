@@ -26,13 +26,13 @@ unsigned int ioapic_num;
  * Array containing the IDs of the IO APICs in the system.
  * The array is indexed by ioapic_index.
  */
-unsigned int ioapic_id[MAX_IO_APICS] = { 1 };
+unsigned int ioapic_id[MAX_IO_APICS];
 
 /**
  * Addresses of the IO APICs in the system.
  * The array is indexed by ioapic_index.
  */
-uintptr_t ioapic_phys_addr[MAX_IO_APICS] = { 0xFEC00000 };
+uintptr_t ioapic_phys_addr[MAX_IO_APICS];
 
 /**
  * Resource entries for the IO APIC memory mapping.
