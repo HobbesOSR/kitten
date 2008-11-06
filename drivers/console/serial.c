@@ -159,7 +159,7 @@ void serial_console_init(void)
 	initialized = 1;
 }
 
-driver_init(serial_console_init);
+driver_init("console",serial_console_init);
 
 /**
  * Configurable parameters for controlling the serial port

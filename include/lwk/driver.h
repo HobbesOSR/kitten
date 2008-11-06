@@ -55,6 +55,7 @@
  */
 struct driver_info {
 	const char *	name;		// name of the driver
+	const char *	type;		// Device type
 	void		(*init)(void);	// driver initialization function
 	int		init_called;	// set when .init() has been called,
 					// used to prevent double inits.
@@ -63,13 +64,14 @@ struct driver_info {
 /*
  * This adds a function to the __driver_table ELF section.
  */
-#define driver_init(init_func) 						\
+#define driver_init(type,init_func) 				\
 	static char __driver_name[] = DRIVER_NAME;			\
+	static char __driver_type[] = type;			\
 	static struct driver_info const __driver_info			\
 	__attribute_used__						\
 	__attribute__ ((unused,__section__ ("__driver_table"),		\
 			aligned(sizeof(void *))))			\
-	= { __driver_name, init_func };
+	= { __driver_name, __driver_type, init_func };
 
 /*
  * The __driver_table ELF section is surrounded by these symbols,
@@ -83,6 +85,29 @@ extern struct driver_info __stop___driver_table[];
  */
 #define driver_exit(exit_func)	
 
-extern int driver_init_by_name(const char *name);
+
+/** Initialize a single device.
+ *
+ * \return 0 for success
+ */
+extern int
+driver_init_by_name(
+	const char *		type,
+	const char *		name
+);
+
+
+/** Initialize a list of device drivers.
+ *
+ * Given a comma separated list of device drivers, initialize
+ * them each in turn.
+ *
+ * \note Modifies the string in place to nul terminate the devices!
+ */
+extern void
+driver_init_list(
+	const char *		type,
+	char *			list
+);
 
 #endif

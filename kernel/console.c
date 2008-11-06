@@ -47,30 +47,14 @@ void console_write(const char *str)
 	spin_unlock_irqrestore(&console_lock, flags);
 }
 
+
+
 /**
  * Initializes the console subsystem; called once at boot.
  */
-void console_init(void)
+void
+console_init(void)
 {
-	char *p, *con;
-	
-	// console_str contains comma separated list of console
-	// driver names.  Try to install a driver for each
-	// console name con.
-	p = con = console_str;
-	while (*p != '\0') {
-		if (*p == ',') {
-			*p = '\0'; // null terminate con
-			if (driver_init_by_name(con))
-				printk(KERN_WARNING
-				       "failed to install console=%s\n", con);
-			con = p + 1;
-		}
-		++p;
-	}
-
-	// Catch the last one
-	if (p != console_str)
-		driver_init_by_name(con);
+	driver_init_list( "console", console_str );
 }
 

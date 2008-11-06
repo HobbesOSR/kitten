@@ -132,7 +132,7 @@ void vga_console_init(void)
 	initialized = 1;
 }
 
-driver_init(vga_console_init);
+driver_init("console",vga_console_init);
 
 /**
  * Sets the row on the screen to start printing at.

@@ -85,5 +85,5 @@ void l0_console_init(void)
 	initialized = 1;
 }
 
-driver_init(l0_console_init);
+driver_init("console",l0_console_init);
 
