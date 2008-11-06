@@ -87,7 +87,7 @@ config NR_CPUS
 # Physical address where the kernel is loaded
 #
 config PHYSICAL_START
-	hex
+	hex "Physical address for kernel load"
 	default "0x200000"
 
 config PALACIOS
@@ -113,17 +113,17 @@ endmenu
 # Device Drivers
 #
 config VGA_CONSOLE
-	bool
+	bool "VGA console"
 	default "y" if PC
 	default "n" if !PC
 
 config SERIAL_CONSOLE
-	bool
+	bool "Serial console support"
 	default "y" if PC
 	default "n" if !PC
 
 config RCAL0_CONSOLE
-	bool
+	bool "Cray XT3 L0 console support"
 	depends on CRAY_XT
 	default "y" if CRAY_XT
 	default "n" if !CRAY_XT

@@ -18,6 +18,7 @@
 #endif
 
 idtvec_handler_t idtvec_table[NUM_IDT_ENTRIES];
+static DEFINE_SPINLOCK(idtvec_table_lock);
 
 extern void asm_idtvec_table(void);
 
@@ -265,6 +266,7 @@ set_idtvec_handler(unsigned int vector, idtvec_handler_t handler)
 {
 	char namebuf[KSYM_NAME_LEN+1];
 	unsigned long symsize, offset;
+	unsigned long irqstate;
 
 	ASSERT(vector < NUM_IDT_ENTRIES);
 
@@ -275,7 +277,9 @@ set_idtvec_handler(unsigned int vector, idtvec_handler_t handler)
 		);
 	}
 
+	spin_lock_irqsave(&idtvec_table_lock, irqstate);
 	idtvec_table[vector] = handler;
+	spin_unlock_irqrestore(&idtvec_table_lock, irqstate);
 }
 
 void
