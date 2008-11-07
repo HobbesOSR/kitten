@@ -87,7 +87,7 @@ config NR_CPUS
 # Physical address where the kernel is loaded
 #
 config PHYSICAL_START
-	hex "Physical address for kernel load"
+	hex
 	default "0x200000"
 
 config PALACIOS
