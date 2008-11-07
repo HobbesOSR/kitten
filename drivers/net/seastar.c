@@ -11,11 +11,13 @@
 
 #include <lwk/driver.h>
 #include <lwk/signal.h>
+#include <lwk/netdev.h>
 #include <arch/page.h>
 #include <arch/proto.h>
 #include <net/seastar.h>
+#include <net/ip.h>
 
-#define HTB_MAP			0x20000
+#define HTB_MAP			0x000020000
 #define HTB_VALID_FLAG		0x8000
 
 #define seastar_phys_base	0xFFFA0000
@@ -25,18 +27,29 @@
 #define seastar_htb_base	0xFFE20000
 #define seastar_niccb_base	0xFFFFE000
 
+/** The Seastar is mapped at L4 entry 511, L3 entry 511, L2 entry 511,
+ * giving us a 2 MB window at the very highest end of memory into the
+ * Seastar and its memory mapped devices.
+ */
 #define seastar_virt_base ( 0xFFFFFFFFull << 32 )
 //((uint8_t*) ~( (1<<20)-1 ))
 //(511ull << 36) | (511ull << 29) | (511ull <<20) )
 
+/** Location in host memory of PPC's nic control block structure */
 static struct niccb * const niccb
 	= (void*)( seastar_virt_base + seastar_niccb_base );
 
+/** 64-bit HT quad-word address of incoming datagram buffers */
 static uint64_t * const seastar_skb
 	= (void*)( seastar_virt_base + seastar_skb_base );
 
+/** Location in host memory of PPC's hypertransport map */
 static volatile uint32_t * const htb_map
 	= (void*)( seastar_virt_base + seastar_htb_base );
+
+/** Start of host memory buffer mapped into Seastar memory through HTB */
+paddr_t seastar_host_region_phys;
+
 
 
 
@@ -59,7 +72,7 @@ static volatile uint32_t * const htb_map
 struct command {
     uint8_t  op;         // 0
     uint8_t  pad[63];    // 1-63
-} PACKED ALIGNED;
+} PACKED;
 
 sizecheck_struct( command, 64 );
 
@@ -85,14 +98,14 @@ struct command_init_process {
     uint32_t eqheap_length;              // 48
     uint32_t smb_table_addr;             // 52
     uint32_t uid;                        // 56
-} PACKED ALIGNED;
+} PACKED;
 
 
 #define COMMAND_MARK_ALIVE 1
 struct command_mark_alive {
     uint8_t  op;             // 0
     uint8_t  process_index;  // 1
-} PACKED ALIGNED;
+} PACKED;
 
 
 #define COMMAND_INIT_EQCB 2
@@ -102,7 +115,7 @@ struct command_init_eqcb {
     uint16_t eqcb_index;    // 2
     uint32_t base;          // 4
     uint32_t count;         // 8
-} PACKED ALIGNED;
+} PACKED;
 
 
 typedef uint32_t result_t;
@@ -131,7 +144,7 @@ sizecheck_struct( mailbox, 4096 );
 struct mailbox * const seastar_mailbox = (void*)( seastar_virt_base + seastar_mailbox_base );
 
 
-/*
+/**
  * ip_upper_pending structures are used for tracking the transmit of
  * an IP datagram.  They are not used for RX at all.
  *
@@ -143,10 +156,6 @@ struct mailbox * const seastar_mailbox = (void*)( seastar_virt_base + seastar_ma
  * field in the ptlhdr.  If the SSNAL_IP_MSG bit is set the
  * pending will be recognized as an IP message by the rest of
  * the Portals stack.
- *
- * \note To the best of my knowledge these are unused for IP.
- * Only the lower pendings need to be allocated, but the firmware
- * will complain if there are no upper pendings.
  */
 struct pending
 {
@@ -154,7 +163,7 @@ struct pending
 	volatile uint32_t	status;         // 4
 	uint32_t		skb;            // 8
 	uint8_t			pad[ 128 - 12 ]; // 12
-} PACKED ALIGNED;
+} PACKED;
 
 sizecheck_struct( pending, 128 );
 
@@ -162,7 +171,7 @@ sizecheck_struct( pending, 128 );
 #define NUM_SKB		64
 #define NUM_PENDINGS	64
 struct pending upper_pending[ NUM_PENDINGS ];
-uint8_t skb[ NUM_SKB ][ 65536 ];
+uint8_t skb[ NUM_SKB ][ NETDEV_MTU ];
 
 #define NUM_EQ		1024
 uint32_t eq[ NUM_EQ ];
@@ -180,6 +189,7 @@ seastar_cmd(
 	mb->commandq[ head ] = *cmd;
 	mb->commandq_write = ( head >= COMMAND_Q_LENGTH - 1 ) ? 0 : head+1;
 
+	if(0)
 	printk( "%s: sent command %d in index %d (%p)\n",
 		__func__,
 		cmd->op,
@@ -190,6 +200,7 @@ seastar_cmd(
 		return 0;
 
 	uint32_t tail = mb->resultq_read;
+	if(0)
 	printk( "%s: waiting for results in index %d (head %d)\n",
 		__func__,
 		tail,
@@ -203,10 +214,6 @@ seastar_cmd(
 
 	return result;
 }
-
-
-/** Start of host memory buffer mapped into Seastar memory through HTB */
-paddr_t seastar_host_region_phys;
 
 
 /** Map a physical address into the seastar memory.
@@ -298,6 +305,15 @@ seastar_next_event( void )
 	return e;
 }
 
+/** Native IP datagram header
+ * Note that the lengths are in quad bytes - 1!
+ */
+struct sshdr {
+	uint16_t		lo_length;
+	uint8_t			hi_length;
+	uint8_t			hdr_dg_type;
+} PACKED;
+
 
 static void
 seastar_ip_rx(
@@ -314,7 +330,7 @@ seastar_ip_rx(
 	);
 #endif
 
-	uint8_t * const data = &skb[ index ][0];
+	uint8_t * data = &skb[ index ][0];
 	if( index> NUM_SKB )
 	{
 		printk( KERN_ERR
@@ -325,20 +341,13 @@ seastar_ip_rx(
 		return;
 	}
 
-	int i;
-	char buf[ 128 ];
-	size_t offset = 0;
-	for( i=0 ; i<32 ; i++ )
-	{
-		offset += snprintf(
-			buf+offset,
-			sizeof(buf)-offset,
-			" %02x",
-			data[i]
-		);
-	}
+	const struct sshdr * const sshdr = (void*) data;
+	const size_t qb_length = sshdr->hi_length << 16 | sshdr->lo_length;
+	size_t length = (qb_length + 1) * 4;
+	data += sizeof(*sshdr);
+	length -= sizeof(*sshdr);
 
-	printk( "%s\n", buf );
+	netdev_rx( data, length );
 }
 
 
@@ -352,7 +361,7 @@ seastar_interrupt(
 	unsigned int		vector
 )
 {
-	printk( "***** %s: We get signal!\n", __func__ );
+	//printk( "***** %s: We get signal!\n", __func__ );
 	int ev_count = 0;
 
 	while( 1 )
@@ -364,7 +373,7 @@ seastar_interrupt(
 		const unsigned type	= (e >> 16) & 0xFFFF;
 		const unsigned index	= (e >>  0) & 0xFFFF;
 
-		printk( "%d: event %d pending %d\n", ev_count, type, index );
+		//printk( "%d: event %d pending %d\n", ev_count, type, index );
 		ev_count++;
 
 		if( type != 126 )
@@ -380,7 +389,7 @@ seastar_interrupt(
 		seastar_ip_rx( index );
 	}
 
-	printk( "%s: processed %d events\n", __func__, ev_count );
+	//printk( "%s: processed %d events\n", __func__, ev_count );
 }
 
 

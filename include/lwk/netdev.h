@@ -27,6 +27,9 @@ struct netdev
 };
 
 
+/** Maximum size of a network packet */
+#define NETDEV_MTU	((size_t) 8192)
+
 /**
  * Registers a new network device
  */
@@ -41,5 +44,19 @@ netdev_register(
  */
 extern void
 netdev_init(void);
+
+
+/** Receive a packet from the network.
+ *
+ * Called by low-level interrupt handler to pass an incoming
+ * packet into the Kitten network stack.  Typically data will
+ * point to the start of an IP header after the network
+ * device has stripped off any of its own headers.
+ */
+extern void
+netdev_rx(
+	uint8_t *		data,
+	size_t			len
+);
 
 #endif
