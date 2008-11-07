@@ -17,7 +17,10 @@ struct netdev
 {
 	char			name[64];
 
-	int (*send)(
+	uint32_t		ip;
+	void *			priv;
+
+	int (*tx)(
 		struct netdev *,
 		void *,
 		size_t
@@ -58,5 +61,22 @@ netdev_rx(
 	uint8_t *		data,
 	size_t			len
 );
+
+
+/** Transmit a packet to the network.
+ *
+ * Called by the kernel to send a packet.
+ *
+ * \note Currently depends on IP headers.
+ */
+extern void
+netdev_tx(
+	uint32_t		dest,
+	uint32_t		src,
+	uint8_t			protocol,
+	const void *		data,
+	size_t			len
+);
+
 
 #endif

@@ -20,6 +20,7 @@
 #define HTB_MAP			0x000020000
 #define HTB_VALID_FLAG		0x8000
 
+#define seastar_tx_source	0xFFE00108
 #define seastar_phys_base	0xFFFA0000
 #define seastar_mailbox_base	0xFFFA0000
 #define seastar_skb_base	0xFFFA4000
@@ -115,6 +116,17 @@ struct command_init_eqcb {
     uint16_t eqcb_index;    // 2
     uint32_t base;          // 4
     uint32_t count;         // 8
+} PACKED;
+
+#define COMMAND_IP_TX 13
+struct command_ip_tx {
+    uint8_t  op;            // 0
+    uint8_t  pad;           // 1
+    uint16_t nid;           // 2
+    uint16_t length;        // 4 (qb-1)
+    uint16_t pad2;          // 6
+    uint64_t address;       // 8
+    uint16_t pending_index; // 16
 } PACKED;
 
 
@@ -320,16 +332,6 @@ seastar_ip_rx(
 	const unsigned		index
 )
 {
-#if 0
-	// Extract the IP datagram from pending
-	struct pending * const p = &upper_pending[ index ];
-	printk( "message %d status %d skb %d\n",
-		p->message,
-		p->status,
-		p->skb
-	);
-#endif
-
 	uint8_t * data = &skb[ index ][0];
 	if( index> NUM_SKB )
 	{
@@ -349,6 +351,17 @@ seastar_ip_rx(
 
 	netdev_rx( data, length );
 }
+
+
+static void
+seastar_ip_tx_end(
+	const unsigned		index
+)
+{
+	struct pending * const pending = &upper_pending[ index ];
+	printk( "%s: tx done %d\n", __func__, index );
+}
+
 
 
 /** Handle an interrupt from the Seastar device.
@@ -376,20 +389,82 @@ seastar_interrupt(
 		//printk( "%d: event %d pending %d\n", ev_count, type, index );
 		ev_count++;
 
-		if( type != 126 )
+#define PTL_EVENT_IP_TX_END	125
+#define PTL_EVENT_IP_RX		126
+#define PTL_EVENT_IP_RX_EMPTY	127
+#define PTL_EVENT_ERR_RX_HDR_CRC 135
+
+		switch( type )
 		{
+		case PTL_EVENT_IP_RX:
+			seastar_ip_rx( index );
+			break;
+		case PTL_EVENT_IP_TX_END:
+			seastar_ip_tx_end( index );
+			break;
+		case PTL_EVENT_ERR_RX_HDR_CRC:
+			panic( "%s: rx crc error!\n", __func__ );
+			break;
+		default:
 			printk( KERN_NOTICE
 				"***** %s: unhandled event type %d\n",
 				__func__,
 				type
 			);
-			continue;
+			break;
 		}
 
-		seastar_ip_rx( index );
 	}
 
 	//printk( "%s: processed %d events\n", __func__, ev_count );
+}
+
+
+/** Send a packet */
+void
+seastar_tx(
+	const struct iphdr *	iphdr,
+	const void *		data,
+	size_t			data_len
+)
+{
+	size_t len = sizeof(struct sshdr) + sizeof(*iphdr) + data_len;
+	size_t qblen = (len >> 2) - 1;
+	struct sshdr sshdr = {
+		.lo_length	= (qblen >>  0) & 0xFFFF,
+		.hi_length	= (qblen >> 16) & 0x00FF,
+		.hdr_dg_type	= (2 << 5), // Datagram 2, type 0 == ip
+	};
+
+	// Use pending #63 for a quick hack
+	const int pending_index = 63;
+	struct pending * const pending = &upper_pending[ pending_index ];
+
+#define SSNAL_IP_MSG    0x40000000
+	pending->message	= SSNAL_IP_MSG;
+	pending->status		= 0;
+	pending->skb		= 0;
+
+	struct msg {
+		struct sshdr	sshdr;
+		struct iphdr	iphdr;
+		uint8_t		buf[ NETDEV_MTU ];
+	} PACKED;
+
+	static struct msg msg;
+	msg.sshdr = sshdr;
+	msg.iphdr = *iphdr;
+	memcpy( msg.buf, data, data_len );
+
+	struct command_ip_tx cmd = {
+		.op		= COMMAND_IP_TX,
+		.nid		= 2563,	// HACK
+		.length		= qblen,
+		.address	= __pa( &msg ) >> 2,
+		.pending_index	= pending_index,
+	};
+
+	seastar_cmd( (struct command*) &cmd, 0 );
 }
 
 
@@ -402,6 +477,11 @@ seastar_init( void )
 		__func__,
 		niccb
 	);
+
+	// Read the NID from the localbus and write it into the niccbc
+	uint16_t * const lb_tx_source
+		= (void*)( seastar_virt_base + seastar_tx_source );
+	niccb->local_nid = *lb_tx_source;
 
 	printk( "%s: nid %d (0x%x) version %x built %x\n",
 		__func__,

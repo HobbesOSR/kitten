@@ -22,6 +22,8 @@
 /** \todo Where is the byte order defined? */
 #define __BYTE_ORDER __LITTLE_ENDIAN
 
+#define IP_PROTO_ICMP	1
+
 
 struct timestamp
   {
