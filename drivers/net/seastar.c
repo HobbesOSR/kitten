@@ -10,7 +10,9 @@
  */
 
 #include <lwk/driver.h>
+#include <lwk/signal.h>
 #include <arch/page.h>
+#include <arch/proto.h>
 #include <net/seastar.h>
 
 #define HTB_MAP			0x20000
@@ -141,6 +143,10 @@ struct mailbox * const seastar_mailbox = (void*)( seastar_virt_base + seastar_ma
  * field in the ptlhdr.  If the SSNAL_IP_MSG bit is set the
  * pending will be recognized as an IP message by the rest of
  * the Portals stack.
+ *
+ * \note To the best of my knowledge these are unused for IP.
+ * Only the lower pendings need to be allocated, but the firmware
+ * will complain if there are no upper pendings.
  */
 struct pending
 {
@@ -153,13 +159,14 @@ struct pending
 sizecheck_struct( pending, 128 );
 
 
+#define NUM_SKB		64
 #define NUM_PENDINGS	64
 struct pending upper_pending[ NUM_PENDINGS ];
-
-uint8_t skb[ NUM_PENDINGS ][ 65536 ];
+uint8_t skb[ NUM_SKB ][ 65536 ];
 
 #define NUM_EQ		1024
 uint32_t eq[ NUM_EQ ];
+unsigned eq_read;
 
 
 result_t
@@ -224,7 +231,13 @@ seastar_map_host_region(
 	htb_map[ 9 ] = HTB_VALID_FLAG | ((paddr >> 28) + 1);
 
 	seastar_host_region_phys	= paddr;
-	printk( "%s: virt %p phys %p -> %p\n", __func__, addr, (void*) raw_paddr, (void*) seastar_host_region_phys );
+
+	printk( "%s: virt %p phys %p -> %p\n",
+		__func__,
+		addr,
+		(void*) raw_paddr,
+		(void*) seastar_host_region_phys
+	);
 }
 
 
@@ -258,11 +271,116 @@ void
 seastar_refill_skb( void )
 {
 	int i;
+	for( i=0 ; i < NUM_SKB ; i++ )
+		seastar_skb[i] = __pa( &skb[i] ) >> 2;
+
 	for( i=0 ; i < NUM_PENDINGS ; i++ )
-	{
 		upper_pending[i].status = 0;
-		seastar_skb[i] = __pa( &skb[i] );
+}
+
+
+/** Fetch the next event from the eq.
+ *
+ * Updates the read pointer to indicate that we have processed
+ * the event.
+ *
+ * \return 0 if there is no event pending.
+ */
+static inline uint32_t
+seastar_next_event( void )
+{
+	uint32_t e = eq[ eq_read ];
+	if( !e )
+		return 0;
+
+	eq[ eq_read ] = 0;
+	eq_read = (eq_read + 1) % NUM_EQ;
+	return e;
+}
+
+
+static void
+seastar_ip_rx(
+	const unsigned		index
+)
+{
+#if 0
+	// Extract the IP datagram from pending
+	struct pending * const p = &upper_pending[ index ];
+	printk( "message %d status %d skb %d\n",
+		p->message,
+		p->status,
+		p->skb
+	);
+#endif
+
+	uint8_t * const data = &skb[ index ][0];
+	if( index> NUM_SKB )
+	{
+		printk( KERN_ERR
+			"%s: Invalid skb %d from Seastar!\n",
+			__func__,
+			index
+		);
+		return;
 	}
+
+	int i;
+	char buf[ 128 ];
+	size_t offset = 0;
+	for( i=0 ; i<32 ; i++ )
+	{
+		offset += snprintf(
+			buf+offset,
+			sizeof(buf)-offset,
+			" %02x",
+			data[i]
+		);
+	}
+
+	printk( "%s\n", buf );
+}
+
+
+/** Handle an interrupt from the Seastar device.
+ *
+ * Process all events on the eq.
+ */
+static void
+seastar_interrupt(
+	struct pt_regs *	regs,
+	unsigned int		vector
+)
+{
+	printk( "***** %s: We get signal!\n", __func__ );
+	int ev_count = 0;
+
+	while( 1 )
+	{
+		uint32_t e = seastar_next_event();
+		if( !e )
+			break;
+
+		const unsigned type	= (e >> 16) & 0xFFFF;
+		const unsigned index	= (e >>  0) & 0xFFFF;
+
+		printk( "%d: event %d pending %d\n", ev_count, type, index );
+		ev_count++;
+
+		if( type != 126 )
+		{
+			printk( KERN_NOTICE
+				"***** %s: unhandled event type %d\n",
+				__func__,
+				type
+			);
+			continue;
+		}
+
+		seastar_ip_rx( index );
+	}
+
+	printk( "%s: processed %d events\n", __func__, ev_count );
 }
 
 
@@ -327,7 +445,8 @@ seastar_init( void )
 	};
 
 	result = seastar_cmd( (struct command *) &init_cmd, 1 );
-	printk( "%s: init result %x\n", __func__, result );
+	if( result != 0 )
+		panic( "%s: init_process returned %d\n", __func__, result );
 
 	struct command_init_eqcb eqcb_cmd = {
 		.op			= COMMAND_INIT_EQCB,
@@ -336,9 +455,9 @@ seastar_init( void )
 		.count			= NUM_EQ,
 	};
 
-	printk( "%s: init_eqcb base %p\n", __func__, (void*) eqcb_cmd.base );
 	result = seastar_cmd( (struct command *) &eqcb_cmd, 1 );
-	printk( "%s: eqcb result %x base %p\n", __func__, result, (void*) eqcb_cmd.base );
+	if( result != 1 )
+		panic( "%s: init_eqcb returned %d\n", __func__, result );
 
 	struct command_mark_alive alive_cmd = {
 		.op			= COMMAND_MARK_ALIVE,
@@ -346,9 +465,12 @@ seastar_init( void )
 	};
 
 	result = seastar_cmd( (struct command *) &alive_cmd, 1 );
-	printk( "%s: alive result %x\n", __func__, result );
+	if( result != 0 )
+		panic( "%s: mark_alive returned %d\n", __func__, result );
 
 	seastar_refill_skb();
+
+	set_idtvec_handler( 0xEE, &seastar_interrupt );
 }
 
 
