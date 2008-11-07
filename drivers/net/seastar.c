@@ -93,6 +93,15 @@ struct command_mark_alive {
 } PACKED ALIGNED;
 
 
+#define COMMAND_INIT_EQCB 2
+struct command_init_eqcb {
+    uint8_t  op;            // 0
+    uint8_t  pad;           // 1
+    uint16_t eqcb_index;    // 2
+    uint32_t base;          // 4
+    uint32_t count;         // 8
+} PACKED ALIGNED;
+
 
 typedef uint32_t result_t;
 
@@ -148,6 +157,9 @@ sizecheck_struct( pending, 128 );
 struct pending upper_pending[ NUM_PENDINGS ];
 
 uint8_t skb[ NUM_PENDINGS ][ 65536 ];
+
+#define NUM_EQ		1024
+uint32_t eq[ NUM_EQ ];
 
 
 result_t
@@ -233,8 +245,17 @@ phys_to_fw(
 }
 
 
+static inline uint32_t
+virt_to_fw(
+	void *			addr
+)
+{
+	return phys_to_fw( __pa( addr ) );
+}
+
+
 void
-seastar_refill_skb()
+seastar_refill_skb( void )
 {
 	int i;
 	for( i=0 ; i < NUM_PENDINGS ; i++ )
@@ -248,6 +269,8 @@ seastar_refill_skb()
 void
 seastar_init( void )
 {
+	uint32_t lower_memory = seastar_host_base;
+
 	printk( "%s: Looking for niccb %p\n",
 		__func__,
 		niccb
@@ -261,23 +284,21 @@ seastar_init( void )
 		niccb->build_time
 	);
 
-	result_t result;
+	// Allocate the PPC memory
+	uint32_t lower_pending = lower_memory;
+	lower_memory += NUM_PENDINGS * 32; // sizeof(struct pending)
 
-	paddr_t upper_pending_phys = __pa( upper_pending );
-	uintptr_t upper_pending_fw = phys_to_fw( upper_pending_phys );
-	uintptr_t upper_pending_ht = upper_pending_fw >> 2;
+	const int num_eq = 1;
+	uint32_t lower_eqcb = lower_memory;
+	lower_memory = num_eq * 32; // sizeof(struct eqcb)
+	
+
+	result_t result;
 
 	// Initialize the HTB map so that the Seastar can see our memory
 	// Since we are only doing upper pendings, we just use the
 	// upper_pending_phys instead of the host_phys area
 	seastar_map_host_region( upper_pending );
-
-	printk( "%s: upper pending %p => %p ht %p\n",
-		__func__,
-		upper_pending,
-		(void*) upper_pending_fw,
-		(void*) upper_pending_ht
-	);
 
 	// Attempt to send a setup command to the NIC
 	struct command_init_process init_cmd = {
@@ -288,29 +309,40 @@ seastar_init( void )
 
 		.num_pendings		= NUM_PENDINGS,
 		.pending_tx_limit	= 0, // no tx pendings for ip
-		.pending_table_addr	= seastar_host_base,
-		.up_pending_table_addr	= upper_pending_fw,
-		.up_pending_table_ht_addr = upper_pending_ht,
+		.pending_table_addr	= lower_pending,
+		.up_pending_table_addr	= virt_to_fw( upper_pending ),
+		.up_pending_table_ht_addr = 0, // not needed for ip
 		
 		.num_memds		= 0,
 		.memd_table_addr	= 0,
 
-		.num_eqcbs		= 0,
-		.eqcb_table_addr	= 0,
+		.num_eqcbs		= num_eq,
+		.eqcb_table_addr	= lower_eqcb,
+		.eqheap_addr		= virt_to_fw( eq ),
+		.eqheap_length		= NUM_EQ * sizeof(eq[0]),
 
 		.shdr_table_ht_addr	= 0,
 		.result_block_addr	= 0,
-		.eqheap_addr		= 0,
-		.eqheap_length		= 0,
 		.smb_table_addr		= 0,
 	};
 
 	result = seastar_cmd( (struct command *) &init_cmd, 1 );
 	printk( "%s: init result %x\n", __func__, result );
 
+	struct command_init_eqcb eqcb_cmd = {
+		.op			= COMMAND_INIT_EQCB,
+		.eqcb_index		= 0,
+		.base			= virt_to_fw( eq ),
+		.count			= NUM_EQ,
+	};
+
+	printk( "%s: init_eqcb base %p\n", __func__, (void*) eqcb_cmd.base );
+	result = seastar_cmd( (struct command *) &eqcb_cmd, 1 );
+	printk( "%s: eqcb result %x base %p\n", __func__, result, (void*) eqcb_cmd.base );
+
 	struct command_mark_alive alive_cmd = {
-		.op		= COMMAND_MARK_ALIVE,
-		.process_index	= GENERIC_PROCESS_INDEX,
+		.op			= COMMAND_MARK_ALIVE,
+		.process_index		= GENERIC_PROCESS_INDEX,
 	};
 
 	result = seastar_cmd( (struct command *) &alive_cmd, 1 );
