@@ -252,7 +252,7 @@ ioapic_map(void)
 	if (ioapic_num == 0) {
 		printk(KERN_WARNING "Assuming 1 I/O APIC.\n");
 		ioapic_num   = 1; /* assume there is one ioapic */
-		ioapic_id[0] = 1; /* and that it's ID is 1 */
+		ioapic_id[0] = 1; /* and that its ID is 1 */
 		ioapic_phys_addr[0] = IOAPIC_DEFAULT_PHYS_BASE;
 	}
 
