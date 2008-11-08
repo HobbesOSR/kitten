@@ -1,5 +1,8 @@
-/*
- *  ROM BIOS images for use by guest operating systems
+/** \file
+ *  ROM BIOS images for use by guest operating systems.
+ *
+ * These are only used if CONFIG_PALACIOS is defined and are used
+ * to jump start the guest operating systems virtual machine.
  */
 
 .data

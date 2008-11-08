@@ -1,3 +1,6 @@
+/** \file
+ * Initial C entry point for lwk.
+ */
 #include <lwk/init.h>
 #include <lwk/kernel.h>
 #include <lwk/string.h>
@@ -77,9 +80,14 @@ find_command_line(void)
 
 /**
  * This is the initial C entry point to the kernel.
- * NOTE: The order of operations is usually important.  Be careful.
+ *
+ * Once the architecture dependent operations have been completed,
+ * we jump into ::start_kernel() to do the architecture indepenent
+ * setup.
+ *
+ * \note The order of operations is usually important.  Be careful!
  */
-void __init
+void __init __noreturn
 x86_64_start_kernel(char * real_mode_data)
 {
 	int i;
