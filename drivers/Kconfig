@@ -5,24 +5,24 @@ menu "Device drivers"
 #
 config VGA_CONSOLE
 	bool "VGA console"
-	default "y" if PC
-	default "n" if !PC
+	default PC
 
 config SERIAL_CONSOLE
 	bool "Serial console support"
-	default "y" if PC
-	default "n" if !PC
+	default PC
+
+config KEYBOARD
+	bool
+	default PC
 
 config RCAL0_CONSOLE
 	bool "Cray XT3 L0 console support"
 	depends on CRAY_XT
-	default "y" if CRAY_XT
-	default "n" if !CRAY_XT
+	default CRAY_XT
 
 config SEASTAR
 	bool "Cray XT3 Seastar network"
 	depends on CRAY_XT
-	default "y" if CRAY_XT
-	default "n" if !CRAY_XT
+	default CRAY_XT
 
 endmenu

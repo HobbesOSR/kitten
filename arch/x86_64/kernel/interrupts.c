@@ -241,25 +241,6 @@ do_apic_spurious(struct pt_regs *regs, unsigned int vector)
 	while (1) {}
 }
 
-void
-do_keyboard_interrupt(struct pt_regs *regs, unsigned int vector)
-{
-	const uint8_t KB_STATUS_PORT = 0x64;
-	const uint8_t KB_DATA_PORT   = 0x60;
-	const uint8_t KB_OUTPUT_FULL = 0x01;
-
-	uint8_t status = inb(KB_STATUS_PORT);
-
-	if ((status & KB_OUTPUT_FULL) == 0)
-		return;
-
-	uint8_t key = inb(KB_DATA_PORT);
-#ifdef CONFIG_PALACIOS
-	send_key_to_palacios(status, key);
-#else
-	printk("Keyboard Interrupt: status=%u, key=%u\n", status, key);
-#endif
-}
 
 void 
 set_idtvec_handler(unsigned int vector, idtvec_handler_t handler)
@@ -328,11 +309,6 @@ interrupts_init(void)
 	set_idtvec_handler( ALIGNMENT_CHECK_VECTOR,        &do_alignment_check        );
 	set_idtvec_handler( MACHINE_CHECK_VECTOR,          &do_machine_check          );
 	set_idtvec_handler( SIMD_COPROCESSOR_ERROR_VECTOR, &do_simd_coprocessor_error );
-
-	/*
-	 * Register handlers for standard PC devices.
-	 */
-	set_idtvec_handler( IRQ1_VECTOR, &do_keyboard_interrupt );
 
 	/*
 	 * Register handlers for all of the local APIC vectors.
