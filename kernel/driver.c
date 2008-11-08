@@ -5,7 +5,7 @@ static int driver_debug;
 param( driver_debug, bool );
 
 
-/**
+/*
  * Searches for the specified driver name and calls its init() function.
  *
  * Returns 0 on success, -1 on failure.
@@ -21,11 +21,13 @@ driver_init_by_name(
 	unsigned int         num_drvs	=	__stop___driver_table
 						  - __start___driver_table;
 
+	int wildcard = strcmp( name, "*" ) == 0;
+
 	for (i = 0; i < num_drvs; i++, drv++ )
 	{
 		if( strcmp( type, drv->type ) != 0 )
 			continue;
-		if( strcmp( name, drv->name ) != 0 )
+		if( !wildcard && strcmp( name, drv->name ) != 0 )
 			continue;
 		if( drv->init_called )
 			return -1;
@@ -34,13 +36,20 @@ driver_init_by_name(
 			printk( KERN_INFO
 				"%s/%s: Initializing\n",
 				type,
-				name
+				drv->name
 			);
 
 		drv->init_called = 1;
 		drv->init();
-		return 0;
+
+		// If we are not wildcarded, only init the first match.
+		if( !wildcard )
+			return 0;
 	}
+
+	// It is not an error to fall off the list if we are wildcarded
+	if( wildcard )
+		return 0;
 
 	// No driver found for type/name pair
 	if( driver_debug )
@@ -54,6 +63,9 @@ driver_init_by_name(
 }
 
 
+/*
+ * Initialize all devices in a coma separated list.
+ */
 void
 driver_init_list(
 	const char *	type,

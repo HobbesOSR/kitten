@@ -1,3 +1,6 @@
+/** \file
+ * Architecture-independent kernel entry.
+ */
 #include <lwk/extable.h>
 #include <lwk/init.h>
 #include <lwk/kernel.h>
@@ -15,12 +18,16 @@
 #include <lwk/sched.h>
 #include <lwk/timer.h>
 #include <lwk/kgdb.h>
+#include <lwk/driver.h>
 #ifdef CONFIG_PALACIOS
 #include <arch/palacios.h>
 #endif
 
 /**
  * Pristine copy of the LWK boot command line.
+ *
+ * Typically this is copied from the real mode data into kernel virtual
+ * address space.
  */
 char lwk_command_line[COMMAND_LINE_SIZE];
 
@@ -102,6 +109,11 @@ start_kernel()
 	 * Bring up any network devices.
 	 */
 	netdev_init();
+
+	/*
+	 * Bring up any late init devices.
+	 */
+	driver_init_by_name( "late", "*" );
 
 	/*
 	 * Boot all of the other CPUs in the system, one at a time.
