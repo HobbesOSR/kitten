@@ -239,6 +239,8 @@ seastar_ip_tx_end(
 )
 {
 	struct pending * const pending = &upper_pending[ index ];
+
+	if(0)
 	printk( "%s: tx done %d status %d\n",
 		__func__,
 		index,
@@ -355,6 +357,8 @@ seastar_tx(
 )
 {
 	const unsigned nid = ip2nid( ipaddr );
+
+	if(0)
 	printk( "%s: Send %d bytes to %08x nid %d\n",
 		__func__,
 		p->tot_len,
