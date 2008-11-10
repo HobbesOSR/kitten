@@ -30,19 +30,24 @@ static DEFINE_SPINLOCK(htable_lock);
 /**
  * Memory region structure. A memory region represents a contiguous region 
  * [start, end) of valid memory addresses in an address space.
+ *
+ * \note This structure is opaque to users of the aspace API and is
+ * used for internal bookkeeping.
  */
-struct region {
-	struct aspace *  aspace;   /* Address space this region belongs to */
-	struct list_head link;     /* Linkage in the aspace->region_list */
+struct region
+{
+	struct aspace *  aspace;   /**< Address space this region belongs to */
+	struct list_head link;     /**< Linkage in the aspace->region_list */
 
-	vaddr_t          start;    /* Starting address of the region */
-	vaddr_t          end;      /* 1st byte after end of the region */
-	vmflags_t        flags;    /* Permissions, caching, etc. */
-	vmpagesize_t     pagesz;   /* Allowed page sizes... 2^bit */
-	id_t             smartmap; /* If (flags & VM_SMARTMAP), ID of the
+	vaddr_t          start;    /**< Starting address of the region */
+	vaddr_t          end;      /**< 1st byte after end of the region */
+	vmflags_t        flags;    /**< Permissions, caching, etc. */
+	vmpagesize_t     pagesz;   /**< Allowed page sizes... 2^bit */
+	id_t             smartmap; /**< If (flags & VM_SMARTMAP), ID of the
 	                              aspace this region is mapped to */
-	char             name[16]; /* Human-readable name of the region */
+	char             name[16]; /**< Human-readable name of the region */
 };
+
 
 /**
  * This calculates a region's end address. Normally end is the address of the
@@ -130,6 +135,8 @@ lookup_and_lock(id_t id)
 
 /**
  * Like lookup_and_lock(), but looks up two address spaces instead of one.
+ *
+ * \todo Fix lock ordering bug.  This can deadlock.
  */
 static int
 lookup_and_lock_two(id_t a, id_t b,
@@ -163,6 +170,13 @@ id_ok(id_t id)
 	return ((id >= ASPACE_MIN_ID) && (id <= ASPACE_MAX_ID));
 }
 
+
+/**
+ * Initialize the address space subsystem.
+ *
+ * Allocate the hash tables for address space lookups, create
+ * the kernel thread address spaces and make them active.
+ */
 int __init
 aspace_subsys_init(void)
 {

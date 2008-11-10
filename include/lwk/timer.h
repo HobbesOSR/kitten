@@ -11,29 +11,32 @@
  */
 struct timer {
 	struct list_head link;
-	id_t             cpu;            /* CPU this timer is installed on */
-	uint64_t         expires;        /* Time when this timer expires */
-	uintptr_t        data;           /* arg to pass to function */
-	void (*function)(uintptr_t);     /* executed when timer expires */
+	id_t             cpu;            /**< CPU this timer is installed on */
+	uint64_t         expires;        /**< Time when this timer expires */
+	uintptr_t        data;           /**< arg to pass to function */
+	void (*function)(uintptr_t);     /**< executed when timer expires */
 };
 
-/**
- * Core timer API.
+/** \name Core timer API.
+ * @{
  */
 void timer_add(struct timer *timer);
 void timer_del(struct timer *timer);
 uint64_t timer_sleep_until(uint64_t when);
+// @}
 
-/**
- * Internal timer-subsystem functions.
+/** \name Internal timer-subsystem functions.
  * Normal kernel code and drivers should not call these.
  */
 int timer_subsys_init(void);
 void expire_timers(void);
 void schedule_next_wakeup(void);
+// @}
 
 /**
  * Architecture-dependent timer functions.
+ *
+ * \note The architecture port must implement this function.
  */
 void arch_schedule_next_wakeup(uint64_t when);
 

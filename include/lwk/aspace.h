@@ -1,4 +1,9 @@
 /* Copyright (c) 2007,2008 Sandia National Laboratories */
+/** \file
+ *
+ * Address space data structure.
+ *
+ */
 
 #ifndef _LWK_ASPACE_H
 #define _LWK_ASPACE_H
@@ -7,9 +12,12 @@
 #include <lwk/idspace.h>
 #include <arch/aspace.h>
 
-/**
+/** \name User space IDs
+ *
  * Valid user-space created address space IDs are in interval
  * [ASPACE_MIN_ID, ASPACE_MAX_ID].
+ *
+ * @{
  */
 #define ASPACE_MIN_ID     0
 #define ASPACE_MAX_ID     4094
@@ -20,8 +28,13 @@
  */
 #define INIT_ASPACE_ID    ASPACE_MAX_ID
 
-/**
+//@}
+
+/** \name Virtual memory flags.
+ *
  * Protection and memory type flags.
+ *
+ * @{
  */
 #define VM_READ           (1 << 0)
 #define VM_WRITE          (1 << 1)
@@ -35,17 +48,21 @@
 #define VM_SMARTMAP       (1 << 9)
 typedef unsigned long vmflags_t;
 
-/**
- * Page sizes.
+// @}
+
+/** \name Page sizes.
+ * @{
  */
 #define VM_PAGE_4KB       (1 << 12)
 #define VM_PAGE_2MB       (1 << 21)
 #define VM_PAGE_1GB       (1 << 30)
 typedef unsigned long vmpagesize_t;
+// @}
 
-/**
- * Core address space management API.
+/** \name Core address space management API.
+ *
  * These are accessible from both kernel-space and user-space (via syscalls).
+ * @{
  */
 extern int aspace_get_myid(id_t *id);
 extern int aspace_create(id_t id_request, const char *name, id_t *id);
@@ -69,9 +86,10 @@ extern int aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent);
 extern int aspace_unsmartmap(id_t src, id_t dst);
 
 extern int aspace_dump2console(id_t id);
+// @}
 
-/**
- * Convenience functions defined in liblwk.
+/** \name Convenience functions defined in liblwk.
+ * @{
  */
 extern int
 aspace_map_region(
@@ -95,6 +113,8 @@ aspace_map_region_anywhere(
 	paddr_t      pmem
 );
 
+// @}
+
 #ifdef __KERNEL__
 
 #include <lwk/spinlock.h>
@@ -104,29 +124,44 @@ aspace_map_region_anywhere(
 
 /**
  * Address space structure.
+ *
+ * This structure represents the kernel's view of an address space,
+ * either user or kernel space.  The address space consists of
+ * non-overlapping regions, stored in the region_list member.
+ * The struct region is opaque to users of the high-level API.
+ *
  */
 struct aspace {
-	spinlock_t         lock;        /* Must be held to access addr space */
+	spinlock_t         lock;        /**< Must be held to access addr space */
 
-	id_t               id;          /* The address space's ID */
-	char               name[16];    /* Address space's name */
-	struct hlist_node  ht_link;     /* Adress space hash table linkage */
-	int                refcnt;      /* # of users of this address space */
+	id_t               id;          /**< The address space's ID */
+	char               name[16];    /**< Address space's name */
+	struct hlist_node  ht_link;     /**< Adress space hash table linkage */
+	int                refcnt;      /**< # of users of this address space */
 
-	struct list_head   region_list; /* Sorted non-overlapping region list */
+	struct list_head   region_list; /**< Sorted non-overlapping region list */
 
-	/**
-	 * The address space's "Heap" region spans from:
+	/** \name Heap extents and sub-heap regions.
+	 *
+	 * The address space's "Heap" region is special in that it is
+	 * subdivided into two separated regions.  The entire address
+	 * space spans from:
 	 *     [heap_start, heap_end)
+	 *
+	 * The traditional UNIX data segment is contained in the
+	 * lower part of the address space's heap region, ranging from:
+	 *     [heap_start, brk)
+	 *
+	 * Memory for anonymous mmap() regions is allocated from the top
+	 * of the address space's heap region, ranging from:
+	 *     [mmap_brk, heap_end)
+	 *
+	 * @{
 	 */
 	vaddr_t            heap_start;
 	vaddr_t            heap_end;
 
-	/**
-	 * The traditional UNIX data segment is contained in the address
-	 * space's heap region, ranging from:
-	 *     [heap_start, brk)
-	 *
+	/** \note
 	 * GLIBC/malloc will call the sys_brk() system call when it wants to
 	 * expand or shrink the data segment. The kernel verifies that the new
 	 * brk value is legal before updating it. The data segment may not
@@ -135,11 +170,7 @@ struct aspace {
 	 */
 	vaddr_t            brk;
 
-	/**
-	 * Memory for anonymous mmap() regions is allocated from the top of the
-	 * address space's heap region, ranging from:
-	 *     [mmap_brk, heap_end)
-	 *
+	/** \note
 	 * GLIBC makes at least one mmap() call during pre-main app startup
 	 * to allocate some "anonymous" memory (i.e., normal memory, not a
 	 * file mapping). mmap_brk starts out set to heap_end and grows down
@@ -147,6 +178,7 @@ struct aspace {
 	 * mmap_brk from extending into the UNIX data segment (see brk above).
 	 */
 	vaddr_t            mmap_brk;
+	// @}
 
 	/**
 	 * Architecture specific address space data.
@@ -154,8 +186,10 @@ struct aspace {
 	struct arch_aspace arch;
 };
 
-/**
+/** \name Kernel address space IDs.
+ *
  * Valid address space IDs are in interval [__ASPACE_MIN_ID, __ASPACE_MAX_ID].
+ * @{
  */
 #define __ASPACE_MIN_ID   ASPACE_MIN_ID
 #define __ASPACE_MAX_ID   ASPACE_MAX_ID+1  /* +1 for KERNEL_ASPACE_ID */
@@ -165,11 +199,16 @@ struct aspace {
  */
 #define KERNEL_ASPACE_ID  ASPACE_MAX_ID+1
 
-/**
+// @}
+
+
+/** \name Kernel-only address space API.
+ *
  * Kernel-only unlocked versions of the core adress space management API.
  * These assume that the aspace objects passed in have already been locked.
  * The caller must unlock the aspaces. The caller must also ensure that
  * interrupts are disabled before calling these functions.
+ * @{
  */
 extern int __aspace_find_hole(struct aspace *aspace,
                               vaddr_t start_hint, size_t extent, size_t alignment,
@@ -187,18 +226,22 @@ extern int __aspace_unmap_pmem(struct aspace *aspace,
 extern int __aspace_smartmap(struct aspace *src, struct aspace *dst,
                              vaddr_t start, size_t extent);
 extern int __aspace_unsmartmap(struct aspace *src, struct aspace *dst);
+// @}
 
-/**
- * Kernel-only address space management API.
- * These are not accessible from user-space.
+
+/** \name Kernel-only address space management API.
+ *
+ * \note These are not accessible from user-space.
  */
 extern int __init aspace_subsys_init(void);
 extern struct aspace *aspace_acquire(id_t id);
 extern void aspace_release(struct aspace *aspace);
+// @}
 
-/**
- * Architecture specific address space functions.
- * Each architecture port must provide these.
+/** \name Architecture specific address space functions.
+ *
+ * \note Each architecture port must provide these.
+ * @{
  */
 extern int arch_aspace_create(struct aspace *aspace);
 extern void arch_aspace_destroy(struct aspace *aspace);
@@ -213,8 +256,13 @@ extern int arch_aspace_smartmap(struct aspace *src, struct aspace *dst,
 extern int arch_aspace_unsmartmap(struct aspace *src, struct aspace *dst,
                                   vaddr_t start, size_t extent);
 
-/**
- * System call handlers.
+// @}
+
+/** \name System call handlers.
+ *
+ * These are system call handler wrappers for the address space API.
+ *
+ * @{
  */
 extern int sys_aspace_get_myid(id_t __user *id);
 extern int sys_aspace_create(id_t id_request, const char __user *name,
@@ -235,5 +283,7 @@ extern int sys_aspace_smartmap(id_t src, id_t dst,
 extern int sys_aspace_unsmartmap(id_t src, id_t dst);
 extern int sys_aspace_dump2console(id_t id);
 
-#endif
+//@}
+
+#endif // __KERNEL__
 #endif

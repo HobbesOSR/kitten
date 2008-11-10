@@ -38,6 +38,8 @@ char lwk_command_line[COMMAND_LINE_SIZE];
  * necessary. This function initializes the kernel and its various subsystems.
  * It calls back to architecture-specific code at several well defined points,
  * which all architectures must implement (e.g., setup_arch()).
+ *
+ * \callgraph
  */
 void
 start_kernel()
