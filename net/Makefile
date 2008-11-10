@@ -13,7 +13,6 @@ obj-$(CONFIG_LWIP_TCP)		+= tcp.o
 obj-$(CONFIG_LWIP_TCP)		+= tcp_in.o
 obj-$(CONFIG_LWIP_TCP)		+= tcp_out.o
 
-obj-$(CONFIG_LWIP_SNMP)		+= snmp/
 obj-$(CONFIG_LWIP_DNS)		+= dns.o
 
 obj-$(CONFIG_LWIP_UDP)		+= udp.o
