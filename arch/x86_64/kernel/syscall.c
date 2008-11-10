@@ -3,6 +3,7 @@
 #include <lwk/cache.h>
 #include <lwk/errno.h>
 #include <arch/asm-offsets.h>
+#include <arch/vsyscall.h>
 
 /**
  * This generate prototypes for all system call handlers.
@@ -19,10 +20,6 @@
 #define __SYSCALL(nr, sym) [ nr ] = sym, 
 #undef _ARCH_X86_64_UNISTD_H
 
-/**
- * Prototype for system call handler functions.
- */
-typedef long (*syscall_ptr_t)(void); 
 
 /**
  * Dummy handler for unimplemented system calls.
@@ -45,8 +42,23 @@ long syscall_not_implemented(void)
  * uses this table to determine the handler function to call for each
  * system call.  The table is indexed by system call number.
  */
-const syscall_ptr_t sys_call_table[__NR_syscall_max+1] = {
+syscall_ptr_t sys_call_table[__NR_syscall_max+1] = {
 	[0 ... __NR_syscall_max] = syscall_not_implemented,
 	#include <arch/unistd.h>
 };
 
+
+void
+syscall_register(
+	unsigned		nr,
+	syscall_ptr_t		handler
+)
+{
+	if( sys_call_table[ nr ] != syscall_not_implemented )
+		printk( KERN_WARNING
+			"%s: Overwriting syscall %d\n",
+			__func__,
+			nr
+		);
+	sys_call_table[ nr ] = handler;
+}

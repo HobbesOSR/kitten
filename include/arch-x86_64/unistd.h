@@ -4,7 +4,7 @@
 /**
  * This file contains the system call numbers.
  *
- * NOTE: holes are not allowed.
+ * \note holes are allowed.
  */
 
 #ifndef __SYSCALL

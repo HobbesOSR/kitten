@@ -19,6 +19,28 @@ enum vsyscall_num {
 void __init vsyscall_map(void);
 void __init vsyscall_init(void);
 
+
+/**
+ * Prototype for system call handler functions.
+ */
+typedef long (*syscall_ptr_t)(void); 
+
+/** Register a system call.
+ *
+ * Some system calls are registered at run-time rather than compile
+ * time.
+ *
+ * \note The type signature for handler is generic for any number
+ * of arguments and may require a cast.
+ *
+ * \todo Put this is a non-architecture specific file?
+ */
+extern void
+syscall_register(
+	unsigned		nr,
+	syscall_ptr_t		handler
+);
+
 #endif /* __KERNEL__ */
 
 #endif /* _ASM_X86_64_VSYSCALL_H_ */
