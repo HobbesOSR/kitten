@@ -1,5 +1,5 @@
 /** \file
- * Layout of Seastar memory.
+ * Layout of Seastar memory and conversion routines.
  */
 #ifndef _seastar_memory_h_
 #define _seastar_memory_h_
@@ -9,6 +9,13 @@
 #define HTB_MAP			0x000020000
 #define HTB_VALID_FLAG		0x8000
 
+
+/** \name Addresses of important data structures in Seastar memory.
+ *
+ * These are the offets in Seastar memory of the important datastructures
+ * that we need to initialize the hardware and send commands to it.
+ * @{
+ */
 #define seastar_tx_source	0xFFE00108
 #define seastar_phys_base	0xFFFA0000
 #define seastar_mailbox_base	0xFFFA0000
@@ -16,6 +23,8 @@
 #define seastar_host_base	0xFFFA5000
 #define seastar_htb_base	0xFFE20000
 #define seastar_niccb_base	0xFFFFE000
+
+/** @} */
 
 /** The Seastar is mapped at L4 entry 511, L3 entry 511, L2 entry 511,
  * giving us a 2 MB window at the very highest end of memory into the
@@ -25,7 +34,7 @@
 //((uint8_t*) ~( (1<<20)-1 ))
 //(511ull << 36) | (511ull << 29) | (511ull <<20) )
 
-/** Location in host memory of PPC's nic control block structure */
+/** Location in host memory of NIC control block structure */
 static struct niccb * const niccb
 	= (void*)( seastar_virt_base + seastar_niccb_base );
 
@@ -37,6 +46,7 @@ static uint64_t * const seastar_skb
 static volatile uint32_t * const htb_map
 	= (void*)( seastar_virt_base + seastar_htb_base );
 
+/** Location in host memory of PPC's per-process mailbox structures */
 static struct mailbox * const seastar_mailbox
 	= (void*)( seastar_virt_base + seastar_mailbox_base );
 
@@ -52,6 +62,8 @@ extern paddr_t seastar_host_region_phys;
  * Since the PPC can only address a limited region of memory, it is necessary
  * to transform it from a host physical address to something that is mapped
  * via the htb_map on the PPC.
+ *
+ * \todo Check for invalid host memory addresses?
  */
 static inline uint32_t
 phys_to_fw(
@@ -88,6 +100,7 @@ htaddr(
 extern uint32_t
 seastar_next_event( void );
 
+
 /* Bring up the low-level hardware */
 extern int
 seastar_hw_init(
@@ -96,13 +109,12 @@ seastar_hw_init(
 );
 
 
-/* Hardware interrupt */
+/* Hardware interrupt handler */
 extern void
 seastar_interrupt(
 	struct pt_regs *	regs,
 	unsigned		vector
 );
-
 
 
 #endif

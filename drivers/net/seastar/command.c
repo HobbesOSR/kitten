@@ -11,25 +11,71 @@
 #include "command.h"
 
 
-/** NID of this node */
+/** NID of this node (initialized in seastar_hw_init()) */
 unsigned local_nid;
+
+
+/** \name Event queue.
+ *
+ * When an event is generated on the Seastar, it will write into the event
+ * queue the pending index (or skb index) that is involved and a 16-bit
+ * status code.
+ *
+ * @{
+ */
+
+/** The firmware requires at least 1024 entries for the generic process */
+#define NUM_EQ		1024
+
+/** Host memory event queue.
+ *
+ */
+uint32_t eq[ NUM_EQ ];
+
+/** Last event index that we read from the queue */
+unsigned eq_read;
+
+/** Fetch the next event from the eq.
+ *
+ * Updates the read pointer to indicate that we have processed
+ * the event.
+ *
+ * \return 0 if there is no event pending.
+ */
+uint32_t
+seastar_next_event( void )
+{
+	uint32_t e = eq[ eq_read ];
+	if( !e )
+		return 0;
+
+	eq[ eq_read ] = 0;
+	eq_read = (eq_read + 1) % NUM_EQ;
+	return e;
+}
+
+/** @} */
+
+/** \name Host memory region
+ *
+ * The PPC can only directly address 256 MB of host memory per slot in
+ * its Hypertransport map.  This writes the physical address into the
+ * given slot.
+ * 
+ * With our limited address space we start the mapping at
+ * seastar_host_region_phys and extend for 256 MB beyond it (two slots).
+ *
+ * @{
+ */
 
 /** Start of host memory buffer mapped into Seastar memory through HTB */
 paddr_t seastar_host_region_phys;
 
-#define NUM_EQ		1024
-uint32_t eq[ NUM_EQ ];
-unsigned eq_read;
-
 
 /** Map a physical address into the seastar memory.
  * 
- * The PPC can only directly address 256 MB of host memory per slot in
- * its Hypertransport map.  This writes the physical address into the
- * given slot.
- *
- * With our limited address space we start the mapping at
- * seastar_host_region_phys.
+ * Update slots 8 and 9 to point to the 256 MB that contain
+ * the passed in kernel virtual address.
  */
 static void
 seastar_map_host_region(
@@ -52,6 +98,8 @@ seastar_map_host_region(
 		(void*) seastar_host_region_phys
 	);
 }
+
+/** @} */
 
 
 
@@ -104,26 +152,6 @@ seastar_cmd(
 }
 
 
-/** Fetch the next event from the eq.
- *
- * Updates the read pointer to indicate that we have processed
- * the event.
- *
- * \return 0 if there is no event pending.
- */
-uint32_t
-seastar_next_event( void )
-{
-	uint32_t e = eq[ eq_read ];
-	if( !e )
-		return 0;
-
-	eq[ eq_read ] = 0;
-	eq_read = (eq_read + 1) % NUM_EQ;
-	return e;
-}
-
-
 
 /** Bring up the low-level Seastar hardware.
  *
@@ -164,12 +192,12 @@ seastar_hw_init(
 	lower_memory = num_eq * 32; // sizeof(struct eqcb)
 	
 
-	result_t result;
-
 	// Initialize the HTB map so that the Seastar can see our memory
 	// Since we are only doing upper pendings, we just use the
 	// upper_pending_phys instead of the host_phys area
 	seastar_map_host_region( upper_pending );
+
+	result_t result;
 
 	// Attempt to send a setup command to the NIC
 	struct command_init_process init_cmd = {

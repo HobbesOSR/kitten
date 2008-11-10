@@ -1008,6 +1008,10 @@ INCLUDE_FILE_PATTERNS  =
 PREDEFINED             = \
 	__LWK__ \
 	__DOXYGEN__ \
+	sizecheck_struct(x)=/**/ \
+	sizecheck(x)=/**/ \
+	PACKED=/**/ \
+	ALIGNED=/**/ \
 
 
 

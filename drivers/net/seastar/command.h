@@ -1,5 +1,12 @@
 /** \file
- * Commands and structures to interface with the Seastar.
+ * Low-level commands and structures to interface with the Seastar.
+ *
+ * These are used to bring up the device and to wrap around
+ * the command queues so that the network driver does not need
+ * worry about memory maps and the other grody bits.
+ *
+ * \note Many of these structures mirror those that live on the
+ * Seastar memory and must retain their layout and mappings.
  */
 #ifndef _seastar_cmd_h_
 #define _seastar_cmd_h_
@@ -15,11 +22,22 @@
 #endif
 
 
+/** Process ID for datagrams */
 #define GENERIC_PROCESS_INDEX	1
+
+/** Entries in the shared mailbox command queue */
 #define COMMAND_Q_LENGTH	63
+/** Entries in the shared mailbox result queue */
 #define RESULT_Q_LENGTH		2
 
-/* Commands are 64 bytes, aligned on a cache line boundary */
+/** Generic command structure.
+ * 
+ * All commands are 64 bytes, aligned on a cache line boundary.
+ * The op field must be the first byte in all of them.
+ *
+ * \note All command structures must match the layout on the
+ * Seastar firmware or things will break!
+ */
 struct command {
     uint8_t  op;         // 0
     uint8_t  pad[63];    // 1-63
@@ -27,7 +45,27 @@ struct command {
 
 sizecheck_struct( command, 64 );
 
+/** \name Command ids.
+ *
+ * These values are for the op fields of the similarly
+ * named command structures.
+ *
+ * @{
+ */
 #define COMMAND_INIT_PROCESS 0
+#define COMMAND_MARK_ALIVE 1
+#define COMMAND_INIT_EQCB 2
+#define COMMAND_IP_TX 13
+
+/** @} */
+
+
+/** Initialize the memory maps on the Seastar.
+ *
+ * Not all fields are used since Kitten does not support
+ * generic Portals.  Only the pending and event queue setup
+ * is important.
+ */
 struct command_init_process {
     uint8_t  op;                         // 0
     uint8_t  process_index;              // 1
@@ -52,28 +90,38 @@ struct command_init_process {
 } PACKED;
 
 
-#define COMMAND_MARK_ALIVE 1
+/** Mark the process as alive and available to receive packets.
+ *
+ * Until this is called the Seastar will discard any packets
+ * to this process
+ */
 struct command_mark_alive {
     uint8_t  op;             // 0
     uint8_t  process_index;  // 1
 } PACKED;
 
 
-#define COMMAND_INIT_EQCB 2
+/** Map the event queue to host memory.
+ *
+ * The base must be a firmware pointer to host memory.
+ */
 struct command_init_eqcb {
     uint8_t  op;            // 0
     uint8_t  pad;           // 1
     uint16_t eqcb_index;    // 2
-    uint32_t base;          // 4
+    uint32_t base;          //!< Firmware address 4
     uint32_t count;         // 8
 } PACKED;
 
-#define COMMAND_IP_TX 13
+
+/** Send a datagram.
+ *
+ */
 struct command_ip_tx {
     uint8_t  op;            // 0
     uint8_t  pad;           // 1
     uint16_t nid;           // 2
-    uint16_t length;        // 4 (qb-1)
+    uint16_t length;        //!< In quadbytes - 1.  Offset 4
     uint16_t pad2;          // 6
     uint64_t address;       // 8
     uint16_t pending_index; // 16
@@ -85,12 +133,19 @@ typedef uint32_t result_t;
 
 /** Shared mailbox structure.
  *
- * The mailbox structure is shared between the PPC and the Opteron.
+ * The mailbox structure is shared between the PPC and the Opteron,
+ * but that lives in PPC memory space.
  * It is uncached as a result, which causes significant slow downs
  * for any reads of the members.  Writes are fairly fast.
  *
- * align to a page boundary so mailboxes can be
+ * Align to a page boundary so mailboxes can be
  * securely mapped into user-level address spaces.
+ *
+ * The read/write indices are volatile since they will be updated
+ * by the host or firmware and need to be reflected in the
+ * other address space.
+ *
+ * \note Reading the read/write indices is very slow!
  */
 struct mailbox
 {
