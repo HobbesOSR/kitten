@@ -1,1 +1,1 @@
-obj-$(CONFIG_SEASTAR)	+= seastar.o
+obj-$(CONFIG_SEASTAR)	+= seastar/
