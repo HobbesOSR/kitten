@@ -42,7 +42,13 @@ include/arch
 init_task
 user/hello_world/hello_world
 user/liblwk/liblwk.a
+docs/html/*
+docs/latex/*
+*.orig
+*.rej
+CVS
 
 
 syntax: regexp
 ^include/config
+^tags
