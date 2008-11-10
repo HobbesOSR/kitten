@@ -73,4 +73,10 @@ extern int printk(const char * fmt, ...)
 #define print printf
 #endif
 
+extern const char *
+hexdump(
+	const void *		data,
+	size_t			len
+);
+
 #endif

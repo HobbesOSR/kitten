@@ -53,3 +53,39 @@ vprintk(
 	/* Return number of characters printed */
 	return len;
 }
+
+
+/** Format a data buffer as a series of hex bytes.
+ */
+const char *
+hexdump(
+	const void *		data_v,
+	size_t			len
+)
+{
+	int i;
+	const uint8_t * const data = data_v;
+	static char buf[ 32*3 + 5 ];
+
+	size_t offset = 0;
+	for( i=0 ; i<len && offset < sizeof(buf)-10 ; i++ )
+	{
+		offset += snprintf(
+			buf+offset,
+			sizeof(buf)-offset,
+			"%02x ",
+			data[i]
+		);
+	}
+
+	if( i < len )
+		snprintf(
+			buf + offset,
+			sizeof(buf)-offset,
+			"..."
+		);
+	else
+		buf[offset] = '\0';
+
+	return buf;
+}
