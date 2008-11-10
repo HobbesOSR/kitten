@@ -110,5 +110,6 @@ endmenu
 
 
 source "drivers/Kconfig"
+source "net/Kconfig"
 source "arch/x86_64/boot/Kconfig"
 source "arch/x86_64/Kconfig.debug"

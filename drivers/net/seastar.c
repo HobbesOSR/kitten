@@ -15,7 +15,11 @@
 #include <arch/page.h>
 #include <arch/proto.h>
 #include <net/seastar.h>
-#include <net/ip.h>
+#include <lwip/netif.h>
+#include <lwip/inet.h>
+#include <lwip/ip.h>
+
+#define SEASTAR_MTU		8192
 
 #define HTB_MAP			0x000020000
 #define HTB_VALID_FLAG		0x8000
@@ -156,78 +160,6 @@ sizecheck_struct( mailbox, 4096 );
 struct mailbox * const seastar_mailbox = (void*)( seastar_virt_base + seastar_mailbox_base );
 
 
-/**
- * ip_upper_pending structures are used for tracking the transmit of
- * an IP datagram.  They are not used for RX at all.
- *
- * When the IP stack allocates the structure it will set the
- * status to zero.  When the message either completes or is dropped
- * the status will be set to 1 for success or 2 for dropped.
- *
- * The message field at offset zero corresponds to the message
- * field in the ptlhdr.  If the SSNAL_IP_MSG bit is set the
- * pending will be recognized as an IP message by the rest of
- * the Portals stack.
- */
-struct pending
-{
-	uint32_t		message;        // 0
-	volatile uint32_t	status;         // 4
-	uint32_t		skb;            // 8
-	uint8_t			pad[ 128 - 12 ]; // 12
-} PACKED;
-
-sizecheck_struct( pending, 128 );
-
-
-#define NUM_SKB		64
-#define NUM_PENDINGS	64
-struct pending upper_pending[ NUM_PENDINGS ];
-uint8_t skb[ NUM_SKB ][ NETDEV_MTU ];
-
-#define NUM_EQ		1024
-uint32_t eq[ NUM_EQ ];
-unsigned eq_read;
-
-
-result_t
-seastar_cmd(
-	const struct command *	cmd,
-	int			wait
-)
-{
-	struct mailbox * mb = &seastar_mailbox[ GENERIC_PROCESS_INDEX - 1 ];
-	uint32_t head = mb->commandq_write;
-	mb->commandq[ head ] = *cmd;
-	mb->commandq_write = ( head >= COMMAND_Q_LENGTH - 1 ) ? 0 : head+1;
-
-	if(0)
-	printk( "%s: sent command %d in index %d (%p)\n",
-		__func__,
-		cmd->op,
-		head,
-		&mb->commandq[head]
-	);
-	if( !wait )
-		return 0;
-
-	uint32_t tail = mb->resultq_read;
-	if(0)
-	printk( "%s: waiting for results in index %d (head %d)\n",
-		__func__,
-		tail,
-		mb->resultq_write
-	);
-	while( tail == mb->resultq_write )
-		;
-
-	result_t result = mb->resultq[ tail ];
-	mb->resultq_read = ( tail >= RESULT_Q_LENGTH - 1 ) ? 0 : tail+1;
-
-	return result;
-}
-
-
 /** Map a physical address into the seastar memory.
  * 
  * The PPC can only directly address 256 MB of host memory per slot in
@@ -277,6 +209,7 @@ phys_to_fw(
 }
 
 
+/** Convert a kernel virtual address to a Seastar accessible address */
 static inline uint32_t
 virt_to_fw(
 	void *			addr
@@ -286,15 +219,141 @@ virt_to_fw(
 }
 
 
+/** Convert a kernel virtual address to a hypertransport address. */
+static inline uintptr_t
+htaddr(
+	void *			addr
+)
+{
+	return __pa( addr ) >> 2;
+}
+
+
+/**
+ * ip_upper_pending structures are used for tracking the transmit of
+ * an IP datagram.  They are not used for RX at all.
+ *
+ * When the IP stack allocates the structure it will set the
+ * status to zero.  When the message either completes or is dropped
+ * the status will be set to 1 for success or 2 for dropped.
+ *
+ * The message field at offset zero corresponds to the message
+ * field in the ptlhdr.  If the SSNAL_IP_MSG bit is set the
+ * pending will be recognized as an IP message by the rest of
+ * the Portals stack.
+ */
+struct pending
+{
+	uint32_t		message;        // 0
+	volatile uint32_t	status;         // 4
+	struct pbuf *		pbuf;            // 8
+	uint8_t			pad[ 128 - 16 ]; // 16
+} PACKED;
+
+sizecheck_struct( pending, 128 );
+
+
+#define NUM_SKB		64
+#define NUM_PENDINGS	64
+struct pending upper_pending[ NUM_PENDINGS ];
+struct pending * pending_free_list;
+uint8_t skb[ NUM_SKB ][ SEASTAR_MTU ];
+
+
+/** Push a pending onto the free list */
+static inline void
+seastar_pending_free(
+	struct pending *	pending
+)
+{
+	pending->pbuf = (void*) pending_free_list;
+	pending_free_list = pending;
+}
+
+
+/** Allocate a pending from the free list */
+static inline struct pending *
+seastar_pending_alloc( void )
+{
+	struct pending * next = pending_free_list;
+	if( !next )
+		panic( "%s: No free pendings?\n", __func__ );
+
+	pending_free_list = (void*) next->pbuf;
+	return next;
+}
+
+
+/** Replace a pre-allocated receive buffer */
+static inline void
+seastar_refill_skb(
+	unsigned		index
+)
+{
+	seastar_skb[ index ] = htaddr( &skb[ index ] );
+}
+
+
+
+/** Setup the pending free list and initial skb table */
 void
-seastar_refill_skb( void )
+seastar_initialize_pendings( void )
 {
 	int i;
 	for( i=0 ; i < NUM_SKB ; i++ )
-		seastar_skb[i] = __pa( &skb[i] ) >> 2;
+		seastar_refill_skb( i );
+
+	pending_free_list = 0;
 
 	for( i=0 ; i < NUM_PENDINGS ; i++ )
-		upper_pending[i].status = 0;
+	{
+		struct pending * pending = &upper_pending[i];
+		pending->status = 0;
+		pending->pbuf = 0;
+		seastar_pending_free( pending );
+	}
+}
+
+#define NUM_EQ		1024
+uint32_t eq[ NUM_EQ ];
+unsigned eq_read;
+
+
+result_t
+seastar_cmd(
+	const struct command *	cmd,
+	int			wait
+)
+{
+	struct mailbox * mb = &seastar_mailbox[ GENERIC_PROCESS_INDEX - 1 ];
+	uint32_t head = mb->commandq_write;
+	mb->commandq[ head ] = *cmd;
+	mb->commandq_write = ( head >= COMMAND_Q_LENGTH - 1 ) ? 0 : head+1;
+
+	if(0)
+	printk( "%s: sent command %d in index %d (%p)\n",
+		__func__,
+		cmd->op,
+		head,
+		&mb->commandq[head]
+	);
+	if( !wait )
+		return 0;
+
+	uint32_t tail = mb->resultq_read;
+	if(0)
+	printk( "%s: waiting for results in index %d (head %d)\n",
+		__func__,
+		tail,
+		mb->resultq_write
+	);
+	while( tail == mb->resultq_write )
+		;
+
+	result_t result = mb->resultq[ tail ];
+	mb->resultq_read = ( tail >= RESULT_Q_LENGTH - 1 ) ? 0 : tail+1;
+
+	return result;
 }
 
 
@@ -317,6 +376,7 @@ seastar_next_event( void )
 	return e;
 }
 
+
 /** Native IP datagram header
  * Note that the lengths are in quad bytes - 1!
  */
@@ -326,9 +386,25 @@ struct sshdr {
 	uint8_t			hdr_dg_type;
 } PACKED;
 
+static struct netif seastar_netif;
 
+
+/** Retrieve an IP packet that has been deposited into host memory.
+ *
+ * The Seastar has indicated to us that it has received a packet
+ * into the skb at the index.  We extract the length of the
+ * packet and create a pbuf to store it.
+ *
+ * The packet is then passed into the lwip stack.  Since we
+ * are copying the payload immediately, we can also immediately
+ * replenish the lower skb pointer table.
+ *
+ * \todo Use PBUF_REF rather than PBUF_POOL to avoid copying
+ * packets around.
+ */
 static void
 seastar_ip_rx(
+	struct netif * const	netif,
 	const unsigned		index
 )
 {
@@ -345,21 +421,79 @@ seastar_ip_rx(
 
 	const struct sshdr * const sshdr = (void*) data;
 	const size_t qb_length = sshdr->hi_length << 16 | sshdr->lo_length;
-	size_t length = (qb_length + 1) * 4;
+	size_t len = (qb_length + 1) * 4;
 	data += sizeof(*sshdr);
-	length -= sizeof(*sshdr);
+	len -= sizeof(*sshdr);
 
-	netdev_rx( data, length );
+	// Get a pbuf using our external payload
+	// We tell the lwip library that we can use up to the entire
+	// size of the skb so that it can resize for reuse.
+	// \todo This is broken?
+	//struct pbuf * p = pbuf_alloc( PBUF_RAW, len, PBUF_REF );
+
+	// Allocate a pool-allocated buffer and copy into it
+	struct pbuf * p = pbuf_alloc( PBUF_RAW, len, PBUF_POOL );
+	if( !p )
+	{
+		printk( KERN_ERR
+			"%s: Unable to allocate pbuf! dropping\n",
+			__func__
+		);
+		return;
+	}
+
+	//p->payload = data;
+	//p->tot_len = len;
+
+	// Copy the memory into the pbuf payload
+	struct pbuf * q = p;
+	for( q = p ; q != NULL ; q = q->next )
+	{
+		memcpy( q->payload, data, q->len );
+		data += q->len;
+	}
+
+	// Since we have copied the packet, we can immediately
+	// replace the lower skb.
+	seastar_refill_skb( index );
+
+	// Receive the packet
+	if( netif->input( p, netif ) != ERR_OK )
+	{
+		printk( KERN_ERR
+			"%s: Packet receive failed!\n",
+			__func__
+		);
+		pbuf_free( p );
+		return;
+	}
 }
 
 
+/** Clean up after a transmit has completed.
+ *
+ * When the Seastar has finished sending the packet with the DMA
+ * engines, it will signal through the event queue that this pending
+ * is no longer in use.  We push it onto the free list and
+ * clean up the pbuf that was used.
+ *
+ * \todo Figure out why pbuf_free() reports an error!
+ */
 static void
 seastar_ip_tx_end(
 	const unsigned		index
 )
 {
 	struct pending * const pending = &upper_pending[ index ];
-	printk( "%s: tx done %d\n", __func__, index );
+	printk( "%s: tx done %d status %d\n",
+		__func__,
+		index,
+		pending->status
+	);
+
+	seastar_pending_free( pending );
+
+	//pbuf_free( pending->pbuf );
 }
 
 
@@ -397,7 +531,7 @@ seastar_interrupt(
 		switch( type )
 		{
 		case PTL_EVENT_IP_RX:
-			seastar_ip_rx( index );
+			seastar_ip_rx( &seastar_netif, index );
 			break;
 		case PTL_EVENT_IP_TX_END:
 			seastar_ip_tx_end( index );
@@ -420,15 +554,61 @@ seastar_interrupt(
 }
 
 
-/** Send a packet */
-void
-seastar_tx(
-	const struct iphdr *	iphdr,
-	const void *		data,
-	size_t			data_len
+/** \group Convert an IP address to and from a Seastar NID.
+ *
+ * \note This uses Cray's assignment of Seastar node ids to IP.
+ * 192.168.X.Y, where X = nid/254 and Y = 1 + nid % 254.
+ *
+ * @{
+ */
+static inline struct ip_addr
+nid2ip(
+	unsigned		nid
 )
 {
-	size_t len = sizeof(struct sshdr) + sizeof(*iphdr) + data_len;
+	struct ip_addr ip = { htonl( 0
+		| 192 << 24
+		| 168 << 16
+		| ( nid / 254 ) << 8
+		| ( 1 + nid % 254 ) << 0
+	) };
+
+	return ip;
+}
+
+
+static inline unsigned
+ip2nid(
+	const struct ip_addr *	ip
+)
+{
+	unsigned bits = ntohl( ip->addr );
+	unsigned X = (bits >>  8) & 0xFF;
+	unsigned Y = (bits >>  0) & 0xFF;
+
+	return X * 254 + Y - 1;
+}
+
+/** @} */
+
+
+/** Send a packet */
+static err_t
+seastar_tx(
+	struct netif * const	netif,
+	struct pbuf * const	p,
+	struct ip_addr * const	ipaddr
+)
+{
+	const unsigned nid = ip2nid( ipaddr );
+	printk( "%s: Send %d bytes to %08x nid %d\n",
+		__func__,
+		p->tot_len,
+		htonl( *(uint32_t*) ipaddr ),
+		nid
+	);
+
+	size_t len = sizeof(struct sshdr) + p->tot_len;
 	size_t qblen = (len >> 2) - 1;
 	struct sshdr sshdr = {
 		.lo_length	= (qblen >>  0) & 0xFFFF,
@@ -436,40 +616,46 @@ seastar_tx(
 		.hdr_dg_type	= (2 << 5), // Datagram 2, type 0 == ip
 	};
 
-	// Use pending #63 for a quick hack
-	const int pending_index = 63;
-	struct pending * const pending = &upper_pending[ pending_index ];
+	struct pending * const pending = seastar_pending_alloc();
 
 #define SSNAL_IP_MSG    0x40000000
 	pending->message	= SSNAL_IP_MSG;
 	pending->status		= 0;
-	pending->skb		= 0;
+	pending->pbuf		= p;
 
 	struct msg {
 		struct sshdr	sshdr;
-		struct iphdr	iphdr;
-		uint8_t		buf[ NETDEV_MTU ];
+		uint8_t		buf[ SEASTAR_MTU ];
 	} PACKED;
 
 	static struct msg msg;
 	msg.sshdr = sshdr;
-	msg.iphdr = *iphdr;
-	memcpy( msg.buf, data, data_len );
+
+	struct pbuf * q;
+	size_t offset = 0;
+	for( q = p ; q != NULL ; q = q->next )
+	{
+		memcpy( msg.buf+offset, q->payload, q->len );
+		offset += q->len;
+	}
 
 	struct command_ip_tx cmd = {
 		.op		= COMMAND_IP_TX,
-		.nid		= 2563,	// HACK
+		.nid		= nid,
 		.length		= qblen,
-		.address	= __pa( &msg ) >> 2,
-		.pending_index	= pending_index,
+		.address	= htaddr( &msg ),
+		.pending_index	= pending - upper_pending,
 	};
 
 	seastar_cmd( (struct command*) &cmd, 0 );
+
+	return ERR_OK;
 }
 
 
-void
-seastar_init( void )
+
+static int
+seastar_hw_init( void )
 {
 	uint32_t lower_memory = seastar_host_base;
 
@@ -557,10 +743,64 @@ seastar_init( void )
 	if( result != 0 )
 		panic( "%s: mark_alive returned %d\n", __func__, result );
 
-	seastar_refill_skb();
-
 	set_idtvec_handler( 0xEE, &seastar_interrupt );
+
+	return 0;
 }
+
+
+static err_t
+seastar_net_init(
+	struct netif * const	netif
+)
+{
+	printk( "%s: Initializing %p (%p)\n", __func__, netif, &seastar_netif );
+
+	netif->mtu		= SEASTAR_MTU;
+	netif->flags		= 0
+		| NETIF_FLAG_LINK_UP
+		| NETIF_FLAG_UP
+		;
+
+	netif->hwaddr_len	= 2;
+	netif->hwaddr[0]	= (niccb->local_nid >> 0) & 0xFF;
+	netif->hwaddr[1]	= (niccb->local_nid >> 8) & 0xFF;
+
+	netif->name[0]		= 's';
+	netif->name[1]		= 's';
+
+	netif->output		= seastar_tx;
+
+	seastar_initialize_pendings();
+
+	return ERR_OK;
+}
+
+
+
+/** Bring up the Seastar hardware and IP network.
+ */
+void
+seastar_init( void )
+{
+	if( seastar_hw_init() < 0 )
+		return;
+
+	struct ip_addr ipaddr = nid2ip( niccb->local_nid );
+	struct ip_addr netmask = { htonl( 0xFFFF0000 ) };
+	struct ip_addr gw = { htonl( 0x00000000 ) };
+
+	netif_add(
+		&seastar_netif, 
+		&ipaddr,
+		&netmask,
+		&gw,
+		0,
+		seastar_net_init,
+		ip_input
+	);
+}
+	
 
 
 driver_init( "net", seastar_init );

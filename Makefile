@@ -437,7 +437,7 @@ scripts_basic: include/lwk/autoconf.h
 # Objects we will link into vmlwk / subdirs we need to visit
 init-y		:= init/
 drivers-y	:= drivers/
-#net-y		:= net/
+net-y		:= net/
 libs-y		:= lib/
 #core-y		:= usr/
 endif # KBUILD_EXTMOD
