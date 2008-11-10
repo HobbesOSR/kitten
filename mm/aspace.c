@@ -135,8 +135,6 @@ lookup_and_lock(id_t id)
 
 /**
  * Like lookup_and_lock(), but looks up two address spaces instead of one.
- *
- * \todo Fix lock ordering bug.  This can deadlock.
  */
 static int
 lookup_and_lock_two(id_t a, id_t b,
