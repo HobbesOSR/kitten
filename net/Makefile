@@ -16,3 +16,5 @@ obj-$(CONFIG_LWIP_TCP)		+= tcp_out.o
 obj-$(CONFIG_LWIP_DNS)		+= dns.o
 
 obj-$(CONFIG_LWIP_UDP)		+= udp.o
+
+obj-$(CONFIG_LWIP_SOCKET)	+= api/

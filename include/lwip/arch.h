@@ -43,6 +43,7 @@
 #include <lwk/types.h>
 #include <lwk/print.h>
 #include <arch/string.h>
+#include <lwk/time.h>
 
 typedef uint8_t u8_t;
 typedef uint16_t u16_t;

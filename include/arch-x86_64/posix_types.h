@@ -34,6 +34,7 @@ typedef struct {
 
 #ifdef __KERNEL__
 
+#define FD_SET(x,y) __FD_SET(x,y)
 #undef __FD_SET
 static __inline__ void __FD_SET(unsigned long fd, __kernel_fd_set *fdsetp)
 {

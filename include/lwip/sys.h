@@ -76,7 +76,7 @@ struct sys_timeo {u8_t dummy;};
 #define SYS_MBOX_EMPTY SYS_ARCH_TIMEOUT 
 
 #include "lwip/err.h"
-#include "arch/sys_arch.h"
+#include "lwip/sys_arch.h"
 
 typedef void (* sys_timeout_handler)(void *arg);
 

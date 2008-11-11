@@ -9,6 +9,11 @@
 #include <lwk/kmem.h>
 #include <lwip/init.h>
 #include <lwip/tcp.h>
+#include <lwip/api.h>
+#include <lwip/sockets.h>
+#include <arch/uaccess.h>
+#include <arch/unistd.h>
+#include <arch/vsyscall.h>
 
 /**
  * Holds a comma separated list of network devices to configure.
@@ -81,6 +86,43 @@ echo_accept(
 	return ERR_OK;
 }
 
+
+static unsigned long
+sys_bind(
+	int			sock,
+	uaddr_t			addr,
+	size_t			len
+)
+{
+	printk( "%s: sock %d addr %p len %ld\n",
+		__func__,
+		sock,
+		(void*) addr,
+		len
+	);
+
+	if( len > 128 )
+		return -ENAMETOOLONG;
+
+	uint8_t buf[ len ];
+	if( copy_from_user( buf, (void*) addr, len ) )
+	{
+		printk( "%s: bad user address %p\n", __func__, (void*) addr );
+		return -EFAULT;
+	}
+
+	printk( "'%s'\n", hexdump( buf, len ) );
+	struct sockaddr_in * in = (void*) buf;
+	printk( "sizeof(in)=%ld family=%d port=%d\n",
+		sizeof(*in),
+		in->sin_family,
+		ntohs( in->sin_port )
+	);
+
+	return lwip_bind( sock, (struct sockaddr *) buf, len );
+}
+
+
 /**
  * Initializes the network subsystem; called once at boot.
  */
@@ -110,4 +152,11 @@ netdev_init(void)
 		echo,
 		echo->local_port
 	);
+
+	// Install the socket system calls
+	syscall_register( __NR_socket, (syscall_ptr_t) lwip_socket );
+	syscall_register( __NR_bind, (syscall_ptr_t) sys_bind );
+	syscall_register( __NR_accept, (syscall_ptr_t) lwip_accept );
+	syscall_register( __NR_listen, (syscall_ptr_t) lwip_listen );
 }
+
