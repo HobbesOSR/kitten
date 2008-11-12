@@ -1,4 +1,4 @@
-menu "TCP/IP Stack"
+menu "Networking"
 
 config NETWORK
 	bool "Enable Networking"

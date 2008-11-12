@@ -1,4 +1,5 @@
 menu "ISOIMAGE Configuration"
+depends on PC
 
 config KERNEL_ARGS
 	string "Kernel Command Line Arguments"

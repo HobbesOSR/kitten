@@ -5,14 +5,17 @@ menu "Device drivers"
 #
 config VGA_CONSOLE
 	bool "VGA console"
+	depends on PC
 	default PC
 
 config SERIAL_CONSOLE
 	bool "Serial console support"
+	depends on PC
 	default PC
 
 config KEYBOARD
 	bool
+	depends on PC
 	default PC
 
 config RCAL0_CONSOLE
@@ -22,7 +25,7 @@ config RCAL0_CONSOLE
 
 config SEASTAR
 	bool "Cray XT3 Seastar network"
-	depends on CRAY_XT
+	depends on CRAY_XT && NETWORK
 	default CRAY_XT
 
 endmenu
