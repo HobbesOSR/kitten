@@ -13,9 +13,6 @@
 #include <arch/i387.h>
 #include <arch/io.h>
 #include <arch/proto.h>
-#ifdef CONFIG_PALACIOS
-#include <arch/palacios.h>
-#endif
 
 idtvec_handler_t idtvec_table[NUM_IDT_ENTRIES];
 static DEFINE_SPINLOCK(idtvec_table_lock);

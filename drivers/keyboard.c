@@ -12,6 +12,9 @@
 #include <arch/proto.h>
 #include <arch/io.h>
 #include <arch/idt_vectors.h>
+#ifdef CONFIG_PALACIOS
+#include <arch/palacios.h>
+#endif
 
 
 /**
