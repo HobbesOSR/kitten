@@ -64,7 +64,7 @@ start_kernel()
 	/*
 	 * Hello, Dave.
 	 */
-	printk(lwk_banner);
+	printk("%s", lwk_banner);
 	printk(KERN_DEBUG "%s\n", lwk_command_line);
 	sort_exception_table();
 	/*
