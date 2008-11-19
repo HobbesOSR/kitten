@@ -2,5 +2,12 @@
 # Makefile for some libs needed by the kernel.
 #
 
-lib-y := vsprintf.o string.o ctype.o cmdline.o cpumask.o bitmap.o hweight.o \
-		extable.o sort.o
+lib-y := \
+	vsprintf.o \
+	string.o \
+	cpumask.o \
+	hweight.o \
+	bitmap.o \
+	sort.o \
+	extable.o \
+	ctype.o \
