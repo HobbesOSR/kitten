@@ -11,6 +11,7 @@
 #include <lwip/tcp.h>
 #include <lwip/api.h>
 #include <lwip/sockets.h>
+#include <lwip/tcpip.h>
 #include <arch/uaccess.h>
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
@@ -94,13 +95,6 @@ sys_bind(
 	size_t			len
 )
 {
-	printk( "%s: sock %d addr %p len %ld\n",
-		__func__,
-		sock,
-		(void*) addr,
-		len
-	);
-
 	if( len > 128 )
 		return -ENAMETOOLONG;
 
@@ -111,17 +105,62 @@ sys_bind(
 		return -EFAULT;
 	}
 
-	printk( "'%s'\n", hexdump( buf, len ) );
-	struct sockaddr_in * in = (void*) buf;
-	printk( "sizeof(in)=%ld family=%d port=%d\n",
-		sizeof(*in),
-		in->sin_family,
-		ntohs( in->sin_port )
-	);
-
 	return lwip_bind( sock, (struct sockaddr *) buf, len );
 }
 
+
+
+int
+sys_select(
+	int			n,
+	fd_set *		user_readfds,
+	fd_set *		user_writefds,
+	fd_set *		user_exceptfds,
+	struct timeval *	user_timeout
+)
+{
+	fd_set readfds, writefds, exceptfds;
+	struct timeval timeout;
+
+	if( user_readfds
+	&& copy_from_user( &readfds, user_readfds, sizeof(readfds) ) )
+		return -EBADF;
+
+	if( user_writefds
+	&& copy_from_user( &writefds, user_writefds, sizeof(writefds) ) )
+		return -EBADF;
+
+	if( user_exceptfds
+	&& copy_from_user( &exceptfds, user_exceptfds, sizeof(exceptfds) ) )
+		return -EBADF;
+
+	if( user_timeout
+	&& copy_from_user( &timeout, user_timeout, sizeof(timeout) ) )
+		return -EBADF;
+
+	int rc = lwip_select(
+		n,
+		user_readfds ? &readfds : 0,
+		user_writefds ? &writefds : 0,
+		user_exceptfds ? &exceptfds : 0,
+		user_timeout ? &timeout : 0
+	);
+
+
+	if( user_readfds
+	&& copy_to_user( user_readfds, &readfds, sizeof(readfds) ) )
+		return -EBADF;
+	if( user_writefds
+	&& copy_to_user( user_writefds, &writefds, sizeof(writefds) ) )
+		return -EBADF;
+	if( user_exceptfds
+	&& copy_to_user( user_exceptfds, &exceptfds, sizeof(exceptfds) ) )
+		return -EBADF;
+
+	return rc;
+}
+
+	
 
 /**
  * Initializes the network subsystem; called once at boot.
@@ -129,8 +168,6 @@ sys_bind(
 void
 netdev_init(void)
 {
-	lwip_init();
-
 	printk( KERN_INFO "%s: Bringing up network devices: '%s'\n",
 		__func__,
 		netdev_str
@@ -138,6 +175,7 @@ netdev_init(void)
 
 	driver_init_list( "net", netdev_str );
 
+/*
 	echo = tcp_new();
 	if( !echo )
 		panic( "%s: Unable to create socket!\n", __func__ );
@@ -152,11 +190,16 @@ netdev_init(void)
 		echo,
 		echo->local_port
 	);
+*/
+
+	tcpip_init( 0, 0 );
 
 	// Install the socket system calls
+	syscall_register( __NR_read, (syscall_ptr_t) lwip_read );
 	syscall_register( __NR_socket, (syscall_ptr_t) lwip_socket );
 	syscall_register( __NR_bind, (syscall_ptr_t) sys_bind );
 	syscall_register( __NR_accept, (syscall_ptr_t) lwip_accept );
 	syscall_register( __NR_listen, (syscall_ptr_t) lwip_listen );
+	syscall_register( __NR_select, (syscall_ptr_t) sys_select );
 }
 
