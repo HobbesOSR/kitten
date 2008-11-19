@@ -1,3 +1,9 @@
+/** \file
+ * Kernel and user tasks structures
+ *
+ * Both kernel threads and user tasks are represented by the same
+ * task structures.
+ */
 #ifndef _LWK_TASK_H
 #define _LWK_TASK_H
 
@@ -5,9 +11,10 @@
 #include <lwk/idspace.h>
 #include <lwk/cpumask.h>
 
-/**
+/** \group User task IDs
  * Valid user-space created task IDs are in interval
  * [TASK_MIN_ID, TASK_MAX_ID].
+ * @{
  */
 #define TASK_MIN_ID                    0
 #define TASK_MAX_ID                    4094
@@ -17,22 +24,29 @@
  * Put it at the top of the space to keep it out of the way.
  */
 #define INIT_TASK_ID                   TASK_MAX_ID
+//@}
 
-/**
- * Task states
+
+/** \group Task states
+ *
+ * Tasks must be in one of the following states:
  */
 #define TASKSTATE_READY                (1 << 0)
 #define TASKSTATE_UNINTERRUPTIBLE      (1 << 1)
 #define TASKSTATE_INTERRUPTIBLE        (1 << 2)
 #define TASKSTATE_EXIT_ZOMBIE          (1 << 3)
 typedef unsigned int taskstate_t;
+//@}
 
-/**
+/** \group Wait states
+ *
  * Events that tasks may wait for and be sent.
+ * @{
  */
 #define LWKEVENT_CHILD_TASK_EXITED     (1 << 0)
 #define LWKEVENT_PORTALS_EVENT_POSTED  (1 << 1)
 typedef unsigned long event_t;
+//@}
 
 /**
  * Initial conditions to use for new task.
@@ -48,14 +62,24 @@ typedef struct {
 } start_state_t;
 
 /**
- * Core task management API.
+ * \group Core task management API.
+ *
  * These are accessible from both kernel-space and user-space (via syscalls).
+ *
+ * @{
  */
 extern int task_get_myid(id_t *id);
 extern int task_create(id_t id_request, const char *name,
                        const start_state_t *start_state, id_t *id);
 extern int task_exit(int status);
+
+/** Yield the CPU from a user task.
+ *
+ * \note To yield a kernel thread, call schedule() instead.
+ * This is effectively a NOP.
+ */
 extern int task_yield(void);
+//@}
 
 #ifdef __KERNEL__
 
@@ -73,10 +97,13 @@ extern int task_yield(void);
 #include <arch/current.h>
 #include <arch/mmu.h>
 
-/**
- * Flags for task_struct.flags field.
+/** \group Flags for task_struct.flags field.
+ * @{
  */
-#define PF_USED_MATH    0x00002000      /* if unset the fpu must be initialized before use */
+#define PF_USED_MATH    0x00002000      /**< if unset the fpu must be initialized before use */
+
+//@}
+
 
 /**
  * Signal handler structure.
@@ -130,16 +157,20 @@ union task_union {
 extern union task_union bootstrap_task_union;
 extern struct aspace bootstrap_aspace;
 
-/**
+/** \group Task IDs
  * Valid task IDs are in interval [__TASK_MIN_ID, __TASK_MAX_ID].
+ * The kernel has one reserved ID that the user can not allocate
+ * reserved for the idle task.
+ * @{
  */
 #define __TASK_MIN_ID   TASK_MIN_ID
-#define __TASK_MAX_ID   TASK_MAX_ID+1  /* +1 for IDLE_TASK_ID */
+#define __TASK_MAX_ID   TASK_MAX_ID+1  /**< +1 for IDLE_TASK_ID */
 
 /**
  * ID of the idle task.
  */
 #define IDLE_TASK_ID    TASK_MAX_ID+1
+//@}
 
 /**
  * Checks to see if a task structure is the init task.
@@ -151,6 +182,14 @@ is_init(struct task_struct *tsk)
 	return (tsk->id == 1);
 }
 
+/** \group Floating Point Math flags.
+ *
+ * To save time during context switches, the floating point math
+ * state is only stored if the PF_USED_MATH flag is set in the task
+ * structure.
+ *
+ * @{
+ */
 #define clear_stopped_child_used_math(child) do { (child)->flags &= ~PF_USED_MATH; } while (0)
 #define set_stopped_child_used_math(child) do { (child)->flags |= PF_USED_MATH; } while (0)
 #define clear_used_math() clear_stopped_child_used_math(current)
@@ -165,17 +204,28 @@ is_init(struct task_struct *tsk)
 #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
 #define used_math() tsk_used_math(current)
 
+// @}
+
 extern int __init task_subsys_init(void);
 
 extern int arch_task_create(struct task_struct *task,
                             const start_state_t *start_state);
 
+
+/** \group Syscall wrappers for task creation
+ *
+ * \todo Make these static and use syscall_register() to install
+ * the handlers at run time?
+ *
+ * @{
+ */
 extern int sys_task_get_myid(id_t __user *id);
 extern int sys_task_create(id_t id_request, const char __user *name,
                            const start_state_t __user *start_state,
                            id_t __user *id);
 extern int sys_task_exit(int status);
 extern int sys_task_yield(void);
+//@}
 
 extern int __task_reserve_id(id_t id);
 extern int __task_create(id_t id, const char *name,
@@ -183,5 +233,6 @@ extern int __task_create(id_t id, const char *name,
                          struct task_struct **task);
 
 extern struct task_struct *task_lookup(id_t id);
+
 #endif
 #endif
