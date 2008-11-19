@@ -19,6 +19,7 @@
 #include <lwk/string.h>
 #include <lwk/errno.h>
 #include <lwk/params.h>
+#include <lwk/ctype.h>
 
 #if 0
 #define DEBUGP printk
@@ -85,7 +86,7 @@ static char *next_arg(char *args, char **param, char **val)
 	}
 
 	for (i = 0; args[i]; i++) {
-		if (args[i] == ' ' && !in_quote)
+		if (isspace(args[i]) && !in_quote)
 			break;
 		if (equals == 0) {
 			if (args[i] == '=')
@@ -119,7 +120,7 @@ static char *next_arg(char *args, char **param, char **val)
 		next = args + i;
 
 	/* Chew up trailing spaces. */
-	while (*next == ' ')
+	while (isspace(*next))
 		next++;
 	return next;
 }
