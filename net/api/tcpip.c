@@ -117,7 +117,7 @@ static void
 ip_reass_timer(void *arg)
 {
   LWIP_UNUSED_ARG(arg);
-  LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip: ip_reass_tmr()\n"));
+  //LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip: ip_reass_tmr()\n"));
   ip_reass_tmr();
   sys_timeout(IP_TMR_INTERVAL, ip_reass_timer, NULL);
 }

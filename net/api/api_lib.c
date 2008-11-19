@@ -242,7 +242,6 @@ err_t
 netconn_listen_with_backlog(struct netconn *conn, u8_t backlog)
 {
   struct api_msg msg;
-printk( "%s: conn %p backlog %d\n", __func__, conn, backlog );
 
   /* This does no harm. If TCP_LISTEN_BACKLOG is off, backlog is unused. */
   LWIP_UNUSED_ARG(backlog);
@@ -269,7 +268,6 @@ netconn_accept(struct netconn *conn)
 {
   struct netconn *newconn;
 
-	printk( "conn %p: mbox %p\n", conn, conn->acceptmbox );
   LWIP_ERROR("netconn_accept: invalid conn",       (conn != NULL),                      return NULL;);
   LWIP_ERROR("netconn_accept: invalid acceptmbox", (conn->acceptmbox != SYS_MBOX_NULL), return NULL;);
 

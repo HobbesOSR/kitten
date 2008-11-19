@@ -177,11 +177,6 @@ tcp_input(struct pbuf *p, struct netif *inp)
 
   
   for(pcb = tcp_active_pcbs; pcb != NULL; pcb = pcb->next) {
-	printk( "con %d -> %d/%d?\n",
-		tcphdr->dest,
-		pcb->local_port,
-		pcb->remote_port
-	);
     LWIP_ASSERT("tcp_input: active pcb->state != CLOSED", pcb->state != CLOSED);
     LWIP_ASSERT("tcp_input: active pcb->state != TIME-WAIT", pcb->state != TIME_WAIT);
     LWIP_ASSERT("tcp_input: active pcb->state != LISTEN", pcb->state != LISTEN);
@@ -228,10 +223,6 @@ tcp_input(struct pbuf *p, struct netif *inp)
      are LISTENing for incoming connections. */
     prev = NULL;
     for(lpcb = tcp_listen_pcbs.listen_pcbs; lpcb != NULL; lpcb = lpcb->next) {
-	printk( "open %d -> %d?\n",
-		tcphdr->dest,
-		lpcb->local_port
-	);
       if ((ip_addr_isany(&(lpcb->local_ip)) ||
         ip_addr_cmp(&(lpcb->local_ip), &(iphdr->dest))) &&
         lpcb->local_port == tcphdr->dest) {

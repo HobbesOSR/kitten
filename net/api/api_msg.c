@@ -814,7 +814,6 @@ do_disconnect(struct api_msg_msg *msg)
 void
 do_listen(struct api_msg_msg *msg)
 {
-printk( "%s: msg %p\n", __func__, msg );
 #if LWIP_TCP
   if (!ERR_IS_FATAL(msg->conn->err)) {
     if (msg->conn->pcb.tcp != NULL) {

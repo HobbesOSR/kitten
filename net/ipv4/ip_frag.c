@@ -118,7 +118,7 @@ ip_reass_tmr(void)
      * clean up the incomplete fragment assembly */
     if (r->timer > 0) {
       r->timer--;
-      LWIP_DEBUGF(IP_REASS_DEBUG, ("ip_reass_tmr: timer dec %"U16_F"\n",(u16_t)r->timer));
+      //LWIP_DEBUGF(IP_REASS_DEBUG, ("ip_reass_tmr: timer dec %"U16_F"\n",(u16_t)r->timer));
       prev = r;
       r = r->next;
     } else {
