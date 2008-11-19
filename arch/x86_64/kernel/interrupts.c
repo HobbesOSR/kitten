@@ -141,6 +141,16 @@ do_general_protection(struct pt_regs *regs, unsigned int vector)
 	while (1) {}
 }
 
+
+static inline uint64_t
+read_cr2()
+{
+	uint64_t cr2;
+	asm("movq %%cr2, %0": "=r" (cr2));
+	return cr2;
+}
+
+
 void
 do_page_fault(struct pt_regs *regs, unsigned int vector)
 {
@@ -151,7 +161,7 @@ do_page_fault(struct pt_regs *regs, unsigned int vector)
 		printk("Failed to fixup page fault exception!\n");
 	}
 
-	printk("Page Fault Exception\n");
+	printk("Page Fault Exception: %p\n", read_cr2() );
 #ifdef CONFIG_KGDB
         kgdb_breakpoint();
 #else
