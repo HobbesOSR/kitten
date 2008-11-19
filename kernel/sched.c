@@ -1,3 +1,6 @@
+/** \file
+ * Process scheduler implementation.
+ */
 #include <lwk/kernel.h>
 #include <lwk/spinlock.h>
 #include <lwk/percpu.h>
@@ -5,6 +8,15 @@
 #include <lwk/sched.h>
 #include <lwk/xcall.h>
 
+/**
+ * Process run queue.
+ *
+ * Kitten maintains a linked list of tasks per CPU that are in a
+ * ready to run state.  Since the number of tasks is expected to
+ * be low, the overhead is very smal.
+ *
+ * If there are no tasks on the queue, the idle task is run instead.
+ */
 struct run_queue {
 	spinlock_t           lock;
 	size_t               num_tasks;
@@ -14,21 +26,22 @@ struct run_queue {
 
 static DEFINE_PER_CPU(struct run_queue, run_queue);
 
+
+/** Spin until something else is ready to run */
 static void
-idle_task_loop(void) {
+idle_task_loop(void)
+{
 	while (1) {
 		arch_idle_task_loop_body();
 		schedule();
 	}
 }
 
+
 int __init
 sched_subsys_init(void)
 {
 	id_t cpu_id;
-	struct run_queue *runq;
-	struct task_struct *idle_task;
-	start_state_t start_state;
 	int status;
 
 	/* Reserve the idle tasks' ID. All idle tasks share the same ID. */
@@ -38,7 +51,7 @@ sched_subsys_init(void)
 
 	/* Initialize each CPU's run queue */
 	for_each_cpu_mask(cpu_id, cpu_present_map) {
-		runq = &per_cpu(run_queue, cpu_id);
+		struct run_queue *runq = &per_cpu(run_queue, cpu_id);
 
 		spin_lock_init(&runq->lock);
 		runq->num_tasks = 0;
@@ -48,16 +61,24 @@ sched_subsys_init(void)
  	 	 * Create this CPU's idle task. When a CPU has no
  	 	 * other work to do, it runs the idle task. 
  	 	 */
-		start_state.uid         = 0;
-		start_state.gid         = 0;
-		start_state.aspace_id   = KERNEL_ASPACE_ID;
-		start_state.entry_point = (vaddr_t)idle_task_loop;
-		start_state.stack_ptr   = 0; /* will be set automatically */
-		start_state.cpu_id      = cpu_id;
-		start_state.cpumask     = NULL;
+		start_state_t start_state = {
+			.uid         = 0,
+			.gid         = 0,
+			.aspace_id   = KERNEL_ASPACE_ID,
+			.entry_point = (vaddr_t) idle_task_loop,
+			.stack_ptr   = 0, /* will be set automatically */
+			.cpu_id      = cpu_id,
+			.cpumask     = NULL,
+		};
 
-		status = __task_create(IDLE_TASK_ID, "idle_task", &start_state,
-		                       &idle_task);
+		struct task_struct *idle_task;
+		status = __task_create(
+			IDLE_TASK_ID,
+			"idle_task",
+			&start_state,
+			&idle_task
+		);
+
 		if (status)
 			panic("Failed to create idle_task (status=%d).",status);
 
