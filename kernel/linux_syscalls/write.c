@@ -19,9 +19,13 @@ sys_write(unsigned int fd, const char __user * buf, size_t count)
 
 	if (fd != 1)
 	{
+#ifdef CONFIG_NETWORK
 		/* Assume any non-stdout fd is a socket */
 		extern int lwip_write( int, const char *, size_t );
 		return lwip_write( fd, kbuf, kcount );
+#else
+		return -1;
+#endif
 	}
 
 	/* Write the string to the local console */
