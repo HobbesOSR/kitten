@@ -123,7 +123,7 @@ socket_api_test( void )
 				buf[--rc] = '\0';
 			}
 
-			printf( "%d: read %d bytes: '%s'\n",
+			printf( "%d: read %zd bytes: '%s'\n",
 				fd,
 				rc,
 				buf

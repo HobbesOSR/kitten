@@ -80,6 +80,13 @@ static inline void write_cr0(unsigned long val)
 	asm volatile("movq %0,%%cr0" :: "r" (val));
 } 
 
+static inline unsigned long read_cr2(void)
+{ 
+	unsigned long cr2;
+	asm("movq %%cr2,%0" : "=r" (cr2));
+	return cr2;
+} 
+
 static inline unsigned long read_cr3(void)
 { 
 	unsigned long cr3;
