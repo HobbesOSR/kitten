@@ -64,17 +64,17 @@ hexdump(
 )
 {
 	int i;
-	const uint8_t * const data = data_v;
-	static char buf[ 32*3 + 5 ];
+	const uint32_t * const data = data_v;
+	static char buf[ 32*4 + 5 ];
 
 	size_t offset = 0;
-	for( i=0 ; i<len && offset < sizeof(buf)-10 ; i++ )
+	for( i=0 ; i<len && offset < sizeof(buf)-10 ; i+=4 )
 	{
 		offset += snprintf(
 			buf+offset,
 			sizeof(buf)-offset,
-			"%02x ",
-			data[i]
+			"%08x ",
+			htonl( data[i / 4] )
 		);
 	}
 
