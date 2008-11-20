@@ -21,6 +21,9 @@
 #include "command.h"
 
 
+/** Enable debugging printouts from the rx/tx system */
+static const int seastar_debug = 0;
+
 
 /**
  * ip_upper_pending structures are used for tracking the transmit of
@@ -71,7 +74,10 @@ struct pending * pending_free_list;
 uint8_t skb[ NUM_SKB ][ SEASTAR_MTU ];
 
 
-/** Push a pending onto the free list */
+/** Push a pending onto the free list
+ *
+ * \todo LOCKING!
+ */
 static inline void
 seastar_pending_free(
 	struct pending *	pending
@@ -82,7 +88,10 @@ seastar_pending_free(
 }
 
 
-/** Allocate a pending from the free list */
+/** Allocate a pending from the free list
+ *
+ * \todo LOCKING!
+ */
 static inline struct pending *
 seastar_pending_alloc( void )
 {
@@ -157,7 +166,7 @@ static struct netif seastar_netif;
  * packets around.
  */
 static void
-seastar_ip_rx(
+seastar_rx(
 	struct netif * const	netif,
 	const unsigned		index
 )
@@ -178,6 +187,12 @@ seastar_ip_rx(
 	size_t len = (qb_length + 1) * 4;
 	data += sizeof(*sshdr);
 	len -= sizeof(*sshdr);
+
+	if( seastar_debug )
+	printk( "%s: <- %ld bytes\n",
+		__func__,
+		len
+	);
 
 	// Get a pbuf using our external payload
 	// We tell the lwip library that we can use up to the entire
@@ -234,17 +249,17 @@ seastar_ip_rx(
  * \todo Figure out why pbuf_free() reports an error!
  */
 static void
-seastar_ip_tx_end(
+seastar_tx_end(
 	const unsigned		index
 )
 {
 	struct pending * const pending = &upper_pending[ index ];
 
-	if(0)
-	printk( "%s: tx done %d status %d\n",
+	if( seastar_debug )
+	printk( "%s: status %d (pending %d)\n",
 		__func__,
-		index,
-		pending->status
+		pending->status,
+		index
 	);
 
 	seastar_pending_free( pending );
@@ -287,10 +302,10 @@ seastar_interrupt(
 		switch( type )
 		{
 		case PTL_EVENT_IP_RX:
-			seastar_ip_rx( &seastar_netif, index );
+			seastar_rx( &seastar_netif, index );
 			break;
 		case PTL_EVENT_IP_TX_END:
-			seastar_ip_tx_end( index );
+			seastar_tx_end( index );
 			break;
 		case PTL_EVENT_ERR_RX_HDR_CRC:
 			panic( "%s: rx crc error!\n", __func__ );
@@ -348,7 +363,13 @@ ip2nid(
 /** @} */
 
 
-/** Send a packet */
+/** Send a packet
+ *
+ * Prepare a pbuf for sending on the Seastar interface.
+ *
+ * \todo Use some pre-validated buffers rather than only allowing
+ * one static allocated msg buffer!
+ */
 static err_t
 seastar_tx(
 	struct netif * const	netif,
@@ -358,16 +379,9 @@ seastar_tx(
 {
 	const unsigned nid = ip2nid( ipaddr );
 
-	if(0)
-	printk( "%s: Send %d bytes to %08x nid %d\n",
-		__func__,
-		p->tot_len,
-		htonl( *(uint32_t*) ipaddr ),
-		nid
-	);
-
+	// The length sent is in quadbytes, rounded up.
 	size_t len = sizeof(struct sshdr) + p->tot_len;
-	size_t qblen = (len >> 2) - 1;
+	size_t qblen = ((len+3) >> 2) - 1;
 	struct sshdr sshdr = {
 		.lo_length	= (qblen >>  0) & 0xFFFF,
 		.hi_length	= (qblen >> 16) & 0x00FF,
@@ -404,6 +418,15 @@ seastar_tx(
 		.address	= htaddr( &msg ),
 		.pending_index	= pending - upper_pending,
 	};
+
+	if( seastar_debug )
+	printk( "%s: Send %d bytes to %08x nid %d (pending %d)\n",
+		__func__,
+		p->tot_len,
+		htonl( *(uint32_t*) ipaddr ),
+		cmd.nid,
+		cmd.pending_index
+	);
 
 	seastar_cmd( (struct command*) &cmd, 0 );
 

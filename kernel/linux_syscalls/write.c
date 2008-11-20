@@ -8,10 +8,6 @@ sys_write(unsigned int fd, const char __user * buf, size_t count)
 	char    kbuf[512];
 	size_t  kcount = count;
 
-	/* For now we only support stdout console output */
-	if (fd != 1)
-		return -EBADF;
-
 	/* Protect against overflowing the kernel buffer */
 	if (kcount >= sizeof(kbuf))
 		kcount = sizeof(kbuf) - 1;
@@ -20,6 +16,13 @@ sys_write(unsigned int fd, const char __user * buf, size_t count)
 	if (copy_from_user(kbuf, buf, kcount))
 		return -EFAULT;
 	kbuf[kcount] = '\0';
+
+	if (fd != 1)
+	{
+		/* Assume any non-stdout fd is a socket */
+		extern int lwip_write( int, const char *, size_t );
+		return lwip_write( fd, kbuf, kcount );
+	}
 
 	/* Write the string to the local console */
 	printk(KERN_USERMSG

@@ -88,6 +88,8 @@ socket_api_test( void )
 			);
 
 			printf( "connected newfd %d!\n", new_fd );
+			//write( new_fd, "hello\n", 6 );
+			write( new_fd, "Welcome!\n", 9 );
 			FD_SET( new_fd, &fds );
 			if( new_fd > max_fd )
 				max_fd = new_fd;
@@ -103,10 +105,13 @@ socket_api_test( void )
 			ssize_t rc = read( fd, buf, sizeof(buf)-1 );
 			if( rc <= 0 )
 			{
-				printf( "%d: closed connection\n", fd );
+				printf( "%d: closed connection rc=%d\n", fd, rc );
 				FD_CLR( fd, &fds );
 				continue;
 			}
+
+			if( rc == 0 )
+				continue;
 
 			buf[rc] = '\0';
 
@@ -123,6 +128,10 @@ socket_api_test( void )
 				rc,
 				buf
 			);
+
+			char outbuf[ 32 ];
+			int len = snprintf( outbuf, sizeof(outbuf), "%d: read %d bytes\n", fd, rc );
+			write( fd, outbuf, len );
 		}
 	}
 }

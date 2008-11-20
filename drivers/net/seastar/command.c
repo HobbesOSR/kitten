@@ -113,6 +113,8 @@ seastar_map_host_region(
  * to avoid the expensive round-trip reads from the Seastar.
  *
  * \todo Check for a full commandq before writing!
+ *
+ * \todo LOCKING!
  */
 result_t
 seastar_cmd(

@@ -13,8 +13,16 @@
 spinlock_t sem_lock;
 spinlock_t mbox_lock;
 
-/** Debuging output toggle */
-static const int sem_debug;
+/** Debuging output toggle.
+ * 0 == none
+ * 1 == creation / deletion
+ * 2 == mbox operations
+ * 3 == semaphore operations
+ */
+static const int sem_debug = 0;
+
+/** Rough estiamte of CPU speed in KHz */
+static const uint64_t cpu_hz = 2400000;
 
 void
 sys_init( void )
@@ -32,7 +40,7 @@ sys_sem_new(
 	int * lock = kmem_alloc( sizeof( *lock ) );
 	*lock = count;
 
-	if( sem_debug )
+	if( sem_debug >= 1 )
 	printk( "%s: sem %p value %d\n", __func__, lock, count );
 
 	return lock;
@@ -58,7 +66,7 @@ sys_sem_signal(
 	(*sem)++;
 	spin_unlock_irqrestore( &sem_lock, irqstate );
 
-	if( sem_debug )
+	if( sem_debug >= 3 )
 	printk( "%s: sem %p value %d\n", __func__, sem, *sem );
 }
 
@@ -70,35 +78,39 @@ sys_arch_sem_wait(
 )
 {
 	unsigned long irqstate;
+	const uint64_t start_time = rdtsc();
+	const uint64_t timeout_ticks = timeout * cpu_hz;
 
-	if( sem_debug )
+	if( sem_debug >= 3 )
 	printk( "%s: waiting for sem %p value %d\n", __func__, sem, *sem );
 
-	u32_t delay = 0;
-	for( ; timeout==0 || delay < timeout ; delay++ )
+	while( 1 )
 	{
+		const uint64_t delta_ticks = rdtsc() - start_time;
+		if( timeout && delta_ticks > timeout_ticks )
+			return SYS_ARCH_TIMEOUT;
+
 		spin_lock_irqsave( &sem_lock, irqstate );
 		const int value = *sem;
 
-		if( value )
+		if( !value )
 		{
-			(*sem)--;
+			// Not yet.  Try again
 			spin_unlock_irqrestore( &sem_lock, irqstate );
-
-			if( sem_debug )
-			printk( "%s: sem %p value %d\n", __func__, sem, *sem );
-
-			return delay;
+			schedule();
+			continue;
 		}
 
-		// Didn't get it.  Keep trying
+
+		// We got it.
+		(*sem)--;
 		spin_unlock_irqrestore( &sem_lock, irqstate );
 
-		// Give up the CPU while we spin
-		schedule();
-	}
+		if( sem_debug >= 3 )
+		printk( "%s: sem %p value %d\n", __func__, sem, *sem );
 
-	return SYS_ARCH_TIMEOUT;
+		return delta_ticks / cpu_hz;
+	}
 }
 
 
@@ -113,6 +125,9 @@ sys_mbox_new(
 	sys_mbox_t mbox = kmem_alloc( sizeof(*mbox) + sizeof(void*) * size );
 	mbox->size = size;
 	mbox->read = mbox->write = 0;
+
+	if( sem_debug >= 1 )
+	printk( "%s: %p @ %d\n", __func__, mbox, size );
 
 	return mbox;
 }
@@ -155,7 +170,7 @@ _sys_mbox_post(
 			mbox->write = next;
 			spin_unlock_irqrestore( &mbox_lock, irqstate );
 
-			if( sem_debug )
+			if( sem_debug >= 2 )
 			printk( "%s: mbox %p[%d] posting %p\n",
 				__func__,
 				mbox,
@@ -216,7 +231,7 @@ sys_arch_mbox_tryfetch(
 	mbox->read = ( read + 1 ) % mbox->size;
 	spin_unlock_irqrestore( &mbox_lock, irqstate );
 
-	if( sem_debug )
+	if( sem_debug >= 2 )
 	printk( "%s: mbox %p[%d] read %p\n",
 		__func__,
 		mbox,
@@ -235,17 +250,30 @@ sys_arch_mbox_fetch(
 	u32_t			timeout
 )
 {
-	u32_t delay = 0;
-	for( ; timeout==0 || delay < timeout ; delay++ )
+	const uint64_t start_time = rdtsc();
+	const uint64_t timeout_ticks = timeout * cpu_hz;
+
+	while( 1 )
 	{
+		const uint64_t delta_ticks = rdtsc() - start_time;
+		if( timeout && delta_ticks > timeout_ticks )
+		{
+			if( sem_debug >= 3 )
+			printk( "%s: timed out %d ticks %llx -> %llx\n", 
+				__func__,
+				timeout,
+				start_time,
+				rdtsc()
+			);
+			return SYS_ARCH_TIMEOUT;
+		}
+
 		if( sys_arch_mbox_tryfetch( mbox, msg ) == 0 )
-			return delay;
+			return delta_ticks / cpu_hz;
 
 		// Put us to sleep for a bit
 		schedule();
 	}
-
-	return SYS_ARCH_TIMEOUT;
 }
 
 

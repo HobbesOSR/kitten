@@ -219,7 +219,7 @@ alloc_socket(struct netconn *newconn)
   sys_sem_wait(socksem);
 
   /* allocate a new socket identifier */
-  for (i = 0; i < NUM_SOCKETS; ++i) {
+  for (i = 3; i < NUM_SOCKETS; ++i) {
     if (!sockets[i].conn) {
       sockets[i].conn       = newconn;
       sockets[i].lastdata   = NULL;
