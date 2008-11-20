@@ -60,8 +60,15 @@
                       :"c"(msr), "i"(-EIO), "0"(0));		\
 	  ret__; })		
 
-#define rdtsc(low,high) \
-     __asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high))
+
+static inline uint64_t
+rdtsc( void )
+{
+	uint32_t low, high;
+	__asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high));
+	return ((uint64_t) high << 32) | low;
+}
+
 
 #define rdtscl(low) \
      __asm__ __volatile__ ("rdtsc" : "=a" (low) : : "edx")
