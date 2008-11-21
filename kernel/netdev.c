@@ -23,7 +23,7 @@ static char netdev_str[128];
 param_string(net, netdev_str, sizeof(netdev_str));
 
 
-#ifdef CONFIG_NETWORK
+#ifdef CONFIG_SOCKET
 
 static unsigned long
 sys_bind(
@@ -97,7 +97,7 @@ sys_select(
 	return rc;
 }
 
-#endif // CONFIG_NETWORK
+#endif // CONFIG_SOCKET
 
 	
 
@@ -114,7 +114,8 @@ netdev_init(void)
 
 	driver_init_list( "net", netdev_str );
 
-#ifdef CONFIG_NETWORK
+#ifdef CONFIG_SOCKET
+	// Full scokets are enabled.  Bring up the entire system
 	tcpip_init( 0, 0 );
 
 	// Install the socket system calls
@@ -124,6 +125,9 @@ netdev_init(void)
 	syscall_register( __NR_accept, (syscall_ptr_t) lwip_accept );
 	syscall_register( __NR_listen, (syscall_ptr_t) lwip_listen );
 	syscall_register( __NR_select, (syscall_ptr_t) sys_select );
+#elif defined( CONFIG_NETWORK )
+	// No sockets enabled, just bring up the LWIP library
+	lwip_init();
 #endif
 }
 
