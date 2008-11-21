@@ -149,6 +149,8 @@ struct sshdr {
 	uint8_t			hdr_dg_type;
 } PACKED;
 
+
+/** LWIP network interface structure for the seastar */
 static struct netif seastar_netif;
 
 
