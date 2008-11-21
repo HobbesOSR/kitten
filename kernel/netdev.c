@@ -23,7 +23,7 @@ static char netdev_str[128];
 param_string(net, netdev_str, sizeof(netdev_str));
 
 
-#ifdef CONFIG_SOCKET
+#ifdef CONFIG_LWIP_SOCKET
 
 static unsigned long
 sys_bind(
@@ -114,7 +114,7 @@ netdev_init(void)
 
 	driver_init_list( "net", netdev_str );
 
-#ifdef CONFIG_SOCKET
+#ifdef CONFIG_LWIP_SOCKET
 	// Full scokets are enabled.  Bring up the entire system
 	tcpip_init( 0, 0 );
 
