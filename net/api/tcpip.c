@@ -51,6 +51,7 @@
 #include "lwip/dns.h"
 #include "lwip/tcpip.h"
 #include "lwip/init.h"
+#include "lwip/etharp.h"
 
 /* global variables */
 static void (* tcpip_init_done)(void *arg);

@@ -17,4 +17,6 @@ obj-$(CONFIG_LWIP_DNS)		+= dns.o
 
 obj-$(CONFIG_LWIP_UDP)		+= udp.o
 
+obj-$(CONFIG_LWIP_UDP)		+= etharp.o
+
 obj-$(CONFIG_LWIP_SOCKET)	+= api/
