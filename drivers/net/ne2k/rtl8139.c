@@ -50,7 +50,7 @@ static const uint32_t rtl8139_intr_mask =
 
 
 
-static err_t rtl8139_tx(struct netif * const netif, struct pbuf * const p, struct ip_addr * const ipaddr) {
+static err_t rtl8139_tx(struct netif * const netif, struct pbuf * const p) {
   uint32_t entry = cur_tx % 4;
   uint32_t size = p->tot_len;
   uint8_t * msg_buf = tx_buf[entry];
@@ -93,11 +93,6 @@ static err_t rtl8139_tx(struct netif * const netif, struct pbuf * const p, struc
 }
 
 
-//int rtl8139_tx(uint8_t * packet, uint32_t size) {
-static err_t rtl8139_tx_ip(struct netif * const netif, struct pbuf * const p, struct ip_addr * const ipaddr) {
-  printk("IP TX\n");
-  return rtl8139_tx(netif, p, ipaddr);
-}
 
 static __inline__ void wrap_copy(uint8_t * dst, const unsigned char * ring,
 				 u32 offset, unsigned int size)
@@ -354,8 +349,7 @@ static err_t rtl8139_net_init(struct netif * const netif) {
   
   netif->linkoutput     = rtl8139_tx;
 
-  // JRL: Probably don't need this output function
-  netif->output		= rtl8139_tx_ip;
+  netif->output		= etharp_output;
   
   return ERR_OK;
 }
