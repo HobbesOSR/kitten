@@ -38,7 +38,7 @@
 #define TX_FIFO_THRESH 256
 
 uint8_t rx_buf[RX_BUF_SIZE];
-uint8_t tx_buf[4][TX_BUF_SIZE];
+uint8_t tx_buf[4][TX_BUF_SIZE] __attribute__((aligned(4)));
 
 uint32_t cur_tx;
 uint32_t cur_rx;
@@ -58,7 +58,9 @@ static const uint32_t rtl8139_intr_mask =
 	TxErr | TxOK | RxErr | RxOK;
 
 
-//int rtl8139_tx(uint8_t * packet, uint32_t size) {
+
+
+
 static err_t rtl8139_tx(struct netif * const netif, struct pbuf * const p, struct ip_addr * const ipaddr) {
   uint32_t entry = cur_tx % 4;
   uint32_t size = p->tot_len;
@@ -101,6 +103,12 @@ static err_t rtl8139_tx(struct netif * const netif, struct pbuf * const p, struc
   return ERR_OK;
 }
 
+
+//int rtl8139_tx(uint8_t * packet, uint32_t size) {
+static err_t rtl8139_tx_ip(struct netif * const netif, struct pbuf * const p, struct ip_addr * const ipaddr) {
+  printk("IP TX\n");
+  return rtl8139_tx(netif, p, ipaddr);
+}
 
 static __inline__ void wrap_copy(uint8_t * dst, const unsigned char * ring,
 				 u32 offset, unsigned int size)
@@ -211,7 +219,7 @@ static void rtl8139_rx(struct netif * const netif) {
 }
 
 static void rtl8139_clear_irq(uint32_t interrupts) {
-  outw(RTL8139_ISR, interrupts);
+  outw(interrupts, RTL8139_ISR);
 }
 
 void rtl8139_interrupt(struct pt_regs * regs, unsigned int vector ) {
@@ -358,7 +366,7 @@ static err_t rtl8139_net_init(struct netif * const netif) {
   netif->linkoutput     = rtl8139_tx;
 
   // JRL: Probably don't need this output function
-  netif->output		= rtl8139_tx;
+  netif->output		= rtl8139_tx_ip;
   
   return ERR_OK;
 }
