@@ -30,7 +30,7 @@ config SEASTAR
 
 config NE2K
 	bool "NE2K Device Driver (rtl8139)"
-	depends on NETWORK
+	depends on NETWORK && LWIP_ARP
 	default PC
 
 endmenu
