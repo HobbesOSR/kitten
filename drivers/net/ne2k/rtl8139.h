@@ -1,3 +1,9 @@
+/** \file
+ * RTL8139 network device constants
+ */
+#ifndef _rtl8139_h_
+#define _rtl8139_h_
+
 #define RTL8139_IRQ	 11
 #define RTL8139_IDTVEC	 59
 #define RTL8139_MTU      1500
@@ -265,5 +271,4 @@ enum Cfg9346Bits {
 
 
 
-
-
+#endif // _rtl8139_h_

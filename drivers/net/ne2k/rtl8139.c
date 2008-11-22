@@ -16,7 +16,7 @@
  * Author: Peter Kamm
  *
  * This is free software.  You are permitted to use,
- * redistribute, and modify it as specified in the file "V3VEE_LICENSE".
+ * redistribute, and modify it as specified in the file "COPYING"
  */
 
 
