@@ -28,4 +28,9 @@ config SEASTAR
 	depends on CRAY_XT && NETWORK
 	default CRAY_XT
 
+config NE2K
+	bool "NE2K Device Driver (rtl8139)"
+	depends on NETWORK
+	default PC
+
 endmenu
