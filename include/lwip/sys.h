@@ -38,34 +38,6 @@
 extern "C" {
 #endif
 
-#if NO_SYS
-
-/* For a totally minimal and standalone system, we provide null
-   definitions of the sys_ functions. */
-typedef u8_t sys_sem_t;
-typedef u8_t sys_mbox_t;
-typedef u8_t sys_prot_t;
-struct sys_timeo {u8_t dummy;};
-
-#define sys_init()
-#define sys_timeout(m,h,a)
-#define sys_untimeout(m,a)
-#define sys_sem_new(c) c
-#define sys_sem_signal(s)
-#define sys_sem_wait(s)
-#define sys_sem_wait_timeout(s,t)
-#define sys_arch_sem_wait(s,t)
-#define sys_sem_free(s)
-#define sys_mbox_new(s) 0
-#define sys_mbox_fetch(m,d)
-#define sys_mbox_tryfetch(m,d)
-#define sys_mbox_post(m,d)
-#define sys_mbox_trypost(m,d)
-#define sys_mbox_free(m)
-
-#define sys_thread_new(n,t,a,s,p)
-
-#else /* NO_SYS */
 
 /** Return code for timeouts from sys_arch_mbox_fetch and sys_arch_sem_wait */
 #define SYS_ARCH_TIMEOUT 0xffffffffUL
@@ -144,7 +116,6 @@ sys_thread_t sys_thread_new(char *name, void (* thread)(void *arg), void *arg, i
 /* Returns the current time in microseconds. */
 unsigned long sys_now(void);
 
-#endif /* NO_SYS */
 
 /* Critical Region Protection */
 /* These functions must be implemented in the sys_arch.c file.

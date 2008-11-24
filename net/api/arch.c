@@ -71,13 +71,33 @@ sys_sem_signal(
 }
 
 
+/** Try once to get the semaphore.
+ *
+ * \returns 0 if we did not get it, 1 if we did
+ */
+u32_t
+sys_arch_sem_trywait(
+	sys_sem_t		sem
+)
+{
+	unsigned long irqstate;
+	spin_lock_irqsave( &sem_lock, irqstate );
+	const int value = *sem;
+	if( value )
+		(*sem)--;
+	spin_unlock_irqrestore( &sem_lock, irqstate );
+
+	return value;
+}
+
+
+
 u32_t
 sys_arch_sem_wait(
 	sys_sem_t		sem,
 	u32_t			timeout
 )
 {
-	unsigned long irqstate;
 	const uint64_t start_time = rdtsc();
 	const uint64_t timeout_ticks = timeout * cpu_hz;
 
@@ -90,28 +110,22 @@ sys_arch_sem_wait(
 		if( timeout && delta_ticks > timeout_ticks )
 			return SYS_ARCH_TIMEOUT;
 
-		spin_lock_irqsave( &sem_lock, irqstate );
-		const int value = *sem;
-
-		if( !value )
+		if( !sys_arch_sem_trywait( sem ) )
 		{
 			// Not yet.  Try again
-			spin_unlock_irqrestore( &sem_lock, irqstate );
 			schedule();
 			continue;
 		}
 
 
 		// We got it.
-		(*sem)--;
-		spin_unlock_irqrestore( &sem_lock, irqstate );
-
 		if( sem_debug >= 3 )
-		printk( "%s: sem %p value %d\n", __func__, sem, *sem );
+		printk( "%s: sem %p\n", __func__, sem );
 
 		return delta_ticks / cpu_hz;
 	}
 }
+
 
 
 sys_mbox_t
