@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
+#include <ctype.h>
 #include <lwk/liblwk.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -18,7 +19,6 @@ int
 main(int argc, char *argv[], char *envp[])
 {
 	int i;
-	id_t aspace_id;
 
 	printf("Hello, world!\n");
 
@@ -105,7 +105,7 @@ socket_api_test( void )
 		if( FD_ISSET( s, &read_fds ) )
 		{
 			printf( "new connection\n" );
-			int socklen = sizeof(client);
+			socklen_t socklen = sizeof(client);
 			int new_fd = accept(
 				s,
 				(struct sockaddr *) &client,
