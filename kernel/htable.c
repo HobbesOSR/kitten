@@ -7,11 +7,11 @@
 
 struct htable {
 	size_t              tbl_order;
-	struct hlist_head * tbl;
 	size_t              obj_key_offset;
 	size_t              obj_link_offset;
 	size_t              num_entries;
 	hash_func_t		hash;
+	struct hlist_head	tbl[0];
 };
 
 
@@ -69,16 +69,14 @@ htable_create(
 	hash_func_t		hash
 )
 {
-	size_t tbl_size = 1 << tbl_order;
+	struct htable * ht;
+	size_t tbl_size = 0
+		+ sizeof(*ht)
+		+ (1 << tbl_order) * sizeof( ht->tbl[0] );
 
-	struct htable *ht = kmem_alloc(sizeof(*ht));
+	ht = kmem_alloc( tbl_size );
 	if( !ht )
-		goto fail_ht_alloc;
-
-	ht->tbl = kmem_alloc(tbl_size * sizeof(struct hlist_head));
-
-	if( !ht->tbl )
-		goto fail_tbl_alloc;
+		return 0;
 
 	ht->tbl_order		= tbl_order;
 	ht->obj_key_offset	= obj_key_offset;
@@ -87,12 +85,6 @@ htable_create(
 	ht->hash		= hash;
 
 	return ht;
-
-	kmem_free( ht->tbl );
-fail_tbl_alloc:
-	kmem_free( ht );
-fail_ht_alloc:
-	return NULL;
 }
 
 
@@ -103,7 +95,8 @@ htable_destroy(
 {
 	if (ht->num_entries)
 		return -EEXIST;
-	kmem_free(ht->tbl);
+
+	// The ht->tbl will be deallocated as part of the free
 	kmem_free(ht);
 	return 0;
 }

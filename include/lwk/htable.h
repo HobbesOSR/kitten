@@ -26,7 +26,7 @@ struct hlist_node;
  * #include <lwk/list.h>
  *
  * struct foo {
- *	lwk_id_t			id;
+ *	lwk_id_t		id;
  *	struct hlist_node	ht_link;
  *	// Other stuff ...
  * };
@@ -95,7 +95,7 @@ htable_del(
 extern void *
 htable_lookup(
 	struct htable *		tbl,
-	lwk_id_t			key
+	lwk_id_t		key
 );
 
 
