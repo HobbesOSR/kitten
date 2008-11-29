@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
-#include <lwk/liblwk.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <lwk/liblwk.h>
 
 static void pmem_api_test(void);
 static void aspace_api_test(void);
@@ -17,7 +17,7 @@ int
 main(int argc, char *argv[], char *envp[])
 {
 	int i;
-	id_t aspace_id;
+	lwk_id_t aspace_id;
 
 	printf("Hello, world!\n");
 
@@ -179,7 +179,7 @@ static void
 aspace_api_test(void)
 {
 	int status;
-	id_t my_id, new_id;
+	lwk_id_t my_id, new_id;
 
 	printf("TEST BEGIN: Address Space Management\n");
 

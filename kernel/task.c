@@ -30,7 +30,8 @@ task_subsys_init(void)
 	htable = htable_create(
 		7,  // 2^7 bins
 		offsetof(struct task_struct, id),
-		offsetof(struct task_struct, ht_link)
+		offsetof(struct task_struct, ht_link),
+		0 // use default hash function
 	);
 
 	if( !htable )
@@ -40,17 +41,17 @@ task_subsys_init(void)
 }
 
 int
-task_get_myid(id_t *id)
+task_get_myid(lwk_id_t *id)
 {
 	*id = current->id;
 	return 0;
 }
 
 int
-sys_task_get_myid(id_t __user *id)
+sys_task_get_myid(lwk_id_t __user *id)
 {
 	int status;
-	id_t _id;
+	lwk_id_t _id;
 
 	if ((status = task_get_myid(&_id)) != 0)
 		return status;
@@ -62,13 +63,13 @@ sys_task_get_myid(id_t __user *id)
 }
 
 int
-__task_reserve_id(id_t id)
+__task_reserve_id(lwk_id_t id)
 {
 	return idspace_alloc_id(idspace, id, NULL);
 }
 
 int
-__task_create(id_t id, const char *name,
+__task_create(lwk_id_t id, const char *name,
               const start_state_t *start_state,
               struct task_struct **task)
 {
@@ -137,10 +138,10 @@ error1:
 }
 
 int
-task_create(id_t id_request, const char *name,
-            const start_state_t *start_state, id_t *id)
+task_create(lwk_id_t id_request, const char *name,
+            const start_state_t *start_state, lwk_id_t *id)
 {
-	id_t new_id;
+	lwk_id_t new_id;
 	struct task_struct *new_task;
 	int status;
 	unsigned long irqstate;
@@ -169,14 +170,14 @@ task_create(id_t id_request, const char *name,
 }
 
 int
-sys_task_create(id_t id_request, const char __user *name,
-                const start_state_t __user *start_state, id_t __user *id)
+sys_task_create(lwk_id_t id_request, const char __user *name,
+                const start_state_t __user *start_state, lwk_id_t __user *id)
 {
 	int status;
 	start_state_t _start_state;
 	user_cpumask_t _cpumask;
 	char _name[16];
-	id_t _id;
+	lwk_id_t _id;
 
 	if (current->uid != 0)
 		return -EPERM;
@@ -244,7 +245,7 @@ sys_task_yield(void)
  * Looks up an aspace object by ID and returns it with its spinlock locked.
  */
 struct task_struct *
-task_lookup(id_t id)
+task_lookup(lwk_id_t id)
 {
         struct task_struct *t;
 

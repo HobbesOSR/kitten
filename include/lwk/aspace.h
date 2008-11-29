@@ -64,28 +64,28 @@ typedef unsigned long vmpagesize_t;
  * These are accessible from both kernel-space and user-space (via syscalls).
  * @{
  */
-extern int aspace_get_myid(id_t *id);
-extern int aspace_create(id_t id_request, const char *name, id_t *id);
-extern int aspace_destroy(id_t id);
+extern int aspace_get_myid(lwk_id_t *id);
+extern int aspace_create(lwk_id_t id_request, const char *name, lwk_id_t *id);
+extern int aspace_destroy(lwk_id_t id);
 
-extern int aspace_find_hole(id_t id,
+extern int aspace_find_hole(lwk_id_t id,
                             vaddr_t start_hint, size_t extent, size_t alignment,
                             vaddr_t *start);
 
-extern int aspace_add_region(id_t id,
+extern int aspace_add_region(lwk_id_t id,
                              vaddr_t start, size_t extent,
                              vmflags_t flags, vmpagesize_t pagesz,
                              const char *name);
-extern int aspace_del_region(id_t id, vaddr_t start, size_t extent);
+extern int aspace_del_region(lwk_id_t id, vaddr_t start, size_t extent);
 
-extern int aspace_map_pmem(id_t id,
+extern int aspace_map_pmem(lwk_id_t id,
                            paddr_t pmem, vaddr_t start, size_t extent);
-extern int aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent);
+extern int aspace_unmap_pmem(lwk_id_t id, vaddr_t start, size_t extent);
 
-extern int aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent);
-extern int aspace_unsmartmap(id_t src, id_t dst);
+extern int aspace_smartmap(lwk_id_t src, lwk_id_t dst, vaddr_t start, size_t extent);
+extern int aspace_unsmartmap(lwk_id_t src, lwk_id_t dst);
 
-extern int aspace_dump2console(id_t id);
+extern int aspace_dump2console(lwk_id_t id);
 // @}
 
 /** \name Convenience functions defined in liblwk.
@@ -93,7 +93,7 @@ extern int aspace_dump2console(id_t id);
  */
 extern int
 aspace_map_region(
-	id_t         id,
+	lwk_id_t         id,
 	vaddr_t      start,
 	size_t       extent,
 	vmflags_t    flags,
@@ -104,7 +104,7 @@ aspace_map_region(
 
 extern int
 aspace_map_region_anywhere(
-	id_t         id,
+	lwk_id_t         id,
 	vaddr_t *    start,
 	size_t       extent,
 	vmflags_t    flags,
@@ -134,7 +134,7 @@ aspace_map_region_anywhere(
 struct aspace {
 	spinlock_t         lock;        /**< Must be held to access addr space */
 
-	id_t               id;          /**< The address space's ID */
+	lwk_id_t               id;          /**< The address space's ID */
 	char               name[16];    /**< Address space's name */
 	struct hlist_node  ht_link;     /**< Adress space hash table linkage */
 	int                refcnt;      /**< # of users of this address space */
@@ -234,7 +234,7 @@ extern int __aspace_unsmartmap(struct aspace *src, struct aspace *dst);
  * \note These are not accessible from user-space.
  */
 extern int __init aspace_subsys_init(void);
-extern struct aspace *aspace_acquire(id_t id);
+extern struct aspace *aspace_acquire(lwk_id_t id);
 extern void aspace_release(struct aspace *aspace);
 // @}
 
@@ -264,24 +264,24 @@ extern int arch_aspace_unsmartmap(struct aspace *src, struct aspace *dst,
  *
  * @{
  */
-extern int sys_aspace_get_myid(id_t __user *id);
-extern int sys_aspace_create(id_t id_request, const char __user *name,
-                             id_t __user *id);
-extern int sys_aspace_destroy(id_t id);
-extern int sys_aspace_find_hole(id_t id, vaddr_t start_hint, size_t extent,
+extern int sys_aspace_get_myid(lwk_id_t __user *id);
+extern int sys_aspace_create(lwk_id_t id_request, const char __user *name,
+                             lwk_id_t __user *id);
+extern int sys_aspace_destroy(lwk_id_t id);
+extern int sys_aspace_find_hole(lwk_id_t id, vaddr_t start_hint, size_t extent,
                                 size_t alignment, vaddr_t __user *start);
-extern int sys_aspace_add_region(id_t id,
+extern int sys_aspace_add_region(lwk_id_t id,
                                  vaddr_t start, size_t extent,
                                  vmflags_t flags, vmpagesize_t pagesz,
                                  const char __user *name);
-extern int sys_aspace_del_region(id_t id, vaddr_t start, size_t extent);
-extern int sys_aspace_map_pmem(id_t id,
+extern int sys_aspace_del_region(lwk_id_t id, vaddr_t start, size_t extent);
+extern int sys_aspace_map_pmem(lwk_id_t id,
                                paddr_t pmem, vaddr_t start, size_t extent);
-extern int sys_aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent);
-extern int sys_aspace_smartmap(id_t src, id_t dst,
+extern int sys_aspace_unmap_pmem(lwk_id_t id, vaddr_t start, size_t extent);
+extern int sys_aspace_smartmap(lwk_id_t src, lwk_id_t dst,
                                vaddr_t start, size_t extent);
-extern int sys_aspace_unsmartmap(id_t src, id_t dst);
-extern int sys_aspace_dump2console(id_t id);
+extern int sys_aspace_unsmartmap(lwk_id_t src, lwk_id_t dst);
+extern int sys_aspace_dump2console(lwk_id_t id);
 
 //@}
 

@@ -472,7 +472,7 @@ static int
 load_writable_segment(
 	void *            elf_image,
 	struct elf_phdr * phdr,
-	id_t              aspace_id,
+	lwk_id_t              aspace_id,
 	vaddr_t           start,
 	size_t            extent,
 	vmpagesize_t      pagesz,
@@ -484,7 +484,7 @@ load_writable_segment(
 	paddr_t pmem;
 	vaddr_t local_start;
 	vaddr_t src, dst;
-	id_t my_aspace_id;
+	lwk_id_t my_aspace_id;
 
 	/* Figure out my address space ID */
 	if ((status = aspace_get_myid(&my_aspace_id)))
@@ -540,7 +540,7 @@ static int
 load_readonly_segment(
 	paddr_t           elf_image_paddr,
 	struct elf_phdr * phdr,
-	id_t              aspace_id,
+	lwk_id_t              aspace_id,
 	vaddr_t           start,
 	size_t            extent,
 	vmpagesize_t      pagesz
@@ -580,7 +580,7 @@ int
 elf_load_executable(
 	void *       elf_image,
 	paddr_t      elf_image_paddr,
-	id_t         aspace_id,
+	lwk_id_t         aspace_id,
 	vmpagesize_t pagesz,
 	uintptr_t    alloc_pmem_arg,
 	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
@@ -650,7 +650,7 @@ elf_load_executable(
 
 static int
 make_region(
-	id_t         aspace_id,
+	lwk_id_t         aspace_id,
 	vaddr_t      start,
 	size_t       extent,
 	vmflags_t    flags,
@@ -699,7 +699,7 @@ elf_load(
 	void *          elf_image,
 	paddr_t         elf_image_paddr,
 	const char *    name,
-	id_t            desired_aspace_id,
+	lwk_id_t            desired_aspace_id,
 	vmpagesize_t    pagesz,
 	size_t          heap_size,
 	size_t          stack_size,
@@ -713,7 +713,7 @@ elf_load(
 	int status;
 	char *argv[MAX_ARGC] = { (char *)name };
 	char *envp[MAX_ENVC];
-	id_t my_aspace_id, aspace_id;
+	lwk_id_t my_aspace_id, aspace_id;
 	vaddr_t heap_start, stack_start, stack_end, stack_ptr;
 	vaddr_t local_stack_start;
 	size_t heap_extent, stack_extent;

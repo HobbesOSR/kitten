@@ -6,8 +6,8 @@
 #include <arch/page.h>
 
 struct idspace {
-	id_t   min_id;
-	id_t   max_id;
+	lwk_id_t   min_id;
+	lwk_id_t   max_id;
 	size_t size;
 	size_t ids_in_use;
 	size_t offset;
@@ -22,7 +22,7 @@ calc_order(struct idspace *idspace)
 }
 
 int
-idspace_create(id_t min_id, id_t max_id, idspace_t *idspace)
+idspace_create(lwk_id_t min_id, lwk_id_t max_id, idspace_t *idspace)
 {
 	struct idspace *spc;
 
@@ -69,7 +69,7 @@ idspace_destroy(idspace_t idspace)
 }
 
 int
-idspace_alloc_id(idspace_t idspace, id_t request, id_t *id)
+idspace_alloc_id(idspace_t idspace, lwk_id_t request, lwk_id_t *id)
 {
 	struct idspace *spc = idspace;
 	unsigned int bit;
@@ -110,7 +110,7 @@ idspace_alloc_id(idspace_t idspace, id_t request, id_t *id)
 }
 
 int
-idspace_free_id(idspace_t idspace, id_t id)
+idspace_free_id(idspace_t idspace, lwk_id_t id)
 {
 	struct idspace *spc = idspace;
 	unsigned int bit;

@@ -119,7 +119,7 @@ arch_xcall_function_interrupt(struct pt_regs *regs, unsigned int vector)
  * This causes the target CPU to call schedule().
  */
 void
-arch_xcall_reschedule(id_t cpu)
+arch_xcall_reschedule(lwk_id_t cpu)
 {
 	lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
 }

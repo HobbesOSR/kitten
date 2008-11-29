@@ -54,10 +54,10 @@ typedef unsigned long event_t;
 typedef struct {
 	uid_t                  uid;
 	uid_t                  gid;
-	id_t                   aspace_id;
+	lwk_id_t                   aspace_id;
 	vaddr_t                entry_point;
 	vaddr_t                stack_ptr;
-	id_t                   cpu_id;
+	lwk_id_t                   cpu_id;
 	const user_cpumask_t * cpumask;
 } start_state_t;
 
@@ -68,9 +68,9 @@ typedef struct {
  *
  * @{
  */
-extern int task_get_myid(id_t *id);
-extern int task_create(id_t id_request, const char *name,
-                       const start_state_t *start_state, id_t *id);
+extern int task_get_myid(lwk_id_t *id);
+extern int task_create(lwk_id_t id_request, const char *name,
+                       const start_state_t *start_state, lwk_id_t *id);
 extern int task_exit(int status);
 
 /** Yield the CPU from a user task.
@@ -122,7 +122,7 @@ struct sighand_struct {
  * represents a user-level process, user-level thread, or kernel thread.
  */
 struct task_struct {
-	id_t                    id;              /* The task's ID */
+	lwk_id_t                    id;              /* The task's ID */
 	char                    name[16];        /* The task's name */
 	struct hlist_node       ht_link;         /* Task hash table linkage */
 
@@ -136,7 +136,7 @@ struct task_struct {
 
 	cpumask_t               cpumask;         /* CPUs this task may migrate
 	                                            to and create tasks on */
-	id_t                    cpu_id;          /* CPU this task is bound to */
+	lwk_id_t                    cpu_id;          /* CPU this task is bound to */
 
 	struct list_head        sched_link;      /* For per-CPU scheduling lists */
 	bool                    sched_irqs_on;   /* IRQs on at schedule() entry? */
@@ -219,20 +219,20 @@ extern int arch_task_create(struct task_struct *task,
  *
  * @{
  */
-extern int sys_task_get_myid(id_t __user *id);
-extern int sys_task_create(id_t id_request, const char __user *name,
+extern int sys_task_get_myid(lwk_id_t __user *id);
+extern int sys_task_create(lwk_id_t id_request, const char __user *name,
                            const start_state_t __user *start_state,
-                           id_t __user *id);
+                           lwk_id_t __user *id);
 extern int sys_task_exit(int status);
 extern int sys_task_yield(void);
 //@}
 
-extern int __task_reserve_id(id_t id);
-extern int __task_create(id_t id, const char *name,
+extern int __task_reserve_id(lwk_id_t id);
+extern int __task_create(lwk_id_t id, const char *name,
                          const start_state_t *start_state,
                          struct task_struct **task);
 
-extern struct task_struct *task_lookup(id_t id);
+extern struct task_struct *task_lookup(lwk_id_t id);
 
 #endif
 #endif

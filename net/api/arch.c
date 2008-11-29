@@ -351,9 +351,9 @@ sys_thread_new(
 		.aspace_id		= KERNEL_ASPACE_ID,
 	};
 
-	id_t id;
+	lwk_id_t id;
 	task_create( ANY_ID, name, &state, &id );
 
-	printk( "%s: New thread is id %d\n", __func__, id );
+	printk( "%s: New thread is id %lu\n", __func__, id );
 	return 0;
 }
