@@ -3,6 +3,7 @@
 #include <lwk/params.h>
 #include <lwk/init.h>
 #include <lwk/elf.h>
+#include <lwk/kfs.h>
 
 /**
  * Maximum number of arguments and environment variables that may
@@ -90,5 +91,17 @@ create_init_task(void)
 		return status;
 	}
 
-	return task_create(INIT_TASK_ID, "init_task", &start_state, NULL);
+	lwk_id_t id;
+	int rc = task_create(INIT_TASK_ID, "init_task", &start_state, &id);
+	if( rc != 0 )
+		return rc;
+
+	/* Assign stdout */
+	struct task_struct * new_task = task_lookup( id );
+	if( !new_task )
+		panic( "Unable to retrieve init task id %lu?", id  );
+
+	new_task->files[ 1 ] = kfs_lookup( kfs_root, "/dev/console", 0 );
+
+	return 0;
 }

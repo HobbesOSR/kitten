@@ -7,7 +7,11 @@
 #include <lwk/htable.h>
 #include <lwk/list.h>
 #include <lwk/string.h>
-
+#include <lwk/task.h>
+#include <lwk/unistd.h>
+#include <lwk/kfs.h>
+#include <arch/uaccess.h>
+#include <arch/vsyscall.h>
 
 static uint64_t
 kfs_hash_filename(
@@ -32,7 +36,7 @@ kfs_equal_filename(
 	const char * search = (void*) name_in_search;
 	const char * dir = (void*) name_in_dir;
 
-	printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
+	//printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
 
 	while(1)
 	{
@@ -58,46 +62,12 @@ kfs_equal_filename(
 }
 
 
-struct kfs_fops
-{
-	struct kfs_file * (*lookup)(
-		struct kfs_file *	root,
-		const char *		name,
-		unsigned		create_mode
-	);
-
-	int (*read)(
-		struct kfs_file *,
-		uaddr_t,
-		size_t
-	);
-
-	int (*write)(
-		struct kfs_file *,
-		uaddr_t,
-		size_t
-	);
-};
 
 
-struct kfs_file
-{
-	struct htable *		files;
-	struct hlist_node	ht_link;
-	lwk_id_t		name_ptr;
-
-	struct kfs_file *	parent;
-	char			name[ 128 ];
-	const struct kfs_fops *	fops;
-	unsigned		mode;
-	void *			priv;
-	size_t			priv_len;
-};
-
-static struct kfs_file * kfs_root;
+struct kfs_file * kfs_root;
 
 
-static int
+static ssize_t
 kfs_read(
 	struct kfs_file *	file,
 	uaddr_t			buf,
@@ -107,7 +77,7 @@ kfs_read(
 	return -1;
 }
 
-static int
+static ssize_t
 kfs_write(
 	struct kfs_file *	file,
 	uaddr_t			buf,
@@ -118,15 +88,26 @@ kfs_write(
 }
 
 
+static int
+kfs_close(
+	struct kfs_file *	file
+)
+{
+	return 0;
+}
+
+
+
 struct kfs_fops kfs_default_fops =
 {
 	.lookup		= 0, // use the kfs_lookup
 	.read		= kfs_read,
 	.write		= kfs_write,
+	.close		= kfs_close,
 };
 
 
-static struct kfs_file *
+struct kfs_file *
 kfs_mkdirent(
 	struct kfs_file *	parent,
 	const char *		name,
@@ -160,6 +141,7 @@ kfs_mkdirent(
 	file->priv_len	= priv_len;
 	file->mode	= mode;
 	file->name_ptr	= (lwk_id_t) file->name;
+	file->refs	= 0;
 
 	if( name )
 	{
@@ -174,6 +156,17 @@ kfs_mkdirent(
 		htable_add( parent->files, file );
 
 	return file;
+}
+
+
+void
+kfs_destroy(
+	struct kfs_file *	file
+)
+{
+	// Should we check ref counts?
+	htable_destroy( file->files );
+	kmem_free( file );
 }
 
 
@@ -305,7 +298,154 @@ kfs_mkdir(
 		0
 	);
 }
-		
+
+
+/** Open system call
+ *
+ * \todo Implement flags and mode tests.
+ */
+static int
+sys_open(
+	uaddr_t			u_pathname,
+	int			flags,
+	mode_t			mode
+)
+{
+	char pathname[ MAX_PATHLEN ];
+	if( strncpy_from_user( pathname, (void*) u_pathname, sizeof(pathname) ) < 0 )
+		return -EFAULT;
+
+	printk( "%s: Openning '%s' flags %x mode %x\n",
+		__func__, 
+		pathname,
+		flags,
+		mode
+	);
+
+	struct kfs_file * file = kfs_lookup( kfs_root, pathname, 0 );
+	if( !file )
+		return -ENOENT;
+
+	printk( "%s: Found file %p: '%s'\n",
+		__func__,
+		file,
+		file->name
+	);
+
+	// Find the first free fd
+	int fd;
+	for( fd=0 ; fd<MAX_FILES ; fd++ )
+	{
+		if( !current->files[fd] )
+			break;
+	}
+
+	if( fd == MAX_FILES )
+		return -EMFILE;
+
+	if( file->fops->open
+	&&  file->fops->open( file ) < 0 )
+		return -EACCES;
+
+	current->files[fd] = file;
+	file->refs++;
+
+	return fd;
+}
+
+
+
+static ssize_t
+console_write(
+	struct kfs_file *	file,
+	uaddr_t			buf,
+	size_t			len
+)
+{
+	char			kbuf[ 512 ];
+	size_t			klen = len;
+	if( klen > sizeof(kbuf)-1 )
+		klen = sizeof(kbuf)-1;
+
+	if( copy_from_user( kbuf, (void*) buf, klen ) )
+		return -EFAULT;
+
+	kbuf[ klen ] = '\0';
+
+	printk( KERN_USERMSG
+		"(%s) %s%s",
+		current->name,
+		kbuf,
+		klen != len ? "<TRUNC>" : ""
+	);
+
+	return klen;
+}
+
+
+struct kfs_fops kfs_console_fops = {
+	.write		= console_write
+};
+
+
+
+
+
+
+static ssize_t
+sys_write(
+	int			fd,
+	uaddr_t			buf,
+	size_t			len
+)
+{
+	struct kfs_file * const file = get_current_file( fd );
+	if( !file )
+		return -EBADF;
+
+	if( file->fops->write )
+		return file->fops->write( file, buf, len );
+
+	printk( KERN_WARNING "%s: fd %d has no write operation\n", __func__, fd );
+	return -EBADF;
+}
+
+
+static ssize_t
+sys_read(
+	int			fd,
+	uaddr_t			buf,
+	size_t			len
+)
+{
+	struct kfs_file * const file = get_current_file( fd );
+	if( !file )
+		return -EBADF;
+
+	if( file->fops->read )
+		return file->fops->read( file, buf, len );
+
+	printk( KERN_WARNING "%s: fd %d has no read operation\n", __func__, fd );
+	return -EBADF;
+}
+
+
+static ssize_t
+sys_close(
+	int			fd
+)
+{
+	struct kfs_file * const file = get_current_file( fd );
+	if( !file )
+		return -EBADF;
+
+	if( file->fops->close )
+		return file->fops->close( file );
+
+	printk( KERN_WARNING "%s: fd %d has no close operation\n", __func__, fd );
+	return -EBADF;
+}
+
 
 void
 kfs_init( void )
@@ -330,9 +470,23 @@ kfs_init( void )
 		sizeof( dummy_string )
 	);
 
+	kfs_create(
+		"/dev/console",
+		&kfs_console_fops,
+		0777,
+		0,
+		0
+	);
+
 	// Test lookup
 	struct kfs_file * test = kfs_lookup( kfs_root, "/sys/kernel/dummy/string", 0 );
 	printk( "%s: file %p: %s\n", __func__, test, test ? test->name : "!!!" );
+
+	// Assign some system calls
+	syscall_register( __NR_open, (syscall_ptr_t) sys_open );
+	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
+	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
+	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
 }
 
 

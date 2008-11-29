@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -12,6 +13,7 @@
 static void pmem_api_test(void);
 static void aspace_api_test(void);
 static void socket_api_test(void);
+static void fd_test(void);
 
 int
 main(int argc, char *argv[], char *envp[])
@@ -31,10 +33,21 @@ main(int argc, char *argv[], char *envp[])
 
 	pmem_api_test();
 	aspace_api_test();
+	fd_test();
 	socket_api_test();
 
 	printf("Spinning forever...\n");
 	while (1) {}
+}
+
+
+void
+fd_test( void )
+{
+	printf( "Testing open\n" );
+	int fd = open( "/sys/kernel/dummy/string", O_RDONLY );
+	printf( "fd=%d\n", fd );
+	close( fd );
 }
 
 
