@@ -14,7 +14,7 @@ static idspace_t idspace;
 /**
  * Hash table used to lookup task structures by ID.
  */
-static htable_t htable;
+static struct htable * htable;
 
 /**
  * Lock for serializing access to the htable.
@@ -27,10 +27,13 @@ task_subsys_init(void)
 	if (idspace_create(__TASK_MIN_ID, __TASK_MAX_ID, &idspace))
 		panic("Failed to create task ID space.");
 
-	if (htable_create(7 /* 2^7 bins */,
-	                  offsetof(struct task_struct, id),
-	                  offsetof(struct task_struct, ht_link),
-	                  &htable))
+	htable = htable_create(
+		7,  // 2^7 bins
+		offsetof(struct task_struct, id),
+		offsetof(struct task_struct, ht_link)
+	);
+
+	if( !htable )
 		panic("Failed to create task hash table.");
 
 	return 0;

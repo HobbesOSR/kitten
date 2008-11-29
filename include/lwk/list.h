@@ -1,20 +1,7 @@
 #ifndef _LWK_LIST_H
 #define _LWK_LIST_H
 
-#ifdef __KERNEL__
-
-#include <lwk/stddef.h>
-#include <lwk/prefetch.h>
-
-/*
- * These are non-NULL pointers that will result in page faults
- * under normal circumstances, used to verify that nobody uses
- * non-initialized list entries.
- */
-#define LIST_POISON1  ((void *) 0x00100100)
-#define LIST_POISON2  ((void *) 0x00200200)
-
-/*
+/** \file
  * Simple doubly linked list implementation.
  *
  * Some of the internal functions ("__xxx") are useful when
@@ -22,7 +9,24 @@
  * sometimes we already know the next/prev entries and we can
  * generate better code by using them directly rather than
  * using the generic single-entry routines.
+ *
+ * \todo Merge list and hlist structures?
  */
+
+#ifdef __KERNEL__
+
+#include <lwk/stddef.h>
+#include <lwk/prefetch.h>
+
+/** \name List Poison
+ * These are non-NULL pointers that will result in page faults
+ * under normal circumstances, used to verify that nobody uses
+ * non-initialized list entries.
+ * @{
+ */
+#define LIST_POISON1  ((void *) 0x00100100)
+#define LIST_POISON2  ((void *) 0x00200200)
+//@}
 
 struct list_head {
 	struct list_head *next, *prev;
@@ -44,9 +48,10 @@ static inline void list_head_init(struct list_head *list)
 	INIT_LIST_HEAD(list);
 }
 
-/*
+/**
  * Insert a new entry between two known consecutive entries.
  *
+ * \internal
  * This is only for internal list manipulation where we know
  * the prev/next entries already!
  */
@@ -159,7 +164,7 @@ static inline int list_empty(const struct list_head *head)
  * empty _and_ checks that no other CPU might be
  * in the process of still modifying either member
  *
- * NOTE: using list_empty_careful() without synchronization
+ * \note Using list_empty_careful() without synchronization
  * can only be safe if the only activity that can happen
  * to the list entry is list_del_init(). Eg. it cannot be used
  * if another CPU could re-list_add() it.

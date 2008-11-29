@@ -49,34 +49,44 @@ obj2head(const struct htable *ht, const void *obj)
 	return &ht->tbl[hash_long(obj2key(ht, obj), ht->tbl_order)];
 }
 
-int
-htable_create(size_t tbl_order,
-              size_t obj_key_offset, size_t obj_link_offset, htable_t *tbl)
+
+struct htable *
+htable_create(
+	size_t			tbl_order,
+	size_t			obj_key_offset,
+	size_t			obj_link_offset
+)
 {
-	struct htable *ht;
-	size_t tbl_size;
+	size_t tbl_size = 1 << tbl_order;
 
-	if (!(ht = kmem_alloc(sizeof(*ht))))
-		return -ENOMEM;
+	struct htable *ht = kmem_alloc(sizeof(*ht));
+	if( !ht )
+		goto fail_ht_alloc;
 
-	ht->tbl_order = tbl_order;
-	tbl_size = (1 << tbl_order);
+	ht->tbl = kmem_alloc(tbl_size * sizeof(struct hlist_head));
 
-	if (!(ht->tbl = kmem_alloc(tbl_size * sizeof(struct hlist_head))))
-		return -ENOMEM;
+	if( !ht->tbl )
+		goto fail_tbl_alloc;
 
-	ht->obj_key_offset  = obj_key_offset;
-	ht->obj_link_offset = obj_link_offset;
-	ht->num_entries     = 0;
+	ht->tbl_order		= tbl_order;
+	ht->obj_key_offset	= obj_key_offset;
+	ht->obj_link_offset	= obj_link_offset;
+	ht->num_entries		= 0;
 
-	*tbl = ht;
-	return 0;
+	return ht;
+
+fail_tbl_alloc:
+	kmem_free( ht );
+fail_ht_alloc:
+	return NULL;
 }
 
+
 int
-htable_destroy(htable_t tbl)
+htable_destroy(
+	struct htable *		ht
+)
 {
-	struct htable *ht = tbl;
 	if (ht->num_entries)
 		return -EEXIST;
 	kmem_free(ht->tbl);
@@ -84,19 +94,25 @@ htable_destroy(htable_t tbl)
 	return 0;
 }
 
+
 int
-htable_add(htable_t tbl, void *obj)
+htable_add(
+	struct htable *		ht,
+	void *			obj
+)
 {
-	struct htable *ht = tbl;
 	hlist_add_head(obj2node(ht, obj), obj2head(ht, obj));
 	++ht->num_entries;
 	return 0;
 }
 
+
 int
-htable_del(htable_t tbl, void *obj)
+htable_del(
+	struct htable *		ht,
+	void *			obj
+)
 {
-	struct htable *ht = tbl;
 	struct hlist_node *node;
 	hlist_for_each(node, obj2head(ht, obj)) {
 		if (obj == node2obj(ht, node)) {
@@ -105,13 +121,17 @@ htable_del(htable_t tbl, void *obj)
 			return 0;
 		}
 	}
+
 	return -ENOENT;
 }
 
+
 void *
-htable_lookup(htable_t tbl, id_t key)
+htable_lookup(
+	struct htable *		ht,
+	id_t			key
+)
 {
-	struct htable *ht = tbl;
 	struct hlist_node *node;
 	hlist_for_each(node, key2head(ht, key)) {
 		if (key == node2key(ht, node))

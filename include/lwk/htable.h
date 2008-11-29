@@ -5,20 +5,85 @@
 
 #include <lwk/idspace.h>
 
-/**
- * Hash table object.
- */
-typedef void * htable_t;
+/** Opaque hash table type */
+struct htable;
+
+/** Opaque hash table chaining type */
+struct hlist_node;
+
 
 /**
- * Hash table API.
+ * \file Hash table API.
+ *
+ * Hash tables are implemented in a generic way to allow them to
+ * contain arbitrary structures with chaining.  To create a structure
+ * that is compatible with the hash table it must contain an id_t id
+ * and a struct hlist_node for chaining, and pass the offsets of these
+ * values to the htable_create() function as shown in this example:
+ *
+ * \code
+ * #include <lwk/htable.h>
+ * #include <lwk/list.h>
+ *
+ * struct foo {
+ *	id_t			id;
+ *	struct hlist_node	ht_link;
+ *	// Other stuff ...
+ * };
+ *
+ * struct htable * foo_table;
+ *
+ * void foo_init( void )
+ * {
+ *	foo_table = htable_create(
+ *		7,
+ *		offsetof( struct foo, id ),
+ *		offsetof( struct foo, ht_link )
+ *	);
+ *
+ *	if( !foo_table )
+ *		panic( "Unable to create foo_table!" );
+ * }
+ * \endcode
  */
-extern int htable_create(size_t tbl_order,
-                         size_t obj_key_offset, size_t obj_link_offset,
-                         htable_t *tbl);
-extern int htable_destroy(htable_t tbl);
-extern int htable_add(htable_t tbl, void *obj);
-extern int htable_del(htable_t tbl, void *obj);
-extern void *htable_lookup(htable_t tbl, id_t key);
+
+/** Create a hash table.
+ *
+ * \returns Pointer to table if successful, NULL if allocation failed.
+ */
+extern struct htable *
+htable_create(
+	size_t			tbl_order,	//!< 2^@tbl_order elements
+	size_t			obj_key_offset,
+	size_t			obj_link_offset
+);
+
+
+extern int
+htable_destroy(
+	struct htable *		ht
+);
+
+
+extern int
+htable_add(
+	struct htable *		tbl,
+	void *			obj
+);
+
+
+extern int
+htable_del(
+	struct htable *		tbl,
+	void *			obj
+);
+
+
+extern void *
+htable_lookup(
+	struct htable *		tbl,
+	id_t			key
+);
+
 
 #endif

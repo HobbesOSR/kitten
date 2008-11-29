@@ -20,7 +20,7 @@ static idspace_t idspace;
 /**
  * Hash table used to lookup address space structures by ID.
  */
-static htable_t htable;
+static struct htable * htable;
 
 /**
  * Lock for serializing access to the htable.
@@ -185,11 +185,13 @@ aspace_subsys_init(void)
 		panic("Failed to create aspace ID space (status=%d).", status);
 
 	/* Create a hash table that will be used for quick ID->aspace lookups */
-	if ((status = htable_create(7 /* 2^7 bins */,
-	                            offsetof(struct aspace, id),
-	                            offsetof(struct aspace, ht_link),
-	                            &htable)))
-		panic("Failed to create aspace hash table (status=%d).", status);
+	htable = htable_create(
+		7, // 2^7 bins
+		offsetof(struct aspace, id),
+		offsetof(struct aspace, ht_link)
+	);
+	if( !htable )
+		panic("Failed to create aspace hash table" );
 
 	/* Create an aspace for use by kernel threads */
 	if ((status = aspace_create(KERNEL_ASPACE_ID, "kernel", NULL)))
