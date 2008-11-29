@@ -13,6 +13,11 @@
 #include <arch/uaccess.h>
 #include <arch/vsyscall.h>
 
+
+/** Generate a hash from a filename.
+ *
+ * \todo Actually perform a hash function!
+ */
 static uint64_t
 kfs_hash_filename(
 	lwk_id_t		name,
@@ -36,7 +41,8 @@ kfs_equal_filename(
 	const char * search = (void*) name_in_search;
 	const char * dir = (void*) name_in_dir;
 
-	//printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
+	if(0)
+	printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
 
 	while(1)
 	{
@@ -68,7 +74,7 @@ struct kfs_file * kfs_root;
 
 
 static ssize_t
-kfs_read(
+kfs_default_read(
 	struct kfs_file *	file,
 	uaddr_t			buf,
 	size_t			len
@@ -78,7 +84,7 @@ kfs_read(
 }
 
 static ssize_t
-kfs_write(
+kfs_default_write(
 	struct kfs_file *	file,
 	uaddr_t			buf,
 	size_t			len
@@ -89,7 +95,7 @@ kfs_write(
 
 
 static int
-kfs_close(
+kfs_default_close(
 	struct kfs_file *	file
 )
 {
@@ -101,9 +107,64 @@ kfs_close(
 struct kfs_fops kfs_default_fops =
 {
 	.lookup		= 0, // use the kfs_lookup
-	.read		= kfs_read,
-	.write		= kfs_write,
-	.close		= kfs_close,
+	.read		= kfs_default_read,
+	.write		= kfs_default_write,
+	.close		= kfs_default_close,
+};
+
+
+static ssize_t
+kfs_int_read(
+	struct kfs_file *	file,
+	uaddr_t			u_buf,
+	size_t			len
+)
+{
+	char buf[ len > 32 ? 32 : len ];
+	ssize_t rc;
+
+	if( file->priv_len == 0 )
+		rc = snprintf( buf, sizeof(buf), "%ld", *(long*) file->priv );
+	else
+		rc = snprintf( buf, sizeof(buf), "%lx", *(long*) file->priv );
+	if( rc < 0 )
+		return -EFAULT;
+
+	if( copy_to_user( (void*) u_buf, buf, rc+1 ) )
+		return -EFAULT;
+
+	return rc;
+}
+
+
+struct kfs_fops kfs_int_fops = 
+{
+	.read		= kfs_int_read,
+	.close		= kfs_default_close,
+};
+
+
+static ssize_t
+kfs_string_read(
+	struct kfs_file *	file,
+	uaddr_t			u_buf,
+	size_t			len
+)
+{
+	if( len > file->priv_len )
+		len = file->priv_len;
+
+	if( copy_to_user( (void*) u_buf, file->priv, len ) )
+		return -EFAULT;
+
+	return len;
+}
+
+
+struct kfs_fops kfs_string_fops = 
+{
+	.read		= kfs_string_read,
+	.close		= kfs_default_close,
 };
 
 
@@ -246,6 +307,7 @@ kfs_lookup(
 
 // For testing /sys/dummy
 static char dummy_string[] = "Thank you for playing";
+static int dummy_int = 9999999;
 
 
 struct kfs_file *
@@ -315,6 +377,7 @@ sys_open(
 	if( strncpy_from_user( pathname, (void*) u_pathname, sizeof(pathname) ) < 0 )
 		return -EFAULT;
 
+	if(1)
 	printk( "%s: Openning '%s' flags %x mode %x\n",
 		__func__, 
 		pathname,
@@ -325,12 +388,6 @@ sys_open(
 	struct kfs_file * file = kfs_lookup( kfs_root, pathname, 0 );
 	if( !file )
 		return -ENOENT;
-
-	printk( "%s: Found file %p: '%s'\n",
-		__func__,
-		file,
-		file->name
-	);
 
 	// Find the first free fd
 	int fd;
@@ -352,43 +409,6 @@ sys_open(
 
 	return fd;
 }
-
-
-
-static ssize_t
-console_write(
-	struct kfs_file *	file,
-	uaddr_t			buf,
-	size_t			len
-)
-{
-	char			kbuf[ 512 ];
-	size_t			klen = len;
-	if( klen > sizeof(kbuf)-1 )
-		klen = sizeof(kbuf)-1;
-
-	if( copy_from_user( kbuf, (void*) buf, klen ) )
-		return -EFAULT;
-
-	kbuf[ klen ] = '\0';
-
-	printk( KERN_USERMSG
-		"(%s) %s%s",
-		current->name,
-		kbuf,
-		klen != len ? "<TRUNC>" : ""
-	);
-
-	return klen;
-}
-
-
-struct kfs_fops kfs_console_fops = {
-	.write		= console_write
-};
-
-
-
 
 
 
@@ -439,6 +459,9 @@ sys_close(
 	if( !file )
 		return -EBADF;
 
+	file->refs--;
+	current->files[ fd ] = 0;
+
 	if( file->fops->close )
 		return file->fops->close( file );
 
@@ -464,18 +487,34 @@ kfs_init( void )
 
 	kfs_create(
 		"/sys/kernel/dummy/string",
-		&kfs_default_fops,
+		&kfs_string_fops,
 		0777,
 		dummy_string,
 		sizeof( dummy_string )
 	);
 
 	kfs_create(
-		"/dev/console",
-		&kfs_console_fops,
+		"/sys/kernel/dummy/int",
+		&kfs_int_fops,
 		0777,
-		0,
-		0
+		&dummy_int,
+		0 // dec
+	);
+
+	kfs_create(
+		"/sys/kernel/dummy/hex",
+		&kfs_int_fops,
+		0777,
+		&dummy_int,
+		1 // hex
+	);
+
+	kfs_create(
+		"/sys/kernel/dummy/bin",
+		&kfs_string_fops,
+		0777,
+		&dummy_int,
+		sizeof(dummy_int)
 	);
 
 	// Test lookup
@@ -487,7 +526,7 @@ kfs_init( void )
 	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
+
+	// Bring up any kfs drivers that we have linked in
+	driver_init_by_name( "kfs", "*" );
 }
-
-
-driver_init( "late", kfs_init );

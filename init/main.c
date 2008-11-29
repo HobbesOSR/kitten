@@ -106,6 +106,8 @@ start_kernel()
  	 */
 	timer_subsys_init();
 
+	/* Start the kernel filesystems */
+	kfs_init();
 
 	/*
 	 * Bring up any network devices.

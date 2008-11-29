@@ -5,6 +5,7 @@
 #include <lwk/driver.h>
 #include <lwk/errno.h>
 #include <arch/uaccess.h>
+#include <lwk/kfs.h>
 
 /**
  * List of all registered consoles in the system.
@@ -48,6 +49,41 @@ void console_write(const char *str)
 }
 
 
+/** Write a user string to the console */
+static ssize_t
+console_user_write(
+	struct kfs_file *	file,
+	uaddr_t			buf,
+	size_t			len
+)
+{
+	char			kbuf[ 512 ];
+	size_t			klen = len;
+	if( klen > sizeof(kbuf)-1 )
+		klen = sizeof(kbuf)-1;
+
+	if( copy_from_user( kbuf, (void*) buf, klen ) )
+		return -EFAULT;
+
+	kbuf[ klen ] = '\0';
+
+	printk( KERN_USERMSG
+		"(%s) %s%s",
+		current->name,
+		kbuf,
+		klen != len ? "<TRUNC>" : ""
+	);
+
+	return klen;
+}
+
+
+static struct kfs_fops
+kfs_console_fops = {
+	.write		= console_user_write
+};
+
+
 
 /**
  * Initializes the console subsystem; called once at boot.
@@ -57,4 +93,19 @@ console_init(void)
 {
 	driver_init_list( "console", console_str );
 }
+
+
+void
+console_user_init(void)
+{
+	kfs_create(
+		"/dev/console",
+		&kfs_console_fops,
+		0777,
+		0,
+		0
+	);
+}
+
+driver_init( "kfs", console_user_init );
 

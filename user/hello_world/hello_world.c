@@ -44,9 +44,30 @@ main(int argc, char *argv[], char *envp[])
 void
 fd_test( void )
 {
+	char buf[ 1024 ] = "";
+	int fd;
+	ssize_t rc;
+
 	printf( "Testing open\n" );
-	int fd = open( "/sys/kernel/dummy/string", O_RDONLY );
-	printf( "fd=%d\n", fd );
+	fd = open( "/sys/kernel/dummy/string", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/int", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/hex", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/bin", O_RDONLY );
+	uint64_t val;
+	rc = read( fd, &val, sizeof(val) );
+	printf( "fd %d rc=%d %ld / 0x%x\n", fd, rc, val, val );
 	close( fd );
 }
 

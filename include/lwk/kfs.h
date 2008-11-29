@@ -66,6 +66,16 @@ kfs_mkdirent(
 );
 
 
+struct kfs_file *
+kfs_create(
+	const char *		full_filename,
+	const struct kfs_fops *	fops,
+	unsigned		mode,
+	void *			priv,
+	size_t			priv_len
+);
+
+
 void
 kfs_destroy(
 	struct kfs_file *	file
@@ -92,5 +102,10 @@ kfs_lookup(
 	const char *		dirname,
 	unsigned		create_mode
 );
+
+
+extern void
+kfs_init( void );
+
 
 #endif
