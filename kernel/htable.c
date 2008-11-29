@@ -10,7 +10,8 @@ struct htable {
 	size_t              obj_key_offset;
 	size_t              obj_link_offset;
 	size_t              num_entries;
-	hash_func_t		hash;
+	htable_hash_t		hash;
+	htable_equal_t		equal;
 	struct hlist_head	tbl[0];
 };
 
@@ -66,7 +67,8 @@ htable_create(
 	size_t			tbl_order,
 	size_t			obj_key_offset,
 	size_t			obj_link_offset,
-	hash_func_t		hash
+	htable_hash_t		hash,
+	htable_equal_t		equal
 )
 {
 	struct htable * ht;
@@ -83,6 +85,7 @@ htable_create(
 	ht->obj_link_offset	= obj_link_offset;
 	ht->num_entries		= 0;
 	ht->hash		= hash;
+	ht->equal		= equal;
 
 	return ht;
 }
@@ -136,13 +139,22 @@ htable_del(
 void *
 htable_lookup(
 	struct htable *		ht,
-	lwk_id_t			key
+	lwk_id_t		key
 )
 {
 	struct hlist_node *node;
-	hlist_for_each(node, key2head(ht, key)) {
-		if (key == node2key(ht, node))
+	hlist_for_each(node, key2head(ht, key))
+	{
+		lwk_id_t node_id = node2key( ht, node );
+
+		int match = ht->equal
+			? ht->equal( key, node_id ) == 0
+			: key == node_id;
+
+		if( match )
 			return node2obj(ht, node);
 	}
+
+	// No match
 	return NULL;
 }

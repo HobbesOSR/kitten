@@ -31,7 +31,8 @@ task_subsys_init(void)
 		7,  // 2^7 bins
 		offsetof(struct task_struct, id),
 		offsetof(struct task_struct, ht_link),
-		0 // use default hash function
+		0, // use default hash function
+		0 // use default equality function
 	);
 
 	if( !htable )

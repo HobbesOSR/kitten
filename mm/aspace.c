@@ -189,7 +189,8 @@ aspace_subsys_init(void)
 		7, // 2^7 bins
 		offsetof(struct aspace, id),
 		offsetof(struct aspace, ht_link),
-		0 // use default hash function
+		0, // use default hash function
+		0 // use default equality function
 	);
 	if( !htable )
 		panic("Failed to create aspace hash table" );

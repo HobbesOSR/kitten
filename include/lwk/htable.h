@@ -54,7 +54,8 @@ struct hlist_node;
  */
 
 /** Hash function type */
-typedef uint64_t (*hash_func_t)( lwk_id_t, unsigned int );
+typedef uint64_t (*htable_hash_t)( lwk_id_t, unsigned int );
+typedef int (*htable_equal_t)( lwk_id_t, lwk_id_t );
 
 
 /** Create a hash table.
@@ -68,7 +69,8 @@ htable_create(
 	size_t			tbl_order,	//!< 2^@tbl_order elements
 	size_t			obj_key_offset,
 	size_t			obj_link_offset,
-	hash_func_t		hash
+	htable_hash_t		hash,
+	htable_equal_t		equal
 );
 
 
