@@ -69,6 +69,12 @@ fd_test( void )
 	rc = read( fd, &val, sizeof(val) );
 	printf( "fd %d rc=%d %ld / 0x%x\n", fd, rc, val, val );
 	close( fd );
+
+	// Should fail
+	fd = open( "/sys/kernel/dummy", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	close( fd );
 }
 
 
