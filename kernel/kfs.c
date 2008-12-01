@@ -469,6 +469,24 @@ sys_close(
 }
 
 
+static int
+sys_dup2(
+	int			oldfd,
+	int			newfd
+)
+{
+	struct kfs_file * const oldfile = get_current_file( oldfd );
+	if( !oldfile )
+		return -EBADF;
+	if( newfd < 0 || newfd > MAX_FILES )
+		return -EBADF;
+	sys_close( newfd );
+
+	current->files[ newfd ] = oldfile;
+	return 0;
+}
+
+
 static pid_t
 sys_fork( void )
 {
@@ -533,6 +551,7 @@ kfs_init( void )
 	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
+	syscall_register( __NR_dup2, (syscall_ptr_t) sys_dup2 );
 
 	syscall_register( __NR_fork, (syscall_ptr_t) sys_fork );
 
