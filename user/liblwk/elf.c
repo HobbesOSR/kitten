@@ -463,7 +463,7 @@ elf_dflt_alloc_pmem(size_t size, size_t alignment, uintptr_t arg)
 
 	/* Mark the memory as being used by the init task */
 	result.type = PMEM_TYPE_INIT_TASK;
-	BUG_ON(pmem_update(&result));
+	pmem_update(&result);
 	
 	return result.start;
 }

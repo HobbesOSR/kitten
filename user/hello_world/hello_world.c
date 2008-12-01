@@ -5,10 +5,12 @@
 #include <unistd.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <ctype.h>
+#include <lwk/liblwk.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <lwk/liblwk.h>
 
 static void pmem_api_test(void);
 static void aspace_api_test(void);
@@ -19,7 +21,6 @@ int
 main(int argc, char *argv[], char *envp[])
 {
 	int i;
-	lwk_id_t aspace_id;
 
 	printf("Hello, world!\n");
 
@@ -40,6 +41,30 @@ main(int argc, char *argv[], char *envp[])
 	while (1) {}
 }
 
+/* writen() is from "UNIX Network Programming" by W. Richard Stevents */
+static ssize_t 
+writen(int fd, const void *vptr, size_t n)
+{
+	size_t nleft;
+	ssize_t nwritten;
+	const char *ptr;
+
+	ptr = vptr;
+	nleft = n;
+	while (nleft > 0) {
+		if ((nwritten = write(fd, ptr, nleft)) <= 0) {
+			if (errno == EINTR) {
+				nwritten = 0;  /* and call write() again */
+			} else {
+				perror( "write" );
+				return -1;     /* error */
+			}
+		}
+		nleft -= nwritten;
+		ptr   += nwritten;
+	}
+	return n;
+}
 
 void
 fd_test( void )
@@ -120,7 +145,7 @@ socket_api_test( void )
 		if( FD_ISSET( s, &read_fds ) )
 		{
 			printf( "new connection\n" );
-			int socklen = sizeof(client);
+			socklen_t socklen = sizeof(client);
 			int new_fd = accept(
 				s,
 				(struct sockaddr *) &client,
@@ -128,8 +153,7 @@ socket_api_test( void )
 			);
 
 			printf( "connected newfd %d!\n", new_fd );
-			//write( new_fd, "hello\n", 6 );
-			write( new_fd, "Welcome!\n", 9 );
+			writen( new_fd, "Welcome!\n", 9 );
 			FD_SET( new_fd, &fds );
 			if( new_fd > max_fd )
 				max_fd = new_fd;
@@ -145,7 +169,7 @@ socket_api_test( void )
 			ssize_t rc = read( fd, buf, sizeof(buf)-1 );
 			if( rc <= 0 )
 			{
-				printf( "%d: closed connection rc=%d\n", fd, rc );
+				printf( "%d: closed connection rc=%zd\n", fd, rc );
 				FD_CLR( fd, &fds );
 				continue;
 			}
@@ -170,8 +194,8 @@ socket_api_test( void )
 			);
 
 			char outbuf[ 32 ];
-			int len = snprintf( outbuf, sizeof(outbuf), "%d: read %d bytes\n", fd, rc );
-			write( fd, outbuf, len );
+			int len = snprintf( outbuf, sizeof(outbuf), "%d: read %zd bytes\n", fd, rc );
+			writen( fd, outbuf, len );
 		}
 	}
 }

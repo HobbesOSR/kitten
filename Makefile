@@ -187,7 +187,7 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 HOSTCC  	= gcc
 HOSTCXX  	= g++
 HOSTCFLAGS	= -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer \
-			-Wno-unused -U_FORTIFY_SOURCE
+			-Wno-unused -Wno-format-security -U_FORTIFY_SOURCE
 HOSTCXXFLAGS	= -O2
 
 # 	Decide whether to build built-in, modular, or both.

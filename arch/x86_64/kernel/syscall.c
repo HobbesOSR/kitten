@@ -33,8 +33,7 @@ long syscall_not_implemented(void)
 
 	printk(KERN_DEBUG "System call not implemented! "
 	                  "(syscall_number=%lu)\n", syscall_number);
-//	return -ENOSYS;
-	return 0;
+	return -ENOSYS;
 }
 
 /**
