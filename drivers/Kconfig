@@ -18,6 +18,10 @@ config KEYBOARD
 	depends on PC
 	default PC
 
+config DEVFS
+	bool "Common /dev file system entries"
+	default Y
+
 config RCAL0_CONSOLE
 	bool "Cray XT3 L0 console support"
 	depends on CRAY_XT
