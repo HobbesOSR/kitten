@@ -19,6 +19,7 @@
 #include <lwk/timer.h>
 #include <lwk/kgdb.h>
 #include <lwk/driver.h>
+#include <lwk/kfs.h>
 #ifdef CONFIG_PALACIOS
 #include <arch/palacios.h>
 #endif
