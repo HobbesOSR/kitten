@@ -487,6 +487,24 @@ sys_dup2(
 }
 
 
+static int
+sys_ioctl(
+	int			fd,
+	int			request,
+	uaddr_t			arg
+)
+{
+	struct kfs_file * const file = get_current_file( fd );
+	if( !file )
+		return -EBADF;
+
+	if( file->fops->ioctl )
+		return file->fops->ioctl( file, request, arg );
+
+	return -ENOTTY;
+}
+
+
 static pid_t
 sys_fork( void )
 {
@@ -552,6 +570,7 @@ kfs_init( void )
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
 	syscall_register( __NR_dup2, (syscall_ptr_t) sys_dup2 );
+	syscall_register( __NR_ioctl, (syscall_ptr_t) sys_ioctl );
 
 	syscall_register( __NR_fork, (syscall_ptr_t) sys_fork );
 

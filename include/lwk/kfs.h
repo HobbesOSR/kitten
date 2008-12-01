@@ -35,6 +35,12 @@ struct kfs_fops
 		uaddr_t,
 		size_t
 	);
+
+	int (*ioctl)(
+		struct kfs_file *,
+		int request,
+		uaddr_t
+	);
 };
 
 #define MAX_PATHLEN		1024
