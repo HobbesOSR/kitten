@@ -465,8 +465,15 @@ sys_close(
 	if( file->fops->close )
 		return file->fops->close( file );
 
-	printk( KERN_WARNING "%s: fd %d has no close operation\n", __func__, fd );
-	return -EBADF;
+	return 0;
+}
+
+
+static pid_t
+sys_fork( void )
+{
+	printk( "%s: Attempting to fork!\n", __func__ );
+	return -ENOSYS;
 }
 
 
@@ -526,6 +533,8 @@ kfs_init( void )
 	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
+
+	syscall_register( __NR_fork, (syscall_ptr_t) sys_fork );
 
 	// Bring up any kfs drivers that we have linked in
 	driver_init_by_name( "kfs", "*" );
