@@ -96,12 +96,15 @@ create_init_task(void)
 	if( rc != 0 )
 		return rc;
 
-	/* Assign stdout */
+	/* Assign stdout and stderr */
 	struct task_struct * new_task = task_lookup( id );
 	if( !new_task )
 		panic( "Unable to retrieve init task id %lu?", id  );
 
-	new_task->files[ 1 ] = kfs_lookup( kfs_root, "/dev/console", 0 );
+	struct kfs_file * console = kfs_lookup( kfs_root, "/dev/console", 0 );
+	new_task->files[ 0 ] = console;
+	new_task->files[ 1 ] = console;
+	new_task->files[ 2 ] = console;
 
 	return 0;
 }
