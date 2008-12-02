@@ -8,7 +8,7 @@
 
 struct htable {
 	ht_hash_func_t		hash;
-	ht_keys_equal_func_t	keys_equal;
+	ht_key_compare_func_t	key_compare;
 	size_t			obj_key_offset;
 	size_t			obj_hlist_node_offset;
 	size_t			num_entries;
@@ -64,10 +64,10 @@ htable_create(
 	size_t			obj_key_offset,
 	size_t			obj_hlist_node_offset,
 	ht_hash_func_t		hash,
-	ht_keys_equal_func_t	keys_equal
+	ht_key_compare_func_t	key_compare
 )
 {
-	if (!hash || !keys_equal)
+	if (!hash || !key_compare)
 		return NULL;
 
 	struct htable *ht;
@@ -80,7 +80,7 @@ htable_create(
 	ht->obj_key_offset		= obj_key_offset;
 	ht->obj_hlist_node_offset	= obj_hlist_node_offset;
 	ht->hash			= hash;
-	ht->keys_equal			= keys_equal;
+	ht->key_compare			= key_compare;
 	ht->num_entries			= 0;
 
 	return ht;
@@ -137,7 +137,7 @@ htable_lookup(
 {
 	struct hlist_node *node;
 	hlist_for_each(node, key2head(ht, key)) {
-		if (ht->keys_equal(key, node2key(ht, node)) == 0)
+		if (ht->key_compare(key, node2key(ht, node)) == 0)
 			return node2obj(ht, node);
 	}
 
@@ -158,7 +158,7 @@ htable_hash_id(
 
 
 int
-htable_id_keys_equal(
+htable_id_key_compare(
 	const void *		key1,
 	const void *		key2
 )

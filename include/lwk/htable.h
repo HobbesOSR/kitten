@@ -64,7 +64,7 @@ typedef uint64_t (*ht_hash_func_t)( const void *key, size_t order);
  * Keys equal function type.
  * \returns 0 if the keys are equal, < 0 if key1 < key2 and >0 if key1 > key2
  */
-typedef int (*ht_keys_equal_func_t)(
+typedef int (*ht_key_compare_func_t)(
 	const void *key_in_search,
 	const void *key_in_table
 );
@@ -82,7 +82,7 @@ htable_create(
 	size_t			obj_key_offset,
 	size_t			obj_hlist_node_offset,
 	ht_hash_func_t		hash,
-	ht_keys_equal_func_t	keys_equal
+	ht_key_compare_func_t	key_compare
 );
 
 extern int
@@ -115,7 +115,7 @@ htable_hash_id(
 );
 
 extern int
-htable_id_keys_equal(
+htable_id_key_compare(
 	const void *		key1,
 	const void *		key2
 );

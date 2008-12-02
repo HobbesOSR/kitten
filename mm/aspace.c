@@ -190,7 +190,7 @@ aspace_subsys_init(void)
 		offsetof(struct aspace, id),
 		offsetof(struct aspace, ht_link),
 		htable_hash_id,
-		htable_id_keys_equal
+		htable_id_key_compare
 	);
 	if (!ht)
 		panic("Failed to create aspace hash table" );

@@ -32,7 +32,7 @@ task_subsys_init(void)
 		offsetof(struct task_struct, id),
 		offsetof(struct task_struct, ht_link),
 		htable_hash_id,
-		htable_id_keys_equal
+		htable_id_key_compare
 	);
 	if (!ht)
 		panic("Failed to create task hash table.");
