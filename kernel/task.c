@@ -14,12 +14,12 @@ static idspace_t idspace;
 /**
  * Hash table used to lookup task structures by ID.
  */
-static htable_t htable;
+static struct htable *ht;
 
 /**
- * Lock for serializing access to the htable.
+ * Lock for serializing access to the hash table.
  */
-static DEFINE_SPINLOCK(htable_lock);
+static DEFINE_SPINLOCK(ht_lock);
 
 int __init
 task_subsys_init(void)
@@ -27,10 +27,14 @@ task_subsys_init(void)
 	if (idspace_create(__TASK_MIN_ID, __TASK_MAX_ID, &idspace))
 		panic("Failed to create task ID space.");
 
-	if (htable_create(7 /* 2^7 bins */,
-	                  offsetof(struct task_struct, id),
-	                  offsetof(struct task_struct, ht_link),
-	                  &htable))
+	ht = ht_create(
+		7,  /* 2^7 bins in the hash table */
+		offsetof(struct task_struct, id),
+		offsetof(struct task_struct, ht_link),
+		ht_hash_id,
+		ht_id_keys_equal
+	);
+	if (!ht)
 		panic("Failed to create task hash table.");
 
 	return 0;
@@ -153,9 +157,9 @@ task_create(id_t id_request, const char *name,
 	}
 
 	/* Add new task to a hash table, for quick lookups by ID */
-	spin_lock_irqsave(&htable_lock, irqstate);
-	BUG_ON(htable_add(htable, new_task));
-	spin_unlock_irqrestore(&htable_lock, irqstate);
+	spin_lock_irqsave(&ht_lock, irqstate);
+	BUG_ON(ht_add(ht, new_task));
+	spin_unlock_irqrestore(&ht_lock, irqstate);
 
 	/* Add the new task to the target CPU's run queue */
 	sched_add_task(new_task);
@@ -246,14 +250,14 @@ task_lookup(id_t id)
         struct task_struct *t;
 
         /* Lock the hash table, lookup aspace object by ID */
-        spin_lock(&htable_lock);
-        if ((t = htable_lookup(htable, id)) == NULL) {
-                spin_unlock(&htable_lock);
+        spin_lock(&ht_lock);
+        if ((t = ht_lookup(ht, &id)) == NULL) {
+                spin_unlock(&ht_lock);
                 return NULL;
         }
 
         /* Unlock the hash table, others may now use it */
-        spin_unlock(&htable_lock);
+        spin_unlock(&ht_lock);
 
         return t;
 }

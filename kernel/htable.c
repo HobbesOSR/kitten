@@ -3,100 +3,112 @@
 #include <lwk/kernel.h>
 #include <lwk/list.h>
 #include <lwk/htable.h>
+#include <lwk/idspace.h>
 #include <lwk/hash.h>
 
 struct htable {
-	size_t              tbl_order;
-	struct hlist_head * tbl;
-	size_t              obj_key_offset;
-	size_t              obj_link_offset;
-	size_t              num_entries;
+	ht_hash_func_t		hash;
+	ht_keys_equal_func_t	keys_equal;
+	size_t			obj_key_offset;
+	size_t			obj_hlist_node_offset;
+	size_t			num_entries;
+	size_t			order;
+	struct hlist_head	tbl[0];
 };
 
-static id_t
+static void *
 obj2key(const struct htable *ht, const void *obj)
 {
-	return *((id_t *)((uintptr_t)obj + ht->obj_key_offset));
+	return (void *)((uintptr_t)obj + ht->obj_key_offset);
 }
 
 static struct hlist_node *
 obj2node(const struct htable *ht, const void *obj)
 {
-	return (struct hlist_node *)((uintptr_t)obj + ht->obj_link_offset);
+	return (struct hlist_node *)((uintptr_t)obj + ht->obj_hlist_node_offset);
 }
 
 static void *
 node2obj(const struct htable *ht, const struct hlist_node *node)
 {
-	return (void *)((uintptr_t)node - ht->obj_link_offset);
+	return (void *)((uintptr_t)node - ht->obj_hlist_node_offset);
 }
 
-static id_t
+static void *
 node2key(const struct htable *ht, const struct hlist_node *node)
 {
 	return obj2key(ht, node2obj(ht, node));
 }
 
 static struct hlist_head *
-key2head(const struct htable *ht, id_t key)
+key2head(struct htable *ht, void *key)
 {
-	return &ht->tbl[hash_long(key, ht->tbl_order)];
+	return &ht->tbl[ht->hash(key, ht->order)];
 }
 
 static struct hlist_head *
-obj2head(const struct htable *ht, const void *obj)
+obj2head(struct htable *ht, const void *obj)
 {
-	return &ht->tbl[hash_long(obj2key(ht, obj), ht->tbl_order)];
+	return &ht->tbl[ht->hash(obj2key(ht, obj), ht->order)];
 }
 
-int
-htable_create(size_t tbl_order,
-              size_t obj_key_offset, size_t obj_link_offset, htable_t *tbl)
+struct htable *
+ht_create(
+	size_t			order,
+	size_t			obj_key_offset,
+	size_t			obj_hlist_node_offset,
+	ht_hash_func_t		hash,
+	ht_keys_equal_func_t	keys_equal
+)
 {
+	if (!hash || !keys_equal)
+		return NULL;
+
 	struct htable *ht;
-	size_t tbl_size;
+	size_t ht_struct_size = sizeof(*ht) + (1 << order) * sizeof(ht->tbl[0]);
 
-	if (!(ht = kmem_alloc(sizeof(*ht))))
-		return -ENOMEM;
+	ht = kmem_alloc(ht_struct_size);
+	if (!ht)
+		return NULL;
 
-	ht->tbl_order = tbl_order;
-	tbl_size = (1 << tbl_order);
+	ht->order			= order;
+	ht->obj_key_offset		= obj_key_offset;
+	ht->obj_hlist_node_offset	= obj_hlist_node_offset;
+	ht->hash			= hash;
+	ht->keys_equal			= keys_equal;
+	ht->num_entries			= 0;
 
-	if (!(ht->tbl = kmem_alloc(tbl_size * sizeof(struct hlist_head))))
-		return -ENOMEM;
-
-	ht->obj_key_offset  = obj_key_offset;
-	ht->obj_link_offset = obj_link_offset;
-	ht->num_entries     = 0;
-
-	*tbl = ht;
-	return 0;
+	return ht;
 }
 
 int
-htable_destroy(htable_t tbl)
+ht_destroy(
+	struct htable *		ht
+)
 {
-	struct htable *ht = tbl;
 	if (ht->num_entries)
 		return -EEXIST;
-	kmem_free(ht->tbl);
 	kmem_free(ht);
 	return 0;
 }
 
 int
-htable_add(htable_t tbl, void *obj)
+ht_add(
+	struct htable *		ht,
+	void *			obj
+)
 {
-	struct htable *ht = tbl;
 	hlist_add_head(obj2node(ht, obj), obj2head(ht, obj));
 	++ht->num_entries;
 	return 0;
 }
 
 int
-htable_del(htable_t tbl, void *obj)
+ht_del(
+	struct htable *		ht,
+	void *			obj
+)
 {
-	struct htable *ht = tbl;
 	struct hlist_node *node;
 	hlist_for_each(node, obj2head(ht, obj)) {
 		if (obj == node2obj(ht, node)) {
@@ -109,13 +121,36 @@ htable_del(htable_t tbl, void *obj)
 }
 
 void *
-htable_lookup(htable_t tbl, id_t key)
+ht_lookup(
+	struct htable *		ht,
+	void *			key
+)
 {
-	struct htable *ht = tbl;
 	struct hlist_node *node;
 	hlist_for_each(node, key2head(ht, key)) {
-		if (key == node2key(ht, node))
+		if (ht->keys_equal(key, node2key(ht, node)))
 			return node2obj(ht, node);
 	}
 	return NULL;
+}
+
+uint64_t
+ht_hash_id(
+	void *			key,
+	size_t			order
+)
+{
+	id_t *id = key;
+	return hash_long(*id, order);
+}
+
+bool
+ht_id_keys_equal(
+	void *			key1,
+	void *			key2
+)
+{
+	id_t *id1 = key1;
+	id_t *id2 = key2;
+	return (*id1 == *id2);
 }

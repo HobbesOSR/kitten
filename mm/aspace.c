@@ -20,12 +20,12 @@ static idspace_t idspace;
 /**
  * Hash table used to lookup address space structures by ID.
  */
-static htable_t htable;
+static struct htable *ht;
 
 /**
- * Lock for serializing access to the htable.
+ * Lock for serializing access to the hash table.
  */
-static DEFINE_SPINLOCK(htable_lock);
+static DEFINE_SPINLOCK(ht_lock);
 
 /**
  * Memory region structure. A memory region represents a contiguous region 
@@ -118,9 +118,9 @@ lookup_and_lock(id_t id)
 	struct aspace *aspace;
 
 	/* Lock the hash table, lookup aspace object by ID */
-	spin_lock(&htable_lock);
-	if ((aspace = htable_lookup(htable, id)) == NULL) {
-		spin_unlock(&htable_lock);
+	spin_lock(&ht_lock);
+	if ((aspace = ht_lookup(ht, &id)) == NULL) {
+		spin_unlock(&ht_lock);
 		return NULL;
 	}
 
@@ -128,7 +128,7 @@ lookup_and_lock(id_t id)
 	spin_lock(&aspace->lock);
 
 	/* Unlock the hash table, others may now use it */
-	spin_unlock(&htable_lock);
+	spin_unlock(&ht_lock);
 
 	return aspace;
 }
@@ -141,14 +141,14 @@ lookup_and_lock_two(id_t a, id_t b,
                     struct aspace **aspace_a, struct aspace **aspace_b)
 {
 	/* Lock the hash table, lookup aspace objects by ID */
-	spin_lock(&htable_lock);
-	if ((*aspace_a = htable_lookup(htable, a)) == NULL) {
-		spin_unlock(&htable_lock);
+	spin_lock(&ht_lock);
+	if ((*aspace_a = ht_lookup(ht, &a)) == NULL) {
+		spin_unlock(&ht_lock);
 		return -ENOENT;
 	}
 
-	if ((*aspace_b = htable_lookup(htable, b)) == NULL) {
-		spin_unlock(&htable_lock);
+	if ((*aspace_b = ht_lookup(ht, &b)) == NULL) {
+		spin_unlock(&ht_lock);
 		return -ENOENT;
 	}
 
@@ -157,7 +157,7 @@ lookup_and_lock_two(id_t a, id_t b,
 	spin_lock(&(*aspace_b)->lock);
 
 	/* Unlock the hash table, others may now use it */
-	spin_unlock(&htable_lock);
+	spin_unlock(&ht_lock);
 
 	return 0;
 }
@@ -185,10 +185,14 @@ aspace_subsys_init(void)
 		panic("Failed to create aspace ID space (status=%d).", status);
 
 	/* Create a hash table that will be used for quick ID->aspace lookups */
-	if ((status = htable_create(7 /* 2^7 bins */,
-	                            offsetof(struct aspace, id),
-	                            offsetof(struct aspace, ht_link),
-	                            &htable)))
+	ht = ht_create(
+		7,  /* 2^7 bins in the hash table */
+		offsetof(struct aspace, id),
+		offsetof(struct aspace, ht_link),
+		ht_hash_id,
+		ht_id_keys_equal
+	);
+	if (!ht)
 		panic("Failed to create aspace hash table (status=%d).", status);
 
 	/* Create an aspace for use by kernel threads */
@@ -271,9 +275,9 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 		goto error2;
 
 	/* Add new address space to a hash table, for quick lookups by ID */
-	spin_lock_irqsave(&htable_lock, flags);
-	BUG_ON(htable_add(htable, aspace));
-	spin_unlock_irqrestore(&htable_lock, flags);
+	spin_lock_irqsave(&ht_lock, flags);
+	BUG_ON(ht_add(ht, aspace));
+	spin_unlock_irqrestore(&ht_lock, flags);
 
 	if (id)
 		*id = new_id;
@@ -324,9 +328,9 @@ aspace_destroy(id_t id)
 	unsigned long irqstate;
 
 	/* Lock the hash table, lookup aspace object by ID */
-	spin_lock_irqsave(&htable_lock, irqstate);
-	if ((aspace = htable_lookup(htable, id)) == NULL) {
-		spin_unlock_irqrestore(&htable_lock, irqstate);
+	spin_lock_irqsave(&ht_lock, irqstate);
+	if ((aspace = ht_lookup(ht, &id)) == NULL) {
+		spin_unlock_irqrestore(&ht_lock, irqstate);
 		return -EINVAL;
 	}
 
@@ -335,15 +339,15 @@ aspace_destroy(id_t id)
 
 	if (aspace->refcnt) {
 		spin_unlock(&aspace->lock);
-		spin_unlock_irqrestore(&htable_lock, irqstate);
+		spin_unlock_irqrestore(&ht_lock, irqstate);
 		return -EBUSY;
 	}
 
 	/* Remove aspace from hash table, preventing others from finding it */
-	BUG_ON(htable_del(htable, aspace));
+	BUG_ON(ht_del(ht, aspace));
 
 	/* Unlock the hash table, others may now use it */
-	spin_unlock_irqrestore(&htable_lock, irqstate);
+	spin_unlock_irqrestore(&ht_lock, irqstate);
 	spin_unlock(&aspace->lock);
  
 	/* Finish up destroying the aspace, we have the only reference */
@@ -352,13 +356,13 @@ aspace_destroy(id_t id)
 		/* Must drop our reference on all SMARTMAP'ed aspaces */
 		if (rgn->flags & VM_SMARTMAP) {
 			struct aspace *src;
-			spin_lock_irqsave(&htable_lock, irqstate);
-			src = htable_lookup(htable, rgn->smartmap);
+			spin_lock_irqsave(&ht_lock, irqstate);
+			src = ht_lookup(ht, &rgn->smartmap);
 			BUG_ON(src == NULL);
 			spin_lock(&src->lock);
 			--src->refcnt;
 			spin_unlock(&src->lock);
-			spin_unlock_irqrestore(&htable_lock, irqstate);
+			spin_unlock_irqrestore(&ht_lock, irqstate);
 		}
 		list_del(&rgn->link);
 		kmem_free(rgn);
