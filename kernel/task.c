@@ -14,10 +14,10 @@ static idspace_t idspace;
 /**
  * Hash table used to lookup task structures by ID.
  */
-static struct htable * htable;
+static struct htable *ht;
 
 /**
- * Lock for serializing access to the htable.
+ * Lock for serializing access to the hash table.
  */
 static DEFINE_SPINLOCK(htable_lock);
 
@@ -27,15 +27,14 @@ task_subsys_init(void)
 	if (idspace_create(__TASK_MIN_ID, __TASK_MAX_ID, &idspace))
 		panic("Failed to create task ID space.");
 
-	htable = htable_create(
-		7,  // 2^7 bins
+	ht = htable_create(
+		7,  /* 2^7 bins in the hash table */
 		offsetof(struct task_struct, id),
 		offsetof(struct task_struct, ht_link),
-		0, // use default hash function
-		0 // use default equality function
+		htable_hash_id,
+		htable_id_keys_equal
 	);
-
-	if( !htable )
+	if (!ht)
 		panic("Failed to create task hash table.");
 
 	return 0;
@@ -159,7 +158,7 @@ task_create(lwk_id_t id_request, const char *name,
 
 	/* Add new task to a hash table, for quick lookups by ID */
 	spin_lock_irqsave(&htable_lock, irqstate);
-	BUG_ON(htable_add(htable, new_task));
+	BUG_ON(htable_add(ht, new_task));
 	spin_unlock_irqrestore(&htable_lock, irqstate);
 
 	/* Add the new task to the target CPU's run queue */
@@ -252,7 +251,7 @@ task_lookup(lwk_id_t id)
 
         /* Lock the hash table, lookup aspace object by ID */
         spin_lock(&htable_lock);
-        if ((t = htable_lookup(htable, id)) == NULL) {
+        if ((t = htable_lookup(ht, &id)) == NULL) {
                 spin_unlock(&htable_lock);
                 return NULL;
         }

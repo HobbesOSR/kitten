@@ -3,7 +3,7 @@
 #ifndef _LWK_HTABLE_H
 #define _LWK_HTABLE_H
 
-#include <lwk/idspace.h>
+#include <lwk/types.h>
 
 /** Opaque hash table type */
 struct htable;
@@ -53,9 +53,21 @@ struct hlist_node;
  * \todo write documentation on replacing hash function
  */
 
-/** Hash function type */
-typedef uint64_t (*htable_hash_t)( lwk_id_t, unsigned int );
-typedef int (*htable_equal_t)( lwk_id_t, lwk_id_t );
+
+/**
+ * Hash function type.
+ * Converts the input key to an index in the hash table.
+ */
+typedef uint64_t (*ht_hash_func_t)( const void *key, size_t order);
+
+/**
+ * Keys equal function type.
+ * \returns 0 if the keys are equal, < 0 if key1 < key2 and >0 if key1 > key2
+ */
+typedef int (*ht_keys_equal_func_t)(
+	const void *key_in_search,
+	const void *key_in_table
+);
 
 
 /** Create a hash table.
@@ -66,39 +78,46 @@ typedef int (*htable_equal_t)( lwk_id_t, lwk_id_t );
  */
 extern struct htable *
 htable_create(
-	size_t			tbl_order,	//!< 2^@tbl_order elements
+	size_t			order,
 	size_t			obj_key_offset,
-	size_t			obj_link_offset,
-	htable_hash_t		hash,
-	htable_equal_t		equal
+	size_t			obj_hlist_node_offset,
+	ht_hash_func_t		hash,
+	ht_keys_equal_func_t	keys_equal
 );
-
 
 extern int
 htable_destroy(
 	struct htable *		ht
 );
 
-
 extern int
 htable_add(
-	struct htable *		tbl,
+	struct htable *		ht,
 	void *			obj
 );
-
 
 extern int
 htable_del(
-	struct htable *		tbl,
+	struct htable *		ht,
 	void *			obj
 );
 
-
 extern void *
 htable_lookup(
-	struct htable *		tbl,
-	lwk_id_t		key
+	struct htable *		ht,
+	const void *		key
 );
 
+extern uint64_t
+htable_hash_id(
+	const void *		key,
+	size_t			order
+);
+
+extern int
+htable_id_keys_equal(
+	const void *		key1,
+	const void *		key2
+);
 
 #endif

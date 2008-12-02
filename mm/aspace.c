@@ -20,10 +20,10 @@ static idspace_t idspace;
 /**
  * Hash table used to lookup address space structures by ID.
  */
-static struct htable * htable;
+static struct htable *ht;
 
 /**
- * Lock for serializing access to the htable.
+ * Lock for serializing access to the hash table.
  */
 static DEFINE_SPINLOCK(htable_lock);
 
@@ -119,7 +119,7 @@ lookup_and_lock(lwk_id_t id)
 
 	/* Lock the hash table, lookup aspace object by ID */
 	spin_lock(&htable_lock);
-	if ((aspace = htable_lookup(htable, id)) == NULL) {
+	if ((aspace = htable_lookup(ht, &id)) == NULL) {
 		spin_unlock(&htable_lock);
 		return NULL;
 	}
@@ -142,12 +142,12 @@ lookup_and_lock_two(lwk_id_t a, lwk_id_t b,
 {
 	/* Lock the hash table, lookup aspace objects by ID */
 	spin_lock(&htable_lock);
-	if ((*aspace_a = htable_lookup(htable, a)) == NULL) {
+	if ((*aspace_a = htable_lookup(ht, &a)) == NULL) {
 		spin_unlock(&htable_lock);
 		return -ENOENT;
 	}
 
-	if ((*aspace_b = htable_lookup(htable, b)) == NULL) {
+	if ((*aspace_b = htable_lookup(ht, &b)) == NULL) {
 		spin_unlock(&htable_lock);
 		return -ENOENT;
 	}
@@ -185,14 +185,14 @@ aspace_subsys_init(void)
 		panic("Failed to create aspace ID space (status=%d).", status);
 
 	/* Create a hash table that will be used for quick ID->aspace lookups */
-	htable = htable_create(
-		7, // 2^7 bins
+	ht = htable_create(
+		7,  /* 2^7 bins in the hash table */
 		offsetof(struct aspace, id),
 		offsetof(struct aspace, ht_link),
-		0, // use default hash function
-		0 // use default equality function
+		htable_hash_id,
+		htable_id_keys_equal
 	);
-	if( !htable )
+	if (!ht)
 		panic("Failed to create aspace hash table" );
 
 	/* Create an aspace for use by kernel threads */
@@ -276,7 +276,7 @@ aspace_create(lwk_id_t id_request, const char *name, lwk_id_t *id)
 
 	/* Add new address space to a hash table, for quick lookups by ID */
 	spin_lock_irqsave(&htable_lock, flags);
-	BUG_ON(htable_add(htable, aspace));
+	BUG_ON(htable_add(ht, aspace));
 	spin_unlock_irqrestore(&htable_lock, flags);
 
 	if (id)
@@ -329,7 +329,7 @@ aspace_destroy(lwk_id_t id)
 
 	/* Lock the hash table, lookup aspace object by ID */
 	spin_lock_irqsave(&htable_lock, irqstate);
-	if ((aspace = htable_lookup(htable, id)) == NULL) {
+	if ((aspace = htable_lookup(ht, &id)) == NULL) {
 		spin_unlock_irqrestore(&htable_lock, irqstate);
 		return -EINVAL;
 	}
@@ -344,7 +344,7 @@ aspace_destroy(lwk_id_t id)
 	}
 
 	/* Remove aspace from hash table, preventing others from finding it */
-	BUG_ON(htable_del(htable, aspace));
+	BUG_ON(htable_del(ht, aspace));
 
 	/* Unlock the hash table, others may now use it */
 	spin_unlock_irqrestore(&htable_lock, irqstate);
@@ -357,7 +357,7 @@ aspace_destroy(lwk_id_t id)
 		if (rgn->flags & VM_SMARTMAP) {
 			struct aspace *src;
 			spin_lock_irqsave(&htable_lock, irqstate);
-			src = htable_lookup(htable, rgn->smartmap);
+			src = htable_lookup(ht, &rgn->smartmap);
 			BUG_ON(src == NULL);
 			spin_lock(&src->lock);
 			--src->refcnt;

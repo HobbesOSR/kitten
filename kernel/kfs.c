@@ -20,8 +20,8 @@
  */
 static uint64_t
 kfs_hash_filename(
-	lwk_id_t		name,
-	unsigned		bits
+	const void *		name,
+	size_t			bits
 )
 {
 	//printk( "%s: hashing '%s'\n", __func__, (char*) name );
@@ -34,12 +34,12 @@ kfs_hash_filename(
  */
 static int
 kfs_equal_filename(
-	lwk_id_t		name_in_search,
-	lwk_id_t		name_in_dir
+	const void *		name_in_search,
+	const void *		name_in_dir
 )
 {
-	const char * search = (void*) name_in_search;
-	const char * dir = (void*) name_in_dir;
+	const char * search = name_in_search;
+	const char * dir = name_in_dir;
 
 	if(0)
 	printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
@@ -270,7 +270,7 @@ kfs_lookup(
 		// Search for the next / char
 		struct kfs_file * child = htable_lookup(
 			root->files,
-			(lwk_id_t) dirname
+			dirname
 		);
 
 		// If it does not exist and we're not auto-creating
