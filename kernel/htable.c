@@ -147,12 +147,12 @@ htable_lookup(
 
 
 uint64_t
-htable_hash_id(
+htable_id_hash(
 	const void *		key,
 	size_t			order
 )
 {
-	const lwk_id_t *id = key;
+	const id_t *id = key;
 	return hash_long(*id, order);
 }
 
@@ -163,8 +163,8 @@ htable_id_key_compare(
 	const void *		key2
 )
 {
-	const lwk_id_t *id1 = key1;
-	const lwk_id_t *id2 = key2;
+	const id_t *id1 = key1;
+	const id_t *id2 = key2;
 	if( *id1 < *id2 )
 		return -1;
 	if( *id1 > *id2 )

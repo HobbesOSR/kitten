@@ -17,7 +17,7 @@ struct hlist_node;
  *
  * Hash tables are implemented in a generic way to allow them to
  * contain arbitrary structures with chaining.  To create a structure
- * that is compatible with the hash table it must contain an lwk_id_t id
+ * that is compatible with the hash table it must contain an id_t id
  * and a struct hlist_node for chaining, and pass the offsets of these
  * values to the htable_create() function as shown in this example:
  *
@@ -26,7 +26,7 @@ struct hlist_node;
  * #include <lwk/list.h>
  *
  * struct foo {
- *	lwk_id_t		id;
+ *	id_t		id;
  *	struct hlist_node	ht_link;
  *	// Other stuff ...
  * };
@@ -39,7 +39,8 @@ struct hlist_node;
  *		7,
  *		offsetof( struct foo, id ),
  *		offsetof( struct foo, ht_link ),
- *		0 // default hash function used
+ *		htable_id_hash,
+ *		htable_id_key_compare
  *	);
  *
  *	if( !foo_table )
@@ -56,23 +57,32 @@ struct hlist_node;
 
 /**
  * Hash function type.
+ *
  * Converts the input key to an index in the hash table.
+ * \returns a 64-bit hash of the key with a value less than 2^@order.
  */
-typedef uint64_t (*ht_hash_func_t)( const void *key, size_t order);
+typedef uint64_t (*ht_hash_func_t)(
+	const void *		key,
+	size_t			order
+);
 
 /**
- * Keys equal function type.
- * \returns 0 if the keys are equal, < 0 if key1 < key2 and >0 if key1 > key2
+ * Keys comparison function type.
+ *
+ * \note The key comparison function should be stable for
+ * forward-compatability, but it is not required right now.
+ *
+ * \returns 0 if the keys are equal,
+ * negative if @key_in_search < @key_in_table
+ * positive if @key_in_search > @key_in_table
  */
 typedef int (*ht_key_compare_func_t)(
-	const void *key_in_search,
-	const void *key_in_table
+	const void *		key_in_search,
+	const void *		key_in_table
 );
 
 
 /** Create a hash table.
- *
- * If @hash is NULL, the default hash_long() will be used instead.
  *
  * \returns Pointer to table if successful, NULL if allocation failed.
  */
@@ -109,7 +119,7 @@ htable_lookup(
 );
 
 extern uint64_t
-htable_hash_id(
+htable_id_hash(
 	const void *		key,
 	size_t			order
 );

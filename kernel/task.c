@@ -31,7 +31,7 @@ task_subsys_init(void)
 		7,  /* 2^7 bins in the hash table */
 		offsetof(struct task_struct, id),
 		offsetof(struct task_struct, ht_link),
-		htable_hash_id,
+		htable_id_hash,
 		htable_id_key_compare
 	);
 	if (!ht)
