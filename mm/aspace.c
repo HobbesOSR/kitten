@@ -189,11 +189,11 @@ aspace_subsys_init(void)
 		7,  /* 2^7 bins in the hash table */
 		offsetof(struct aspace, id),
 		offsetof(struct aspace, ht_link),
-		htable_hash_id,
-		htable_id_keys_equal
+		htable_id_hash,
+		htable_id_key_compare
 	);
 	if (!ht)
-		panic("Failed to create aspace hash table (status=%d).", status);
+		panic("Failed to create aspace hash table" );
 
 	/* Create an aspace for use by kernel threads */
 	if ((status = aspace_create(KERNEL_ASPACE_ID, "kernel", NULL)))

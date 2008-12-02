@@ -31,8 +31,8 @@ task_subsys_init(void)
 		7,  /* 2^7 bins in the hash table */
 		offsetof(struct task_struct, id),
 		offsetof(struct task_struct, ht_link),
-		htable_hash_id,
-		htable_id_keys_equal
+		htable_id_hash,
+		htable_id_key_compare
 	);
 	if (!ht)
 		panic("Failed to create task hash table.");
@@ -158,7 +158,7 @@ task_create(id_t id_request, const char *name,
 
 	/* Add new task to a hash table, for quick lookups by ID */
 	spin_lock_irqsave(&htable_lock, irqstate);
-	BUG_ON(ht_add(ht, new_task));
+	BUG_ON(htable_add(ht, new_task));
 	spin_unlock_irqrestore(&htable_lock, irqstate);
 
 	/* Add the new task to the target CPU's run queue */
