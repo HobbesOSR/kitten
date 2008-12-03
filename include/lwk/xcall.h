@@ -23,12 +23,12 @@ arch_xcall_function(
 
 void
 xcall_reschedule(
-	lwk_id_t		cpu
+	id_t		cpu
 );
 
 void
 arch_xcall_reschedule(
-	lwk_id_t		cpu
+	id_t		cpu
 );
 
 #endif

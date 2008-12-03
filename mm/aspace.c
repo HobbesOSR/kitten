@@ -43,7 +43,7 @@ struct region
 	vaddr_t          end;      /**< 1st byte after end of the region */
 	vmflags_t        flags;    /**< Permissions, caching, etc. */
 	vmpagesize_t     pagesz;   /**< Allowed page sizes... 2^bit */
-	lwk_id_t             smartmap; /**< If (flags & VM_SMARTMAP), ID of the
+	id_t             smartmap; /**< If (flags & VM_SMARTMAP), ID of the
 	                              aspace this region is mapped to */
 	char             name[16]; /**< Human-readable name of the region */
 };
@@ -98,7 +98,7 @@ find_overlapping_region(struct aspace *aspace, vaddr_t start, vaddr_t end)
  * Locates the region that is SMARTMAP'ed to the specified aspace ID.
  */
 static struct region *
-find_smartmap_region(struct aspace *aspace, lwk_id_t src_aspace)
+find_smartmap_region(struct aspace *aspace, id_t src_aspace)
 {
 	struct region *rgn;
 	
@@ -113,7 +113,7 @@ find_smartmap_region(struct aspace *aspace, lwk_id_t src_aspace)
  * Looks up an aspace object by ID and returns it with its spinlock locked.
  */
 static struct aspace *
-lookup_and_lock(lwk_id_t id)
+lookup_and_lock(id_t id)
 {
 	struct aspace *aspace;
 
@@ -137,7 +137,7 @@ lookup_and_lock(lwk_id_t id)
  * Like lookup_and_lock(), but looks up two address spaces instead of one.
  */
 static int
-lookup_and_lock_two(lwk_id_t a, lwk_id_t b,
+lookup_and_lock_two(id_t a, id_t b,
                     struct aspace **aspace_a, struct aspace **aspace_b)
 {
 	/* Lock the hash table, lookup aspace objects by ID */
@@ -163,7 +163,7 @@ lookup_and_lock_two(lwk_id_t a, lwk_id_t b,
 }
 
 static bool
-id_ok(lwk_id_t id)
+id_ok(id_t id)
 {
 	return ((id >= ASPACE_MIN_ID) && (id <= ASPACE_MAX_ID));
 }
@@ -208,17 +208,17 @@ aspace_subsys_init(void)
 }
 
 int
-aspace_get_myid(lwk_id_t *id)
+aspace_get_myid(id_t *id)
 {
 	*id = current->aspace->id;
 	return 0;
 }
 
 int
-sys_aspace_get_myid(lwk_id_t __user *id)
+sys_aspace_get_myid(id_t __user *id)
 {
 	int status;
-	lwk_id_t _id;
+	id_t _id;
 
 	if ((status = aspace_get_myid(&_id)) != 0)
 		return status;
@@ -230,10 +230,10 @@ sys_aspace_get_myid(lwk_id_t __user *id)
 }
 
 int
-aspace_create(lwk_id_t id_request, const char *name, lwk_id_t *id)
+aspace_create(id_t id_request, const char *name, id_t *id)
 {
 	int status;
-	lwk_id_t new_id;
+	id_t new_id;
 	struct aspace *aspace;
 	unsigned long flags;
 
@@ -292,11 +292,11 @@ error1:
 }
 
 int
-sys_aspace_create(lwk_id_t id_request, const char __user *name, lwk_id_t __user *id)
+sys_aspace_create(id_t id_request, const char __user *name, id_t __user *id)
 {
 	int status;
 	char _name[16];
-	lwk_id_t _id;
+	id_t _id;
 
 	if (current->uid != 0)
 		return -EPERM;
@@ -320,7 +320,7 @@ sys_aspace_create(lwk_id_t id_request, const char __user *name, lwk_id_t __user 
 }
 
 int
-aspace_destroy(lwk_id_t id)
+aspace_destroy(id_t id)
 {
 	struct aspace *aspace;
 	struct list_head *pos, *tmp;
@@ -374,7 +374,7 @@ aspace_destroy(lwk_id_t id)
 }
 
 int
-sys_aspace_destroy(lwk_id_t id)
+sys_aspace_destroy(id_t id)
 {
 	if (current->uid != 0)
 		return -EPERM;
@@ -388,7 +388,7 @@ sys_aspace_destroy(lwk_id_t id)
  * deleted until it is released via aspace_release().
  */
 struct aspace *
-aspace_acquire(lwk_id_t id)
+aspace_acquire(id_t id)
 {
 	struct aspace *aspace;
 	unsigned long irqstate;
@@ -442,7 +442,7 @@ __aspace_find_hole(struct aspace *aspace,
 }
 
 int
-aspace_find_hole(lwk_id_t id,
+aspace_find_hole(id_t id,
                  vaddr_t start_hint, size_t extent, size_t alignment,
                  vaddr_t *start)
 {
@@ -460,7 +460,7 @@ aspace_find_hole(lwk_id_t id,
 }
 
 int
-sys_aspace_find_hole(lwk_id_t id,
+sys_aspace_find_hole(id_t id,
                      vaddr_t start_hint, size_t extent, size_t alignment,
                      vaddr_t __user *start)
 {
@@ -576,7 +576,7 @@ __aspace_add_region(struct aspace *aspace,
 }
 
 int
-aspace_add_region(lwk_id_t id,
+aspace_add_region(id_t id,
                   vaddr_t start, size_t extent,
                   vmflags_t flags, vmpagesize_t pagesz,
                   const char *name)
@@ -594,7 +594,7 @@ aspace_add_region(lwk_id_t id,
 }
 
 int
-sys_aspace_add_region(lwk_id_t id,
+sys_aspace_add_region(id_t id,
                       vaddr_t start, size_t extent,
                       vmflags_t flags, vmpagesize_t pagesz,
                       const char __user *name)
@@ -645,7 +645,7 @@ __aspace_del_region(struct aspace *aspace, vaddr_t start, size_t extent)
 }
 
 int
-aspace_del_region(lwk_id_t id, vaddr_t start, size_t extent)
+aspace_del_region(id_t id, vaddr_t start, size_t extent)
 {
 	int status;
 	struct aspace *aspace;
@@ -660,7 +660,7 @@ aspace_del_region(lwk_id_t id, vaddr_t start, size_t extent)
 }
 
 int
-sys_aspace_del_region(lwk_id_t id, vaddr_t start, size_t extent)
+sys_aspace_del_region(id_t id, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
@@ -738,7 +738,7 @@ map_pmem(struct aspace *aspace,
 }
 
 static int
-map_pmem_locked(lwk_id_t id,
+map_pmem_locked(id_t id,
                 paddr_t pmem, vaddr_t start, size_t extent,
                 bool umem_only)
 {
@@ -762,13 +762,13 @@ __aspace_map_pmem(struct aspace *aspace,
 }
 
 int
-aspace_map_pmem(lwk_id_t id, paddr_t pmem, vaddr_t start, size_t extent)
+aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
 {
 	return map_pmem_locked(id, pmem, start, extent, false);
 }
 
 int
-sys_aspace_map_pmem(lwk_id_t id, paddr_t pmem, vaddr_t start, size_t extent)
+sys_aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
@@ -828,7 +828,7 @@ __aspace_unmap_pmem(struct aspace *aspace, vaddr_t start, size_t extent)
 }
 
 int
-aspace_unmap_pmem(lwk_id_t id, vaddr_t start, size_t extent)
+aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
 {
 	int status;
 	struct aspace *aspace;
@@ -843,7 +843,7 @@ aspace_unmap_pmem(lwk_id_t id, vaddr_t start, size_t extent)
 }
 
 int
-sys_aspace_unmap_pmem(lwk_id_t id, vaddr_t start, size_t extent)
+sys_aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
@@ -894,7 +894,7 @@ __aspace_smartmap(struct aspace *src, struct aspace *dst,
 }
 
 int
-aspace_smartmap(lwk_id_t src, lwk_id_t dst, vaddr_t start, size_t extent)
+aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
 {
 	int status;
 	struct aspace *src_spc, *dst_spc;
@@ -917,7 +917,7 @@ aspace_smartmap(lwk_id_t src, lwk_id_t dst, vaddr_t start, size_t extent)
 }
 
 int
-sys_aspace_smartmap(lwk_id_t src, lwk_id_t dst, vaddr_t start, size_t extent)
+sys_aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
 {
 	if (current->uid != 0)
 		return -EPERM;
@@ -947,7 +947,7 @@ __aspace_unsmartmap(struct aspace *src, struct aspace *dst)
 }
 
 int
-aspace_unsmartmap(lwk_id_t src, lwk_id_t dst)
+aspace_unsmartmap(id_t src, id_t dst)
 {
 	int status;
 	struct aspace *src_spc, *dst_spc;
@@ -970,7 +970,7 @@ aspace_unsmartmap(lwk_id_t src, lwk_id_t dst)
 }
 
 int
-sys_aspace_unsmartmap(lwk_id_t src, lwk_id_t dst)
+sys_aspace_unsmartmap(id_t src, id_t dst)
 {
 	if (current->uid != 0)
 		return -EPERM;
@@ -980,7 +980,7 @@ sys_aspace_unsmartmap(lwk_id_t src, lwk_id_t dst)
 }
 
 int
-aspace_dump2console(lwk_id_t id)
+aspace_dump2console(id_t id)
 {
 	struct aspace *aspace;
 	struct region *rgn;
@@ -993,7 +993,7 @@ aspace_dump2console(lwk_id_t id)
 		return -EINVAL;
 	}
 
-	printk(KERN_DEBUG "DUMP OF ADDRESS SPACE %lu:\n", aspace->id);
+	printk(KERN_DEBUG "DUMP OF ADDRESS SPACE %u:\n", aspace->id);
 	printk(KERN_DEBUG "  name:    %s\n", aspace->name);
 	printk(KERN_DEBUG "  refcnt:  %d\n", aspace->refcnt);
 	printk(KERN_DEBUG "  regions:\n");
@@ -1013,7 +1013,7 @@ aspace_dump2console(lwk_id_t id)
 }
 
 int
-sys_aspace_dump2console(lwk_id_t id)
+sys_aspace_dump2console(id_t id)
 {
 	return aspace_dump2console(id);
 }

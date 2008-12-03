@@ -4,7 +4,7 @@
 
 int
 aspace_map_region(
-	lwk_id_t         id,
+	id_t         id,
 	vaddr_t      start,
 	size_t       extent,
 	vmflags_t    flags,
@@ -28,7 +28,7 @@ aspace_map_region(
 
 int
 aspace_map_region_anywhere(
-	lwk_id_t         id,
+	id_t         id,
 	vaddr_t *    start,
 	size_t       extent,
 	vmflags_t    flags,

@@ -174,28 +174,28 @@ SYSCALL4(pmem_alloc, size_t, size_t,
 /**
  * Address space management.
  */
-SYSCALL1(aspace_get_myid, lwk_id_t *);
-SYSCALL3(aspace_create, lwk_id_t, const char *, lwk_id_t *);
-SYSCALL1(aspace_destroy, lwk_id_t);
-SYSCALL5(aspace_find_hole, lwk_id_t, vaddr_t, size_t, size_t, vaddr_t *);
+SYSCALL1(aspace_get_myid, id_t *);
+SYSCALL3(aspace_create, id_t, const char *, id_t *);
+SYSCALL1(aspace_destroy, id_t);
+SYSCALL5(aspace_find_hole, id_t, vaddr_t, size_t, size_t, vaddr_t *);
 SYSCALL6(aspace_add_region,
-         lwk_id_t, vaddr_t, size_t, vmflags_t, vmpagesize_t, const char *);
-SYSCALL3(aspace_del_region, lwk_id_t, vaddr_t, size_t);
-SYSCALL4(aspace_map_pmem, lwk_id_t, paddr_t, vaddr_t, size_t);
-SYSCALL3(aspace_unmap_pmem, lwk_id_t, vaddr_t, size_t);
-SYSCALL4(aspace_smartmap, lwk_id_t, lwk_id_t, vaddr_t, size_t);
-SYSCALL2(aspace_unsmartmap, lwk_id_t, lwk_id_t);
-SYSCALL1(aspace_dump2console, lwk_id_t);
+         id_t, vaddr_t, size_t, vmflags_t, vmpagesize_t, const char *);
+SYSCALL3(aspace_del_region, id_t, vaddr_t, size_t);
+SYSCALL4(aspace_map_pmem, id_t, paddr_t, vaddr_t, size_t);
+SYSCALL3(aspace_unmap_pmem, id_t, vaddr_t, size_t);
+SYSCALL4(aspace_smartmap, id_t, id_t, vaddr_t, size_t);
+SYSCALL2(aspace_unsmartmap, id_t, id_t);
+SYSCALL1(aspace_dump2console, id_t);
 
 /**
  * Task management.
  */
-SYSCALL1(task_get_myid, lwk_id_t *);
-SYSCALL4(task_create, lwk_id_t, const char *, const start_state_t *, lwk_id_t *);
+SYSCALL1(task_get_myid, id_t *);
+SYSCALL4(task_create, id_t, const char *, const start_state_t *, id_t *);
 SYSCALL1(task_exit, int);
 SYSCALL0(task_yield);
 
 /**
  * ELF related system calls.
  */
-SYSCALL2(elf_hwcap, lwk_id_t, uint32_t *);
+SYSCALL2(elf_hwcap, id_t, uint32_t *);

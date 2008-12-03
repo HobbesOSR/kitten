@@ -4,7 +4,7 @@
 #include <arch/uaccess.h>
 
 int
-elf_hwcap(lwk_id_t cpu, uint32_t *hwcap)
+elf_hwcap(id_t cpu, uint32_t *hwcap)
 {
 	if (!cpu_isset(cpu, cpu_online_map))
 		return -ENOENT;
@@ -13,7 +13,7 @@ elf_hwcap(lwk_id_t cpu, uint32_t *hwcap)
 }
 
 int
-sys_elf_hwcap(lwk_id_t cpu, uint32_t __user *hwcap)
+sys_elf_hwcap(id_t cpu, uint32_t __user *hwcap)
 {
 	int status;
 	uint32_t _hwcap;

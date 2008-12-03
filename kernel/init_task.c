@@ -91,7 +91,7 @@ create_init_task(void)
 		return status;
 	}
 
-	lwk_id_t id;
+	id_t id;
 	int rc = task_create(INIT_TASK_ID, "init_task", &start_state, &id);
 	if( rc != 0 )
 		return rc;

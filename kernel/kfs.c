@@ -201,7 +201,7 @@ kfs_mkdirent(
 	file->priv	= priv;
 	file->priv_len	= priv_len;
 	file->mode	= mode;
-	file->name_ptr	= (lwk_id_t) file->name;
+	file->name_ptr	= (id_t) file->name;
 	file->refs	= 0;
 
 	if( name )

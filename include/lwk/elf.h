@@ -430,7 +430,7 @@ int
 elf_load_executable(
 	void *       elf_image,
 	paddr_t      elf_image_paddr,
-	lwk_id_t         aspace_id,
+	id_t         aspace_id,
 	vmpagesize_t pagesz,
 	uintptr_t    alloc_pmem_arg,
 	paddr_t (*alloc_pmem)(size_t size, size_t alignment, uintptr_t arg)
@@ -441,7 +441,7 @@ elf_load(
 	void *          elf_image,
 	paddr_t         elf_image_paddr,
 	const char *    name,
-	lwk_id_t            desired_aspace_id,
+	id_t            desired_aspace_id,
 	vmpagesize_t    pagesz,
 	size_t          heap_size,
 	size_t          stack_size,
@@ -455,10 +455,10 @@ elf_load(
 /**
  * ELF related system calls.
  */
-extern int elf_hwcap(lwk_id_t cpu, uint32_t *hwcap);
+extern int elf_hwcap(id_t cpu, uint32_t *hwcap);
 
 #ifdef __KERNEL__
-extern int sys_elf_hwcap(lwk_id_t cpu, uint32_t __user *hwcap);
+extern int sys_elf_hwcap(id_t cpu, uint32_t __user *hwcap);
 #endif
 
 #endif /* _LWK_ELF_H */

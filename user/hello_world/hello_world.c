@@ -243,7 +243,7 @@ static void
 aspace_api_test(void)
 {
 	int status;
-	lwk_id_t my_id, new_id;
+	id_t my_id, new_id;
 
 	printf("TEST BEGIN: Address Space Management\n");
 

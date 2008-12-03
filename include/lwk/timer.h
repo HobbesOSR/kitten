@@ -11,7 +11,7 @@
  */
 struct timer {
 	struct list_head link;
-	lwk_id_t             cpu;            /**< CPU this timer is installed on */
+	id_t             cpu;            /**< CPU this timer is installed on */
 	uint64_t         expires;        /**< Time when this timer expires */
 	uintptr_t        data;           /**< arg to pass to function */
 	void (*function)(uintptr_t);     /**< executed when timer expires */

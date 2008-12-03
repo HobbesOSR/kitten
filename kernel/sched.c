@@ -41,7 +41,7 @@ idle_task_loop(void)
 int __init
 sched_subsys_init(void)
 {
-	lwk_id_t cpu_id;
+	id_t cpu_id;
 	int status;
 
 	/* Reserve the idle tasks' ID. All idle tasks share the same ID. */
@@ -91,7 +91,7 @@ sched_subsys_init(void)
 void
 sched_add_task(struct task_struct *task)
 {
-	lwk_id_t cpu = task->cpu_id;
+	id_t cpu = task->cpu_id;
 	struct run_queue *runq;
 	unsigned long irqstate;
 
@@ -121,7 +121,7 @@ sched_del_task(struct task_struct *task)
 int
 sched_wakeup_task(struct task_struct *task, taskstate_t valid_states)
 {
-	lwk_id_t cpu;
+	id_t cpu;
 	struct run_queue *runq;
 	int status;
 	unsigned long irqstate;

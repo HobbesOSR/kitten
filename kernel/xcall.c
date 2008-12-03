@@ -65,7 +65,7 @@ xcall_function(
  *       Deadlock may occur if these conditions aren't met.
  */
 void
-xcall_reschedule(lwk_id_t cpu)
+xcall_reschedule(id_t cpu)
 {
 	arch_xcall_reschedule(cpu);
 }

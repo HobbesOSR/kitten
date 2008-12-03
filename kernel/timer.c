@@ -15,7 +15,7 @@ static DEFINE_PER_CPU(struct timer_queue, timer_queue);
 int
 timer_subsys_init(void)
 {
-	lwk_id_t cpu;
+	id_t cpu;
 	struct timer_queue *timerq;
 
 	for_each_cpu_mask(cpu, cpu_present_map) {
