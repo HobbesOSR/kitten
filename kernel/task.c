@@ -61,7 +61,7 @@ sys_task_get_myid(id_t __user *id)
 		return status;
 
 	if (id && copy_to_user(id, &_id, sizeof(*id)))
-		return -EINVAL;
+		return -EFAULT;
 
 	return 0;
 }
@@ -187,14 +187,14 @@ sys_task_create(id_t id_request, const char __user *name,
 		return -EPERM;
 
 	if (copy_from_user(&_start_state, start_state, sizeof(_start_state)))
-		return -EINVAL;
+		return -EFAULT;
 
 	if (_start_state.aspace_id == KERNEL_ASPACE_ID)
 		return -EINVAL;
 
 	if (_start_state.cpumask) {
 		if (copy_from_user(&_cpumask, _start_state.cpumask, sizeof(_cpumask)))
-			return -EINVAL;
+			return -EFAULT;
 		_start_state.cpumask = &_cpumask;
 	}
 
@@ -243,6 +243,50 @@ int
 sys_task_yield(void)
 {
 	return task_yield();
+}
+
+int
+task_get_cpu(id_t *cpu_id)
+{
+	*cpu_id = current->cpu_id;
+	return 0;
+}
+
+int
+sys_task_get_cpu(id_t __user *cpu_id)
+{
+	int status;
+	id_t _cpu_id;
+
+	if ((status = task_get_cpu(&_cpu_id)) != 0)
+		return status;
+
+	if (cpu_id && copy_to_user(cpu_id, &_cpu_id, sizeof(*cpu_id)))
+		return -EFAULT;
+
+	return 0;
+}
+
+int
+task_get_cpumask(user_cpumask_t *cpumask)
+{
+	cpumask_kernel2user(&current->cpumask, cpumask);
+	return 0;
+}
+
+int
+sys_task_get_cpumask(user_cpumask_t __user *cpumask)
+{
+	int status;
+	user_cpumask_t _cpumask;
+
+	if ((status = task_get_cpumask(&_cpumask)) != 0)
+		return status;
+
+	if (cpumask && copy_to_user(cpumask, &_cpumask, sizeof(*cpumask)))
+		return -EFAULT;
+
+	return 0;
 }
 
 /**

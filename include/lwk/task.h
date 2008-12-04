@@ -79,6 +79,12 @@ extern int task_exit(int status);
  * This is effectively a NOP.
  */
 extern int task_yield(void);
+
+/** Returns the CPU that the task is currently executing on. */
+extern int task_get_cpu(id_t *cpu_id);
+
+/** Returns a mask representing the CPUs this task may execute on. */
+extern int task_get_cpumask(user_cpumask_t *cpumask);
 //@}
 
 #ifdef __KERNEL__
@@ -225,6 +231,8 @@ extern int sys_task_create(id_t id_request, const char __user *name,
                            id_t __user *id);
 extern int sys_task_exit(int status);
 extern int sys_task_yield(void);
+extern int sys_task_get_cpu(id_t __user *cpu_id);
+extern int sys_task_get_cpumask(user_cpumask_t __user *cpumask);
 //@}
 
 extern int __task_reserve_id(id_t id);

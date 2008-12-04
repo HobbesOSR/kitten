@@ -13,6 +13,7 @@
 
 static void pmem_api_test(void);
 static void aspace_api_test(void);
+static int task_api_test(void);
 static void socket_api_test(void);
 
 int
@@ -32,6 +33,7 @@ main(int argc, char *argv[], char *envp[])
 
 	pmem_api_test();
 	aspace_api_test();
+	task_api_test();
 	socket_api_test();
 
 	printf("Spinning forever...\n");
@@ -240,4 +242,42 @@ aspace_api_test(void)
 		printf("OK\n");
 
 	printf("TEST END: Address Space Management\n");
+}
+
+static int 
+task_api_test(void)
+{
+	int status;
+	unsigned i;
+	id_t my_id, my_cpu;
+	user_cpumask_t my_cpumask;
+
+	printf("TEST BEGIN: Task Management\n");
+
+	if ((status = task_get_myid(&my_id)) != 0) {
+		printf("ERROR: task_get_myid() status=%d\n", status);
+		return -1;
+	}
+
+	if ((status = task_get_cpu(&my_cpu)) != 0) {
+		printf("ERROR: task_get_cpu() status=%d\n", status);
+		return -1;
+	}
+
+	if ((status = task_get_cpumask(&my_cpumask)) != 0) {
+		printf("ERROR: task_get_cpumask() status=%d\n", status);
+		return -1;
+	}
+
+	printf("  My task ID is %u\n", my_id);
+	printf("  I'm executing on CPU %u\n", my_cpu);
+	printf("  The following CPUs are in my cpumask:\n    ");
+	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
+		if (cpu_isset(i, my_cpumask))
+			printf("%d ", i);
+	}
+	printf("\n");
+
+	printf("TEST END: Task Management\n");
+	return 0;
 }
