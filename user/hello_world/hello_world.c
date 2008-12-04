@@ -38,7 +38,10 @@ main(int argc, char *argv[], char *envp[])
 	socket_api_test();
 
 	printf("Spinning forever...\n");
-	while (1) {}
+	while (1) {
+		sleep(5);
+		printf("   Meow!\n");
+	}
 }
 
 /* writen() is from "UNIX Network Programming" by W. Richard Stevents */

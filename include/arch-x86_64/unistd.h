@@ -39,9 +39,9 @@ __SYSCALL(__NR_munmap, syscall_not_implemented)
 #define __NR_brk                                12
 __SYSCALL(__NR_brk, sys_brk)
 #define __NR_rt_sigaction                       13
-__SYSCALL(__NR_rt_sigaction, syscall_not_implemented)
+__SYSCALL(__NR_rt_sigaction, sys_rt_sigaction)
 #define __NR_rt_sigprocmask                     14
-__SYSCALL(__NR_rt_sigprocmask, syscall_not_implemented)
+__SYSCALL(__NR_rt_sigprocmask, sys_rt_sigprocmask)
 #define __NR_rt_sigreturn                       15
 __SYSCALL(__NR_rt_sigreturn, syscall_not_implemented)
 

@@ -1,3 +1,15 @@
-obj-y := uname.o brk.o id.o fstat.o mmap.o \
-		gettimeofday.o settimeofday.o nanosleep.o sched_yield.o \
-		time.o
+obj-y := \
+	uname.o \
+	brk.o \
+	getuid.o \
+	getgid.o \
+	fstat.o \
+	mmap.o \
+	gettimeofday.o \
+	settimeofday.o \
+	nanosleep.o \
+	sched_yield.o \
+	time.o \
+	rt_sigprocmask.o \
+	rt_sigaction.o \
+
