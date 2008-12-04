@@ -21,22 +21,22 @@ calc_order(struct idspace *idspace)
 	return roundup_pow_of_two(pages);
 }
 
-int
-idspace_create(id_t min_id, id_t max_id, idspace_t *idspace)
+struct idspace *
+idspace_create(
+	id_t			min_id,
+	id_t 			max_id
+)
 {
 	struct idspace *spc;
 
 	if ((min_id == ANY_ID) || (max_id == ANY_ID))
-		return -EINVAL;
+		return NULL;
 
 	if (min_id > max_id)
-		return -EINVAL;
-
-	if (!idspace)
-		return -EINVAL;
+		return NULL;
 
 	if (!(spc = kmem_alloc(sizeof(*spc))))
-		return -ENOMEM;
+		return NULL;
 
 	spc->min_id     = min_id;
 	spc->max_id     = max_id;
@@ -46,19 +46,17 @@ idspace_create(id_t min_id, id_t max_id, idspace_t *idspace)
 
 	if (!(spc->bitmap = kmem_get_pages(calc_order(spc)))) {
 		kmem_free(spc);
-		return -ENOMEM;
+		return NULL;
 	}
 
-	*idspace = spc;
-
-	return 0;
+	return spc;
 }
 
 int
-idspace_destroy(idspace_t idspace)
+idspace_destroy(
+	struct idspace *	spc
+)
 {
-	struct idspace *spc = idspace;
-
 	if (!spc)
 		return -EINVAL;
 
@@ -69,9 +67,12 @@ idspace_destroy(idspace_t idspace)
 }
 
 int
-idspace_alloc_id(idspace_t idspace, id_t request, id_t *id)
+idspace_alloc_id(
+	struct idspace *	spc,
+	id_t 			request,
+	id_t *			id
+)
 {
-	struct idspace *spc = idspace;
 	unsigned int bit;
 
 	if (!spc)
@@ -110,9 +111,11 @@ idspace_alloc_id(idspace_t idspace, id_t request, id_t *id)
 }
 
 int
-idspace_free_id(idspace_t idspace, id_t id)
+idspace_free_id(
+	struct idspace *	spc,
+	id_t			id
+)
 {
-	struct idspace *spc = idspace;
 	unsigned int bit;
 
 	if (!spc)

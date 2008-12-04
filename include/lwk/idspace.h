@@ -4,11 +4,11 @@
 #define _LWK_IDSPACE_H
 
 /**
- * ID space object.
+ * Opaque ID space type.
  * An ID space consists of a range of IDs and keeps track of which are
  * allocated and which are available for allocation.
  */
-typedef void * idspace_t;
+struct idspace;
 
 /**
  * Numeric identifier type.
@@ -22,11 +22,32 @@ typedef unsigned int id_t;
 #define ANY_ID (-1)
 
 /**
- * ID space API.
+ * Creates an ID space.
+ *
+ * \returns Pointer to ID space if successful, NULL if allocation failed.
  */
-int idspace_create(id_t min_id, id_t max_id, idspace_t *idspace);
-int idspace_destroy(idspace_t idspace);
-int idspace_alloc_id(idspace_t idspace, id_t request, id_t *id);
-int idspace_free_id(idspace_t idspace, id_t id);
+extern struct idspace *
+idspace_create(
+	id_t			min_id,
+	id_t			max_id
+);
+
+extern int
+idspace_destroy(
+	struct idspace *	spc
+);
+
+extern int
+idspace_alloc_id(
+	struct idspace *	spc,
+	id_t			request,
+	id_t *			id
+);
+
+extern int
+idspace_free_id(
+	struct idspace *	spc,
+	id_t			id
+);
 
 #endif
