@@ -133,6 +133,56 @@ aspace_api_test(void)
 	return 0;
 }
 
+static int
+hello_world_thread(void)
+{
+	/*
+ 	 * Note: Thread local storage is not working yet in threads so
+	 *       printf() and anything else that uses TLS won't work.
+	 */
+	const char *meow = "   Meow!\n";
+	while (1) {
+		sleep(5);
+		write(1, meow, strlen(meow) + 1);
+	}
+}
+
+#define THREAD_STACK_SIZE 4096
+
+static int 
+start_thread(id_t cpu)
+{
+	int status;
+	start_state_t start_state;
+	id_t aspace_id;
+	vaddr_t stack_ptr;
+	user_cpumask_t cpumask;
+	char thread_name[32];
+
+	aspace_get_myid(&aspace_id);
+	stack_ptr = (vaddr_t)malloc(THREAD_STACK_SIZE);
+	cpus_clear(cpumask);
+	cpu_set(cpu, cpumask);
+
+	start_state.uid         = 0;
+	start_state.gid         = 0;
+	start_state.aspace_id   = aspace_id;
+	start_state.entry_point = (vaddr_t)&hello_world_thread;
+	start_state.stack_ptr   = stack_ptr + THREAD_STACK_SIZE;
+	start_state.cpu_id	= cpu;
+	start_state.cpumask	= &cpumask;
+
+	sprintf(thread_name, "cpu%u-task", cpu);
+	
+	status = task_create(ANY_ID, thread_name, &start_state, NULL);
+	if (status) {
+		printf("ERROR: failed to create thread (status=%d).\n", status);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int 
 task_api_test(void)
 {
@@ -167,6 +217,15 @@ task_api_test(void)
 	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
 		if (cpu_isset(i, my_cpumask))
 			printf("%d ", i);
+	}
+	printf("\n");
+
+	printf("  Creating a thread on each CPU:\n    ");
+	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
+		if (cpu_isset(i, my_cpumask)) {
+			printf("%d ", i);
+			start_thread(i);
+		}
 	}
 	printf("\n");
 
