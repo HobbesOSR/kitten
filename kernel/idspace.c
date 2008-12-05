@@ -52,18 +52,13 @@ idspace_create(
 	return spc;
 }
 
-int
+void
 idspace_destroy(
 	struct idspace *	spc
 )
 {
-	if (!spc)
-		return -EINVAL;
-
 	kmem_free_pages(spc->bitmap, calc_order(spc));
 	kmem_free(spc);
-
-	return 0;
 }
 
 id_t
