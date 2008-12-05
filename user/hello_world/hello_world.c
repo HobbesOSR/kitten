@@ -133,7 +133,7 @@ aspace_api_test(void)
 	return 0;
 }
 
-static int
+static void
 hello_world_thread(void)
 {
 	/*
@@ -141,9 +141,12 @@ hello_world_thread(void)
 	 *       printf() and anything else that uses TLS won't work.
 	 */
 	const char *meow = "   Meow!\n";
+	size_t count = strlen(meow) + 1;
 	while (1) {
 		sleep(5);
-		write(1, meow, strlen(meow) + 1);
+		int rc = write(1, meow, count);
+		if (rc != count)
+			break;
 	}
 }
 
