@@ -66,26 +66,25 @@ idspace_destroy(
 	return 0;
 }
 
-int
+id_t
 idspace_alloc_id(
 	struct idspace *	spc,
-	id_t 			request,
-	id_t *			id
+	id_t 			request
 )
 {
 	unsigned int bit;
 
-	if (!spc)
-		return -EINVAL;
+	if (!spc || spc->size == spc->ids_in_use)
+		return ERROR_ID;
 
-	if ((request != ANY_ID) &&
-	    ((request < spc->min_id) || (request > spc->max_id)))
-		return -EINVAL;
+	if (request != ANY_ID) {
+		/* Allocate a specific ID */
+		if( request < spc->min_id
+		||  request > spc->max_id )
+			return ERROR_ID;
 
-	if (spc->size == spc->ids_in_use)
-		return -ENOENT;
-
-	if (request == ANY_ID) {
+ 		bit = request - spc->min_id;
+	} else {
 		/* Allocate any available id */
 		bit = find_next_zero_bit(spc->bitmap, spc->size, spc->offset);
 		/* Handle wrap-around */
@@ -95,19 +94,13 @@ idspace_alloc_id(
 		spc->offset = bit + 1;
 		if (spc->offset == spc->size)
 			spc->offset = 0;
-	} else {
-		/* Allocate a specific ID */
-		bit = request - spc->min_id;
 	}
 
 	if (test_and_set_bit(bit, spc->bitmap))
-		return -EBUSY;
+		return ERROR_ID;
 
 	++spc->ids_in_use;
-	if (id)
-		*id = bit + spc->min_id;
-
-	return 0;
+	return bit + spc->min_id;
 }
 
 int

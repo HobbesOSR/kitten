@@ -241,8 +241,9 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	struct aspace *aspace;
 	unsigned long flags;
 
-	if ((status = idspace_alloc_id(idspace, id_request, &new_id)) != 0)
-		return status;
+	new_id = idspace_alloc_id(idspace, id_request);
+	if (new_id == ERROR_ID)
+		return -ENOENT;
 
 	if ((aspace = kmem_alloc(sizeof(*aspace))) == NULL) {
 		idspace_free_id(idspace, new_id);

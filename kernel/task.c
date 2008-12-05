@@ -69,7 +69,9 @@ sys_task_get_myid(id_t __user *id)
 int
 __task_reserve_id(id_t id)
 {
-	return idspace_alloc_id(idspace, id, NULL);
+	if (idspace_alloc_id(idspace, id) == ERROR_ID)
+		return -1;
+	return 0;
 }
 
 int
@@ -151,8 +153,9 @@ task_create(id_t id_request, const char *name,
 	unsigned long irqstate;
 
 	/* Allocate an ID for the new task */
-	if ((status = idspace_alloc_id(idspace, id_request, &new_id)) != 0)
-		return status;
+	new_id = idspace_alloc_id(idspace, id_request);
+	if (new_id == ERROR_ID)
+		return -ENOENT;
 
 	/* Create and initialize a new task */
 	if ((status = __task_create(new_id, name, start_state, &new_task))) {
