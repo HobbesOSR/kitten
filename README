@@ -1,41 +1,54 @@
-make config
-make
-make isoimage
-qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio
+Quick Start:
+    make config  (or make menuconfig)
+    make isoimage
+    qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio -smp 4
 
-(Can add -smp 4 option as well, but the BIOS my version of QEMU is using
- doesn't appear to provide an MP table, which Kitten depends on.  KVM seems
- to work fine with -smp 4 arg... all cpus are detected and initialized.)
+    To boot on PC hardware with grub:
+       kernel image: ./arch/x86_64/boot/bzImage
+       initrd:       ./init_task
 
-----------------------------------------------------------------------------
+    To boot on Cray XT:
+       kernel image: ./vmlwk.bin
+       initrd:       ./init_task
 
-Scripts for building cross-compiler toolchains are in scripts/toolchain.
-E.g., to build an x86-64 toolchain:
+Overview:
+    Kitten is a lightweight kernel (LWK) operating system designed to be used
+    on the compute nodes of distributed memory supercomputers.  At this point,
+    Kitten is still, well, a kitten, but eventually our intent is to use it on
+    systems consisting of tens or hundreds of thousands of multi-core,
+    multi-socket compute nodes (i.e., mega-core systems).  Kitten's design goal
+    is to enable applications to scale to significantly higher node counts and
+    perform better than is possible with general-purpose operating systems, 
+    such as Linux.  Kitten is based on Linux in part, but makes different
+    design choices that are targeted at scalability (low noise, deterministic
+    performance) and performance (physically contiguous memory layout,
+    transparent large pages, novel memory mapping techniques for multi-core
+    processors (SMARTMAP)).
 
-	cd scripts/toolchain
-	./build-x86_64.sh
+    Please see our wiki at http://software.sandia.gov/trac/kitten for more
+    information.
 
-By default, the toolchain will be installed in /opt/toolchain/x86_64.
-Edit PREFIX in build-x86_64.sh to change this.
+Features:
+    * Open Source (GPL)
+    * New LWK codebase partially derived from Linux, familiar organization
+      and build process
+    * Fully symmetric kernel, locking used to protect shared data
+    * Multiple processes and threads per core
+    * Partial Linux ABI support (what matters, similar to IBM's CNK)
+    * User-space uses standard system Glibc
+    * Guest OS support (when linked with the V3VEE project's
+      Palacios hypervisor, http://v3vee.org/download)
+    * lwIP TCP/IP stack (http://www.sics.se/~adam/lwip/) with
+      ne2k and SeaStar drivers
 
-To build a x86_64 Kitten using a cross-compiler:
-
-	export PATH=/opt/toolchain/x86_64/bin:$PATH
-	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- config
-	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu-
-
-The resulting kernel image is at:
-
-	arch/x86_64/boot/bzImage
-
-This is a drop in replacement for a Linux bzImage.
-
-If you have syslinux installed ('syslinux' Debian package), a bootable
-iso cdrom image can be built with:
-
-	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- isoimage
-
-and booted under the Qemu full-system simulator ('qemu' Debian package):
-
-	qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso
-
+Platforms Supported:
+    Emulators:
+       qemu-system-x86_64
+       kvm (running on a 64-bit x86 system)
+       virtualbox (with a bit of configuration, be sure to enable IO APIC)
+    Real Systems:
+       Standard PC-compatible 64-bit x86 systems
+           - Tested on a Core2 Duo Laptop (2 CPUs)
+           - Tested on a 4 socket dual-core Opteron system (8 CPUs)
+       Cray XT
+           - Tested on dual-core Opteron compute nodes (2 CPUs)
