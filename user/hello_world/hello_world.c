@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <ctype.h>
+#include <sched.h>
 #include <lwk/liblwk.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -37,10 +38,14 @@ main(int argc, char *argv[], char *envp[])
 	socket_api_test();
 
 	printf("Spinning forever...\n");
-	while (1) {
+	for (i = 0; i < 100; i++) {
 		sleep(5);
 		printf("   Meow!\n");
 	}
+	printf("   That's all, folks!\n");
+
+	while(1)
+		sched_yield();
 }
 
 static int
@@ -141,13 +146,21 @@ hello_world_thread(void)
 	 *       printf() and anything else that uses TLS won't work.
 	 */
 	const char *meow = "   Meow!\n";
-	size_t count = strlen(meow) + 1;
-	while (1) {
+	int i, rc;
+	for (i = 0 ; i < 100 ; i++) {
 		sleep(5);
-		int rc = write(1, meow, count);
-		if (rc != count)
+		rc = write(1, meow, strlen(meow));
+		if (rc != strlen(meow))
 			break;
 	}
+
+	const char *bye_message = "   That's all, folks!\n";
+	rc = write(1, bye_message, strlen(bye_message));
+	if (rc != strlen(bye_message))
+		return;
+
+	while(1)
+		sched_yield();
 }
 
 #define THREAD_STACK_SIZE 4096
