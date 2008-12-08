@@ -79,7 +79,7 @@ Platforms Supported
            - Tested on a Core2 Duo Laptop (2 CPUs)
            - Tested on a 4 socket dual-core Opteron system (8 CPUs)
        Cray XT
-           - Tested on dual-core Opteron compute nodes (2 CPUs)
+           - Tested on quad-core Opteron compute nodes (4 CPUs)
 
 
 Instructions for Booting on Real Hardware
@@ -94,7 +94,16 @@ Instructions for Booting on Real Hardware
     Cray XT hardware:
         Do 'make config' and choose:
             System Architecture ---> Red Storm (Cray XT3/XT4)
-        Rebuild, and use the following files:
+        Rebuild, and copy the following files to /bootimages/cageN/CNL0/:
             kernel image: ./vmlwk.bin
             initrd:       ./init_task
+        Update the /bootimages/cageN/CNL0.load file:
+CNL0/vmlwk.bin 0x100000
+CNL0/parameters-vmlwk 0x90800
+CNL0/init_task 0xFA00000
 
+	Create the /bootimages/cageN/CNL0/parameters-vmlwk:
+console=rcal0 net=seastar
+
+	Run 'create_bi cageN'
+	Reboot the nodes 'xtbootsys --reboot --partition p4 c5-0c0s1n0'
