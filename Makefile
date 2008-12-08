@@ -778,7 +778,7 @@ localver = $(subst $(space),, \
 # and if the SCM is know a tag from the SCM is appended.
 # The appended tag is determinded by the SCM used.
 #
-# Currently, only git is supported.
+# Currently, only git, mercurial and svn are supported.
 # Other SCMs can edit scripts/setlocalversion and add the appropriate
 # checks as needed.
 ifdef CONFIG_LOCALVERSION_AUTO
