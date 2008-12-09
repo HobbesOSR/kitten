@@ -74,7 +74,7 @@ config X86_INTERNODE_CACHE_SHIFT
 config NR_CPUS
         int "Maximum number of CPUs (2-256)"
         range 1 255
-        default "8"
+        default "16"
         help
           This allows you to specify the maximum number of CPUs which this
           kernel will support. Current maximum is 256 CPUs due to

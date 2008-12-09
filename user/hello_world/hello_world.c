@@ -7,15 +7,17 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <ctype.h>
+#include <sched.h>
 #include <lwk/liblwk.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 
-static void pmem_api_test(void);
-static void aspace_api_test(void);
-static void socket_api_test(void);
-static void fd_test(void);
+static int pmem_api_test(void);
+static int aspace_api_test(void);
+static int task_api_test(void);
+static int fd_test(void);
+static int socket_api_test(void);
 
 int
 main(int argc, char *argv[], char *envp[])
@@ -35,13 +37,219 @@ main(int argc, char *argv[], char *envp[])
 	pmem_api_test();
 	aspace_api_test();
 	fd_test();
+	task_api_test();
 	socket_api_test();
 
 	printf("Spinning forever...\n");
-	while (1) {
+	for (i = 0; i < 100; i++) {
 		sleep(5);
 		printf("   Meow!\n");
 	}
+	printf("   That's all, folks!\n");
+
+	while(1)
+		sched_yield();
+}
+
+static int
+pmem_api_test(void)
+{
+	struct pmem_region query, result;
+	unsigned long bytes_umem = 0;
+	int status;
+
+	printf("\nTEST BEGIN: Physical Memory Management\n");
+
+	query.start = 0;
+	query.end = ULONG_MAX;
+	pmem_region_unset_all(&query);
+
+	printf("  Physical Memory Map:\n");
+	while ((status = pmem_query(&query, &result)) == 0) {
+		printf("    [%#016lx, %#016lx) %-11s\n",
+			result.start,
+			result.end,
+			(result.type_is_set)
+				? pmem_type_to_string(result.type)
+				: "UNSET"
+		);
+
+		if (result.type == PMEM_TYPE_UMEM)
+			bytes_umem += (result.end - result.start);
+
+		query.start = result.end;
+	}
+
+	if (status != -ENOENT) {
+		printf("ERROR: pmem_query() status=%d\n", status);
+		return -1;
+	}
+
+	printf("  Total User-Level Managed Memory: %lu bytes\n", bytes_umem);
+
+	printf("TEST END: Physical Memory Management\n");
+	return 0;
+}
+
+static int
+aspace_api_test(void)
+{
+	int status;
+	id_t my_id, new_id;
+
+	printf("\nTEST BEGIN: Address Space Management\n");
+
+	status = aspace_get_myid(&my_id);
+	if (status) {
+		printf("ERROR: aspace_get_myid() status=%d\n", status);
+		return -1;
+	}
+	printf("  My address space ID is %u\n", my_id);
+
+	printf("  Creating a new aspace: ");
+	status = aspace_create(ANY_ID, "TEST-ASPACE", &new_id);
+	if (status) {
+		printf("\nERROR: aspace_create() status=%d\n", status);
+		return -1;
+	}
+	printf("id=%u\n", new_id);
+
+	printf("  Using SMARTMAP to map myself into aspace %u\n", new_id);
+	status = aspace_smartmap(my_id, new_id, SMARTMAP_ALIGN, SMARTMAP_ALIGN);
+	if (status) {
+		printf("ERROR: aspace_smartmap() status=%d\n", status);
+		return -1;
+	}
+
+	aspace_dump2console(new_id);
+
+	status = aspace_unsmartmap(my_id, new_id);
+	if (status) {
+		printf("ERROR: aspace_unsmartmap() status=%d\n", status);
+		return -1;
+	}
+
+	printf("  Destroying a aspace %u: ", new_id);
+	status = aspace_destroy(new_id);
+	if (status) {
+		printf("ERROR: aspace_destroy() status=%d\n", status);
+		return -1;
+	}
+	printf("OK\n");
+
+	printf("TEST END: Address Space Management\n");
+	return 0;
+}
+
+static void
+hello_world_thread(void)
+{
+	/*
+ 	 * Note: Thread local storage is not working yet in threads so
+	 *       printf() and anything else that uses TLS won't work.
+	 */
+	const char *meow = "   Meow!\n";
+	int i, rc;
+	for (i = 0 ; i < 100 ; i++) {
+		sleep(5);
+		rc = write(1, meow, strlen(meow));
+		if (rc != strlen(meow))
+			break;
+	}
+
+	const char *bye_message = "   That's all, folks!\n";
+	rc = write(1, bye_message, strlen(bye_message));
+	if (rc != strlen(bye_message))
+		return;
+
+	while(1)
+		sched_yield();
+}
+
+#define THREAD_STACK_SIZE 4096
+
+static int 
+start_thread(id_t cpu)
+{
+	int status;
+	start_state_t start_state;
+	id_t aspace_id;
+	vaddr_t stack_ptr;
+	user_cpumask_t cpumask;
+	char thread_name[32];
+
+	aspace_get_myid(&aspace_id);
+	stack_ptr = (vaddr_t)malloc(THREAD_STACK_SIZE);
+	cpus_clear(cpumask);
+	cpu_set(cpu, cpumask);
+
+	start_state.uid         = 0;
+	start_state.gid         = 0;
+	start_state.aspace_id   = aspace_id;
+	start_state.entry_point = (vaddr_t)&hello_world_thread;
+	start_state.stack_ptr   = stack_ptr + THREAD_STACK_SIZE;
+	start_state.cpu_id	= cpu;
+	start_state.cpumask	= &cpumask;
+
+	sprintf(thread_name, "cpu%u-task", cpu);
+	
+	status = task_create(ANY_ID, thread_name, &start_state, NULL);
+	if (status) {
+		printf("ERROR: failed to create thread (status=%d).\n", status);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int 
+task_api_test(void)
+{
+	int status;
+	unsigned i;
+	id_t my_id, my_cpu;
+	user_cpumask_t my_cpumask;
+
+	printf("\nTEST BEGIN: Task Management\n");
+
+	status = task_get_myid(&my_id);
+	if (status) {
+		printf("ERROR: task_get_myid() status=%d\n", status);
+		return -1;
+	}
+
+	status = task_get_cpu(&my_cpu);
+	if (status) {
+		printf("ERROR: task_get_cpu() status=%d\n", status);
+		return -1;
+	}
+
+	status = task_get_cpumask(&my_cpumask);
+	if (status) {
+		printf("ERROR: task_get_cpumask() status=%d\n", status);
+		return -1;
+	}
+
+	printf("  My task ID is %u\n", my_id);
+	printf("  I'm executing on CPU %u\n", my_cpu);
+	printf("  The following CPUs are in my cpumask:\n    ");
+	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
+		if (cpu_isset(i, my_cpumask))
+			printf("%d ", i);
+	}
+	printf("\n");
+
+	printf("  Creating a thread on each CPU:\n    ");
+	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
+		if (cpu_isset(i, my_cpumask)) {
+			printf("%d ", i);
+			start_thread(i);
+		}
+	}
+	printf("\n");
+
+	printf("TEST END: Task Management\n");
+	return 0;
 }
 
 /* writen() is from "UNIX Network Programming" by W. Richard Stevents */
@@ -69,7 +277,8 @@ writen(int fd, const void *vptr, size_t n)
 	return n;
 }
 
-void
+
+int
 fd_test( void )
 {
 	char buf[ 1024 ] = "";
@@ -103,19 +312,22 @@ fd_test( void )
 	rc = read( fd, buf, sizeof(buf) );
 	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
 	close( fd );
+
+	return 0;
 }
 
 
-void
+int
 socket_api_test( void )
 {
-	printf( "Testing socket\n" );
+	printf("\nTEST BEGIN: Sockets API\n");
+
 	int port = 80;
 	int s = socket( PF_INET, SOCK_STREAM, 0 );
 	if( s < 0 )
 	{
-		printf( "socket failed! rc=%d\n", s );
-		return;
+		printf( "ERROR: socket() failed! rc=%d\n", s );
+		return -1;
 	}
 
 	struct sockaddr_in addr, client;
@@ -125,8 +337,10 @@ socket_api_test( void )
 	if( bind( s, (struct sockaddr*) &addr, sizeof(addr) ) < 0 )
 		perror( "bind" );
 
-	if( listen( s, 5 ) < 0 )
+	if( listen( s, 5 ) < 0 ) {
 		perror( "listen" );
+		return -1;
+	}
 
 	int max_fd = s;
 	fd_set fds;
@@ -141,8 +355,8 @@ socket_api_test( void )
 		int rc = select( max_fd+1, &read_fds, 0, 0, 0 );
 		if( rc < 0 )
 		{
-			printf( "select failed! rc=%d\n", rc );
-			break;
+			printf( "ERROR: select() failed! rc=%d\n", rc );
+			return -1;
 		}
 
 		if( FD_ISSET( s, &read_fds ) )
@@ -201,83 +415,7 @@ socket_api_test( void )
 			writen( fd, outbuf, len );
 		}
 	}
-}
 
-
-static void
-pmem_api_test(void)
-{
-	struct pmem_region query, result;
-	unsigned long bytes_umem = 0;
-	int status;
-
-	printf("TEST BEGIN: Physical Memory Management\n");
-
-	query.start = 0;
-	query.end = ULONG_MAX;
-	pmem_region_unset_all(&query);
-
-	printf("  Physical Memory Map:\n");
-	while ((status = pmem_query(&query, &result)) == 0) {
-		printf("    [%#016lx, %#016lx) %-11s\n",
-			result.start,
-			result.end,
-			(result.type_is_set)
-				? pmem_type_to_string(result.type)
-				: "UNSET"
-		);
-
-		if (result.type == PMEM_TYPE_UMEM)
-			bytes_umem += (result.end - result.start);
-
-		query.start = result.end;
-	}
-
-	if (status != -ENOENT) {
-		printf("ERROR: pmem_query() status=%d\n", status);
-	}
-
-	printf("  Total User-Level Managed Memory: %lu bytes\n", bytes_umem);
-
-	printf("TEST END: Physical Memory Management\n");
-}
-
-static void
-aspace_api_test(void)
-{
-	int status;
-	id_t my_id, new_id;
-
-	printf("TEST BEGIN: Address Space Management\n");
-
-	if ((status = aspace_get_myid(&my_id)) != 0)
-		printf("ERROR: aspace_get_myid() status=%d\n", status);
-	else
-		printf("  My address space ID is %u\n", my_id);
-
-	printf("  Creating a new aspace: ");
-
-	status = aspace_create(ANY_ID, "TEST-ASPACE", &new_id);
-	if (status)
-		printf("\nERROR: aspace_create() status=%d\n", status);
-	else
-		printf("id=%u\n", new_id);
-
-	printf("  Using SMARTMAP to map myself into aspace %u\n", new_id);
-	status = aspace_smartmap(my_id, new_id, SMARTMAP_ALIGN, SMARTMAP_ALIGN);
-	if (status) printf("ERROR: aspace_smartmap() status=%d\n", status);
-
-	aspace_dump2console(new_id);
-
-	status = aspace_unsmartmap(my_id, new_id);
-	if (status) printf("ERROR: aspace_unsmartmap() status=%d\n", status);
-
-	printf("  Destroying a aspace %u: ", new_id);
-	status = aspace_destroy(new_id);
-	if (status)
-		printf("ERROR: aspace_destroy() status=%d\n", status);
-	else
-		printf("OK\n");
-
-	printf("TEST END: Address Space Management\n");
+	printf("TEST END: Sockets API\n");
+	return 0;
 }

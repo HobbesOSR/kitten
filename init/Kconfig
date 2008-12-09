@@ -15,3 +15,8 @@ config KALLSYSM_ALL
 	   symbols too: say Y here to include all symbols, if you need them
 	   and you don't care about adding to the size of your kernel.
 
+config LOCALVERSION_AUTO
+	bool
+	default "y"
+	help
+	  Build SCM tag into version string.  Always turned on.

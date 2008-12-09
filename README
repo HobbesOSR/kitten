@@ -1,41 +1,109 @@
-make config
-make
-make isoimage
-qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio
+Quick Start
+===========
+    make config  (or make menuconfig)
+    make isoimage
+    qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio -smp 4
 
-(Can add -smp 4 option as well, but the BIOS my version of QEMU is using
- doesn't appear to provide an MP table, which Kitten depends on.  KVM seems
- to work fine with -smp 4 arg... all cpus are detected and initialized.)
+    What you should see:
+        A bunch of kernel initialization messages print to the console,
+        followed by:
 
-----------------------------------------------------------------------------
+            <6>Loading initial user-level task (init_task)...
+            <0>Unhandled Interrupt! (vector=52, isa_irq=4)
+            <8>(init_task) Hello, world!
+            <8>(init_task) Arguments:
+            <8>(init_task)   argv[0] = init_task
+            <8>(init_task)   argv[1] = one
+            <8>(init_task)   argv[2] = two
+            <8>(init_task)   argv[3] = three
+            <8>(init_task) Environment Variables:
+            <8>(init_task)   envp[0] = one=1
+            <8>(init_task)   envp[1] = two=2
+            <8>(init_task)   envp[2] = three=3
+            [... A bunch of test messages, ommitted here]
+            <8>(init_task) Spinning forever...
+            <8>(cpu0-task)    Meow!
+            <8>(init_task)    Meow!
+            <8>(cpu1-task)    Meow!
+            <8>(cpu2-task)    Meow!
+            <8>(cpu3-task)    Meow!
 
-Scripts for building cross-compiler toolchains are in scripts/toolchain.
-E.g., to build an x86-64 toolchain:
+        The source code for the hello world init_task is at
+        user/hello_world/hello_world.c
+ 
 
-	cd scripts/toolchain
-	./build-x86_64.sh
+Overview
+========
+    Kitten is a lightweight kernel (LWK) operating system designed to be used
+    on the compute nodes of distributed memory supercomputers. At this point,
+    Kitten is, well, still a kitten, but eventually our intent is for it to
+    be used on systems consisting of tens or hundreds of thousands of
+    multi-socket, multi-core compute nodes (i.e., mega-core systems). The
+    primary goal of Kitten is to enable supercomputer applications to scale
+    to significantly higher node counts and perform substantially better
+    than is possible with general-purpose compute node operating systems,
+    such as Linux. Kitten is based on Linux in part, but makes different
+    design choices that are targeted at scalability (low noise, deterministic
+    behavior) and performance (physically contiguous memory layout,
+    transparent large pages, novel techniques for taking better advantage of
+    multi-core processors, like SMARTMAP).
 
-By default, the toolchain will be installed in /opt/toolchain/x86_64.
-Edit PREFIX in build-x86_64.sh to change this.
+    Please see our wiki at http://software.sandia.gov/trac/kitten for more
+    information.
 
-To build a x86_64 Kitten using a cross-compiler:
+    Features:
+        * Open Source (GPL)
+        * New LWK codebase partially derived from Linux, familiar
+          organization and build process
+        * Fully symmetric kernel, locking used to protect shared data
+        * Multiple processes and threads per core
+        * Partial Linux ABI support (what matters, similar to IBM's CNK)
+        * User-space uses standard system Glibc
+        * SMARTMAP memory mapping (see SC08 paper) to enable single-copy
+          intra-node MPI messaging. This significantly reduces intra-node
+          memory bandwidth requirements.
+        * Guest OS support (when linked with the V3VEE project's
+          Palacios hypervisor, http://v3vee.org/download)
+        * lwIP TCP/IP stack (http://www.sics.se/~adam/lwip/) with
+          ne2k and SeaStar drivers
 
-	export PATH=/opt/toolchain/x86_64/bin:$PATH
-	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- config
-	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu-
 
-The resulting kernel image is at:
+Platforms Supported
+===================
+    Emulators:
+       qemu-system-x86_64
+       kvm (running on a 64-bit x86 system)
+       virtualbox (with a bit of configuration, be sure to enable IO APIC)
+    Real Hardware:
+       Standard PC-compatible 64-bit x86 systems
+           - Tested on a Core2 Duo Laptop (2 CPUs)
+           - Tested on a 4 socket dual-core Opteron system (8 CPUs)
+       Cray XT
+           - Tested on quad-core Opteron compute nodes (4 CPUs)
 
-	arch/x86_64/boot/bzImage
 
-This is a drop in replacement for a Linux bzImage.
+Instructions for Booting on Real Hardware
+=========================================
+    PC-compatible hardware:
+        Do 'make config' and choose:
+            System Architecture ---> PC-compatible (the default)
+        Rebuild, and use the following files:
+            kernel image: ./arch/x86_64/boot/bzImage
+            initrd:       ./init_task
 
-If you have syslinux installed ('syslinux' Debian package), a bootable
-iso cdrom image can be built with:
+    Cray XT hardware:
+        Do 'make config' and choose:
+            System Architecture ---> Red Storm (Cray XT3/XT4)
+        Rebuild, and copy the following files to /bootimages/cageN/CNL0/:
+            kernel image: ./vmlwk.bin
+            initrd:       ./init_task
+        Update the /bootimages/cageN/CNL0.load file:
+CNL0/vmlwk.bin 0x100000
+CNL0/parameters-vmlwk 0x90800
+CNL0/init_task 0xFA00000
 
-	make ARCH=x86_64 CROSS_COMPILE=x86_64-linux-gnu- isoimage
+	Create the /bootimages/cageN/CNL0/parameters-vmlwk:
+console=rcal0 net=seastar
 
-and booted under the Qemu full-system simulator ('qemu' Debian package):
-
-	qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso
-
+	Run 'create_bi cageN'
+	Reboot the nodes 'xtbootsys --reboot --partition p4 c5-0c0s1n0'

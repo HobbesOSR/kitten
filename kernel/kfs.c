@@ -41,7 +41,7 @@ kfs_equal_filename(
 	const char * search = name_in_search;
 	const char * dir = name_in_dir;
 
-	if(0)
+	if(1)
 	printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
 
 	while(1)
@@ -190,7 +190,7 @@ kfs_mkdirent(
 
 	file->files = htable_create(
 		7,
-		offsetof( struct kfs_file, name_ptr ),
+		offsetof( struct kfs_file, name ),
 		offsetof( struct kfs_file, ht_link ),
 		kfs_hash_filename,
 		kfs_equal_filename
@@ -201,7 +201,6 @@ kfs_mkdirent(
 	file->priv	= priv;
 	file->priv_len	= priv_len;
 	file->mode	= mode;
-	file->name_ptr	= (id_t) file->name;
 	file->refs	= 0;
 
 	if( name )

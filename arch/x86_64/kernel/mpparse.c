@@ -97,8 +97,10 @@ MP_processor_info(struct mpc_config_processor *m)
 	unsigned char ver;
 	cpumask_t tmp_map;
 
-	if (!(m->mpc_cpuflag & CPU_ENABLED))
-		panic("A disabled CPU was encountered\n");
+	if (!(m->mpc_cpuflag & CPU_ENABLED)) {
+		printk(KERN_WARNING "A disabled CPU was encountered\n");
+		return;
+	}
 
 	/* Count the new CPU */
 	if (++num_cpus > NR_CPUS)

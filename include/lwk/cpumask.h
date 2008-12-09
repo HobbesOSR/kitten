@@ -89,10 +89,43 @@
  */
 
 #define CPU_MIN_ID 0
-#define CPU_MAX_ID 2047
+#define CPU_MAX_ID 1023
+
+#define __BITS_PER_LONG (sizeof(unsigned long) * 8)
 typedef struct {
-	unsigned long bits[(CPU_MAX_ID+1)/(sizeof(unsigned long) * 8)];
+	unsigned long bits[(CPU_MAX_ID+1)/__BITS_PER_LONG];
 } user_cpumask_t;
+
+/** User-space macros for manipulating bits in user_cpumask_t.
+ *
+ * These are only visible to user-space since their names overlay
+ * the kernel versions.
+ *
+ * \note These are not the same as the CPU_* macros in the
+ *       sched_setaffinity(2) man page. Those take a pointer
+ *       to the mask while these take the mask directly, just
+ *       like the kernel versions.
+ * @{
+ */
+#ifndef __KERNEL__
+
+# define __BITS_INDEX(cpu) ((cpu) / __BITS_PER_LONG)
+# define __BITS_MASK(cpu)  ((unsigned long)1 << (((cpu) % __BITS_PER_LONG)))
+
+#define cpu_set(cpu, mask) \
+	(&mask)->bits[__BITS_INDEX(cpu)] |= __BITS_MASK(cpu)
+
+#define cpu_clear(cpu, mask) \
+	(&mask)->bits[__BITS_INDEX(cpu)] &= ~__BITS_MASK(cpu)
+
+#define cpus_clear(mask) \
+	memset((&mask), 0, sizeof(mask))
+
+#define cpu_isset(cpu, mask) \
+	(((&mask)->bits[__BITS_INDEX(cpu)] & __BITS_MASK(cpu)) != 0)
+
+#endif
+//@}
 
 #ifdef __KERNEL__
 

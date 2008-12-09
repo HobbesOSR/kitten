@@ -17,9 +17,14 @@ struct idspace;
 typedef unsigned int id_t;
 
 /**
- * Used to request any available ID... pass as 'request' arg to id_alloc().
+ * Used to request any available ID.
  */
-#define ANY_ID (-1)
+#define ANY_ID ((id_t) (-1))
+
+/**
+ * Represents an error return from idspace_alloc_id().
+ */
+#define ERROR_ID (ANY_ID)
 
 /**
  * Creates an ID space.
@@ -32,18 +37,34 @@ idspace_create(
 	id_t			max_id
 );
 
-extern int
+/**
+ * Destroys and ID space.
+ */
+extern void
 idspace_destroy(
 	struct idspace *	spc
 );
 
-extern int
+/**
+ * Allocates an ID from an ID space.
+ *
+ * Pass the specific ID to allocate in @request, or ANY_ID to request any
+ * available ID.
+ *
+ * \returns The allocated ID if successful, ERROR_ID otherwise if there are
+ *          no IDs left or if the requested ID has already been allocated.
+ */
+extern id_t
 idspace_alloc_id(
 	struct idspace *	spc,
-	id_t			request,
-	id_t *			id
+	id_t			request
 );
 
+/**
+ * Frees an ID previously allocated from an ID space.
+ *
+ * \returns 0 if successful, negative if there was an error.
+ */
 extern int
 idspace_free_id(
 	struct idspace *	spc,

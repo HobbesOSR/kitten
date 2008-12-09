@@ -675,8 +675,12 @@ __SYSCALL(__NR_task_create, sys_task_create)
 __SYSCALL(__NR_task_exit, sys_task_exit)
 #define __NR_task_yield         304
 __SYSCALL(__NR_task_yield, sys_task_yield)
+#define __NR_task_get_cpu       305
+__SYSCALL(__NR_task_get_cpu, sys_task_get_cpu)
+#define __NR_task_get_cpumask   306
+__SYSCALL(__NR_task_get_cpumask, sys_task_get_cpumask)
 
-#define __NR_elf_hwcap          305
-__SYSCALL(__NR_task_yield, sys_elf_hwcap)
+#define __NR_elf_hwcap          307
+__SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
 
 #endif

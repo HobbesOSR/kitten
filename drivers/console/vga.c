@@ -1,6 +1,7 @@
 #include <lwk/driver.h>
 #include <lwk/console.h>
 #include <lwk/string.h>
+#include <arch/io.h>
 
 /** Base address of the VGA frame buffer. */
 static volatile uint8_t * const vga_fb = (uint8_t *) 0xffffffff800b8000ul;
@@ -20,10 +21,26 @@ static int ncols = 80;
 /** Set when vga console has been initialized. */
 static int initialized = 0;
 
-/** Calculates the offset in the vga_fb corresponding to (row, col). */
-static inline int cursor(int row, int col)
+/**
+ * Calculates the offset in the vga_fb corresponding to (row, col).
+ */
+static inline int cursor(int r, int c)
 {
-	return (row * ncols * 2) + col * 2;
+	return (r * ncols * 2) + c * 2;
+}
+
+/**
+ * Updates the blinking cursor.
+ */
+static inline void update_blinky_cursor(int r, int c)
+{
+	unsigned short pos = (r * ncols) + c;
+
+	// Update the VGA cursor data register (this is slow!)
+	outb(0x0F, 0x3D4); // LO
+	outb(pos & 0xFF, 0x3D5);
+	outb(0x0E, 0x3D4); // HI
+	outb(pos >> 8, 0x3D5);
 }
 
 /**
@@ -57,6 +74,8 @@ static void vga_newline(void)
 		row = nrows - 1;
 		vga_scroll();
 	}
+
+	update_blinky_cursor(row, col);
 }
 
 /**

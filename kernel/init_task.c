@@ -102,6 +102,8 @@ create_init_task(void)
 		panic( "Unable to retrieve init task id %lu?", id  );
 
 	struct kfs_file * console = kfs_lookup( kfs_root, "/dev/console", 0 );
+	if( !console )
+		panic( "Unable to open /dev/console?" );
 	new_task->files[ 0 ] = console;
 	new_task->files[ 1 ] = console;
 	new_task->files[ 2 ] = console;

@@ -49,7 +49,6 @@ struct kfs_file
 {
 	struct htable *		files;
 	struct hlist_node	ht_link;
-	id_t		name_ptr;
 
 	struct kfs_file *	parent;
 	char			name[ 128 ];

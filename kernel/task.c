@@ -61,7 +61,7 @@ sys_task_get_myid(id_t __user *id)
 		return status;
 
 	if (id && copy_to_user(id, &_id, sizeof(*id)))
-		return -EINVAL;
+		return -EFAULT;
 
 	return 0;
 }
@@ -69,7 +69,9 @@ sys_task_get_myid(id_t __user *id)
 int
 __task_reserve_id(id_t id)
 {
-	return idspace_alloc_id(idspace, id, NULL);
+	if (idspace_alloc_id(idspace, id) == ERROR_ID)
+		return -1;
+	return 0;
 }
 
 int
@@ -151,8 +153,9 @@ task_create(id_t id_request, const char *name,
 	unsigned long irqstate;
 
 	/* Allocate an ID for the new task */
-	if ((status = idspace_alloc_id(idspace, id_request, &new_id)) != 0)
-		return status;
+	new_id = idspace_alloc_id(idspace, id_request);
+	if (new_id == ERROR_ID)
+		return -ENOENT;
 
 	/* Create and initialize a new task */
 	if ((status = __task_create(new_id, name, start_state, &new_task))) {
@@ -187,14 +190,14 @@ sys_task_create(id_t id_request, const char __user *name,
 		return -EPERM;
 
 	if (copy_from_user(&_start_state, start_state, sizeof(_start_state)))
-		return -EINVAL;
+		return -EFAULT;
 
 	if (_start_state.aspace_id == KERNEL_ASPACE_ID)
 		return -EINVAL;
 
 	if (_start_state.cpumask) {
 		if (copy_from_user(&_cpumask, _start_state.cpumask, sizeof(_cpumask)))
-			return -EINVAL;
+			return -EFAULT;
 		_start_state.cpumask = &_cpumask;
 	}
 
@@ -245,6 +248,50 @@ sys_task_yield(void)
 	return task_yield();
 }
 
+int
+task_get_cpu(id_t *cpu_id)
+{
+	*cpu_id = current->cpu_id;
+	return 0;
+}
+
+int
+sys_task_get_cpu(id_t __user *cpu_id)
+{
+	int status;
+	id_t _cpu_id;
+
+	if ((status = task_get_cpu(&_cpu_id)) != 0)
+		return status;
+
+	if (cpu_id && copy_to_user(cpu_id, &_cpu_id, sizeof(*cpu_id)))
+		return -EFAULT;
+
+	return 0;
+}
+
+int
+task_get_cpumask(user_cpumask_t *cpumask)
+{
+	cpumask_kernel2user(&current->cpumask, cpumask);
+	return 0;
+}
+
+int
+sys_task_get_cpumask(user_cpumask_t __user *cpumask)
+{
+	int status;
+	user_cpumask_t _cpumask;
+
+	if ((status = task_get_cpumask(&_cpumask)) != 0)
+		return status;
+
+	if (cpumask && copy_to_user(cpumask, &_cpumask, sizeof(*cpumask)))
+		return -EFAULT;
+
+	return 0;
+}
+
 /**
  * Looks up an aspace object by ID and returns it with its spinlock locked.
  */
@@ -266,3 +313,49 @@ task_lookup(id_t id)
         return t;
 }
 
+
+static void
+kthread_trampoline(
+	void 			(*entry_point)( void * arg ),
+	void *			arg
+)
+{
+	printk( "%s: new thread is running: %p(%p)\n", __func__, entry_point, arg );
+
+	entry_point( arg );
+
+	printk( "%s: thread exited\n", __func__ );
+	task_exit( 0 );
+}
+
+
+id_t
+kthread_create(
+	void 			(*entry_point)( void * arg ),
+	void *			arg,
+	const char *		fmt,
+	...
+)
+{
+	char name[ 16 ];
+	va_list ap;
+	va_start( ap, fmt );
+	vsnprintf( name, sizeof(name)-1, fmt, ap );
+	name[sizeof(name)-1] = '\0';
+	va_end( ap );
+
+	start_state_t	state = {
+		.entry_point		= (vaddr_t) kthread_trampoline,
+		.aspace_id		= KERNEL_ASPACE_ID,
+		.args			= {
+			(uintptr_t) entry_point,
+			(uintptr_t) arg,
+		},
+	};
+
+	id_t id;
+	task_create( ANY_ID, name, &state, &id );
+	printk( "%s: New thread '%s' id %d: %p(%p)\n", __func__, name, id, entry_point, arg );
+
+	return id;
+}
