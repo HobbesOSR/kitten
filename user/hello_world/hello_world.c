@@ -160,7 +160,9 @@ hello_world_thread(void)
 	const char *bye_message = "   That's all, folks!\n";
 	rc = write(1, bye_message, strlen(bye_message));
 	if (rc != strlen(bye_message))
-		return;
+	{
+		// Uh?
+	}
 
 	while(1)
 		sched_yield();
@@ -172,7 +174,6 @@ static int
 start_thread(id_t cpu)
 {
 	int status;
-	start_state_t start_state;
 	id_t aspace_id;
 	vaddr_t stack_ptr;
 	user_cpumask_t cpumask;
@@ -183,13 +184,21 @@ start_thread(id_t cpu)
 	cpus_clear(cpumask);
 	cpu_set(cpu, cpumask);
 
-	start_state.uid         = 0;
-	start_state.gid         = 0;
-	start_state.aspace_id   = aspace_id;
-	start_state.entry_point = (vaddr_t)&hello_world_thread;
-	start_state.stack_ptr   = stack_ptr + THREAD_STACK_SIZE;
-	start_state.cpu_id	= cpu;
-	start_state.cpumask	= &cpumask;
+	start_state_t start_state = {
+		.uid		= 0,
+		.gid		= 0,
+		.aspace_id	= aspace_id,
+		.entry_point	= (vaddr_t)&hello_world_thread,
+		.stack_ptr	= stack_ptr + THREAD_STACK_SIZE,
+		.cpu_id		= cpu,
+		.cpumask	= &cpumask,
+		.args		= {
+			0xDECAFBAD,
+			0xBADBABE,
+			0xF00DFEED,
+			0xC0FFEE,
+		},
+	};
 
 	sprintf(thread_name, "cpu%u-task", cpu);
 	
