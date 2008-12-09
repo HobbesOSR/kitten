@@ -313,3 +313,49 @@ task_lookup(id_t id)
         return t;
 }
 
+
+static void
+kthread_trampoline(
+	void 			(*entry_point)( void * arg ),
+	void *			arg
+)
+{
+	printk( "%s: new thread is running: %p(%p)\n", __func__, entry_point, arg );
+
+	entry_point( arg );
+
+	printk( "%s: thread exited\n", __func__ );
+	task_exit( 0 );
+}
+
+
+id_t
+kthread_create(
+	void 			(*entry_point)( void * arg ),
+	void *			arg,
+	const char *		fmt,
+	...
+)
+{
+	char name[ 16 ];
+	va_list ap;
+	va_start( ap, fmt );
+	vsnprintf( name, sizeof(name)-1, fmt, ap );
+	name[sizeof(name)-1] = '\0';
+	va_end( ap );
+
+	start_state_t	state = {
+		.entry_point		= (vaddr_t) kthread_trampoline,
+		.aspace_id		= KERNEL_ASPACE_ID,
+		.args			= {
+			(uintptr_t) entry_point,
+			(uintptr_t) arg,
+		},
+	};
+
+	id_t id;
+	task_create( ANY_ID, name, &state, &id );
+	printk( "%s: New thread '%s' id %d: %p(%p)\n", __func__, name, id, entry_point, arg );
+
+	return id;
+}

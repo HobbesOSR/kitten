@@ -56,7 +56,8 @@ typedef struct {
 	uid_t                  gid;
 	id_t                   aspace_id;
 	vaddr_t                entry_point;
-	vaddr_t                stack_ptr;
+	vaddr_t			stack_ptr;	//!< Ignored for kernel threads
+	uintptr_t		args[4];	//!< Up to four arguments
 	id_t                   cpu_id;
 	const user_cpumask_t * cpumask;
 } start_state_t;
@@ -72,6 +73,20 @@ extern int task_get_myid(id_t *id);
 extern int task_create(id_t id_request, const char *name,
                        const start_state_t *start_state, id_t *id);
 extern int task_exit(int status);
+
+/** Create a kernel thread.
+ *
+ * Convinence function to create a kernel thread.
+ * \returns Task id of the new thread.
+ */
+extern id_t
+kthread_create(
+	void			(*entry_point)( void * arg ),
+	void *			arg,
+	const char *		fmt,
+	...
+);
+
 
 /** Yield the CPU from a user task.
  *

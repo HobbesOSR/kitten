@@ -33,15 +33,19 @@ arch_task_create(struct task_struct *task,
 	if (start_state->aspace_id == KERNEL_ASPACE_ID) {
 		regs->ss     = __KERNEL_DS;
 		regs->rsp    = (vaddr_t)task + TASK_SIZE;
-		regs->eflags = (1 << 9);  /* enable interrupts */
 		regs->cs     = __KERNEL_CS;
 	} else {
 		regs->ss     = __USER_DS;
 		regs->rsp    = start_state->stack_ptr;
-		regs->eflags = (1 << 9);  /* enable interrupts */
 		regs->cs     = __USER_CS;
 	}
-	regs->rip = start_state->entry_point;
+
+	regs->eflags	= (1 << 9);  /* enable interrupts */
+	regs->rip	= start_state->entry_point;
+	regs->rdi	= start_state->args[0];
+	regs->rsi	= start_state->args[1];
+	regs->rdx	= start_state->args[2];
+	regs->rcx	= start_state->args[3];
 
 	return 0;
 }
