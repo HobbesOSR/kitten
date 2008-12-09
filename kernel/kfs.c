@@ -33,7 +33,7 @@ kfs_hash_filename(
  * \returns 0 if name_in_search == name_in_dir, -1 if lt and +1 if gt.
  */
 static int
-kfs_equal_filename(
+kfs_compare_filename(
 	const void *		name_in_search,
 	const void *		name_in_dir
 )
@@ -41,7 +41,7 @@ kfs_equal_filename(
 	const char * search = name_in_search;
 	const char * dir = name_in_dir;
 
-	if(1)
+	if(0)
 	printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
 
 	while(1)
@@ -193,7 +193,7 @@ kfs_mkdirent(
 		offsetof( struct kfs_file, name ),
 		offsetof( struct kfs_file, ht_link ),
 		kfs_hash_filename,
-		kfs_equal_filename
+		kfs_compare_filename
 	);
 
 	file->parent	= parent;
