@@ -288,29 +288,29 @@ fd_test( void )
 	printf( "Testing open\n" );
 	fd = open( "/sys/kernel/dummy/string", O_RDONLY );
 	rc = read( fd, buf, sizeof(buf) );
-	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
 	close( fd );
 
 	fd = open( "/sys/kernel/dummy/int", O_RDONLY );
 	rc = read( fd, buf, sizeof(buf) );
-	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
 	close( fd );
 
 	fd = open( "/sys/kernel/dummy/hex", O_RDONLY );
 	rc = read( fd, buf, sizeof(buf) );
-	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
 	close( fd );
 
 	fd = open( "/sys/kernel/dummy/bin", O_RDONLY );
 	uint64_t val;
 	rc = read( fd, &val, sizeof(val) );
-	printf( "fd %d rc=%d %ld / 0x%x\n", fd, rc, val, val );
+	printf( "fd %d rc=%ld %ld / 0x%lx\n", fd, rc, val, val );
 	close( fd );
 
 	// Should fail
 	fd = open( "/sys/kernel/dummy", O_RDONLY );
 	rc = read( fd, buf, sizeof(buf) );
-	printf( "fd %d rc=%d '%s'\n", fd, rc, buf );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
 	close( fd );
 
 	return 0;
