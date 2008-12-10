@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <ctype.h>
 #include <sched.h>
@@ -15,6 +16,7 @@
 static int pmem_api_test(void);
 static int aspace_api_test(void);
 static int task_api_test(void);
+static int fd_test(void);
 static int socket_api_test(void);
 
 int
@@ -34,6 +36,7 @@ main(int argc, char *argv[], char *envp[])
 
 	pmem_api_test();
 	aspace_api_test();
+	fd_test();
 	task_api_test();
 	socket_api_test();
 
@@ -157,7 +160,9 @@ hello_world_thread(void)
 	const char *bye_message = "   That's all, folks!\n";
 	rc = write(1, bye_message, strlen(bye_message));
 	if (rc != strlen(bye_message))
-		return;
+	{
+		// Uh?
+	}
 
 	while(1)
 		sched_yield();
@@ -169,7 +174,6 @@ static int
 start_thread(id_t cpu)
 {
 	int status;
-	start_state_t start_state;
 	id_t aspace_id;
 	vaddr_t stack_ptr;
 	user_cpumask_t cpumask;
@@ -180,13 +184,22 @@ start_thread(id_t cpu)
 	cpus_clear(cpumask);
 	cpu_set(cpu, cpumask);
 
-	start_state.uid         = 0;
-	start_state.gid         = 0;
-	start_state.aspace_id   = aspace_id;
-	start_state.entry_point = (vaddr_t)&hello_world_thread;
-	start_state.stack_ptr   = stack_ptr + THREAD_STACK_SIZE;
-	start_state.cpu_id	= cpu;
-	start_state.cpumask	= &cpumask;
+	start_state_t start_state = {
+		.uid		= 0,
+		.gid		= 0,
+		.aspace_id	= aspace_id,
+		.entry_point	= (vaddr_t)&hello_world_thread,
+		.stack_ptr	= stack_ptr + THREAD_STACK_SIZE,
+		.cpu_id		= cpu,
+		.cpumask	= &cpumask,
+		.flags		= CLONE_FS | CLONE_FILES | CLONE_VM,
+		.args		= {
+			0xDECAFBAD,
+			0xBADBABE,
+			0xF00DFEED,
+			0xC0FFEE,
+		},
+	};
 
 	sprintf(thread_name, "cpu%u-task", cpu);
 	
@@ -273,6 +286,46 @@ writen(int fd, const void *vptr, size_t n)
 	}
 	return n;
 }
+
+
+int
+fd_test( void )
+{
+	char buf[ 1024 ] = "";
+	int fd;
+	ssize_t rc;
+
+	printf( "Testing open\n" );
+	fd = open( "/sys/kernel/dummy/string", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/int", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/hex", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/bin", O_RDONLY );
+	uint64_t val;
+	rc = read( fd, &val, sizeof(val) );
+	printf( "fd %d rc=%ld %ld / 0x%lx\n", fd, rc, val, val );
+	close( fd );
+
+	// Should fail
+	fd = open( "/sys/kernel/dummy", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	return 0;
+}
+
 
 int
 socket_api_test( void )

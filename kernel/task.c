@@ -128,6 +128,14 @@ __task_create(id_t id, const char *name,
 	tsk->flags = 0;
 	tsk->exit_status = 0;
 
+	// We may need to clone files if CLONE_FS is set
+	if (start_state->flags & CLONE_FILES)
+	{
+		memcpy( tsk->files, current->files, sizeof(tsk->files) );
+	} else {
+		memset( tsk->files, 0, sizeof(tsk->files) );
+	}
+
 	/* Do architecture-specific initialization */
 	if ((status = arch_task_create(tsk, start_state)) != 0)
 		goto error2;

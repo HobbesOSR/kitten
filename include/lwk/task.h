@@ -58,9 +58,52 @@ typedef struct {
 	vaddr_t                stack_ptr;   //!< Ignored for kernel tasks
 	vaddr_t                entry_point;
 	uintptr_t              arg[4];      //!< Args to pass to entry_point()
+	uint32_t		flags;		//!< Flags to clone
 	id_t                   cpu_id;
 	const user_cpumask_t * cpumask;
 } start_state_t;
+
+/**
+ * \name Flags to start a new task.
+ *
+ * \note Not all of these are implemented or supported in Kitten.
+ * @{
+ */
+#define CSIGNAL         0x000000ff      /* signal mask to be sent at exit */
+#define CLONE_VM        0x00000100      /* set if VM shared between processes */
+#define CLONE_FS        0x00000200      /* set if fs info shared between process
+es */
+#define CLONE_FILES     0x00000400      /* set if open files shared between proc
+esses */
+#define CLONE_SIGHAND   0x00000800      /* set if signal handlers and blocked si
+gnals shared */
+#define CLONE_IDLETASK  0x00001000      /* set if new pid should be 0 (kernel on
+ly)*/
+#define CLONE_PTRACE    0x00002000      /* set if we want to let tracing continu
+e on the child too */
+#define CLONE_VFORK     0x00004000      /* set if the parent wants the child to 
+wake it up on mm_release */
+#define CLONE_PARENT    0x00008000      /* set if we want to have the same paren
+t as the cloner */
+#define CLONE_THREAD    0x00010000      /* Same thread group? */
+#define CLONE_NEWNS     0x00020000      /* New namespace group? */
+#define CLONE_SYSVSEM   0x00040000      /* share system V SEM_UNDO semantics */
+#define CLONE_SETTLS    0x00080000      /* create a new TLS for the child */
+#define CLONE_PARENT_SETTID     0x00100000      /* set the TID in the parent */
+#define CLONE_CHILD_CLEARTID    0x00200000      /* clear the TID in the child */
+#define CLONE_DETACHED          0x00400000      /* Unused, ignored */
+#define CLONE_UNTRACED          0x00800000      /* set if the tracing process ca
+n't force CLONE_PTRACE on this clone */
+#define CLONE_CHILD_SETTID      0x01000000      /* set the TID in the child */
+#define CLONE_STOPPED           0x02000000      /* Start in stopped state */
+
+/*
+ * List of flags we want to share for kernel threads,
+ * if only because they are not used by them anyway.
+ */
+#define CLONE_KERNEL    (CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_VM)
+
+//@}
 
 /**
  * \group Core task management API.
@@ -122,6 +165,9 @@ struct sighand_struct {
 	struct list_head        signalfd_list;
 };
 
+/** Maximum files opened at one time */
+#define MAX_FILES	16
+
 /**
  * Task structure (aka Process Control Block).
  * There is one of these for each OS-managed thread of execution in the
@@ -154,6 +200,7 @@ struct task_struct {
 	int                     exit_status;     /* Reason the task exited */
 
 	struct arch_task	arch;            /* arch specific task info */
+	struct kfs_file *	files[ MAX_FILES ];
 };
 
 union task_union {

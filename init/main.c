@@ -19,6 +19,7 @@
 #include <lwk/timer.h>
 #include <lwk/kgdb.h>
 #include <lwk/driver.h>
+#include <lwk/kfs.h>
 #ifdef CONFIG_PALACIOS
 #include <arch/palacios.h>
 #endif
@@ -106,6 +107,8 @@ start_kernel()
  	 */
 	timer_subsys_init();
 
+	/* Start the kernel filesystems */
+	kfs_init();
 
 	/*
 	 * Bring up any network devices.

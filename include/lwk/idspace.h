@@ -12,6 +12,7 @@ struct idspace;
 
 /**
  * Numeric identifier type.
+ * Guaranteed to be able to contain a pointer.
  */
 typedef unsigned int id_t;
 

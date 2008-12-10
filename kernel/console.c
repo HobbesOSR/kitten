@@ -48,7 +48,6 @@ void console_write(const char *str)
 }
 
 
-
 /**
  * Initializes the console subsystem; called once at boot.
  */
@@ -57,4 +56,3 @@ console_init(void)
 {
 	driver_init_list( "console", console_str );
 }
-

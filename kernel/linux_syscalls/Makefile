@@ -1,7 +1,6 @@
 obj-y := \
 	uname.o \
 	brk.o \
-	write.o \
 	getuid.o \
 	getgid.o \
 	fstat.o \
