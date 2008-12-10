@@ -332,14 +332,23 @@ kthread_trampoline(
 	task_exit(0);
 }
 
-id_t
+struct task_struct *
 kthread_create(
 	void		(*entry_point)(void *arg),
 	void *		arg,
-	const char *	name
+	const char *	fmt,
+	...
 )
 {
+	char name[16];
+	va_list ap;
 	id_t id;
+
+	va_start(ap, fmt);
+	vsnprintf(name, sizeof(name)-1, fmt, ap);
+	name[sizeof(name)-1] = '\0';
+	va_end(ap);
+
 	start_state_t state = {
 		.aspace_id	= KERNEL_ASPACE_ID,
 		.entry_point	= (vaddr_t) kthread_trampoline,
@@ -349,7 +358,7 @@ kthread_create(
 	};
 
 	if (task_create(ANY_ID, name, &state, &id) != 0)
-		return ERROR_ID;
+		return NULL;
 
-	return id;
+	return task_lookup(id);
 }
