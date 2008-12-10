@@ -192,6 +192,7 @@ start_thread(id_t cpu)
 		.stack_ptr	= stack_ptr + THREAD_STACK_SIZE,
 		.cpu_id		= cpu,
 		.cpumask	= &cpumask,
+		.flags		= CLONE_FS | CLONE_FILES | CLONE_VM,
 		.args		= {
 			0xDECAFBAD,
 			0xBADBABE,
