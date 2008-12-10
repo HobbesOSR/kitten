@@ -77,7 +77,7 @@ kickstart_new_task:
 	movl %eax, %gs
 1:
 	movq     (%rsp), %r15       /* Unpack the pt_regs struct that         */
-	movq  1*8(%rsp), %r14       /* __arch_context_switch() put at the top */
+	movq  1*8(%rsp), %r14       /* arch_task_create() put at the top      */
 	movq  2*8(%rsp), %r13       /* of the new task's kernel stack.        */
 	movq  3*8(%rsp), %r12
 	movq  4*8(%rsp), %rbp

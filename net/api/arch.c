@@ -6,6 +6,7 @@
 #include <lwk/task.h>
 #include <lwk/aspace.h>
 #include <lwk/sched.h>
+#include <lwk/string.h>
 #include <lwip/sys.h>
 
 
@@ -303,57 +304,19 @@ sys_arch_timeouts( void )
 }
 
 
-void (*kthread_entry)( void * arg );
-void * kthread_arg;
-
-static void
-kthread_trampoline( void )
-{
-	int i;
-	printk( "%s: new thread is running.  But where is my stack? %p\n", __func__, &i );
-
-	kthread_entry( kthread_arg );
-
-	printk( "%s: thread exited\n", __func__ );
-	task_exit( 0 );
-}
 
 
 /* Threads */
 sys_thread_t
 sys_thread_new(
 	char *			name,
-	void 			(*thread)( void * arg ),
+	void 			(*entry_point)( void * arg ),
 	void *			arg,
 	int			stacksize,
 	int			prio
 )
 {
-	if( stacksize <= 0 )
-		stacksize = 8192;
-
-	uint8_t * stack = kmem_alloc( stacksize );
-	printk( "%s: %s entry %p arg %p stack %d => %p\n",
-		__func__,
-		name,
-		thread,
-		arg,
-		stacksize,
-		stack
-	);
-
-	kthread_entry = thread;
-	kthread_arg = arg;
-
-	start_state_t	state = {
-		.entry_point		= (vaddr_t) kthread_trampoline,
-		.stack_ptr		= (vaddr_t) stack + stacksize,
-		.aspace_id		= KERNEL_ASPACE_ID,
-	};
-
-	id_t id;
-	task_create( ANY_ID, name, &state, &id );
-
-	printk( "%s: New thread is id %d\n", __func__, id );
-	return 0;
+	char thread_name[16];
+	snprintf(thread_name, sizeof(thread_name)-1, "ip:%s", name);
+	return kthread_create(entry_point, arg, thread_name);
 }

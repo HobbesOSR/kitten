@@ -4,6 +4,7 @@
 #include <lwk/aspace.h>
 #include <lwk/task.h>
 #include <lwk/sched.h>
+#include <lwk/smp.h>
 #include <arch/uaccess.h>
 
 /**
@@ -313,3 +314,34 @@ task_lookup(id_t id)
         return t;
 }
 
+static void
+kthread_trampoline(
+	void		(*entry_point)(void *arg),
+	void *		arg
+)
+{
+	entry_point(arg);
+	task_exit(0);
+}
+
+id_t
+kthread_create(
+	void		(*entry_point)(void *arg),
+	void *		arg,
+	const char *	name
+)
+{
+	id_t id;
+	start_state_t state = {
+		.aspace_id	= KERNEL_ASPACE_ID,
+		.entry_point	= (vaddr_t) kthread_trampoline,
+		.arg[0]		= (uintptr_t) entry_point,
+		.arg[1]		= (uintptr_t) arg,
+		.cpu_id		= this_cpu,
+	};
+
+	if (task_create(ANY_ID, name, &state, &id) != 0)
+		return ERROR_ID;
+
+	return id;
+}

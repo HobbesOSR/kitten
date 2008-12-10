@@ -55,8 +55,9 @@ typedef struct {
 	uid_t                  uid;
 	uid_t                  gid;
 	id_t                   aspace_id;
+	vaddr_t                stack_ptr;   //!< Ignored for kernel tasks
 	vaddr_t                entry_point;
-	vaddr_t                stack_ptr;
+	uintptr_t              arg[4];      //!< Args to pass to entry_point()
 	id_t                   cpu_id;
 	const user_cpumask_t * cpumask;
 } start_state_t;
@@ -241,6 +242,18 @@ extern int __task_create(id_t id, const char *name,
                          struct task_struct **task);
 
 extern struct task_struct *task_lookup(id_t id);
+
+/** Convenience function for creating a kernel thread.
+ *
+ * The kernel thread is created on the same CPU as the caller.
+ * \returns The task ID of the new kernel thread.
+ */
+extern id_t
+kthread_create(
+	void		(*entry_point)(void *arg),
+	void *		arg,
+	const char *	name
+);
 
 #endif
 #endif
