@@ -316,7 +316,7 @@ sys_thread_new(
 	int			prio
 )
 {
-	char thread_name[16];
-	snprintf(thread_name, sizeof(thread_name)-1, "ip:%s", name);
-	return kthread_create(entry_point, arg, thread_name);
+	struct task_struct *kthread =
+		kthread_create(entry_point, arg, "ip:%s", name);
+	return (kthread) ? kthread->id : ERROR_ID;
 }

@@ -248,11 +248,12 @@ extern struct task_struct *task_lookup(id_t id);
  * The kernel thread is created on the same CPU as the caller.
  * \returns The task ID of the new kernel thread.
  */
-extern id_t
+extern struct task_struct *
 kthread_create(
 	void		(*entry_point)(void *arg),
 	void *		arg,
-	const char *	name
+	const char *	fmt,
+	...
 );
 
 #endif
