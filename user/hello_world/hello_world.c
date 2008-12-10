@@ -193,12 +193,6 @@ start_thread(id_t cpu)
 		.cpu_id		= cpu,
 		.cpumask	= &cpumask,
 		.flags		= CLONE_FS | CLONE_FILES | CLONE_VM,
-		.args		= {
-			0xDECAFBAD,
-			0xBADBABE,
-			0xF00DFEED,
-			0xC0FFEE,
-		},
 	};
 
 	sprintf(thread_name, "cpu%u-task", cpu);
