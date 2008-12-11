@@ -11,3 +11,5 @@ lib-y := \
 	sort.o \
 	extable.o \
 	ctype.o \
+	idspace.o \
+	htable.o \
