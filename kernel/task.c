@@ -324,17 +324,17 @@ task_lookup(id_t id)
 
 static void
 kthread_trampoline(
-	void		(*entry_point)(void *arg),
+	int		(*entry_point)(void *arg),
 	void *		arg
 )
 {
-	entry_point(arg);
-	task_exit(0);
+	int status = entry_point(arg);
+	task_exit(status);
 }
 
 struct task_struct *
 kthread_create(
-	void		(*entry_point)(void *arg),
+	int		(*entry_point)(void *arg),
 	void *		arg,
 	const char *	fmt,
 	...
