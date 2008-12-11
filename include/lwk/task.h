@@ -250,7 +250,7 @@ extern struct task_struct *task_lookup(id_t id);
  */
 extern struct task_struct *
 kthread_create(
-	void		(*entry_point)(void *arg),
+	int		(*entry_point)(void *arg),
 	void *		arg,
 	const char *	fmt,
 	...

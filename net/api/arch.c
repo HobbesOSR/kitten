@@ -310,7 +310,7 @@ sys_arch_timeouts( void )
 sys_thread_t
 sys_thread_new(
 	char *			name,
-	void 			(*entry_point)( void * arg ),
+	int 			(*entry_point)( void * arg ),
 	void *			arg,
 	int			stacksize,
 	int			prio

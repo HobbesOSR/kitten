@@ -109,7 +109,7 @@ void sys_mbox_free(sys_mbox_t mbox);
 void sys_mbox_fetch(sys_mbox_t mbox, void **msg);
 
 /* Thread functions. */
-sys_thread_t sys_thread_new(char *name, void (* thread)(void *arg), void *arg, int stacksize, int prio);
+sys_thread_t sys_thread_new(char *name, int (* thread)(void *arg), void *arg, int stacksize, int prio);
 
 /* The following functions are used only in Unix code, and
    can be omitted when porting the stack. */
