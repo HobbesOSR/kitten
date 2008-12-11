@@ -170,7 +170,9 @@ kmem_alloc(size_t size)
  *       kmem_alloc().
  */
 void
-kmem_free(void *addr)
+kmem_free(
+	const void *		addr
+)
 {
 	struct kmem_block_hdr *hdr;
 
