@@ -10,6 +10,7 @@
 
 #include <lwk/print.h>
 #include <lwk/kmem.h>
+#include <lwk/waitq.h>
 #include <arch/bug.h>
 
 // LWK always zeros memory
@@ -19,6 +20,13 @@
 
 #define GFP_KERNEL 0
 #define EXPORT_SYMBOL(x)
+
+// Map Linux rwsemaphores to Kitten's rwlocks
+#define init_rwsem rwlock_init
+
+// Map Linux waitqueue to Kitten waitq
+typedef waitq_t			wait_queue_head_t;
+#define init_waitqueue_head	waitq_init
 
 
 #if 1 //def DEBUG

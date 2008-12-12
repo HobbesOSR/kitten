@@ -129,8 +129,7 @@ void kobject_init(struct kobject * kobj)
 {
 	kref_init(&kobj->kref);
 	INIT_LIST_HEAD(&kobj->entry);
-	//init_waitqueue_head(&kobj->poll);
-	waitq_init( &kobj->poll );
+	init_waitqueue_head(&kobj->poll);
 	kobj->kset = kset_get(kobj->kset);
 }
 
@@ -514,8 +513,7 @@ struct kobject * kset_find_obj(struct kset * kset, const char * name)
 
 void subsystem_init(struct subsystem * s)
 {
-	//init_rwsem(&s->rwsem);
-	rwlock_init( &s->rwsem );
+	init_rwsem(&s->rwsem);
 	kset_init(&s->kset);
 }
 

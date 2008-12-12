@@ -58,7 +58,7 @@ struct kobject {
 	struct kset		* kset;
 	struct kobj_type	* ktype;
 	struct dentry		* dentry;
-	waitq_t			poll;
+	wait_queue_head_t	poll;
 };
 
 extern int kobject_set_name(struct kobject *, const char *, ...)
@@ -169,7 +169,7 @@ extern struct kobject * kset_find_obj(struct kset *, const char *);
 
 struct subsystem {
 	struct kset		kset;
-	rwlock_t		rwsem;
+	struct rw_semaphore	rwsem;
 };
 
 #define decl_subsys(_name,_type,_uevent_ops) \
