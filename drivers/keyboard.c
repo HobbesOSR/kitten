@@ -9,6 +9,7 @@
  */
 #include <lwk/driver.h>
 #include <lwk/signal.h>
+#include <lwk/interrupt.h>
 #include <arch/proto.h>
 #include <arch/io.h>
 #include <arch/idt_vectors.h>
@@ -20,10 +21,10 @@
 /**
  * Handle a keyboard interrupt.
  */
-static void
+static irqreturn_t
 do_keyboard_interrupt(
-	struct pt_regs *	regs,
-	unsigned int		vector
+	unsigned int		vector,
+	void *			unused
 )
 {
 	const uint8_t KB_STATUS_PORT = 0x64;
@@ -33,7 +34,7 @@ do_keyboard_interrupt(
 	uint8_t status = inb(KB_STATUS_PORT);
 
 	if ((status & KB_OUTPUT_FULL) == 0)
-		return;
+		return IRQ_NONE;
 
 	uint8_t key = inb(KB_DATA_PORT);
 #ifdef CONFIG_PALACIOS
@@ -41,6 +42,7 @@ do_keyboard_interrupt(
 #else
 	printk("Keyboard Interrupt: status=%u, key=%u\n", status, key);
 #endif
+	return IRQ_HANDLED;
 }
 
 
@@ -50,7 +52,13 @@ do_keyboard_interrupt(
 void
 keyboard_init( void )
 {
-	set_idtvec_handler( IRQ1_VECTOR, &do_keyboard_interrupt );
+	irq_request(
+		IRQ1_VECTOR,
+		&do_keyboard_interrupt,
+		0,
+		"keyboard",
+		NULL
+	);
 }
 
 

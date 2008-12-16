@@ -20,16 +20,30 @@ typedef irqreturn_t (*irq_handler_t)(unsigned int irq, void *dev_id);
 
 /**
  * Registers an interrupt handler.
+ *
+ * Linux compatible interface.
  */
-extern int request_irq(unsigned int	irq,
-                       irq_handler_t	handler,
-                       unsigned long	irqflags,
-                       const char 	*devname,
-                       void 		*dev_id);
+extern int
+irq_request(
+	unsigned int		irq,
+	irq_handler_t		handler,
+	unsigned long		irqflags,
+	const char *		devname,
+	void  *			dev_id
+);
 
 /**
  * Unregisters an interrupt handler.
  */
-extern void free_irq(unsigned int irq, void *dev_id);
+extern void
+irq_free(
+	unsigned int		irq,
+	void *			dev_id
+);
+
+
+extern void
+irq_init( void );
+
 
 #endif

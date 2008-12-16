@@ -110,10 +110,10 @@ seastar_hw_init(
 
 
 /* Hardware interrupt handler */
-extern void
+extern int
 seastar_interrupt(
-	struct pt_regs *	regs,
-	unsigned		vector
+	unsigned		vector,
+	void *			priv
 );
 
 

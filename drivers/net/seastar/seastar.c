@@ -12,8 +12,8 @@
 #include <lwk/driver.h>
 #include <lwk/signal.h>
 #include <lwk/netdev.h>
+#include <lwk/interrupt.h>
 #include <arch/page.h>
-#include <arch/proto.h>
 #include <lwip/netif.h>
 #include <lwip/inet.h>
 #include <lwip/ip.h>
@@ -275,10 +275,10 @@ seastar_tx_end(
  *
  * Process all events on the eq.
  */
-void
+int
 seastar_interrupt(
-	struct pt_regs *	regs,
-	unsigned int		vector
+	unsigned int		vector,
+	void *			priv
 )
 {
 	//printk( "***** %s: We get signal!\n", __func__ );
@@ -324,6 +324,10 @@ seastar_interrupt(
 	}
 
 	//printk( "%s: processed %d events\n", __func__, ev_count );
+
+	// If we didn't have any events, the interrupt
+	//  might have been for someone else.
+	return ev_count ? IRQ_HANDLED : IRQ_NONE;
 }
 
 

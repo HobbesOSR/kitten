@@ -15,6 +15,7 @@
 #include <lwk/bootmem.h>
 #include <lwk/aspace.h>
 #include <lwk/task.h>
+#include <lwk/interrupt.h>
 #include <lwk/sched.h>
 #include <lwk/timer.h>
 #include <lwk/kgdb.h>
@@ -69,9 +70,14 @@ start_kernel()
 	sort_exception_table();
 	/*
 	 * Do architecture specific initialization.
-	 * This detects memory, CPUs, etc.
+	 * This detects memory, CPUs, architecture dependent irqs, etc.
 	 */
 	setup_arch();
+
+	/*
+	 * Setup the architecture independent interrupt handling.
+	 */
+	irq_init();
 
 	/*
 	 * Initialize the kernel memory subsystem. Up until now, the simple

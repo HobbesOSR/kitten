@@ -11,6 +11,7 @@
 
 #include <lwk/driver.h>
 #include <lwk/netdev.h>
+#include <lwk/interrupt.h>
 #include <lwip/netif.h>
 #include <lwip/inet.h>
 #include <lwip/ip.h>
@@ -206,7 +207,13 @@ static void rtl8139_clear_irq(uint32_t interrupts) {
   outw(interrupts, RTL8139_ISR);
 }
 
-void rtl8139_interrupt(struct pt_regs * regs, unsigned int vector ) {
+
+static irqreturn_t
+rtl8139_interrupt(
+	unsigned int		vector,
+	void *			priv
+)
+{
   uint32_t status = inw(RTL8139_ISR);
   
   if (rtl8139_debug) {
@@ -227,8 +234,7 @@ void rtl8139_interrupt(struct pt_regs * regs, unsigned int vector ) {
     printk("Packet present in RX buffer\n");
   }
 
-  return;
-
+  return IRQ_HANDLED;
 }
 
 
@@ -359,7 +365,13 @@ static err_t rtl8139_net_init(struct netif * const netif) {
 void rtl8139_init( void ) {
   rtl8139_hw_init();
 
-  set_idtvec_handler(RTL8139_IDTVEC, &rtl8139_interrupt );
+	irq_request(
+		RTL8139_IDTVEC,
+		&rtl8139_interrupt,
+		0,
+		"rtl8139",
+		NULL
+	);
   
 
 
