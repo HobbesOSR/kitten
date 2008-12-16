@@ -4,6 +4,7 @@
 #include <lwk/driver.h>
 #include <lwk/signal.h>
 #include <lwk/netdev.h>
+#include <lwk/interrupt.h>
 #include <arch/page.h>
 #include <arch/proto.h>
 #include "niccb.h"
@@ -251,7 +252,13 @@ seastar_hw_init(
 	if( result != 0 )
 		panic( "%s: mark_alive returned %d\n", __func__, result );
 
-	set_idtvec_handler( 0xEE, &seastar_interrupt );
+	request_irq(
+		0xEE,
+		&seastar_interrupt,
+		0,
+		"seastar",
+		NULL
+	);
 
 	return 0;
 }

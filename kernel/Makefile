@@ -21,6 +21,7 @@ obj-y := \
 	init_task.o \
 	netdev.o \
 	kfs.o \
+	interrupt.o \
 
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
