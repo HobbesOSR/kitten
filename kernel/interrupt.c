@@ -64,7 +64,7 @@ chain_irq(
 
 
 int
-request_irq(
+irq_request(
 	unsigned int		irq,
 	irq_handler_t		handler,
 	unsigned long		irqflags,
@@ -100,7 +100,7 @@ request_irq(
 
 
 void
-free_irq(
+irq_free(
 	unsigned int		irq,
 	void *			dev_id
 )

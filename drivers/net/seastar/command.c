@@ -252,7 +252,7 @@ seastar_hw_init(
 	if( result != 0 )
 		panic( "%s: mark_alive returned %d\n", __func__, result );
 
-	request_irq(
+	irq_request(
 		0xEE,
 		&seastar_interrupt,
 		0,

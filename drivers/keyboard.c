@@ -52,7 +52,7 @@ do_keyboard_interrupt(
 void
 keyboard_init( void )
 {
-	request_irq(
+	irq_request(
 		IRQ1_VECTOR,
 		&do_keyboard_interrupt,
 		0,

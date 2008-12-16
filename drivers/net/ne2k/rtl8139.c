@@ -365,7 +365,7 @@ static err_t rtl8139_net_init(struct netif * const netif) {
 void rtl8139_init( void ) {
   rtl8139_hw_init();
 
-	request_irq(
+	irq_request(
 		RTL8139_IDTVEC,
 		&rtl8139_interrupt,
 		0,

@@ -24,7 +24,7 @@ typedef irqreturn_t (*irq_handler_t)(unsigned int irq, void *dev_id);
  * Linux compatible interface.
  */
 extern int
-request_irq(
+irq_request(
 	unsigned int		irq,
 	irq_handler_t		handler,
 	unsigned long		irqflags,
@@ -36,7 +36,7 @@ request_irq(
  * Unregisters an interrupt handler.
  */
 extern void
-free_irq(
+irq_free(
 	unsigned int		irq,
 	void *			dev_id
 );
