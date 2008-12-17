@@ -81,7 +81,7 @@ irq_request(
 	if( !entry )
 		return -1;
 
-	*entry = (struct irq_list){
+	*entry = (typeof(*entry)){
 		.link		= LIST_HEAD_INIT( entry->link ),
 		.handler	= handler,
 		.irqflags	= irqflags,
