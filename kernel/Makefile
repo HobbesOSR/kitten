@@ -13,8 +13,6 @@ obj-y := \
 	elf.o \
 	time.o \
 	xcall.o \
-	idspace.o \
-	htable.o \
 	elf_liblwk.o \
 	task.o \
 	sched.o \
