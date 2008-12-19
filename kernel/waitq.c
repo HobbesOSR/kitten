@@ -54,8 +54,7 @@ waitq_remove_entry(waitq_t *waitq, waitq_entry_t *entry)
 	unsigned long irqstate;
 
 	spin_lock_irqsave(&waitq->lock, irqstate);
-	BUG_ON(list_empty(&entry->link));
-	list_del_init(&entry->link);
+	waitq_remove_entry_locked( waitq, entry );
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
 
