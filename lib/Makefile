@@ -14,3 +14,4 @@ lib-y := \
 	idspace.o \
 	htable.o \
 	mutex.o \
+	semaphore.o \
