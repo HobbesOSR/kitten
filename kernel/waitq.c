@@ -40,6 +40,14 @@ waitq_add_entry(waitq_t *waitq, waitq_entry_t *entry)
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
 
+
+void
+waitq_add_entry_locked(waitq_t *waitq, waitq_entry_t *entry)
+{
+	list_add(&entry->link, &waitq->waitq);
+}
+
+
 void
 waitq_remove_entry(waitq_t *waitq, waitq_entry_t *entry)
 {
@@ -50,6 +58,16 @@ waitq_remove_entry(waitq_t *waitq, waitq_entry_t *entry)
 	list_del_init(&entry->link);
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
+
+
+void
+waitq_remove_entry_locked(waitq_t *waitq, waitq_entry_t *entry)
+{
+	BUG_ON(list_empty(&entry->link));
+	list_del_init(&entry->link);
+}
+
+
 
 void
 waitq_prepare_to_wait(waitq_t *waitq, waitq_entry_t *entry, taskstate_t state)
@@ -87,3 +105,30 @@ waitq_wakeup(waitq_t *waitq)
 	}
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
+
+
+void
+waitq_wakeone( waitq_t * waitq )
+{
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&waitq->lock, irqstate);
+	waitq_wakeone_locked( waitq );
+	spin_unlock_irqrestore(&waitq->lock, irqstate);
+}
+
+
+void
+waitq_wakeone_locked( waitq_t * waitq )
+{
+	struct list_head * list = &waitq->waitq;
+	if( list_empty( list ) )
+		return;
+
+	waitq_entry_t *entry = list_entry( &list->next, waitq_entry_t, link);
+	sched_wakeup_task(
+		entry->task,
+		(TASKSTATE_UNINTERRUPTIBLE | TASKSTATE_INTERRUPTIBLE)
+	);
+}
+
