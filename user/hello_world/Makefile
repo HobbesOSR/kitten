@@ -6,6 +6,6 @@ OBJS-y += hello_world.o
 INCLUDES += -I../liblwk/include -I../../include
 
 $(TARGET): $(OBJS-y) ../liblwk/liblwk.a
-	$(call buildprog,$@,$(OBJS-y) ../liblwk/liblwk.a)
+	$(call buildprog,$@,$(OBJS-y) ../liblwk/liblwk.a -lpthread)
 
 include ../Make.rules

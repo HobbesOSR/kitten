@@ -2,18 +2,38 @@
 #include <lwk/aspace.h>
 #include <lwk/task.h>
 #include <arch/ptrace.h>
+#include <arch/prctl.h>
+#include <arch/unistd.h>
 
 int
-arch_task_create(struct task_struct *task,
-                 const start_state_t *start_state)
+arch_task_create(
+	struct task_struct *	task,
+	const start_state_t *	start_state,
+	const struct pt_regs *	parent_regs
+)
 {
+	/* Assume we entered via clone() syscall if parent_regs passed in */
+	bool is_clone = (parent_regs != NULL);
+
 	/*
 	 * Put a pt_regs structure at the top of the new task's kernel stack.
 	 * This is used by the CPU control unit and arch_context_switch()
-	 * to setup the new task's register state. It is initialized below.
+	 * to setup the new task's register state. 
  	 */
 	struct pt_regs *regs =
 		((struct pt_regs *)((kaddr_t)task + TASK_SIZE)) - 1;
+
+	/* Initialize GPRs */
+	if (is_clone) {
+		*regs = *parent_regs;
+		regs->rax = 0;  /* set child's clone() return value to 0 */
+	} else {
+		/* Pass C-style arguments to new task */
+		regs->rdi = start_state->arg[0];
+		regs->rsi = start_state->arg[1];
+		regs->rdx = start_state->arg[2];
+		regs->rcx = start_state->arg[3];
+	}
 
 	task->arch.thread.rsp0    = (kaddr_t)(regs + 1);    /* kstack top */
 	task->arch.thread.rsp     = (kaddr_t)regs;          /* kstack ptr */
@@ -29,6 +49,10 @@ arch_task_create(struct task_struct *task,
 	task->arch.thread.i387.fxsave.cwd = 0x37f;
 	task->arch.thread.i387.fxsave.mxcsr = 0x1f80;
 
+	/* If this is a clone, initialize new task's thread local storage */
+	if (is_clone)
+		do_arch_prctl(task, ARCH_SET_FS, parent_regs->r8);
+
 	/* Initialize register state */
 	if (start_state->aspace_id == KERNEL_ASPACE_ID) {
 		regs->ss     = __KERNEL_DS;
@@ -40,11 +64,7 @@ arch_task_create(struct task_struct *task,
 		regs->cs     = __USER_CS;
 	}
 	regs->eflags = (1 << 9);  /* enable interrupts */
-	regs->rip    = start_state->entry_point;
-	regs->rdi    = start_state->arg[0];
-	regs->rsi    = start_state->arg[1];
-	regs->rdx    = start_state->arg[2];
-	regs->rcx    = start_state->arg[3];
+	regs->rip    = is_clone ? parent_regs->rip : start_state->entry_point;
 
 	return 0;
 }
