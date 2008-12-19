@@ -13,3 +13,4 @@ lib-y := \
 	ctype.o \
 	idspace.o \
 	htable.o \
+	mutex.o \
