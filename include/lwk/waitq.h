@@ -16,7 +16,9 @@ typedef struct waitq_entry {
 } waitq_entry_t;
 
 #define DECLARE_WAITQ(name)                             \
-	waitq_t name = {                                \
+	waitq_t name = __WAITQ_INITIALIZER(name);
+
+#define __WAITQ_INITIALIZER(name) {			\
 	    .lock  = SPIN_LOCK_UNLOCKED,                \
 	    .waitq = { &(name).waitq, &(name).waitq }   \
 	}
@@ -36,8 +38,8 @@ extern void waitq_prepare_to_wait(waitq_t *waitq, waitq_entry_t *entry,
                                   taskstate_t state);
 extern void waitq_finish_wait(waitq_t *waitq, waitq_entry_t *entry);
 extern void waitq_wakeup(waitq_t *waitq);
-extern void waitq_wakeone(waitq_t *waitq);
-extern void waitq_wakeone_locked(waitq_t *waitq);
+extern int waitq_wake_nr(waitq_t *waitq, int nr);
+extern int waitq_wake_nr_locked(waitq_t *waitq, int nr);
 extern void waitq_remove_entry(waitq_t *waitq, waitq_entry_t *entry);
 extern void waitq_remove_entry_locked(waitq_t *waitq, waitq_entry_t *entry);
 
