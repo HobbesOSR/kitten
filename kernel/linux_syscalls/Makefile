@@ -13,4 +13,6 @@ obj-y := \
 	time.o \
 	rt_sigprocmask.o \
 	rt_sigaction.o \
+	mprotect.o \
+	clone.o \
 

@@ -70,11 +70,6 @@ kickstart_new_task:
 	testl $3, CS(%rsp)          /* Sets ZF=1 if returning to kernel-space */
 	je 1f                       /*     If ZF=1, leave kernel PDA in place */
 	swapgs                      /* Install the user PDA                   */
-	movq $0, %rax               /* Zero all of the segment registers      */
-	movl %eax, %ds
-	movl %eax, %es
-	movl %eax, %fs
-	movl %eax, %gs
 1:
 	movq     (%rsp), %r15       /* Unpack the pt_regs struct that         */
 	movq  1*8(%rsp), %r14       /* arch_task_create() put at the top      */
@@ -199,6 +194,40 @@ ENTRY(asm_syscall)
 	swapgs				/* Restore user-space GS.base        */
 	sysretq				/* Return to user-space              */
 END(asm_syscall)
+
+
+/**
+ * This is the initial handler for clone() system calls. It backs up the
+ * registers that haven't already been saved by asm_syscall() and then
+ * passes a pointer to the complete 'struct pt_regs' to sys_clone().
+ */
+ENTRY(asm_sys_clone)
+	popq %r11			/* Pop return address off stack      */
+
+	subq $6*8, %rsp			/* Make room for rest of user regs   */
+	movq %rbx, 5*8(%rsp)		/* Save user-space RBX               */
+	movq %rbp, 4*8(%rsp)		/* Save user-space RBP               */
+	movq %r12, 3*8(%rsp)		/* Save user-space R12               */
+	movq %r13, 2*8(%rsp)		/* Save user-space R13               */
+	movq %r14, 1*8(%rsp)		/* Save user-space R14               */
+	movq %r15,    (%rsp)		/* Save user-space R15               */
+
+	movq %r11, %r15			/* Stash retaddr in callee saved reg */
+	movq %rsp, %r8			/* Pass ptr to pt_regs in R8 (ARG4)  */
+	call sys_clone			/* Call sys_clone()                  */
+	movq %r15, %r11			/* Unstash asm_syscall return addr   */
+
+	movq    (%rsp), %r15		/* Restore user-space R15            */
+	movq 1*8(%rsp), %r14		/* Restore user-space R14            */
+	movq 2*8(%rsp), %r13		/* Restore user-space R13            */
+	movq 3*8(%rsp), %r12		/* Restore user-space R12            */
+	movq 4*8(%rsp), %rbp		/* Restore user-space RBP            */
+	movq 5*8(%rsp), %rbx		/* Restore user-space RBX            */
+	addq $6*8, %rsp			/* Restore RSP asm_syscall expects   */
+
+	pushq %r11			/* Push return address onto stack    */
+	ret				/* Return to asm_syscall             */
+END(asm_sys_clone)
 
 
 /**

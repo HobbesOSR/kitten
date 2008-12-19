@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <sched.h>
+#include <pthread.h>
 #include <lwk/liblwk.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -138,65 +139,19 @@ aspace_api_test(void)
 	return 0;
 }
 
-static void
-hello_world_thread(void)
+static void *
+hello_world_thread(void *arg)
 {
-	/*
- 	 * Note: Thread local storage is not working yet in threads so
-	 *       printf() and anything else that uses TLS won't work.
-	 */
-	const char *meow = "   Meow!\n";
-	int i, rc;
-	for (i = 0 ; i < 100 ; i++) {
-		sleep(5);
-		rc = write(1, meow, strlen(meow));
-		if (rc != strlen(meow))
-			break;
-	}
+	int i;
 
-	const char *bye_message = "   That's all, folks!\n";
-	rc = write(1, bye_message, strlen(bye_message));
-	if (rc != strlen(bye_message))
-		return;
+	for (i = 0; i < 100; i++) {
+		sleep(5);
+		printf("   Meow!\n");
+	}
+	printf("   That's all, folks!\n");
 
 	while(1)
 		sched_yield();
-}
-
-#define THREAD_STACK_SIZE 4096
-
-static int 
-start_thread(id_t cpu)
-{
-	int status;
-	start_state_t start_state;
-	id_t aspace_id;
-	vaddr_t stack_ptr;
-	user_cpumask_t cpumask;
-	char thread_name[32];
-
-	aspace_get_myid(&aspace_id);
-	stack_ptr = (vaddr_t)malloc(THREAD_STACK_SIZE);
-	cpus_clear(cpumask);
-	cpu_set(cpu, cpumask);
-
-	start_state.uid         = 0;
-	start_state.gid         = 0;
-	start_state.aspace_id   = aspace_id;
-	start_state.entry_point = (vaddr_t)&hello_world_thread;
-	start_state.stack_ptr   = stack_ptr + THREAD_STACK_SIZE;
-	start_state.cpu_id	= cpu;
-	start_state.cpumask	= &cpumask;
-
-	sprintf(thread_name, "cpu%u-task", cpu);
-	
-	status = task_create(ANY_ID, thread_name, &start_state, NULL);
-	if (status) {
-		printf("ERROR: failed to create thread (status=%d).\n", status);
-		return -1;
-	}
-
-	return 0;
 }
 
 static int 
@@ -206,6 +161,7 @@ task_api_test(void)
 	unsigned i;
 	id_t my_id, my_cpu;
 	user_cpumask_t my_cpumask;
+	pthread_t tid;
 
 	printf("\nTEST BEGIN: Task Management\n");
 
@@ -240,7 +196,7 @@ task_api_test(void)
 	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
 		if (cpu_isset(i, my_cpumask)) {
 			printf("%d ", i);
-			start_thread(i);
+			pthread_create(&tid, NULL, &hello_world_thread, NULL);
 		}
 	}
 	printf("\n");

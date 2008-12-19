@@ -33,7 +33,7 @@ __SYSCALL(__NR_lseek, syscall_not_implemented)
 #define __NR_mmap                                9
 __SYSCALL(__NR_mmap, sys_mmap)
 #define __NR_mprotect                           10
-__SYSCALL(__NR_mprotect, syscall_not_implemented)
+__SYSCALL(__NR_mprotect, sys_mprotect)
 #define __NR_munmap                             11
 __SYSCALL(__NR_munmap, syscall_not_implemented)
 #define __NR_brk                                12
@@ -131,7 +131,7 @@ __SYSCALL(__NR_setsockopt, syscall_not_implemented)
 __SYSCALL(__NR_getsockopt, syscall_not_implemented)
 
 #define __NR_clone                              56
-__SYSCALL(__NR_clone, syscall_not_implemented)
+__SYSCALL(__NR_clone, asm_sys_clone)
 #define __NR_fork                               57
 __SYSCALL(__NR_fork, syscall_not_implemented)
 #define __NR_vfork                              58
