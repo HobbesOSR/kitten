@@ -11,12 +11,6 @@
 #ifndef _ASM_MUTEX_H
 #define _ASM_MUTEX_H
 
-#define LOCK_PREFIX \
-                ".section .smp_locks,\"a\"\n"   \
-                ".balign 8\n"                 \
-                ".quad 661f\n" /* address */ \
-                ".previous\n"                   \
-                "661:\n\tlock; "
 /**
  * __mutex_fastpath_lock - decrement and call function if negative
  * @v: pointer of type atomic_t

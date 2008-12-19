@@ -423,5 +423,12 @@ __asm__ __volatile__("lock ; orl %0,%1" \
 #define smp_mb__before_atomic_inc()	barrier()
 #define smp_mb__after_atomic_inc()	barrier()
 
+#define LOCK_PREFIX \
+                ".section .smp_locks,\"a\"\n"   \
+                ".balign 8\n"                 \
+                ".quad 661f\n" /* address */ \
+                ".previous\n"                   \
+                "661:\n\tlock; "
+
 #include <arch-generic/atomic.h>
 #endif
