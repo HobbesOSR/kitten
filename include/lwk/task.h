@@ -35,12 +35,10 @@
 #define TASKSTATE_UNINTERRUPTIBLE      (1 << 1)
 #define TASKSTATE_INTERRUPTIBLE        (1 << 2)
 #define TASKSTATE_EXIT_ZOMBIE          (1 << 3)
-#define TASKSTATE_KILLABLE             (1 << 4)
 #define TASKSTATE_NORMAL	 	\
 	( TASKSTATE_READY		\
 	| TASKSTATE_UNINTERRUPTIBLE	\
 	| TASKSTATE_INTERRUPTIBLE	\
-	| TASKSTATE_KILLABLE		\
 	)
 
 typedef unsigned int taskstate_t;

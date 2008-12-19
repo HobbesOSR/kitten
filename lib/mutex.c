@@ -151,7 +151,7 @@ __mutex_lock_common(struct mutex *lock, long state)
 		 * got a signal? (This code gets eliminated in the
 		 * TASK_UNINTERRUPTIBLE case.)
 		 */
-#ifdef __lwk__
+#if 0
 		if (unlikely((state == TASKSTATE_INTERRUPTIBLE &&
 					signal_pending(task)) ||
 			      (state == TASKSTATE_KILLABLE &&
@@ -237,9 +237,6 @@ __mutex_unlock_slowpath(atomic_t *lock_count)
  * mutex_lock_interruptible() and mutex_trylock().
  */
 static noinline int
-__mutex_lock_killable_slowpath(atomic_t *lock_count);
-
-static noinline int
 __mutex_lock_interruptible_slowpath(atomic_t *lock_count);
 
 /***
@@ -259,27 +256,12 @@ int mutex_lock_interruptible(struct mutex *lock)
 			(&lock->count, __mutex_lock_interruptible_slowpath);
 }
 
-
-int mutex_lock_killable(struct mutex *lock)
-{
-	return __mutex_fastpath_lock_retval
-			(&lock->count, __mutex_lock_killable_slowpath);
-}
-
 static noinline void
 __mutex_lock_slowpath(atomic_t *lock_count)
 {
 	struct mutex *lock = container_of(lock_count, struct mutex, count);
 
 	__mutex_lock_common(lock, TASKSTATE_UNINTERRUPTIBLE);
-}
-
-static noinline int
-__mutex_lock_killable_slowpath(atomic_t *lock_count)
-{
-	struct mutex *lock = container_of(lock_count, struct mutex, count);
-
-	return __mutex_lock_common(lock, TASKSTATE_KILLABLE);
 }
 
 static noinline int
