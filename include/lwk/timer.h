@@ -1,3 +1,9 @@
+/** \file
+ * One-shot timers.
+ *
+ * Kitten implements one shot timers via an ordered queue of
+ * struct timer entities.
+ */
 #ifndef _LWK_TIMER_H
 #define _LWK_TIMER_H
 
@@ -7,10 +13,14 @@
 /**
  * This structure defines a timer, including when the timer should expire
  * and the callback function to call when it expires. The callback function
- * runs in interrupt context with interrupts disabled.
+ * runs in interrupt context with interrupts disabled.  The list will be
+ * unlocked during the function so that it is safe to call timer_add()
+ * to replace the timer.
+ *
+ * \note The timer_add() function will initialize the link and cpu fields.
  */
 struct timer {
-	struct list_head link;
+	struct list_head link;           /**< Ordered list of callbacks */
 	id_t             cpu;            /**< CPU this timer is installed on */
 	uint64_t         expires;        /**< Time when this timer expires */
 	uintptr_t        data;           /**< arg to pass to function */
@@ -20,16 +30,42 @@ struct timer {
 /** \name Core timer API.
  * @{
  */
-void timer_add(struct timer *timer);
-void timer_del(struct timer *timer);
-uint64_t timer_sleep_until(uint64_t when);
+
+/** Add a timer to the ordered list of timer events.
+ *
+ * \note timer should not be stack allocated unless the timer
+ * structure will remain in scope until expiration of the timer.
+ */
+extern void
+timer_add(struct timer *timer);
+
+
+/** Cancel a pending timer.
+ *
+ * \note If the timer has already been run, this is a nop.
+ */
+extern void
+timer_del(struct timer *timer);
+
+/** Sleep the current thread for a while.
+ *
+ * \returns Time remaining unslept if there is any.
+ */
+extern uint64_t
+timer_sleep_until(
+	uint64_t		when
+);
+
 // @}
 
 /** \name Internal timer-subsystem functions.
  * Normal kernel code and drivers should not call these.
+ * @{
  */
 int timer_subsys_init(void);
 void expire_timers(void);
+
+/** \note unused? */
 void schedule_next_wakeup(void);
 // @}
 

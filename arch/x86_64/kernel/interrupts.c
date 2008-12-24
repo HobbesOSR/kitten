@@ -204,6 +204,7 @@ void
 do_apic_timer(struct pt_regs *regs, unsigned int vector)
 {
 	expire_timers();
+	// should call schedule_next_wakeup?
 }
 
 void
