@@ -1,3 +1,8 @@
+/** \file
+ * x86-64 interrupt handlers.
+ *
+ * 
+ */
 #include <lwk/kernel.h>
 #include <lwk/init.h>
 #include <lwk/kallsyms.h>
@@ -19,6 +24,10 @@ static DEFINE_SPINLOCK(idtvec_table_lock);
 
 extern void asm_idtvec_table(void);
 
+
+/** \name Interrupt handlers
+ * @{
+ */
 void
 do_unhandled_idt_vector(struct pt_regs *regs, unsigned int vector)
 {
@@ -239,6 +248,7 @@ do_apic_spurious(struct pt_regs *regs, unsigned int vector)
 	while (1) {}
 }
 
+//@}
 
 void 
 set_idtvec_handler(unsigned int vector, idtvec_handler_t handler)
@@ -261,6 +271,15 @@ set_idtvec_handler(unsigned int vector, idtvec_handler_t handler)
 	spin_unlock_irqrestore(&idtvec_table_lock, irqstate);
 }
 
+
+/** C entry point for interrupts
+ * Called by asm_interrupt to direct control to the handler
+ * registered with set_idtvec_handler().
+ *
+ * \todo Can we ACK before calling the function to allow the call
+ * to be in tail position and save a few instructions on the iret
+ * path?
+ */
 void
 do_interrupt(struct pt_regs *regs, unsigned int vector)
 {
@@ -269,14 +288,20 @@ do_interrupt(struct pt_regs *regs, unsigned int vector)
 		lapic_ack_interrupt();
 }
 
+
+/**
+ * Initialize the Interrupt Descriptor Table (IDT).
+ *
+ * All entries in asm_idtvec_table (the hardware IDT) point to
+ * an entry in asm_handler[].  Set the C entry handlers to
+ * call the appropriate hardware exception or default to
+ * do_unhandled_idt_vector().
+ */
 void __init
 interrupts_init(void)
 {
 	int vector;
 
-	/*
-	 * Initialize the Interrupt Descriptor Table (IDT).
-	 */
 	for (vector = 0; vector < NUM_IDT_ENTRIES; vector++) {
 		void *asm_handler = (void *) (
 		  (uintptr_t)(&asm_idtvec_table) + (vector * 16)
