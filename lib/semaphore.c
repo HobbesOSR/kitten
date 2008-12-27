@@ -190,18 +190,18 @@ static int
 sem_thread( void * id_v )
 {
 	int iters = 10;
-	const int id = (int) id_v;
+	const unsigned long id = (unsigned long) id_v;
 
-	printk( "%s: %d Getting sem\n", __func__, id );
+	printk( "%s: %ld Getting sem\n", __func__, id );
 	while( iters-- )
 	{
 		down( &test_sem );
-		printk( "%s: %d dn %d\n", __func__, id, iters );
+		printk( "%s: %ld dn %d\n", __func__, id, iters );
 
 		volatile uint64_t i;
 		for( i=0 ; i < (1<<24) ; i++ )
 			schedule();
-		printk( "%s: %d up %d\n", __func__, id, iters );
+		printk( "%s: %ld up %d\n", __func__, id, iters );
 		up( &test_sem );
 	}
 
@@ -214,8 +214,8 @@ sem_test( void )
 {
 	printk( "%s: Creating sem threads\n", __func__ );
 	sema_init( &test_sem, 1 );
-	int i;
+	unsigned long i;
 	for( i=0 ; i<4 ; i++ )
-		kthread_create( sem_thread, (void*) i, "sem%d\n", i );
+		kthread_create( sem_thread, (void*) i, "sem%ld\n", i );
 }
 

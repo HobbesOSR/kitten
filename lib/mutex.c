@@ -325,18 +325,18 @@ static int
 mutex_thread( void * id_v )
 {
 	int iters = 10;
-	const int id = (int) id_v;
+	const unsigned long id = (unsigned long) id_v;
 
 	while( iters-- )
 	{
-		printk( "%s: %d Getting mutex\n", __func__, id );
+		printk( "%s: %ld Getting mutex\n", __func__, id );
 		mutex_lock( &test_mutex );
-		printk( "%s: %d Got it %d\n", __func__, id, iters );
+		printk( "%s: %ld Got it %d\n", __func__, id, iters );
 
 		volatile uint64_t i;
 		for( i=0 ; i < (1<<20) ; i++ )
 			schedule();
-		printk( "%s: %d unlocking %d\n", __func__, id, iters );
+		printk( "%s: %ld unlocking %d\n", __func__, id, iters );
 		mutex_unlock( &test_mutex );
 	}
 
@@ -349,8 +349,8 @@ mutex_test( void )
 {
 	printk( "%s: Creating mutex threads\n", __func__ );
 	mutex_init( &test_mutex );
-	int i;
+	unsigned long i;
 	for( i=0 ; i<4 ; i++ )
-		kthread_create( mutex_thread, (void*) i, "mutex%d\n", i );
+		kthread_create( mutex_thread, (void*) i, "mutex%ld\n", i );
 }
 
