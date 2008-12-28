@@ -39,9 +39,9 @@ main(int argc, char *argv[], char *envp[])
 	socket_api_test();
 
 	printf("Spinning forever...\n");
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 10; i++) {
 		sleep(5);
-		printf("   Meow!\n");
+		printf("%s: Meow %d!\n", __func__, i );
 	}
 	printf("   That's all, folks!\n");
 
@@ -143,12 +143,14 @@ static void *
 hello_world_thread(void *arg)
 {
 	int i;
+	const unsigned long id = (unsigned long) arg;
 
-	for (i = 0; i < 100; i++) {
+	printf( "%ld: Hello from a thread\n", id );
+	for (i = 0; i < 10; i++) {
 		sleep(5);
-		printf("   Meow!\n");
+		printf( "%ld: Meow %d!\n", id, i );
 	}
-	printf("   That's all, folks!\n");
+	printf( "%ld: That's all, folks!\n", id );
 
 	while(1)
 		sched_yield();
@@ -194,10 +196,17 @@ task_api_test(void)
 
 	printf("  Creating a thread on each CPU:\n    ");
 	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
-		if (cpu_isset(i, my_cpumask)) {
-			printf("%d ", i);
-			pthread_create(&tid, NULL, &hello_world_thread, NULL);
-		}
+		if (!cpu_isset(i, my_cpumask))
+			continue;
+
+		int rc = pthread_create(
+			&tid,
+			NULL,
+			&hello_world_thread,
+			(void*) (uintptr_t) i
+		);
+
+		printf( "thread %d: rc=%d\n", i, rc );
 	}
 	printf("\n");
 
