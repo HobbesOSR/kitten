@@ -65,7 +65,7 @@ syscall_register(
 )
 {
 	if( sys_call_table[ nr ] != syscall_not_implemented
-	||  sys_call_table[ nr ] != syscall_not_implemented_silent )
+	&&  sys_call_table[ nr ] != syscall_not_implemented_silent )
 		printk( KERN_WARNING
 			"%s: Overwriting syscall %d\n",
 			__func__,
