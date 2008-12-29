@@ -30,11 +30,13 @@
 /** \group Task states
  *
  * Tasks must be in one of the following states:
+ *
+ * @{
  */
-#define TASKSTATE_READY                (1 << 0)
-#define TASKSTATE_UNINTERRUPTIBLE      (1 << 1)
-#define TASKSTATE_INTERRUPTIBLE        (1 << 2)
-#define TASKSTATE_EXIT_ZOMBIE          (1 << 3)
+#define TASKSTATE_READY                (1 << 0)	//!< Running
+#define TASKSTATE_UNINTERRUPTIBLE      (1 << 1) //!< Uninterruptable sleep
+#define TASKSTATE_INTERRUPTIBLE        (1 << 2)	//!< Interruptable sleep
+#define TASKSTATE_EXIT_ZOMBIE          (1 << 3)	//!< Exited, but not yet reaped
 #define TASKSTATE_NORMAL	 	\
 	( TASKSTATE_READY		\
 	| TASKSTATE_UNINTERRUPTIBLE	\
