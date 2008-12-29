@@ -170,7 +170,9 @@ kmem_alloc(size_t size)
  *       kmem_alloc().
  */
 void
-kmem_free(void *addr)
+kmem_free(
+	const void *		addr
+)
 {
 	struct kmem_block_hdr *hdr;
 
@@ -192,19 +194,20 @@ kmem_free(void *addr)
  * requested must be a power of two and the returned pages will be contiguous
  * in physical memory. The memory returned is zeroed.
  *
- * Arguments:
- *       [IN] order: Number of pages to allocated, 2^order:
- *                       0 = 1 page
- *                       1 = 2 pages
- *                       2 = 4 pages
- *                       3 = 8 pages
- *                       ...
- * Returns:
- *       Success: Pointer to the start of the allocated memory.
- *       Failure: NULL
+ * \returns Pointer to the start of the allocated memory on succcess
+ * or NULL for failure..
  */
 void *
-kmem_get_pages(unsigned long order)
+kmem_get_pages(
+	/** Number of pages to allocated, 2^order:
+	 * - 0 = 1 page
+	 * - 1 = 2 pages
+	 * - 2 = 4 pages
+	 * - 3 = 8 pages
+	 * - ...
+	 */
+	unsigned long order
+)
 {
 	unsigned long block_order;
 	void *addr;
@@ -224,15 +227,18 @@ kmem_get_pages(unsigned long order)
 
 /**
  * Frees pages of memory previously allocated with kmem_get_pages().
- *
- * Arguments:
- *       [IN] addr:  Address of the memory region to free.
- *       [IN] order: Number of pages to free, 2^order.
- *                   The order must match the value passed to kmem_get_pages()
- *                   when the pages were allocated.
  */
 void
-kmem_free_pages(void *addr, unsigned long order)
+kmem_free_pages(
+	/**  Address of the memory region to free. */
+	const void *		addr,
+
+	/** Number of pages to free, 2^order.
+	 * The order must match the value passed to kmem_get_pages()
+	 * when the pages were allocated.
+	 */
+	unsigned long		order
+)
 {
 	buddy_free(kmem, addr, order + ilog2(PAGE_SIZE));
 }
