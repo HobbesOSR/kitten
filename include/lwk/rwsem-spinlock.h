@@ -54,9 +54,7 @@ extern void __init_rwsem(struct rw_semaphore *sem, const char *name);
 
 #define init_rwsem(sem)						\
 do {								\
-	static struct lock_class_key __key;			\
-								\
-	__init_rwsem((sem), #sem, &__key);			\
+	__init_rwsem((sem), #sem);				\
 } while (0)
 
 extern void __down_read(struct rw_semaphore *sem);
