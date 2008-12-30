@@ -174,6 +174,9 @@ kmem_free(
 	const void *		addr
 )
 {
+	if( !addr )
+		return;
+
 	struct kmem_block_hdr *hdr;
 
 	BUG_ON((unsigned long)addr < sizeof(struct kmem_block_hdr));
