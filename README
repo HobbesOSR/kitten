@@ -82,6 +82,20 @@ Platforms Supported
            - Tested on quad-core Opteron compute nodes (4 CPUs)
 
 
+External builds
+===============
+
+It is possible to build object files separate from the source tree
+using the Linux kbuild system.
+
+	mkdir /tmp/lwk-build
+	cd /tmp/lwk-build
+	make -C $PATH_TO_KITTEN O=`pwd` menuconfig
+	make -C $PATH_TO_KITTEN O=`pwd` vmlwk.bin
+
+At this time the user space libraries will not build externally.
+
+
 Instructions for Booting on Real Hardware
 =========================================
     PC-compatible hardware:
