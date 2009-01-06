@@ -3,9 +3,12 @@ TARGET = liblwk.a
 LIBS-y += $(TARGET)
 OBJS-y += syscalls.o pmem.o elf.o aspace.o
 
-INCLUDES += -I./include -I../../include
+INCLUDES += \
+	-Iinclude \
+	-I../../include \
+	-I$O/../../include2 \
 
-$(TARGET): $(OBJS-y)
-	$(call buildlib,$@,$(OBJS-y))
+$O/$(TARGET): $(addprefix $O/,$(OBJS-y))
+	$(call buildlib,$@,$^)
 
 include ../Make.rules

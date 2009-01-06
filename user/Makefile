@@ -1,9 +1,13 @@
 CFLAGS=-O2 -Wall
 
-all:
-	make -C liblwk
-	make -C hello_world
+all: liblwk hello_world
+
+liblwk hello_world: FORCE
+	@if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
+	make O=$O/$@ -C $@
 
 clean:
-	make -C liblwk clean
-	make -C hello_world clean
+	make O=$O/liblwk -C liblwk clean
+	make O=$O/hello_world -C hello_world clean
+
+FORCE:
