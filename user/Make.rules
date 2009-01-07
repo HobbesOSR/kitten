@@ -42,7 +42,7 @@ buildprog = \
 #
 # Build the .o files from the sources.
 #
-%.o: %.c
+$O/%.o: %.c
 	$(call build,CC      $@,$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<)
 
 all: $(PROGS-y) $(LIBS-y)

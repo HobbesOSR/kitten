@@ -21,7 +21,7 @@ typedef struct {
 
 #define SPINLOCK_MAGIC		0xdead4ead
 
-typedef struct rw_semaphore {
+typedef struct {
 	raw_rwlock_t raw_lock;
 #ifdef CONFIG_DEBUG_SPINLOCK
 	unsigned int magic, owner_cpu;

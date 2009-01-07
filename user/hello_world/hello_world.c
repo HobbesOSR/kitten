@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <sched.h>
+#include <pthread.h>
 #include <lwk/liblwk.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -41,9 +42,9 @@ main(int argc, char *argv[], char *envp[])
 	socket_api_test();
 
 	printf("Spinning forever...\n");
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 10; i++) {
 		sleep(5);
-		printf("   Meow!\n");
+		printf("%s: Meow %d!\n", __func__, i );
 	}
 	printf("   That's all, folks!\n");
 
@@ -141,69 +142,21 @@ aspace_api_test(void)
 	return 0;
 }
 
-static void
-hello_world_thread(void)
+static void *
+hello_world_thread(void *arg)
 {
-	/*
- 	 * Note: Thread local storage is not working yet in threads so
-	 *       printf() and anything else that uses TLS won't work.
-	 */
-	const char *meow = "   Meow!\n";
-	int i, rc;
-	for (i = 0 ; i < 100 ; i++) {
-		sleep(5);
-		rc = write(1, meow, strlen(meow));
-		if (rc != strlen(meow))
-			break;
-	}
+	int i;
+	const unsigned long id = (unsigned long) arg;
 
-	const char *bye_message = "   That's all, folks!\n";
-	rc = write(1, bye_message, strlen(bye_message));
-	if (rc != strlen(bye_message))
-	{
-		// Uh?
+	printf( "%ld: Hello from a thread\n", id );
+	for (i = 0; i < 10; i++) {
+		sleep(5);
+		printf( "%ld: Meow %d!\n", id, i );
 	}
+	printf( "%ld: That's all, folks!\n", id );
 
 	while(1)
 		sched_yield();
-}
-
-#define THREAD_STACK_SIZE 4096
-
-static int 
-start_thread(id_t cpu)
-{
-	int status;
-	id_t aspace_id;
-	vaddr_t stack_ptr;
-	user_cpumask_t cpumask;
-	char thread_name[32];
-
-	aspace_get_myid(&aspace_id);
-	stack_ptr = (vaddr_t)malloc(THREAD_STACK_SIZE);
-	cpus_clear(cpumask);
-	cpu_set(cpu, cpumask);
-
-	start_state_t start_state = {
-		.uid		= 0,
-		.gid		= 0,
-		.aspace_id	= aspace_id,
-		.entry_point	= (vaddr_t)&hello_world_thread,
-		.stack_ptr	= stack_ptr + THREAD_STACK_SIZE,
-		.cpu_id		= cpu,
-		.cpumask	= &cpumask,
-		.flags		= CLONE_FS | CLONE_FILES | CLONE_VM,
-	};
-
-	sprintf(thread_name, "cpu%u-task", cpu);
-	
-	status = task_create(ANY_ID, thread_name, &start_state, NULL);
-	if (status) {
-		printf("ERROR: failed to create thread (status=%d).\n", status);
-		return -1;
-	}
-
-	return 0;
 }
 
 static int 
@@ -213,6 +166,7 @@ task_api_test(void)
 	unsigned i;
 	id_t my_id, my_cpu;
 	user_cpumask_t my_cpumask;
+	pthread_t tid;
 
 	printf("\nTEST BEGIN: Task Management\n");
 
@@ -245,10 +199,17 @@ task_api_test(void)
 
 	printf("  Creating a thread on each CPU:\n    ");
 	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
-		if (cpu_isset(i, my_cpumask)) {
-			printf("%d ", i);
-			start_thread(i);
-		}
+		if (!cpu_isset(i, my_cpumask))
+			continue;
+
+		int rc = pthread_create(
+			&tid,
+			NULL,
+			&hello_world_thread,
+			(void*) (uintptr_t) i
+		);
+
+		printf( "thread %d: rc=%d\n", i, rc );
 	}
 	printf("\n");
 

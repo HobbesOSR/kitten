@@ -42,12 +42,12 @@
 	thunk rwsem_wake_thunk,rwsem_wake
 	thunk rwsem_downgrade_thunk,rwsem_downgrade_wake
 #endif	
+#endif
 	
 	thunk __down_failed,__down
 	thunk_retrax __down_failed_interruptible,__down_interruptible
 	thunk_retrax __down_failed_trylock,__down_trylock
 	thunk __up_wakeup,__up
-#endif
 	
 	/* SAVE_ARGS below is used only for the .cfi directives it contains. */
 	CFI_STARTPROC

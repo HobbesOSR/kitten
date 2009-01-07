@@ -1,3 +1,8 @@
+/** \file
+ * Miscellaneous architecture dependent things that don't fit anywhere else.
+ *
+ * \todo Should these be distributed to more appropriate headers?
+ */
 #ifndef _X86_64_PROTO_H
 #define _X86_64_PROTO_H
 
@@ -30,7 +35,19 @@ void __init interrupts_init(void);
 
 extern paddr_t initrd_start, initrd_end;
 
-typedef void (*idtvec_handler_t)(struct pt_regs *regs, unsigned int vector);
-void set_idtvec_handler(unsigned int vector, idtvec_handler_t handler);
+
+/** Low-level interrupt handler type */
+typedef void (*idtvec_handler_t)(
+	struct pt_regs *	regs,
+	unsigned int		vector
+);
+
+
+/** Set the handler for the specified vector number */
+extern void
+set_idtvec_handler(
+	unsigned int		vector,	//!< Interrupt vector number
+	idtvec_handler_t	handler //!< Callback function
+);
 
 #endif

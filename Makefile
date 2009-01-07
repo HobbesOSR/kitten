@@ -847,14 +847,25 @@ prepare prepare-all: prepare0
 
 export CPPFLAGS_vmlwk.lds += -P -C -U$(ARCH)
 
-# 	FIXME: The arch symlink changes when $(ARCH) changes. That's
-#	hard to detect, but I suppose "make mrproper" is a good idea
-#	before switching between archs anyway.
 
-include/arch:
-	@echo '  SYMLINK $@ -> include/arch-$(ARCH)'
-	$(Q)if [ ! -d include ]; then mkdir -p include; fi;
-	@ln -fsn arch-$(ARCH) $@
+# The asm symlink changes when $(ARCH) changes.
+# Detect this and ask user to run make mrproper
+
+include/arch: FORCE
+	$(Q)set -e; asmlink=`readlink include/arch | cut -d '-' -f 2`;   \
+	if [ -L include/arch ]; then                                     \
+		if [ "$$asmlink" != "$(ARCH)" ]; then                \
+			echo "ERROR: the symlink $@ points to arch-$$asmlink but arch-$(ARCH) was expected"; \
+			echo "       set ARCH or save .config and run 'make mrproper' to fix it";             \
+			exit 1;                                         \
+		fi;                                                     \
+	else                                                            \
+		echo '  SYMLINK $@ -> include/arch-$(ARCH)';          \
+		if [ ! -d include ]; then                               \
+			mkdir -p include;                               \
+		fi;                                                     \
+		ln -fsn arch-$(ARCH) $@;                              \
+	fi
 
 # 	Split autoconf.h into include/lwk/config/*
 
@@ -1398,13 +1409,20 @@ clean := -f $(if $(KBUILD_SRC),$(srctree)/)scripts/Makefile.clean obj
 
 endif	# skip-makefile
 
+# Force the O variable for user and init_task (not set by kbuild?)
+user init_task: O:=$(if $O,$O,$(objtree))
 # Build LWK user-space libraries and example programs
 user: FORCE
-	cd user/; $(MAKE) all
+	if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
+	$(MAKE) \
+		-C $@ \
+		O=$O/$@ \
+		src=$(src)/$@ \
+		all
 
 # A simple user-space app for the LWK to launch at boot
 init_task: user FORCE
-	cp user/hello_world/hello_world ./init_task
+	cp $O/user/hello_world/hello_world $O/init_task
 
 PHONY += FORCE
 FORCE:

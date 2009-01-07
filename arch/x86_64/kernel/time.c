@@ -160,10 +160,11 @@ time_init(void)
 	#error "In time_init(), unknown system architecture."
 #endif
 
-	cpu_info[this_cpu].arch.cur_cpu_khz = cpu_khz;
-	cpu_info[this_cpu].arch.max_cpu_khz = cpu_khz;
-	cpu_info[this_cpu].arch.min_cpu_khz = cpu_khz;
-	cpu_info[this_cpu].arch.tsc_khz     = cpu_khz;
+	struct arch_cpuinfo * const arch_info = &cpu_info[this_cpu].arch;
+	arch_info->cur_cpu_khz = cpu_khz;
+	arch_info->max_cpu_khz = cpu_khz;
+	arch_info->min_cpu_khz = cpu_khz;
+	arch_info->tsc_khz     = cpu_khz;
 
 	init_cycles2ns(cpu_khz);
 
@@ -173,10 +174,10 @@ time_init(void)
 	if (this_cpu == 0) {
 		lapic_khz = lapic_calibrate_timer();
 	} else {
-		lapic_khz = cpu_info[0].arch.lapic_khz;
+		lapic_khz = arch_info->lapic_khz;
 	}
 
-	cpu_info[this_cpu].arch.lapic_khz   = lapic_khz;
+	arch_info->lapic_khz   = lapic_khz;
 
 	printk(KERN_DEBUG "CPU %u: %u.%03u MHz, LAPIC bus %u.%03u MHz\n",
 		this_cpu,

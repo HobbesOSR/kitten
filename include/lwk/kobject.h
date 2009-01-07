@@ -22,7 +22,7 @@
 #include <lwk/list.h>
 #include <lwk/sysfs.h>
 #include <lwk/spinlock.h>
-//#include <lwk/rwsem.h>
+#include <lwk/rwsem.h>
 #include <lwk/kref.h>
 #include <lwk/kernel.h>
 #include <lwk/waitq.h>

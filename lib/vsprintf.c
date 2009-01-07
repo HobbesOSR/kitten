@@ -281,6 +281,21 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 		return 0;
 	}
 
+	/* Special case for a NULL buffer */
+	if (unlikely(buf == 0)) {
+		if( size != 0 ) {
+			static int warn = 1;
+			WARN_ON(warn);
+			warn = 0;
+			return -1;
+		}
+
+		// Size is zero, so we will never write to this buffer
+		// otherwise end would be 0xFFFF...FFFF and we would
+		// segfault by writing to NULL.
+		buf = (char*) 1024;
+	}
+
 	str = buf;
 	end = buf + size - 1;
 

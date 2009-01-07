@@ -199,18 +199,17 @@ buddy_alloc(struct buddy_mempool *mp, unsigned long order)
 
 /**
  * Returns a block of memory to the buddy system memory allocator.
- *
- * Arguments:
- *       [IN] mp:    Buddy system memory allocator object.
- *       [IN] addr:  Address of memory block to free.
- *       [IN] order: Size of the memory block (2^order bytes).
  */
 void
-buddy_free(struct buddy_mempool *mp, void *addr, unsigned long order)
+buddy_free(
+	//!    Buddy system memory allocator object.
+	struct buddy_mempool *	mp,
+	//!  Address of memory block to free.
+	const void *		addr,
+	//! Size of the memory block (2^order bytes).
+	unsigned long		order
+)
 {
-	struct block *block;
-	struct block *buddy;
-
 	BUG_ON(mp == NULL);
 	BUG_ON(order > mp->pool_order);
 
@@ -219,13 +218,13 @@ buddy_free(struct buddy_mempool *mp, void *addr, unsigned long order)
 		order = mp->min_order;
 
 	/* Overlay block structure on the memory block being freed */
-	block = addr;
+	struct block * block = (struct block *) addr;
 	BUG_ON(is_available(mp, block));
 
 	/* Coalesce as much as possible with adjacent free buddy blocks */
 	while (order < mp->pool_order) {
 		/* Determine our buddy block's address */
-		buddy = find_buddy(mp, block, order);
+		struct block * buddy = find_buddy(mp, block, order);
 
 		/* Make sure buddy is available and has the same size as us */
 		if (!is_available(mp, buddy))

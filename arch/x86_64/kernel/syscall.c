@@ -24,7 +24,15 @@
 /**
  * Dummy handler for unimplemented system calls.
  */
-long syscall_not_implemented(void)
+static long
+syscall_not_implemented_silent(void)
+{
+	return -ENOSYS;
+}
+
+
+long
+syscall_not_implemented(void)
 {
 	unsigned long syscall_number;
 
@@ -33,6 +41,9 @@ long syscall_not_implemented(void)
 
 	printk(KERN_DEBUG "System call not implemented! "
 	                  "(syscall_number=%lu)\n", syscall_number);
+
+	// Only warn once about each systemcall
+	syscall_register( syscall_number, syscall_not_implemented_silent );
 	return -ENOSYS;
 }
 
@@ -53,11 +64,13 @@ syscall_register(
 	syscall_ptr_t		handler
 )
 {
-	if( sys_call_table[ nr ] != syscall_not_implemented )
+	if( sys_call_table[ nr ] != syscall_not_implemented
+	&&  sys_call_table[ nr ] != syscall_not_implemented_silent )
 		printk( KERN_WARNING
 			"%s: Overwriting syscall %d\n",
 			__func__,
 			nr
 		);
+
 	sys_call_table[ nr ] = handler;
 }

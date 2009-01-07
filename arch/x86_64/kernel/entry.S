@@ -1,3 +1,9 @@
+/** \file
+ * Architecture dependent entry points.
+ *
+ * Context switches, system calls, interrupts and other entry points
+ * into the kernel that can not be implemented in straight C.
+ */
 #include <lwk/linkage.h>
 #include <lwk/errno.h>
 #include <arch/ptrace.h>
@@ -8,27 +14,25 @@
 
 
 /**
- * This performs the architecture-specific portion of a context switch.
+ * Architecture-specific portion of a context switch.
+ *
  * Normally, this is called in the context of prev and returns in the
  * context of next. However, new tasks are handled differently. Since
  * new tasks do not yet have a kernel context (rather, their kernel
  * stack just has the pt_regs to use for the new task), execution returns
  * directly to the new task, rather than context_switch().
  *
- * Input Registers: 
- *     RDI = prev
- *     RSI = next
+ * \returns prev in %rsi (same value as on entry)
  *
- * Output Registers::
- *     RAX = prev (same value as on entry)
- *
- * C Prototype:
- *     struct task_struct *arch_context_switch(struct task_struct *prev,
- *                                             struct task_struct *next);
- *     arch_context_switch() returns prev
- *
- * NOTE: External interrupts are disabled on entry.
+ * \note External interrupts are disabled on entry.
  */
+#ifndef __ASSEMBLY__
+struct task_struct *
+arch_context_switch(
+	struct task_struct *	prev, //!< In %rdi
+	struct task_struct *	next  //!< In %rsi
+) {}
+#else
 ENTRY(arch_context_switch)
 	/* Save prev's callee saved registers (others saved by caller) */
 	pushf
@@ -70,11 +74,6 @@ kickstart_new_task:
 	testl $3, CS(%rsp)          /* Sets ZF=1 if returning to kernel-space */
 	je 1f                       /*     If ZF=1, leave kernel PDA in place */
 	swapgs                      /* Install the user PDA                   */
-	movq $0, %rax               /* Zero all of the segment registers      */
-	movl %eax, %ds
-	movl %eax, %es
-	movl %eax, %fs
-	movl %eax, %gs
 1:
 	movq     (%rsp), %r15       /* Unpack the pt_regs struct that         */
 	movq  1*8(%rsp), %r14       /* arch_task_create() put at the top      */
@@ -95,12 +94,15 @@ kickstart_new_task:
 	iretq                       /* Start the new task running             */
 
 END(arch_context_switch)
+#endif
 
 
 /**
- * This is the entry point for system calls. Upon entry we are still running
- * with the user-level stack and the x86_64 CPU control unit has stashed the
- * user-level RIP in RCX and RFLAGS in R11. External interrupts are diabled.
+ * Entry point for system calls.
+ *
+ * Upon entry we are still running with the user-level stack and the
+ * x86_64 CPU control unit has stashed the user-level RIP in RCX
+ * and RFLAGS in R11.
  *
  * The first thing this function does is generate a partial stack frame
  * containing all caller-saved registers. After this is done, the system call
@@ -112,6 +114,7 @@ END(arch_context_switch)
  * Immediately before calling the handler function, the kernel stack looks
  * like:
  *
+ * <pre>
  *            RIP      = user-space RIP
  *            ORIG_RAX = system call number, passed from user-space
  *            RDI      = ARG0, passed from user-space
@@ -123,24 +126,28 @@ END(arch_context_switch)
  *            R9       = ARG5, passed from user-space
  *            R10      = ARG3, passed from user-space
  *     RSP -> R11      = user-space RFLAGS
+ * </pre>
  *
  * And the registers are setup as follows:
  *
- *            RDI      = ARG0
- *            RSI      = ARG1
- *            RDX      = ARG2
- *            RCX      = ARG3 (was stored on R10 on entry)
- *            R8       = ARG4
- *            R9       = ARG5
- *            RAX      = System call number
+ * - RDI      = ARG0
+ * - RSI      = ARG1
+ * - RDX      = ARG2
+ * - RCX      = ARG3 (was stored on R10 on entry)
+ * - R8       = ARG4
+ * - R9       = ARG5
+ * - RAX      = System call number
  *
- * NOTE: RCX and R11 are clobbered by system calls. This is due to the SYSCALL
+ * \note RCX and R11 are clobbered by system calls. This is due to the SYSCALL
  *       instruction using RCX and R11 to store RIP and RFLAGS before
  *       transfering control to the kernel. User-level will observe different
  *       values of RCX and R11 after SYSCALL than before.
  * 
- * NOTE: External interrupts are disabled on entry.
+ * \note External interrupts are disabled on entry.
  */
+#ifndef __ASSEMBLY__
+int asm_syscall( void ) {};
+#else
 ENTRY(asm_syscall)
 	/*
 	 * Enter from user-space
@@ -199,23 +206,70 @@ ENTRY(asm_syscall)
 	swapgs				/* Restore user-space GS.base        */
 	sysretq				/* Return to user-space              */
 END(asm_syscall)
+#endif
 
 
 /**
- * This is a handler for SYSCALL instructions issued from compatibility mode...
- * we don't support them.
+ * Initial handler for clone() system calls.
+ *
+ * It backs up the registers that haven't already been saved
+ * by asm_syscall() and then passes a pointer to the complete
+ * 'struct pt_regs' to sys_clone().
  */
+#ifndef __ASSEMBLY__
+int asm_sys_clone( void ) {};
+#else
+ENTRY(asm_sys_clone)
+	popq %r11			/* Pop return address off stack      */
+
+	subq $6*8, %rsp			/* Make room for rest of user regs   */
+	movq %rbx, 5*8(%rsp)		/* Save user-space RBX               */
+	movq %rbp, 4*8(%rsp)		/* Save user-space RBP               */
+	movq %r12, 3*8(%rsp)		/* Save user-space R12               */
+	movq %r13, 2*8(%rsp)		/* Save user-space R13               */
+	movq %r14, 1*8(%rsp)		/* Save user-space R14               */
+	movq %r15,    (%rsp)		/* Save user-space R15               */
+
+	movq %r11, %r15			/* Stash retaddr in callee saved reg */
+	movq %rsp, %r8			/* Pass ptr to pt_regs in R8 (ARG4)  */
+	call sys_clone			/* Call sys_clone()                  */
+	movq %r15, %r11			/* Unstash asm_syscall return addr   */
+
+	movq    (%rsp), %r15		/* Restore user-space R15            */
+	movq 1*8(%rsp), %r14		/* Restore user-space R14            */
+	movq 2*8(%rsp), %r13		/* Restore user-space R13            */
+	movq 3*8(%rsp), %r12		/* Restore user-space R12            */
+	movq 4*8(%rsp), %rbp		/* Restore user-space RBP            */
+	movq 5*8(%rsp), %rbx		/* Restore user-space RBX            */
+	addq $6*8, %rsp			/* Restore RSP asm_syscall expects   */
+
+	pushq %r11			/* Push return address onto stack    */
+	ret				/* Return to asm_syscall             */
+END(asm_sys_clone)
+#endif
+
+
+/**
+ * Handler for SYSCALL instructions issued from compatibility mode.
+ * 
+ * \note We don't support them.
+ */
+#ifndef __ASSEMBLY__
+int asm_syscall_ignore( void ) {}
+#else
 ENTRY(asm_syscall_ignore)
 	mov $-ENOSYS,%eax
 	sysret
 END(asm_syscall_ignore)
+#endif
 
 
 /**
- * This is the common entry point for all interrupts. 
+ * Common entry point for all interrupts. 
  * 
  * Before calling the C handler function, the kernel stack looks like:
  *
+ * <pre>
  *            [...]
  *            SS         (stack segment selector)
  *            RSP        (stack pointer)
@@ -238,14 +292,22 @@ END(asm_syscall_ignore)
  *            R13
  *            R14
  *     RSP -> R15
+ * </pre>
  *
- * And the registers are setup as follows:
+ * And the registers are setup as follows according to the C calling
+ * convention for the C function do_interrupt() that will vector
+ * the interrupt to the appropriate registered handler.
  *
+ * <pre>
  *            RDI      = ARG0: A fully populated 'struct pt_regs *'
  *            RSI      = ARG1: The interrupt vector number 
+ * </pre>
  *
- * NOTE: External interrupts are disabled on entry.
+ * \note External interrupts are disabled on entry.
  */
+#ifndef __ASSEMBLY__
+void asm_interrupt( void ) {};
+#else
 ENTRY(asm_interrupt)
 	cld				/* Clear direction flag              */
 
@@ -312,6 +374,7 @@ ENTRY(asm_interrupt)
 	addq $16*8, %rsp
 	iretq
 END(asm_interrupt)
+#endif
 
 
 /**
@@ -323,12 +386,15 @@ END(asm_interrupt)
  * error code onto the stack and others do not. Additionally, there is no way
  * for an interrupt handler to determine the interrupt vector that triggered
  * it. Therefore, the functions in this table push a dummy error code onto
- * the stack when necessary, always push the vector number, and then call a
- * common handler (asm_interrupt).
+ * the stack when necessary, always push the vector number, and then call
+ * the common handler asm_interrupt().
  *
- * WARNING: Each function/entry in this table must be <= 16 bytes.
+ * \warning Each function/entry in this table must be <= 16 bytes.
  *          Be very careful when adding instructions.
  */
+#ifndef __ASSEMBLY__
+void asm_idtvec_table(void) { asm_interrupt(); }
+#else
 .align 16
 ENTRY(asm_idtvec_table)
 	vector=0
@@ -344,12 +410,16 @@ ENTRY(asm_idtvec_table)
 		vector=vector+1
 	.endr
 END(asm_idtvec_table)
+#endif
 
 
 /**
  * Reload gs selector with exception handling.
  *     edi:  new selector
  */
+#ifndef __ASSEMBLY__
+void load_gs_index( unsigned gs ) {}
+#else
 ENTRY(load_gs_index)
 	CFI_STARTPROC
 	pushf
@@ -378,5 +448,6 @@ bad_gs:
 	movl %eax,%gs
 	jmp  2b
 	.previous
+#endif
 
 

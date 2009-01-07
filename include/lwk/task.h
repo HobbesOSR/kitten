@@ -30,11 +30,19 @@
 /** \group Task states
  *
  * Tasks must be in one of the following states:
+ *
+ * @{
  */
-#define TASKSTATE_READY                (1 << 0)
-#define TASKSTATE_UNINTERRUPTIBLE      (1 << 1)
-#define TASKSTATE_INTERRUPTIBLE        (1 << 2)
-#define TASKSTATE_EXIT_ZOMBIE          (1 << 3)
+#define TASKSTATE_READY                (1 << 0)	//!< Running
+#define TASKSTATE_UNINTERRUPTIBLE      (1 << 1) //!< Uninterruptable sleep
+#define TASKSTATE_INTERRUPTIBLE        (1 << 2)	//!< Interruptable sleep
+#define TASKSTATE_EXIT_ZOMBIE          (1 << 3)	//!< Exited, but not yet reaped
+#define TASKSTATE_NORMAL	 	\
+	( TASKSTATE_READY		\
+	| TASKSTATE_UNINTERRUPTIBLE	\
+	| TASKSTATE_INTERRUPTIBLE	\
+	)
+
 typedef unsigned int taskstate_t;
 //@}
 
@@ -56,7 +64,7 @@ typedef struct {
 	uid_t                  gid;
 	id_t                   aspace_id;
 	vaddr_t                stack_ptr;   //!< Ignored for kernel tasks
-	vaddr_t                entry_point;
+	vaddr_t                entry_point; //!< Ignored for clone() syscall
 	uintptr_t              arg[4];      //!< Args to pass to entry_point()
 	uint32_t		flags;		//!< Flags to clone
 	id_t                   cpu_id;
@@ -176,7 +184,7 @@ struct sighand_struct {
  */
 struct task_struct {
 	id_t                    id;              /* The task's ID */
-	char                    name[16];        /* The task's name */
+	char                    name[32];        /* The task's name */
 	struct hlist_node       ht_link;         /* Task hash table linkage */
 
 	taskstate_t             state;           /* The task's current state */
@@ -190,6 +198,7 @@ struct task_struct {
 	cpumask_t               cpumask;         /* CPUs this task may migrate
 	                                            to and create tasks on */
 	id_t                    cpu_id;          /* CPU this task is bound to */
+	id_t                    next_cpu;        /* Next CPU to spawn on */
 
 	struct list_head        sched_link;      /* For per-CPU scheduling lists */
 	bool                    sched_irqs_on;   /* IRQs on at schedule() entry? */
@@ -262,8 +271,12 @@ is_init(struct task_struct *tsk)
 
 extern int __init task_subsys_init(void);
 
-extern int arch_task_create(struct task_struct *task,
-                            const start_state_t *start_state);
+extern int
+arch_task_create(
+	struct task_struct *	task,
+	const start_state_t *	start_state,
+	const struct pt_regs *	parent_regs
+);
 
 
 /** \group Syscall wrappers for task creation
@@ -283,10 +296,13 @@ extern int sys_task_get_cpu(id_t __user *cpu_id);
 extern int sys_task_get_cpumask(user_cpumask_t __user *cpumask);
 //@}
 
-extern int __task_reserve_id(id_t id);
-extern int __task_create(id_t id, const char *name,
-                         const start_state_t *start_state,
-                         struct task_struct **task);
+extern struct task_struct *
+__task_create(
+	id_t			id,
+	const char *		name,
+	const start_state_t *	start_state,
+	const struct pt_regs *	parent_regs
+);
 
 extern struct task_struct *task_lookup(id_t id);
 

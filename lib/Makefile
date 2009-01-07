@@ -15,3 +15,6 @@ lib-y := \
 	htable.o \
 	kobject.o \
 	kref.o \
+	mutex.o \
+	semaphore.o \
+	rwsem-spinlock.o \

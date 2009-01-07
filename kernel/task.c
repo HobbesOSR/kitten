@@ -67,66 +67,66 @@ sys_task_get_myid(id_t __user *id)
 	return 0;
 }
 
-int
-__task_reserve_id(id_t id)
+struct task_struct *
+__task_create(
+	id_t			id_request,
+	const char *		name,
+	const start_state_t *	start_state,
+	const struct pt_regs *	parent_regs
+)
 {
-	if (idspace_alloc_id(idspace, id) == ERROR_ID)
-		return -1;
-	return 0;
-}
-
-int
-__task_create(id_t id, const char *name,
-              const start_state_t *start_state,
-              struct task_struct **task)
-{
-	int status;
+	id_t id;
 	union task_union *task_union;
 	struct task_struct *tsk;
+	unsigned long irqstate;
+	bool is_idle_task = (id_request == IDLE_TASK_ID);
 
-	if ((task_union = kmem_get_pages(TASK_ORDER)) == NULL)
-		return -ENOMEM;
+	id = idspace_alloc_id(idspace, id_request);
+	if ((id == ERROR_ID) && !is_idle_task)
+		goto fail_id_alloc;
 
-	tsk = &task_union->task_info;
+	task_union = kmem_get_pages(TASK_ORDER);
+	if (!task_union)
+		goto fail_task_alloc;
 
 	/*
 	 * Initialize the new task. kmem_alloc() allocates zeroed memory
 	 * so fields with an initial state of zero do not need to be explicitly
 	 * initialized.
 	 */
-	tsk->id = id;
+	tsk		= &task_union->task_info;
+	tsk->id		= id;
+	tsk->aspace	= aspace_acquire(start_state->aspace_id);
+	tsk->state	= TASKSTATE_READY;
+	tsk->uid	= start_state->uid;
+	tsk->gid	= start_state->gid;
+	tsk->cpu_id	= start_state->cpu_id;
+	tsk->cpumask	= current->cpumask;
+
+	hlist_node_init(&tsk->ht_link);
+	list_head_init(&tsk->sched_link);
+
 	if (name)
 		strlcpy(tsk->name, name, sizeof(tsk->name));
-	hlist_node_init(&tsk->ht_link);
-	tsk->state = TASKSTATE_READY;
-	tsk->uid = start_state->uid;
-	tsk->gid = start_state->gid;
-	tsk->aspace = aspace_acquire(start_state->aspace_id);
-	if (!tsk->aspace) {
-		status = -ENOENT;
-		goto error1;
-	}
-	tsk->sighand = NULL;
-	if (start_state->cpumask) {
+
+	if (start_state->cpumask)
 		cpumask_user2kernel(start_state->cpumask, &tsk->cpumask);
-		if (!cpus_subset(tsk->cpumask, current->cpumask)) {
-			status = -EINVAL;
-			goto error2;
-		}
-	} else {
-		tsk->cpumask = current->cpumask;
-	}
-	if ((start_state->cpu_id >= NR_CPUS)
-	     || !cpu_isset(start_state->cpu_id, tsk->cpumask)) {
-		status = -EINVAL;
-		goto error2;
-	}
-	tsk->cpu_id = start_state->cpu_id;
-	list_head_init(&tsk->sched_link);
-	tsk->sched_irqs_on = false;
-	tsk->ptrace = 0;
-	tsk->flags = 0;
-	tsk->exit_status = 0;
+
+	/* Error checks */
+	if (!tsk->aspace)
+		goto fail_aspace;
+
+	if (!cpus_subset(tsk->cpumask, current->cpumask))
+		goto fail_cpumask;
+
+	if ((tsk->cpu_id >= NR_CPUS) || !cpu_isset(tsk->cpu_id, tsk->cpumask))
+		goto fail_cpu;
+
+	/* Set the next CPU to use. This is used for the clone() syscall,
+	 * which doesn't allow an explicit CPU to be specified. */
+	tsk->next_cpu = next_cpu(tsk->cpu_id, tsk->cpumask);
+	if (tsk->next_cpu == NR_CPUS)
+		tsk->next_cpu = first_cpu(tsk->cpumask);
 
 	// We may need to clone files if CLONE_FS is set
 	if (start_state->flags & CLONE_FILES)
@@ -137,51 +137,45 @@ __task_create(id_t id, const char *name,
 	}
 
 	/* Do architecture-specific initialization */
-	if ((status = arch_task_create(tsk, start_state)) != 0)
-		goto error2;
+	if (arch_task_create(tsk, start_state, parent_regs))
+		goto fail_arch;
 
-	if (task)
-		*task = tsk;
-	return 0;
+	if (!is_idle_task) {
+		/* Add new task to a hash table, for quick lookups by ID */
+		spin_lock_irqsave(&htable_lock, irqstate);
+		BUG_ON(htable_add(htable, tsk));
+		spin_unlock_irqrestore(&htable_lock, irqstate);
 
-error2:
-	if (tsk->aspace)
-		aspace_release(tsk->aspace);
-error1:
+		/* Add the new task to the target CPU's run queue */
+		sched_add_task(tsk);
+	}
+
+	return tsk;  /* Success! */
+
+fail_arch:
+fail_cpu:
+fail_cpumask:
+	aspace_release(tsk->aspace);
+fail_aspace:
 	kmem_free_pages(task_union, TASK_ORDER);
-	return status;
+fail_task_alloc:
+	idspace_free_id(idspace, id);
+fail_id_alloc:
+	return NULL;
 }
 
 int
 task_create(id_t id_request, const char *name,
             const start_state_t *start_state, id_t *id)
 {
-	id_t new_id;
-	struct task_struct *new_task;
-	int status;
-	unsigned long irqstate;
-
-	/* Allocate an ID for the new task */
-	new_id = idspace_alloc_id(idspace, id_request);
-	if (new_id == ERROR_ID)
-		return -ENOENT;
+	struct task_struct *tsk;
 
 	/* Create and initialize a new task */
-	if ((status = __task_create(new_id, name, start_state, &new_task))) {
-		idspace_free_id(idspace, new_id);
-		return status;
-	}
-
-	/* Add new task to a hash table, for quick lookups by ID */
-	spin_lock_irqsave(&htable_lock, irqstate);
-	BUG_ON(htable_add(htable, new_task));
-	spin_unlock_irqrestore(&htable_lock, irqstate);
-
-	/* Add the new task to the target CPU's run queue */
-	sched_add_task(new_task);
-
+	tsk = __task_create(id_request, name, start_state, NULL);
+	if (!tsk)
+		return -EINVAL;
 	if (id)
-		*id = new_task->id;
+		*id = tsk->id;
 	return 0;
 }
 

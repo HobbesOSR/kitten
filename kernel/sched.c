@@ -42,12 +42,6 @@ int __init
 sched_subsys_init(void)
 {
 	id_t cpu_id;
-	int status;
-
-	/* Reserve the idle tasks' ID. All idle tasks share the same ID. */
-	status = __task_reserve_id(IDLE_TASK_ID);
-	if (status)
-		panic("Failed to reserve IDLE_TASK_ID (status=%d).", status);
 
 	/* Initialize each CPU's run queue */
 	for_each_cpu_mask(cpu_id, cpu_present_map) {
@@ -71,16 +65,14 @@ sched_subsys_init(void)
 			.cpumask     = NULL,
 		};
 
-		struct task_struct *idle_task;
-		status = __task_create(
+		struct task_struct *idle_task = __task_create(
 			IDLE_TASK_ID,
 			"idle_task",
 			&start_state,
-			&idle_task
+			NULL
 		);
-
-		if (status)
-			panic("Failed to create idle_task (status=%d).",status);
+		if (!idle_task)
+			panic("Failed to create idle_task.");
 
 		runq->idle_task = idle_task;
 	}
