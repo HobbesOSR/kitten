@@ -18,6 +18,9 @@ extern int sched_wakeup_task(struct task_struct *task,
                              taskstate_t valid_states);
 extern void schedule(void); 
 
+#define MAX_SCHEDULE_TIMEOUT UINT64_MAX
+extern uint64_t schedule_timeout(uint64_t timeout);
+
 /** Each architecture must provide its own context-switch code
  * \ingroup arch
  */

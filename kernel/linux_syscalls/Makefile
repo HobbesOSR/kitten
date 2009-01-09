@@ -15,4 +15,5 @@ obj-y := \
 	rt_sigaction.o \
 	mprotect.o \
 	clone.o \
+	futex.o \
 

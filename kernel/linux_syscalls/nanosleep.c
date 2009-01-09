@@ -14,10 +14,9 @@ sys_nanosleep(const struct timespec __user *req, struct timespec __user *rem)
 	if (!timespec_is_valid(&_req))
 		return -EINVAL;
 
-	uint64_t when = get_time()
-		+ (_req.tv_sec * NSEC_PER_SEC)
-		+ _req.tv_nsec;
+	uint64_t when = get_time() + timespec_to_ns(_req);
 
+	set_mb(current->state, TASKSTATE_INTERRUPTIBLE);
 	uint64_t remain = timer_sleep_until(when);
 	if( !remain )
 		return 0;

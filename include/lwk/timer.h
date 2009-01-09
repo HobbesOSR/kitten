@@ -49,6 +49,10 @@ timer_del(struct timer *timer);
 
 /** Sleep the current thread for a while.
  *
+ * The caller must set current->state to TASKSTATE_INTERRUPTIBLE or
+ * TASKSTATE_UNINTERUPTIBLE before calling timer_sleep_until(),
+ * otherwise it will return immediately.
+ *
  * \returns Time remaining unslept if there is any.
  */
 extern uint64_t
