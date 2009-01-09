@@ -173,4 +173,13 @@ htable_next(
 // @}
 
 
+
+extern struct hlist_head *
+htable_keys(
+	struct htable *		ht,
+	size_t *		max_index_out
+);
+
+
+
 #endif

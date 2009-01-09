@@ -173,6 +173,18 @@ htable_id_key_compare(
 }
 
 
+struct hlist_head *
+htable_keys(
+	struct htable *		ht,
+	size_t *		max_index_out
+)
+{
+	if( max_index_out )
+		*max_index_out = 1 << ht->order;
+	return ht->tbl;
+}
+
+
 struct htable_iter
 htable_iter(
 	struct htable *		ht
