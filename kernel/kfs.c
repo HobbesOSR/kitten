@@ -75,12 +75,54 @@ struct kfs_file * kfs_root;
 
 static ssize_t
 kfs_default_read(
-	struct kfs_file *	file,
+	struct kfs_file *	dir,
 	uaddr_t			buf,
 	size_t			len
 )
 {
-	return -1;
+	size_t max_index;
+	const struct hlist_head * const ht = htable_keys(
+		dir->files,
+		&max_index
+	);
+	if( !ht )
+		return -1;
+
+	// \todo validate user buf and len
+
+	// Return a list of files
+	int index;
+	size_t offset = 0;
+	for( index = 0 ; index < max_index ; index++ )
+	{
+		struct hlist_node * node;
+		hlist_for_each( node, &ht[index] )
+		{
+			struct kfs_file * file = container_of(
+				node,
+				struct kfs_file,
+				ht_link
+			);
+
+			int rc = snprintf(
+				(char*)buf + offset,
+				len - offset,
+				"%s\n",
+				file->name
+			);
+
+			if( rc > len - offset )
+			{
+				offset = len-1;
+				goto done;
+			}
+
+			offset += rc;
+		}
+	}
+
+done:
+	return offset;
 }
 
 static ssize_t
@@ -184,18 +226,28 @@ kfs_mkdirent(
 		parent ? parent->name : "NONE"
 	);
 
-	struct kfs_file * file = kmem_alloc( sizeof(*file) );
+	struct kfs_file * file = 0;
+
+	// Try a lookup in the parent first, then allocate a new file
+	if( parent && name )
+		file = htable_lookup( parent->files, name );
+	if( !file )
+		file = kmem_alloc( sizeof(*file) );
 	if( !file )
 		return NULL;
 
-	file->files = htable_create(
-		7,
-		offsetof( struct kfs_file, name ),
-		offsetof( struct kfs_file, ht_link ),
-		kfs_hash_filename,
-		kfs_compare_filename
-	);
+	// If this is a new allocation, create the directory table
+	// \todo Do this only when a sub-file is created
+	if( !file->files )
+		file->files = htable_create(
+			7,
+			offsetof( struct kfs_file, name ),
+			offsetof( struct kfs_file, ht_link ),
+			kfs_hash_filename,
+			kfs_compare_filename
+		);
 
+	// \todo This will overwrite any existing file; should it warn?
 	file->parent	= parent;
 	file->fops	= fops;
 	file->priv	= priv;

@@ -256,7 +256,7 @@ fd_test( void )
 	ssize_t rc;
 
 	printf( "Testing open\n" );
-	fd = open( "/sys/kernel/dummy/string", O_RDONLY );
+	fd = open( "/sys", O_RDONLY );
 	rc = read( fd, buf, sizeof(buf) );
 	printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
 	close( fd );
