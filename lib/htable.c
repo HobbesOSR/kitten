@@ -173,15 +173,46 @@ htable_id_key_compare(
 }
 
 
-struct hlist_head *
-htable_keys(
-	struct htable *		ht,
-	size_t *		max_index_out
+struct htable_iter
+htable_iter(
+	struct htable *		ht
 )
 {
-	if( max_index_out )
-		*max_index_out = 1 << ht->order;
-	return ht->tbl;
+	return (struct htable_iter){
+		.ht		= ht,
+		.node		= 0,
+		.index		= 0,
+	};
+}
+
+
+void *
+htable_next(
+	struct htable_iter *	iter
+)
+{
+	if( iter->node && iter->node->next )
+	{
+		iter->node = iter->node->next;
+		return node2obj( iter->ht, iter->node );
+	}
+
+	// If this is not our first time through, bump the index
+	if( iter->node )
+		iter->index++;
+
+	const size_t max_index = 1 << iter->ht->order;
+	for( ; iter->index < max_index ; iter->index++ )
+	{
+		iter->node = iter->ht->tbl[ iter->index ].first;
+		if( !iter->node )
+			continue;
+
+		return node2obj( iter->ht, iter->node );
+	}
+
+	// We ran off the end.  Flag that we're done.
+	return NULL;
 }
 
 

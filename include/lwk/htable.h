@@ -174,12 +174,23 @@ htable_next(
 
 
 
-extern struct hlist_head *
-htable_keys(
-	struct htable *		ht,
-	size_t *		max_index_out
+struct htable_iter
+{
+	struct htable *		ht;
+	struct hlist_node *	node;
+	int			index;
+};
+
+
+extern struct htable_iter
+htable_iter(
+	struct htable *		ht
 );
 
+extern void *
+htable_next(
+	struct htable_iter *	iter
+);
 
 
 #endif

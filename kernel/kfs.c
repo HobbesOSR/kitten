@@ -80,45 +80,25 @@ kfs_default_read(
 	size_t			len
 )
 {
-	size_t max_index;
-	const struct hlist_head * const ht = htable_keys(
-		dir->files,
-		&max_index
-	);
-	if( !ht )
-		return -1;
-
-	// \todo validate user buf and len
-
-	// Return a list of files
-	int index;
 	size_t offset = 0;
-	for( index = 0 ; index < max_index ; index++ )
+	struct kfs_file * file;
+	struct htable_iter iter = htable_iter( dir->files );
+	while( (file = htable_next( &iter )) )
 	{
-		struct hlist_node * node;
-		hlist_for_each( node, &ht[index] )
+		int rc = snprintf(
+			(char*)buf + offset,
+			len - offset,
+			"%s\n",
+			file->name
+		);
+
+		if( rc > len - offset )
 		{
-			struct kfs_file * file = container_of(
-				node,
-				struct kfs_file,
-				ht_link
-			);
-
-			int rc = snprintf(
-				(char*)buf + offset,
-				len - offset,
-				"%s\n",
-				file->name
-			);
-
-			if( rc > len - offset )
-			{
-				offset = len-1;
-				goto done;
-			}
-
-			offset += rc;
+			offset = len-1;
+			goto done;
 		}
+
+		offset += rc;
 	}
 
 done:
