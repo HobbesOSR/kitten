@@ -131,6 +131,21 @@ htable_id_key_compare(
 );
 
 
+/** \name Hash Table Iterator.
+ *
+ * To iterate over all entries in the hash table, use this idiom:
+ * \code
+ *      struct whatever * file;
+ *      struct htable_iter iter = htable_iter( ht );
+ *      while( (file = htable_next( &iter )) )
+ *      {
+ *           // ...
+ *      }
+ * \endcode
+ *
+ * @{
+ */
+
 struct htable_iter
 {
 	struct htable *		ht;
@@ -139,15 +154,23 @@ struct htable_iter
 };
 
 
+/** Initialize a hash table iterator */
 extern struct htable_iter
 htable_iter(
 	struct htable *		ht
 );
 
+
+/** Return the next item from the hash table iterator.
+ *
+ * \returns NULL when all items on the hash table have been walked.
+ */
 extern void *
 htable_next(
 	struct htable_iter *	iter
 );
+
+// @}
 
 
 #endif
