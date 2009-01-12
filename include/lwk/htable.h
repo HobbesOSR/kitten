@@ -130,4 +130,24 @@ htable_id_key_compare(
 	const void *		key2
 );
 
+
+struct htable_iter
+{
+	struct htable *		ht;
+	struct hlist_node *	node;
+	int			index;
+};
+
+
+extern struct htable_iter
+htable_iter(
+	struct htable *		ht
+);
+
+extern void *
+htable_next(
+	struct htable_iter *	iter
+);
+
+
 #endif
