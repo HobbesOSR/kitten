@@ -13,6 +13,7 @@ sys_mmap(
 	unsigned long off
 )
 {
+	struct aspace *as = current->aspace;
 	unsigned long mmap_brk;
 
 	/* For now we only support private/anonymous mappings */
@@ -22,14 +23,18 @@ sys_mmap(
 	if (len != round_up(len, PAGE_SIZE))
 		return -EINVAL;
 
-	mmap_brk = current->aspace->mmap_brk;
-	mmap_brk = round_down(mmap_brk - len, PAGE_SIZE);
+	spin_lock(&as->lock);
+	mmap_brk = round_down(as->mmap_brk - len, PAGE_SIZE);
 
 	/* Protect against extending into the UNIX data segment */
-	if (mmap_brk <= current->aspace->brk)
+	if (mmap_brk <= as->brk) {
+		spin_unlock(&as->lock);
 		return -ENOMEM;
+	}
 
-	current->aspace->mmap_brk = mmap_brk;
+	as->mmap_brk = mmap_brk;
+	spin_unlock(&as->lock);
+
 	return mmap_brk;
 }
 

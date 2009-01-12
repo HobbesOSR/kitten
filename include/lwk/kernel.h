@@ -27,6 +27,8 @@ extern struct utsname linux_utsname;
 #define LONG_MAX        ((long)(~0UL>>1))
 #define LONG_MIN        (-LONG_MAX - 1)
 #define ULONG_MAX       (~0UL)
+#define INT64_MAX       ((long long)(~0ULL>>1))
+#define UINT64_MAX      (~0ULL)
 
 #define STACK_MAGIC     0xdeadbeef
 

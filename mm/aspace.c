@@ -236,7 +236,7 @@ sys_aspace_get_myid(id_t __user *id)
 int
 aspace_create(id_t id_request, const char *name, id_t *id)
 {
-	int status;
+	int status, i;
 	id_t new_id;
 	struct aspace *aspace;
 	unsigned long flags;
@@ -274,6 +274,10 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	);
 	if (status)
 		goto error1;
+
+	/* Initialize futex queues, used to hold addr space private futexes */
+	for (i = 0; i < ARRAY_SIZE(aspace->futex_queues); i++)
+		futex_queue_init(&aspace->futex_queues[i]);
 
 	/* Do architecture-specific initialization */
 	if ((status = arch_aspace_create(aspace)) != 0)

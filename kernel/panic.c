@@ -11,7 +11,7 @@ void panic(const char * fmt, ...)
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
-	printk(KERN_EMERG "Kernel panic - not syncing: %s\n",buf);
+	printk(KERN_EMERG "Kernel panic: %s\n",buf);
 
 #ifdef CONFIG_KGDB
         printk("Invoking KGDB from panic()...\n");

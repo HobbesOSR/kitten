@@ -10,6 +10,7 @@
 
 #include <lwk/types.h>
 #include <lwk/idspace.h>
+#include <lwk/futex.h>
 #include <arch/aspace.h>
 
 /** \name User space IDs
@@ -179,6 +180,11 @@ struct aspace {
 	 */
 	vaddr_t            mmap_brk;
 	// @}
+
+	/**
+ 	 * Address space private futexes.
+ 	 */
+	struct futex_queue futex_queues[1<<FUTEX_HASHBITS];
 
 	/**
 	 * Architecture specific address space data.

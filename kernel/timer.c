@@ -80,7 +80,7 @@ timer_del(struct timer *timer)
 static void
 wakeup_task(uintptr_t task)
 {
-	sched_wakeup_task((struct task_struct *)task, TASKSTATE_INTERRUPTIBLE);
+	sched_wakeup_task((struct task_struct *)task, TASKSTATE_NORMAL);
 }
 
 
@@ -97,7 +97,6 @@ timer_sleep_until(uint64_t when)
 	timer_add(&timer);
 
 	/* Go to sleep */
-	set_mb(current->state, TASKSTATE_INTERRUPTIBLE);
 	schedule();
 
 	/* Return the time remaining */
