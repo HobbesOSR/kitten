@@ -11,21 +11,24 @@
 #include <lwk/idspace.h>
 #include <lwk/cpumask.h>
 
-/** \group User task IDs
- * Valid user-space created task IDs are in interval
+/** \group User-space task IDs
+ * Valid user-space task IDs are in interval
  * [TASK_MIN_ID, TASK_MAX_ID].
+ *
+ * \note This interval must not overlap with the kernel-space
+ *       ID interval [KERNEL_TASK_MIN_ID, KERNEL_TASK_MAX_ID].
  * @{
  */
-#define TASK_MIN_ID                    0
-#define TASK_MAX_ID                    4094
+#define TASK_ID_USER_BIT               15  /* support 2^15 user-space tasks */
+#define TASK_MIN_ID                    (1 << TASK_ID_USER_BIT)
+#define TASK_MAX_ID                    TASK_MIN_ID + (1 << TASK_ID_USER_BIT) - 1
 
 /**
- * The task ID to use for the init_task.
- * Put it at the top of the space to keep it out of the way.
+ * ID of the init_task, the first user-level task.
+ * Put it at the top of the user-space ID interval to keep it out of the way.
  */
 #define INIT_TASK_ID                   TASK_MAX_ID
 //@}
-
 
 /** \group Task states
  *
@@ -173,19 +176,21 @@ union task_union {
 extern union task_union bootstrap_task_union;
 extern struct aspace bootstrap_aspace;
 
-/** \group Task IDs
- * Valid task IDs are in interval [__TASK_MIN_ID, __TASK_MAX_ID].
- * The kernel has one reserved ID that the user can not allocate
- * reserved for the idle task.
+/** \group Kernel-space task IDs
+ * Valid kernel-space task IDs are in interval
+ * [KERNEL_TASK_MIN_ID, KERNEL_TASK_MAX_ID].
+ *
+ * \note This interval must not overlap with the user-space
+ *       ID interval [TASK_MIN_ID, TASK_MAX_ID].
  * @{
  */
-#define __TASK_MIN_ID   TASK_MIN_ID
-#define __TASK_MAX_ID   TASK_MAX_ID+1  /**< +1 for IDLE_TASK_ID */
+#define KERNEL_TASK_MIN_ID   0
+#define KERNEL_TASK_MAX_ID   (1 << TASK_ID_USER_BIT) - 1
 
 /**
  * ID of the idle task.
  */
-#define IDLE_TASK_ID    TASK_MAX_ID+1
+#define IDLE_TASK_ID         KERNEL_TASK_MIN_ID
 //@}
 
 /**

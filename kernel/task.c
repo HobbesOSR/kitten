@@ -8,9 +8,14 @@
 #include <arch/uaccess.h>
 
 /**
- * ID space used to allocate task IDs.
+ * ID space used to allocate user-space task IDs.
  */
-static struct idspace *idspace;
+static struct idspace *user_idspace;
+
+/**
+ * ID space used to allocate kernel-space task IDs.
+ */
+static struct idspace *kernel_idspace;
 
 /**
  * Hash table used to lookup task structures by ID.
@@ -25,12 +30,19 @@ static DEFINE_SPINLOCK(htable_lock);
 int __init
 task_subsys_init(void)
 {
-	idspace = idspace_create(
-			__TASK_MIN_ID,
-			__TASK_MAX_ID
+	user_idspace = idspace_create(
+				TASK_MIN_ID,
+				TASK_MAX_ID
 	);
-	if (!idspace)
-		panic("Failed to create task ID space.");
+	if (!user_idspace)
+		panic("Failed to create ID space for user tasks.");
+
+	kernel_idspace = idspace_create(
+				KERNEL_TASK_MIN_ID,
+				KERNEL_TASK_MAX_ID
+	);
+	if (!kernel_idspace)
+		panic("Failed to create ID space for kernel tasks.");
 
 	htable = htable_create(
 			7,  /* 2^7 bins in the hash table */
@@ -67,6 +79,58 @@ sys_task_get_myid(id_t __user *id)
 	return 0;
 }
 
+static bool
+is_user_id(id_t id)
+{
+	return (id >= TASK_MIN_ID) && (id <= TASK_MAX_ID);
+}
+
+static bool
+is_kernel_id(id_t id)
+{
+	return (id >= KERNEL_TASK_MIN_ID) && (id <= KERNEL_TASK_MAX_ID);
+}
+
+static id_t
+alloc_id(
+	id_t			id_request,
+	const start_state_t *	start_state
+)
+{
+	bool is_kernel_task = (start_state->aspace_id == KERNEL_ASPACE_ID);
+	id_t id;
+
+	if (id_request != ANY_ID) {
+		if (is_kernel_task && !is_kernel_id(id_request))
+			return ERROR_ID;
+		if (!is_kernel_task && !is_user_id(id_request))
+			return ERROR_ID;
+	}
+
+	id = idspace_alloc_id(
+			is_kernel_task ? kernel_idspace : user_idspace,
+			id_request
+	);
+
+	/* The idle task is a special case...
+ 	 * There is one idle task per CPU, all with the same ID */
+	if ((id == ERROR_ID) && (id_request == IDLE_TASK_ID) && is_kernel_task)
+		id = IDLE_TASK_ID;
+
+	return id;
+}
+
+static void
+free_id(
+	id_t			id
+)
+{
+	idspace_free_id(
+		is_kernel_id(id) ? kernel_idspace : user_idspace,
+		id
+	);
+}
+
 struct task_struct *
 __task_create(
 	id_t			id_request,
@@ -79,10 +143,9 @@ __task_create(
 	union task_union *task_union;
 	struct task_struct *tsk;
 	unsigned long irqstate;
-	bool is_idle_task = (id_request == IDLE_TASK_ID);
 
-	id = idspace_alloc_id(idspace, id_request);
-	if ((id == ERROR_ID) && !is_idle_task)
+	id = alloc_id(id_request, start_state);
+	if (id == ERROR_ID)
 		goto fail_id_alloc;
 
 	task_union = kmem_get_pages(TASK_ORDER);
@@ -132,15 +195,14 @@ __task_create(
 	if (arch_task_create(tsk, start_state, parent_regs))
 		goto fail_arch;
 
-	if (!is_idle_task) {
-		/* Add new task to a hash table, for quick lookups by ID */
-		spin_lock_irqsave(&htable_lock, irqstate);
-		BUG_ON(htable_add(htable, tsk));
-		spin_unlock_irqrestore(&htable_lock, irqstate);
+	/* Add new task to a hash table, for quick lookups by ID */
+	spin_lock_irqsave(&htable_lock, irqstate);
+	htable_add(htable, tsk);
+	spin_unlock_irqrestore(&htable_lock, irqstate);
 
-		/* Add the new task to the target CPU's run queue */
+	/* Add the new task to the target CPU's run queue */
+	if (tsk->id != IDLE_TASK_ID)
 		sched_add_task(tsk);
-	}
 
 	return tsk;  /* Success! */
 
@@ -151,7 +213,7 @@ fail_cpumask:
 fail_aspace:
 	kmem_free_pages(task_union, TASK_ORDER);
 fail_task_alloc:
-	idspace_free_id(idspace, id);
+	free_id(id);
 fail_id_alloc:
 	return NULL;
 }
