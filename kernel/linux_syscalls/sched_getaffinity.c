@@ -9,6 +9,9 @@ sys_sched_getaffinity(
 	vaddr_t __user *	cpumask
 )
 {
+	if (task_id == 0)
+		task_id = current->id;
+
 	if (task_id != current->id)
 		return -EINVAL;
 
