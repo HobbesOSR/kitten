@@ -17,3 +17,10 @@ vgabios_start:
 .incbin VGABIOS_PATH
 .globl vgabios_end
 vgabios_end:
+
+
+/** Hacks to get libxed to be quiet */
+.globl fprintf
+.globl stderr
+.globl abort
+	jmp panic

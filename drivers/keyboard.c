@@ -1,8 +1,7 @@
 /** \file
  * Interface to standard PC keyboards.
  *
- * This file hooks the keyboard interrupt and routes it the guest OS
- * if CONFIG_PALACIOS is defined, or otherwise throws away the input.
+ * Nothing is done with the keys in this handler.
  *
  * It is in device class "late", which is done after most every other
  * device has been setup.
@@ -13,9 +12,6 @@
 #include <arch/proto.h>
 #include <arch/io.h>
 #include <arch/idt_vectors.h>
-#ifdef CONFIG_PALACIOS
-#include <arch/palacios.h>
-#endif
 
 
 /**
@@ -37,11 +33,8 @@ do_keyboard_interrupt(
 		return IRQ_NONE;
 
 	uint8_t key = inb(KB_DATA_PORT);
-#ifdef CONFIG_PALACIOS
-	send_key_to_palacios(status, key);
-#else
 	printk("Keyboard Interrupt: status=%u, key=%u\n", status, key);
-#endif
+
 	return IRQ_HANDLED;
 }
 

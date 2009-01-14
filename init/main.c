@@ -20,9 +20,6 @@
 #include <lwk/timer.h>
 #include <lwk/kgdb.h>
 #include <lwk/driver.h>
-#ifdef CONFIG_PALACIOS
-#include <arch/palacios.h>
-#endif
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -157,14 +154,17 @@ start_kernel()
         kgdb_initial_breakpoint();
 #endif
 
-#ifdef CONFIG_PALACIOS
-	/*
- 	 * Start up a guest operating system...
- 	 */
-	printk(KERN_INFO "Loading initial guest operating system...\n");
-	status = palacios_run_guest();  /* This should not return */
-	panic("palacios_run_guest() returned (status=%d).", status);
-#else
+	// If any modules have set the global scheduler_replacement, use it
+	if( run_guest_os )
+	{
+		/*
+ 		 * Start up a guest operating system...
+ 		 */
+		printk(KERN_INFO "Loading initial guest operating system...\n");
+		status = run_guest_os();  /* This should not return */
+		panic("run_guest_os() returned (status=%d).", status);
+	}
+
 	/*
 	 * Start up user-space...
 	 */
@@ -174,5 +174,4 @@ start_kernel()
 
 	schedule();  /* This should not return */
 	BUG();
-#endif
 }

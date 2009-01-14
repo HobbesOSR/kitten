@@ -1,3 +1,5 @@
 /** \file
- * Empty file to appease the kbuild system gods.
+ * Do nothing module.
+ *
+ * This file only exists to appease the kbuild gods.
  */

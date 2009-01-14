@@ -21,12 +21,17 @@
 #include <lwk/pmem.h>
 #include <lwk/string.h>
 #include <lwk/cpuinfo.h>
+#include <lwk/driver.h>
 #include <arch/page.h>
 #include <arch/ptrace.h>
 #include <arch/apic.h>
 #include <arch/idt_vectors.h>
 #include <arch/proto.h>
-#include <arch/palacios.h>
+#include "palacios.h"
+#include <lwk/signal.h>
+#include <lwk/interrupt.h>
+#include <lwk/sched.h>
+#include <arch/io.h>
 
 /**
  * Location of the ROM BIOS and VGA BIOS used by Palacios guests.
@@ -294,7 +299,7 @@ struct v3_os_hooks palacios_os_hooks = {
 /**
  * Starts a guest operating system.
  */
-int
+static int
 palacios_run_guest(void)
 {
 	struct v3_ctrl_ops v3_ops = {};
@@ -324,3 +329,47 @@ palacios_run_guest(void)
 
 	return 0;
 }
+
+
+/** Direct keyboard interrupts to Palacios hypervisor */
+static irqreturn_t
+palacios_keyboard_interrupt(
+	unsigned int		vector,
+	void *			unused
+)
+{
+	const uint8_t KB_STATUS_PORT = 0x64;
+	const uint8_t KB_DATA_PORT   = 0x60;
+	const uint8_t KB_OUTPUT_FULL = 0x01;
+
+	uint8_t status = inb(KB_STATUS_PORT);
+
+	if ((status & KB_OUTPUT_FULL) == 0)
+		return IRQ_NONE;
+
+	uint8_t key = inb(KB_DATA_PORT);
+	send_key_to_palacios(status, key);
+
+	return IRQ_HANDLED;
+}
+
+
+/** Initialize the guest hypervisor and install our own interrupts. */
+static void
+palacios_init( void )
+{
+	printk( "---- Initializing Palacios hypervisor support\n" );
+
+	irq_request(
+		IRQ1_VECTOR,
+		&palacios_keyboard_interrupt,
+		0,
+		"keyboard",
+		NULL
+	);
+
+	run_guest_os = palacios_run_guest;
+}
+
+driver_init( "module", palacios_init );
+
