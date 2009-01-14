@@ -160,6 +160,9 @@ struct task_struct {
 	struct list_head        sched_link;      /* For per-CPU scheduling lists */
 	bool                    sched_irqs_on;   /* IRQs on at schedule() entry? */
 
+	int __user *            set_child_tid;   /* CLONE_CHILD_SETTID */
+	int __user *            clear_child_tid; /* CLONE_CHILD_CLEARTID */
+
 	unsigned long		ptrace;
 	uint32_t		flags;
 

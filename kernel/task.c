@@ -200,10 +200,6 @@ __task_create(
 	htable_add(htable, tsk);
 	spin_unlock_irqrestore(&htable_lock, irqstate);
 
-	/* Add the new task to the target CPU's run queue */
-	if (tsk->id != IDLE_TASK_ID)
-		sched_add_task(tsk);
-
 	return tsk;  /* Success! */
 
 fail_arch:
@@ -228,6 +224,10 @@ task_create(id_t id_request, const char *name,
 	tsk = __task_create(id_request, name, start_state, NULL);
 	if (!tsk)
 		return -EINVAL;
+
+	/* Add the new task to the target CPU's run queue */
+	sched_add_task(tsk);
+
 	if (id)
 		*id = tsk->id;
 	return 0;
