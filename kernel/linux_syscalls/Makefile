@@ -16,4 +16,8 @@ obj-y := \
 	mprotect.o \
 	clone.o \
 	futex.o \
+	set_robust_list.o \
+	set_tid_address.o \
+	sched_getaffinity.o \
+	getrlimit.o \
 

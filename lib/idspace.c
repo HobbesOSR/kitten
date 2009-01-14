@@ -2,16 +2,18 @@
 
 #include <lwk/kernel.h>
 #include <lwk/idspace.h>
+#include <lwk/spinlock.h>
 #include <lwk/log2.h>
 #include <arch/page.h>
 
 struct idspace {
-	id_t   min_id;
-	id_t   max_id;
-	size_t size;
-	size_t ids_in_use;
-	size_t offset;
-	void * bitmap;
+	spinlock_t	lock;
+	id_t		min_id;
+	id_t		max_id;
+	size_t		size;
+	size_t		ids_in_use;
+	size_t		offset;
+	void *		bitmap;
 };
 
 static size_t
@@ -37,6 +39,8 @@ idspace_create(
 
 	if (!(spc = kmem_alloc(sizeof(*spc))))
 		return NULL;
+
+	spin_lock_init(&spc->lock);
 
 	spc->min_id     = min_id;
 	spc->max_id     = max_id;
@@ -68,15 +72,18 @@ idspace_alloc_id(
 )
 {
 	unsigned int bit;
+	id_t id = ERROR_ID;
 
-	if (!spc || spc->size == spc->ids_in_use)
-		return ERROR_ID;
+	spin_lock(&spc->lock);
+
+	if (spc->size == spc->ids_in_use)
+		goto out;
 
 	if (request != ANY_ID) {
 		/* Allocate a specific ID */
 		if( request < spc->min_id
 		||  request > spc->max_id )
-			return ERROR_ID;
+			goto out;
 
  		bit = request - spc->min_id;
 	} else {
@@ -92,10 +99,13 @@ idspace_alloc_id(
 	}
 
 	if (test_and_set_bit(bit, spc->bitmap))
-		return ERROR_ID;
+		goto out;
 
 	++spc->ids_in_use;
-	return bit + spc->min_id;
+	id = bit + spc->min_id;
+out:
+	spin_unlock(&spc->lock);
+	return id;
 }
 
 int
@@ -105,18 +115,20 @@ idspace_free_id(
 )
 {
 	unsigned int bit;
+	int status = -EINVAL;
 
-	if (!spc)
-		return -EINVAL;
+	spin_lock(&spc->lock);
 
 	if ((id == ANY_ID) || (id < spc->min_id) || (id > spc->max_id))
-		return -EINVAL;
+		goto out;
 
 	bit = id - spc->min_id;
 	if (test_and_clear_bit(bit, spc->bitmap) == 0)
-		return -ENOENT;
+		goto out;
 
 	--spc->ids_in_use;
-
-	return 0;
+	status = 0;
+out:
+	spin_unlock(&spc->lock);
+	return status;
 }
