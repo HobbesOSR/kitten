@@ -119,6 +119,11 @@ start_kernel()
 	netdev_init();
 
 	/*
+	 * And any modules that need to be started.
+	 */
+	driver_init_by_name( "module", "*" );
+
+	/*
 	 * Bring up any late init devices.
 	 */
 	driver_init_by_name( "late", "*" );
