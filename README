@@ -89,11 +89,11 @@ It is possible to build object files separate from the source tree
 using the Linux kbuild system.
 
 	mkdir /tmp/lwk-build
-	cd /tmp/lwk-build
-	make -C $PATH_TO_KITTEN O=`pwd` menuconfig
-	make -C $PATH_TO_KITTEN O=`pwd` vmlwk.bin
+	make O=/tmp/lwk-build menuconfig
+	make -C /tmp/lwk-build vmlwk.bin init_task
 
-At this time the user space libraries will not build externally.
+There will be some warnings about targets being over-ridden,
+but you can ignore them.
 
 
 Modules
@@ -110,11 +110,19 @@ To build a module, create a Makefile in the module directory:
 
 And run:
 
-	make -C $PATH_TO_KITTEN_SRC M=`pwd`
+	make -C $PATH_TO_KITTEN_OBJ M=`pwd`
 
 This will create built-in.o that can then be copied to
 $PATH_TO_KITTEN_OBJ/modules/foo.o and then kitten should be
 rebuilt.
+
+If you want to get fancier, you can also add this target to allow
+a local build via 'make install O=$PATH_TO_KITTEN_OBJ':
+
+install:
+	@if [ -z "$O" ]; then echo >&2 "O must be defined"; exit 1; fi
+	$(MAKE) -C $O M=`pwd`
+	cp built-in.o $O/modules/palacios-mod.o
 
 
 Instructions for Booting on Real Hardware
