@@ -13,5 +13,7 @@ lib-y := $(notdir $(lib_files))
 # Override the rules to build the modules that are linked in
 # to avoid trying to build them.  The message should never
 # be printed.
-$(object_files) $(lib_files):
-	@echo >&2 " NOTICE   $@"
+$(object_files) $(lib_files): FORCE
+	@echo >&2 "  MOD     $@"
+
+FORCE:
