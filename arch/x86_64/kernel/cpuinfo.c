@@ -160,10 +160,244 @@ amd_cpu(struct cpuinfo *c)
 		clear_bit(X86_FEATURE_MWAIT, &a->x86_capability);
 }
 
+/*
+ * Intel cache_type values for the intel_cache_table[] defined below.
+ */
+#define LVL_1_INST	1
+#define LVL_1_DATA	2
+#define LVL_2		3
+#define LVL_3		4
+#define LVL_TRACE	5
+
+/* 
+ * A table with all of the Intel cache descriptor types that we care
+ * about (no TLB or trace cache entries).
+ */ 
+static struct intel_cache_table_entry {
+	unsigned char	descriptor;
+	char		cache_type;
+	short		cache_size;
+	short		line_size;
+}
+intel_cache_table[] __initdata =
+{
+	{ 0x06, LVL_1_INST, 8, 32 },	/* 4-way set assoc */
+	{ 0x08, LVL_1_INST, 16, 32 },	/* 4-way set assoc */
+	{ 0x0a, LVL_1_DATA, 8, 32 },	/* 2 way set assoc */
+	{ 0x0c, LVL_1_DATA, 16, 32 },	/* 4-way set assoc */
+	{ 0x22, LVL_3,      512, 64 },	/* 4-way set assoc, sectored cache */
+	{ 0x23, LVL_3,      1024, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x25, LVL_3,      2048, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x29, LVL_3,      4096, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x2c, LVL_1_DATA, 32, 64 },	/* 8-way set assoc, 64 byte line size */
+	{ 0x30, LVL_1_INST, 32, 64 },	/* 8-way set assoc, 64 byte line size */
+	{ 0x39, LVL_2,      128, 64 },	/* 4-way set assoc, sectored cache */
+	{ 0x3a, LVL_2,      192, 64 },	/* 6-way set assoc, sectored cache */
+	{ 0x3b, LVL_2,      128, 64 },	/* 2-way set assoc, sectored cache */
+	{ 0x3c, LVL_2,      256, 64 },	/* 4-way set assoc, sectored cache */
+	{ 0x3d, LVL_2,      384, 64 },	/* 6-way set assoc, sectored cache */
+	{ 0x3e, LVL_2,      512, 64 },	/* 4-way set assoc, sectored cache */
+	{ 0x3f, LVL_2,      256, 64 },	/* 2-way set assoc */
+	{ 0x41, LVL_2,      128, 32 },	/* 4-way set assoc */
+	{ 0x42, LVL_2,      256, 32 },	/* 4-way set assoc */
+	{ 0x43, LVL_2,      512, 32 },	/* 4-way set assoc */
+	{ 0x44, LVL_2,      1024, 32 },	/* 4-way set assoc */
+	{ 0x45, LVL_2,      2048, 32 },	/* 4-way set assoc */
+	{ 0x46, LVL_3,      4096, 64 },	/* 4-way set assoc, 64 byte line size */
+	{ 0x47, LVL_3,      8192, 64 },	/* 8-way set assoc, 64 byte line size */
+	{ 0x49, LVL_3,      4096, 64 },	/* 16-way set assoc, 64 byte line size */
+	{ 0x4a, LVL_3,      6144, 64 },	/* 12-way set assoc, 64 byte line size */
+	{ 0x4b, LVL_3,      8192, 64 },	/* 16-way set assoc, 64 byte line size */
+	{ 0x4c, LVL_3,     12288, 64 },	/* 12-way set assoc, 64 byte line size */
+	{ 0x4d, LVL_3,     16384, 64 },	/* 16-way set assoc, 64 byte line size */
+	{ 0x4e, LVL_2,      6144, 64 },	/* 24-way set assoc, 64 byte line size */
+	{ 0x60, LVL_1_DATA, 16, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x66, LVL_1_DATA, 8, 64 },	/* 4-way set assoc, sectored cache */
+	{ 0x67, LVL_1_DATA, 16, 64 },	/* 4-way set assoc, sectored cache */
+	{ 0x68, LVL_1_DATA, 32, 64 },	/* 4-way set assoc, sectored cache */
+	{ 0x70, LVL_TRACE,  12 },	/* 8-way set assoc */
+	{ 0x71, LVL_TRACE,  16 },	/* 8-way set assoc */
+	{ 0x72, LVL_TRACE,  32 },	/* 8-way set assoc */
+	{ 0x73, LVL_TRACE,  64 },	/* 8-way set assoc */
+	{ 0x78, LVL_2,    1024, 64 },	/* 4-way set assoc */
+	{ 0x79, LVL_2,     128, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x7a, LVL_2,     256, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x7b, LVL_2,     512, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x7c, LVL_2,    1024, 64 },	/* 8-way set assoc, sectored cache */
+	{ 0x7d, LVL_2,    2048, 64 },	/* 8-way set assoc */
+	{ 0x7f, LVL_2,     512, 64 },	/* 2-way set assoc */
+	{ 0x82, LVL_2,     256, 32 },	/* 8-way set assoc */
+	{ 0x83, LVL_2,     512, 32 },	/* 8-way set assoc */
+	{ 0x84, LVL_2,    1024, 32 },	/* 8-way set assoc */
+	{ 0x85, LVL_2,    2048, 32 },	/* 8-way set assoc */
+	{ 0x86, LVL_2,     512, 64 },	/* 4-way set assoc */
+	{ 0x87, LVL_2,    1024, 64 },	/* 8-way set assoc */
+	{ 0x00, 0, 0}
+};
+
 static void __init
 intel_cpu(struct cpuinfo *c)
 {
-	/* TODO */
+	struct arch_cpuinfo *a = &c->arch;
+	unsigned int eax, t;
+
+	if (a->cpuid_level > 9) {
+		unsigned eax = cpuid_eax(10);
+		/* Check for version and the number of counters */
+		if ((eax & 0xff) && (((eax>>8) & 0xff) > 1))
+			set_bit(X86_FEATURE_ARCH_PERFMON, &a->x86_capability);
+	}
+
+	/**
+	 * This is where linux checks for X86_FEATURE_DS (Debug Store)
+	 * and X86_FEATURE_BTS (Branch Tree Store)
+	 **/
+
+	if (a->x86_family == 15)
+		a->x86_cache_alignment = a->x86_clflush_size * 2;
+	if (a->x86_family == 6)
+		set_bit(X86_FEATURE_REP_GOOD,  &a->x86_capability);
+
+	set_bit(X86_FEATURE_LFENCE_RDTSC,  &a->x86_capability);   
+
+	/* Determine number of cores */
+	if (a->cpuid_level > 3) {
+		cpuid_count(4, 0, &eax, &t, &t, &t);
+		a->x86_max_cores = (eax & 0x1f) ? ((eax >> 26) + 1) : 1;
+	}
+
+	/**
+	 * should be able to get everything we need at this point with
+	 * cpuid(eax=2) for both cache and tlb information
+	 **/
+	if ( a->cpuid_level > 1) {
+		/* supports eax=2  call */
+		int i, j, n;
+		unsigned int regs[4];
+		unsigned char *dp = (unsigned char *)regs;
+
+		/* Number of times to iterate */
+		n = cpuid_eax(2) & 0xFF; 
+
+		for ( i = 0 ; i < n ; i++ ) {
+			cpuid(2, &regs[0], &regs[1], &regs[2], &regs[3]);
+
+			/** 
+			 * if most significant bit is not 0 then the register
+			 * does not contain a valid value, zero it
+			 **/
+			for ( j = 0 ; j < 3 ; j++ ) {
+				if (regs[j] & (1 << 31)) regs[j] = 0;
+			}
+
+			/* Byte 0 is level count, not a descriptor */
+			for ( j = 1 ; j < 16 ; j++ ) {
+				unsigned char des = dp[j];
+				unsigned char k = 0;
+
+				/** 
+				 * des is our value indicating cache or TLB
+				 * characteristics, The switch determines TLB
+				 * parameters. Assumption is that this is a 64 bit 
+				 * platform, no 4MB TLB options included. 
+				 **/
+				switch(des) {
+				case 0x01:
+					a->x86_tlb_size[INST][L1][PAGE_4KB] = 32;
+					break;
+				case 0x03:
+					a->x86_tlb_size[DATA][L1][PAGE_4KB] = 64;
+					break;
+				case 0x50:
+					a->x86_tlb_size[INST][L1][PAGE_4KB] = 64;
+					a->x86_tlb_size[INST][L1][PAGE_2MB] = 64;
+					break;
+				case 0x51:
+					a->x86_tlb_size[INST][L1][PAGE_4KB] = 128;
+					a->x86_tlb_size[INST][L1][PAGE_2MB] = 128;
+					break;
+				case 0x52:
+					a->x86_tlb_size[INST][L1][PAGE_4KB] = 256;
+					a->x86_tlb_size[INST][L1][PAGE_2MB] = 256;
+					break;
+				/**
+				 * Spec indicates that this is TLB0 and seems to 
+				 * indicate that this is TLB for core 0 or a duo
+				 * processor?? 0xB4 specifics TLB1.
+				 **/
+				case 0x57:
+					a->x86_tlb_size[DATA][L1][PAGE_4KB] = 16;
+					break;
+				/**
+				 * The specification for 0x5B, 0x5C and 0x5D contain
+				 * 4MB options. It is likely that these will not be
+				 * encountered on 64bit platforms but are included
+				 * until we can confirm this. (Possibly included:
+				 * 0xB1)
+				 **/
+				case 0x5B:
+					a->x86_tlb_size[DATA][L1][PAGE_4KB] = 64;
+					break;
+				case 0x5C:
+					a->x86_tlb_size[DATA][L1][PAGE_4KB] = 128;
+					break;
+				case 0x5D:
+					a->x86_tlb_size[DATA][L1][PAGE_4KB] = 256;
+					break;
+				case 0xB0:
+					a->x86_tlb_size[INST][L1][PAGE_4KB] = 128;
+					break;
+				case 0xB1:
+					a->x86_tlb_size[INST][L1][PAGE_2MB] = 8;
+					break;
+				case 0xB3:
+					a->x86_tlb_size[DATA][L1][PAGE_4KB] = 128;
+					break;
+				case 0xB4:
+					a->x86_tlb_size[DATA][L1][PAGE_4KB] = 256;
+					break;
+				default:
+					break;
+				}
+					
+				/** 
+				 * look up this descriptor in the table to 
+				 * determine cache settings
+				 **/
+				while (intel_cache_table[k].descriptor != 0)
+				{
+					if (intel_cache_table[k].descriptor == des) {
+						switch (intel_cache_table[k].cache_type) {
+						case LVL_1_INST:
+							a->x86_cache_size[INST][L1] += intel_cache_table[k].cache_size;
+							a->x86_cache_line[INST][L1] += intel_cache_table[k].line_size;
+							break;
+						case LVL_1_DATA:
+							a->x86_cache_size[DATA][L1] += intel_cache_table[k].cache_size;
+							a->x86_cache_line[DATA][L1] += intel_cache_table[k].line_size;
+							break;
+						case LVL_2:
+							a->x86_cache_size[UNIF][L2] += intel_cache_table[k].cache_size;
+							a->x86_cache_line[UNIF][L2] += intel_cache_table[k].line_size;
+							break;
+						case LVL_3:
+							a->x86_cache_size[UNIF][L3] += intel_cache_table[k].cache_size;
+							a->x86_cache_line[UNIF][L3] += intel_cache_table[k].line_size;
+							break;
+						case LVL_TRACE:
+							/* N/A */
+							break;
+						}
+
+						break;
+					}
+
+					k++;
+				}
+			}
+		}
+	}
+
 }
 
 /*
@@ -326,6 +560,9 @@ identify_cpu(void)
 		for (i = 0 ; i < NCAPINTS ; i++)
 			boot_cpu_data.arch.x86_capability[i] &= c->arch.x86_capability[i];
 	}
+
+	print_arch_cpuinfo(c);
+
 }
 
 /**
