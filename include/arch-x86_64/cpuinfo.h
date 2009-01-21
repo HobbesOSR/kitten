@@ -48,6 +48,7 @@ struct arch_cpuinfo {
     uint16_t x86_cache_size[3][3];  /* [I|D|U][LEVEL], in KB */
     uint16_t x86_cache_line[3][3];  /* [I|D|U][LEVEL], in bytes */
     int      x86_clflush_size;      /* In bytes */
+    int      x86_cache_alignment;   /* In bytes */
     uint16_t x86_tlb_size[3][2][3]; /* [I|D|U][LEVEL][PAGE_SIZE], in #entries */
     uint8_t  x86_virt_bits;         /* Bits of virt address space */
     uint8_t  x86_phys_bits;         /* Bits of phys address space */
@@ -62,6 +63,7 @@ struct arch_cpuinfo {
     uint32_t lapic_khz;             /* Local APIC bus freq. in KHz */
     uint8_t  apic_id;               /* Local APIC ID, phys CPU ID */
     uint8_t  initial_lapic_id;      /* As reported by CPU ID */
+    uint16_t x86_max_cores;         /* CPUID max cores val */
 };
 
 extern struct cpuinfo boot_cpu_data;
