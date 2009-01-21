@@ -218,7 +218,7 @@ __SYSCALL(__NR_umask, syscall_not_implemented)
 #define __NR_gettimeofday                       96
 __SYSCALL(__NR_gettimeofday, sys_gettimeofday)
 #define __NR_getrlimit                          97
-__SYSCALL(__NR_getrlimit, syscall_not_implemented)
+__SYSCALL(__NR_getrlimit, sys_getrlimit)
 #define __NR_getrusage                          98
 __SYSCALL(__NR_getrusage, syscall_not_implemented)
 #define __NR_sysinfo                            99
@@ -463,11 +463,11 @@ __SYSCALL(__NR_tkill, syscall_not_implemented)
 #define __NR_time      201
 __SYSCALL(__NR_time, sys_time)
 #define __NR_futex     202
-__SYSCALL(__NR_futex, syscall_not_implemented)
+__SYSCALL(__NR_futex, sys_futex)
 #define __NR_sched_setaffinity    203
 __SYSCALL(__NR_sched_setaffinity, syscall_not_implemented)
 #define __NR_sched_getaffinity     204
-__SYSCALL(__NR_sched_getaffinity, syscall_not_implemented)
+__SYSCALL(__NR_sched_getaffinity, sys_sched_getaffinity)
 #define __NR_set_thread_area	205
 __SYSCALL(__NR_set_thread_area, syscall_not_implemented)
 #define __NR_io_setup	206
@@ -495,7 +495,7 @@ __SYSCALL(__NR_remap_file_pages, syscall_not_implemented)
 #define __NR_getdents64	217
 __SYSCALL(__NR_getdents64, syscall_not_implemented)
 #define __NR_set_tid_address	218
-__SYSCALL(__NR_set_tid_address, syscall_not_implemented)
+__SYSCALL(__NR_set_tid_address, sys_set_tid_address)
 #define __NR_restart_syscall	219
 __SYSCALL(__NR_restart_syscall, syscall_not_implemented)
 #define __NR_semtimedop		220
@@ -605,7 +605,7 @@ __SYSCALL(__NR_ppoll,	syscall_not_implemented)
 #define __NR_unshare		272
 __SYSCALL(__NR_unshare,	syscall_not_implemented)
 #define __NR_set_robust_list	273
-__SYSCALL(__NR_set_robust_list, syscall_not_implemented)
+__SYSCALL(__NR_set_robust_list, sys_set_robust_list)
 #define __NR_get_robust_list	274
 __SYSCALL(__NR_get_robust_list, syscall_not_implemented)
 #define __NR_splice		275

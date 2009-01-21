@@ -59,15 +59,9 @@ $(obj)/compressed/vmlwk: FORCE
 # that Kconfig insists on adding to string types. Same trick used below.
 KERNEL_ARGS = $(shell echo $(CONFIG_KERNEL_ARGS))
 
-ifdef CONFIG_PALACIOS
-# The initrd is the ISO image to use for the guest OS booted by Palacios
-FDINITRD = $(shell echo $(CONFIG_PALACIOS_GUESTOS_IMAGE))
-# This prevents a make "no rule" error (isoimage target depends on FDINITRD)
-$(FDINITRD):
-else
 # The initrd is the ELF image to use for the initial user-level task
+# or an ISO image to use for the guest OS booted by Palacios
 FDINITRD = $(shell echo $(CONFIG_INIT_TASK_IMAGE))
-endif
 
 # Set this if you want to pass append arguments to the isoimage kernel
 FDARGS = $(KERNEL_ARGS) init_argv=$(CONFIG_INIT_TASK_ARGS) init_envp=$(CONFIG_INIT_TASK_ENVS)

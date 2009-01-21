@@ -147,8 +147,14 @@ hello_world_thread(void *arg)
 {
 	int i;
 	const unsigned long id = (unsigned long) arg;
+	id_t my_cpu;
 
-	printf( "%ld: Hello from a thread\n", id );
+	/* Pause a bit to avoid cluttering up the console */
+	sleep(1);
+
+	task_get_cpu(&my_cpu);
+
+	printf( "%ld: Hello from a thread on cpu %u\n", id, my_cpu );
 	for (i = 0; i < 10; i++) {
 		sleep(5);
 		printf( "%ld: Meow %d!\n", id, i );
@@ -197,7 +203,7 @@ task_api_test(void)
 	}
 	printf("\n");
 
-	printf("  Creating a thread on each CPU:\n    ");
+	printf("  Creating a thread on each CPU:\n");
 	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
 		if (!cpu_isset(i, my_cpumask))
 			continue;
@@ -209,9 +215,8 @@ task_api_test(void)
 			(void*) (uintptr_t) i
 		);
 
-		printf( "thread %d: rc=%d\n", i, rc );
+		printf( "    thread %d: rc=%d\n", i, rc );
 	}
-	printf("\n");
 
 	printf("TEST END: Task Management\n");
 	return 0;

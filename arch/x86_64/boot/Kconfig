@@ -3,40 +3,31 @@ depends on PC
 
 config KERNEL_ARGS
 	string "Kernel Command Line Arguments"
-	default "console=vga,serial" if !PALACIOS
-	default "console=serial" if PALACIOS
+	default "console=vga,serial"
 	help
 	  Arguments to be passed to the kernel.
+	  If you are booting a guest OS that may use the VGA
+	  console, "console=serial" is suggested.
 
 config INIT_TASK_IMAGE
 	string "Initial Task Image"
-	depends !PALACIOS
 	default "init_task"
 	help
-	  Path to the ELF executable to use for the initial task.
-	  Kitten loads this as the first user-level task.
+	  Path to the ELF executable or guest OS image to use for the
+	  initial task.  Kitten loads this as the first user-level task.
 	  It executes with root privilege.
 
 config INIT_TASK_ARGS
 	string "Initial Task Arguments"
-	depends !PALACIOS
 	default "one two three"
 	help
 	  Arguments to be passed to the initial task.
 
 config INIT_TASK_ENVS
 	string "Initial Task Environment Variables"
-	depends !PALACIOS
 	default "one=1 two=2 three=3"
 	help
 	  Environment to be passed to the initial task.
-
-config PALACIOS_GUESTOS_IMAGE
-	string "Palacios Guest OS ISO Image"
-	depends on PALACIOS
-	default "/opt/vmm-tools/isos/puppy.iso"
-	help
-	  Path to the ISO image of the guest OS to boot.
 
 endmenu
 

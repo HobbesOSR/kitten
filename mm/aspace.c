@@ -182,8 +182,8 @@ aspace_subsys_init(void)
 
 	/* Create an ID space for allocating address space IDs */
 	idspace = idspace_create(
-			__ASPACE_MIN_ID,
-			__ASPACE_MAX_ID
+			ASPACE_MIN_ID,
+			ASPACE_MAX_ID
 	);
 	if (!idspace)
 		panic("Failed to create aspace ID space.");
@@ -197,7 +197,7 @@ aspace_subsys_init(void)
 			htable_id_key_compare
 	);
 	if (!htable)
-		panic("Failed to create aspace hash table");
+		panic("Failed to create aspace hash table.");
 
 	/* Create an aspace for use by kernel threads */
 	if ((status = aspace_create(KERNEL_ASPACE_ID, "kernel", NULL)))
@@ -236,14 +236,18 @@ sys_aspace_get_myid(id_t __user *id)
 int
 aspace_create(id_t id_request, const char *name, id_t *id)
 {
-	int status;
+	int status, i;
 	id_t new_id;
 	struct aspace *aspace;
 	unsigned long flags;
 
-	new_id = idspace_alloc_id(idspace, id_request);
-	if (new_id == ERROR_ID)
-		return -ENOENT;
+	if (id_request == KERNEL_ASPACE_ID) {
+		new_id = KERNEL_ASPACE_ID;
+	} else {
+		new_id = idspace_alloc_id(idspace, id_request);
+		if (new_id == ERROR_ID)
+			return -ENOENT;
+	}
 
 	if ((aspace = kmem_alloc(sizeof(*aspace))) == NULL) {
 		idspace_free_id(idspace, new_id);
@@ -275,13 +279,17 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	if (status)
 		goto error1;
 
+	/* Initialize futex queues, used to hold addr space private futexes */
+	for (i = 0; i < ARRAY_SIZE(aspace->futex_queues); i++)
+		futex_queue_init(&aspace->futex_queues[i]);
+
 	/* Do architecture-specific initialization */
 	if ((status = arch_aspace_create(aspace)) != 0)
 		goto error2;
 
 	/* Add new address space to a hash table, for quick lookups by ID */
 	spin_lock_irqsave(&htable_lock, flags);
-	BUG_ON(htable_add(htable, aspace));
+	htable_add(htable, aspace);
 	spin_unlock_irqrestore(&htable_lock, flags);
 
 	if (id)
@@ -316,8 +324,6 @@ sys_aspace_create(id_t id_request, const char __user *name, id_t __user *id)
 	if ((status = aspace_create(id_request, _name, &_id)) != 0)
 		return status;
 
-	BUG_ON(!id_ok(_id));
-
 	if (id && copy_to_user(id, &_id, sizeof(*id)))
 		return -EFAULT;
 
@@ -349,7 +355,7 @@ aspace_destroy(id_t id)
 	}
 
 	/* Remove aspace from hash table, preventing others from finding it */
-	BUG_ON(htable_del(htable, aspace));
+	htable_del(htable, aspace);
 
 	/* Unlock the hash table, others may now use it */
 	spin_unlock_irqrestore(&htable_lock, irqstate);
@@ -373,7 +379,7 @@ aspace_destroy(id_t id)
 		kmem_free(rgn);
 	}
 	arch_aspace_destroy(aspace);
-	BUG_ON(idspace_free_id(idspace, aspace->id));
+	idspace_free_id(idspace, aspace->id);
 	kmem_free(aspace);
 	return 0;
 }

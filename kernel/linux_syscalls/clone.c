@@ -28,8 +28,8 @@ long
 sys_clone(
 	unsigned long		flags,
 	unsigned long		new_stack_ptr,
-	void __user *		parent_tid,
-	void __user *		child_tid,
+	void __user *		parent_tid_ptr,
+	void __user *		child_tid_ptr,
 	struct pt_regs *	parent_regs
 )
 {
@@ -80,13 +80,22 @@ sys_clone(
 	if (!task)
 		return -EINVAL;
 
+	/* Optionally initialize the task's set_child_tid and clear_child_tid */
+	if ((flags & CLONE_CHILD_SETTID))
+		task->set_child_tid = child_tid_ptr;
+	if ((flags & CLONE_CHILD_CLEARTID))
+		task->clear_child_tid = child_tid_ptr;
+
 	/* Optionally write the new task's ID to user-space memory.
 	 * It doesn't really matter if these fail. */
 	int tid = task->id;
 	if ((flags & CLONE_PARENT_SETTID))
-		put_user(tid, parent_tid);
+		put_user(tid, parent_tid_ptr);
 	if ((flags & CLONE_CHILD_SETTID))
-		put_user(tid, child_tid);
+		put_user(tid, child_tid_ptr);
+
+	/* Add the new task to the target CPU's run queue */
+	sched_add_task(task);
 		
 	return task->id;
 }

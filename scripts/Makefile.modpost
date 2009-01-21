@@ -62,7 +62,7 @@ quiet_cmd_modpost = MODPOST
 
 PHONY += __modpost
 __modpost: $(wildcard vmlinux) $(modules:.ko=.o) FORCE
-	$(call cmd,modpost)
+	@#$(call cmd,modpost)
 
 # Declare generated files as targets for modpost
 $(symverfile):         __modpost ;

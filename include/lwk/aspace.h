@@ -10,24 +10,25 @@
 
 #include <lwk/types.h>
 #include <lwk/idspace.h>
+#include <lwk/futex.h>
 #include <arch/aspace.h>
 
-/** \name User space IDs
- *
- * Valid user-space created address space IDs are in interval
+/** \name User-space address space IDs
+ * Valid user-space address space IDs are in interval
  * [ASPACE_MIN_ID, ASPACE_MAX_ID].
  *
+ * \note This interval must not include KERNEL_ASPACE_ID.
  * @{
  */
-#define ASPACE_MIN_ID     0
-#define ASPACE_MAX_ID     4094
+#define ASPACE_ID_USER_BIT      15  /* support 2^15 user-space aspaces */
+#define ASPACE_MIN_ID           (1 << ASPACE_ID_USER_BIT)
+#define ASPACE_MAX_ID           ASPACE_MIN_ID + (1 << ASPACE_ID_USER_BIT) - 1
 
 /**
- * The address space ID to use for the init_task.
- * Put it at the top of the space to keep it out of the way.
+ * ID of the address space used by the init_task, the first user-level task.
+ * Put it at the top of the user-space ID interval to keep it out of the way.
  */
-#define INIT_ASPACE_ID    ASPACE_MAX_ID
-
+#define INIT_ASPACE_ID          ASPACE_MAX_ID
 //@}
 
 /** \name Virtual memory flags.
@@ -181,26 +182,20 @@ struct aspace {
 	// @}
 
 	/**
+ 	 * Address space private futexes.
+ 	 */
+	struct futex_queue futex_queues[1<<FUTEX_HASHBITS];
+
+	/**
 	 * Architecture specific address space data.
 	 */
 	struct arch_aspace arch;
 };
 
-/** \name Kernel address space IDs.
- *
- * Valid address space IDs are in interval [__ASPACE_MIN_ID, __ASPACE_MAX_ID].
- * @{
- */
-#define __ASPACE_MIN_ID   ASPACE_MIN_ID
-#define __ASPACE_MAX_ID   ASPACE_MAX_ID+1  /* +1 for KERNEL_ASPACE_ID */
-
 /**
- * ID of the address space used by kernel threads.
+ * ID of the address space used by kernel tasks.
  */
-#define KERNEL_ASPACE_ID  ASPACE_MAX_ID+1
-
-// @}
-
+#define KERNEL_ASPACE_ID        0
 
 /** \name Kernel-only address space API.
  *

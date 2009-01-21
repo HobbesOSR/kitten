@@ -33,4 +33,7 @@ void set_time(uint64_t ns);
 #define timespec_is_valid(ts) \
 (((ts)->tv_sec >= 0) && (((unsigned long)(ts)->tv_nsec) < NSEC_PER_SEC))
 
+#define timespec_to_ns(ts) \
+((ts.tv_sec * NSEC_PER_SEC) + ts.tv_nsec)
+
 #endif
