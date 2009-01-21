@@ -13,8 +13,6 @@ lib-y := \
 	ctype.o \
 	idspace.o \
 	htable.o \
-	kobject.o \
-	kref.o \
 	mutex.o \
 	semaphore.o \
 	rwsem-spinlock.o \
