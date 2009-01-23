@@ -19,7 +19,7 @@ config KEYBOARD
 	default PC
 
 config DEVFS
-	bool "Common /dev file system entries"
+	bool
 	default Y
 
 config RCAL0_CONSOLE
