@@ -279,6 +279,15 @@ palacios_get_cpu_khz(void)
 }
 
 /**
+ * Yield the CPU so other host OS tasks can run.
+ */
+static void
+palacios_yield_cpu(void)
+{
+	schedule();
+}
+
+/**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
  */
 struct v3_os_hooks palacios_os_hooks = {
@@ -294,13 +303,14 @@ struct v3_os_hooks palacios_os_hooks = {
 	.hook_interrupt		= palacios_hook_interrupt,
 	.ack_irq		= palacios_ack_irq,
 	.get_cpu_khz		= palacios_get_cpu_khz,
+	.yield_cpu		= palacios_yield_cpu,
 };
 
 /**
  * Starts a guest operating system.
  */
 static int
-palacios_run_guest(void)
+palacios_run_guest(void *arg)
 {
 	struct v3_ctrl_ops v3_ops = {};
 
