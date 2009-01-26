@@ -90,7 +90,7 @@ irq_request(
 	};
 
 	write_lock( &irq_lock );
-	list_add_tail( &irqs[irq], &entry->link );
+	list_add_tail( &entry->link, &irqs[irq] );
 	write_unlock( &irq_lock );
 
 	printk( "%s: %s: vector %d\n", __func__, devname, irq );
