@@ -20,6 +20,7 @@
 #include <lwk/timer.h>
 #include <lwk/kgdb.h>
 #include <lwk/driver.h>
+#include <lwk/kfs.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -109,6 +110,8 @@ start_kernel()
  	 */
 	timer_subsys_init();
 
+	/* Start the kernel filesystems */
+	kfs_init();
 
 	/*
 	 * Bring up any network devices.
@@ -154,15 +157,17 @@ start_kernel()
         kgdb_initial_breakpoint();
 #endif
 
-	// If any modules have set the global scheduler_replacement, use it
-	if( run_guest_os )
-	{
+	/* TODO: Remove this. The run_guest_os hook is here temporarily until
+	 *       we have a mechanism allowing the normal init_task to start up
+	 *       guest operating systems. */
+	if (run_guest_os) {
 		/*
  		 * Start up a guest operating system...
  		 */
 		printk(KERN_INFO "Loading initial guest operating system...\n");
-		status = run_guest_os();  /* This should not return */
-		panic("run_guest_os() returned (status=%d).", status);
+		kthread_create(run_guest_os, NULL, "guest_os");
+		schedule();  /* This should not return */
+		BUG();
 	}
 
 	/*

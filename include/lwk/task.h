@@ -69,9 +69,11 @@ typedef struct {
 	vaddr_t                stack_ptr;   //!< Ignored for kernel tasks
 	vaddr_t                entry_point; //!< Ignored for clone() syscall
 	uintptr_t              arg[4];      //!< Args to pass to entry_point()
+	uint32_t		flags;		//!< Flags to clone
 	id_t                   cpu_id;
 	const user_cpumask_t * cpumask;
 } start_state_t;
+
 
 /**
  * \group Core task management API.
@@ -133,6 +135,9 @@ struct sighand_struct {
 	struct list_head        signalfd_list;
 };
 
+/** Maximum files opened at one time */
+#define MAX_FILES	16
+
 /**
  * Task structure (aka Process Control Block).
  * There is one of these for each OS-managed thread of execution in the
@@ -169,6 +174,7 @@ struct task_struct {
 	int                     exit_status;     /* Reason the task exited */
 
 	struct arch_task	arch;            /* arch specific task info */
+	struct kfs_file *	files[ MAX_FILES ];
 };
 
 union task_union {

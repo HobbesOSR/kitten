@@ -191,6 +191,9 @@ __task_create(
 	if (tsk->next_cpu == NR_CPUS)
 		tsk->next_cpu = first_cpu(tsk->cpumask);
 
+	// We always clone files
+	memcpy( tsk->files, current->files, sizeof(tsk->files) );
+
 	/* Do architecture-specific initialization */
 	if (arch_task_create(tsk, start_state, parent_regs))
 		goto fail_arch;

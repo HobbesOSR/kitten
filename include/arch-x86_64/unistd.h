@@ -14,7 +14,7 @@
 #define __NR_read                                0
 __SYSCALL(__NR_read, syscall_not_implemented)
 #define __NR_write                               1
-__SYSCALL(__NR_write, sys_write)
+__SYSCALL(__NR_write, syscall_not_implemented)
 #define __NR_open                                2
 __SYSCALL(__NR_open, syscall_not_implemented)
 #define __NR_close                               3

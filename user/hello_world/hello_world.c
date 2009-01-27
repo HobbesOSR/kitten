@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <ctype.h>
 #include <sched.h>
@@ -16,6 +17,7 @@
 static int pmem_api_test(void);
 static int aspace_api_test(void);
 static int task_api_test(void);
+static int fd_test(void);
 static int socket_api_test(void);
 
 int
@@ -35,6 +37,7 @@ main(int argc, char *argv[], char *envp[])
 
 	pmem_api_test();
 	aspace_api_test();
+	fd_test();
 	task_api_test();
 	socket_api_test();
 
@@ -243,6 +246,51 @@ writen(int fd, const void *vptr, size_t n)
 	}
 	return n;
 }
+
+
+int
+fd_test( void )
+{
+	char buf[ 1024 ] = "";
+	int fd;
+	ssize_t rc;
+
+	printf( "Testing open\n" );
+	fd = open( "/sys", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	if( rc >= 0 )
+		printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/int", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	if( rc >= 0 )
+		printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/hex", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	if( rc >= 0 )
+		printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	fd = open( "/sys/kernel/dummy/bin", O_RDONLY );
+	uint64_t val;
+	rc = read( fd, &val, sizeof(val) );
+	if( rc >= 0 )
+		printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	// Should fail
+	fd = open( "/sys/kernel/dummy", O_RDONLY );
+	rc = read( fd, buf, sizeof(buf) );
+	if( rc >= 0 )
+		printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
+	close( fd );
+
+	return 0;
+}
+
 
 int
 socket_api_test( void )
