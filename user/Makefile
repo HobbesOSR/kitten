@@ -1,5 +1,9 @@
 CFLAGS=-O2 -Wall
 
+# Default to building in the current directory, unless
+# overridden by the calling Makefile or on the command line.
+O=$(shell pwd)
+
 all: liblwk hello_world
 
 liblwk hello_world: FORCE

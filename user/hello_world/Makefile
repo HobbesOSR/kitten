@@ -1,5 +1,10 @@
 TARGET = hello_world
 
+# Default to building in the current directory, unless
+# overridden by the calling Makefile or on the command line.
+O=$(shell pwd)
+
+
 PROGS-y += $(TARGET)
 OBJS-y += hello_world.o
 
