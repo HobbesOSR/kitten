@@ -1,0 +1,11 @@
+# Copyright (c) 2008, Sandia National Laboratories
+
+# Default to building in the current directory, unless
+# overridden by the calling Makefile or on the command line.
+O=$(shell pwd)
+
+# Make sure 'all' is the default target by putting it first.
+# The real 'all' target is defined in Makefile.footer
+.PHONY:all
+all::
+

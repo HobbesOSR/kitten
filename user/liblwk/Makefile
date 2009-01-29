@@ -1,18 +1,11 @@
-TARGET = liblwk.a
+include ../Makefile.header
 
-# Default to building in the current directory, unless
-# overridden by the calling Makefile or on the command line.
-O=$(shell pwd)
+LIBRARIES = liblwk.a
 
-LIBS-y += $(TARGET)
-OBJS-y += syscalls.o pmem.o elf.o aspace.o
+liblwk_SOURCES = syscalls.c pmem.c elf.c aspace.c
 
 INCLUDES += \
 	-Iinclude \
 	-I../../include \
-	-I$O/../../include2 \
 
-$O/$(TARGET): $(addprefix $O/,$(OBJS-y))
-	$(call buildlib,$@,$^)
-
-include ../Make.rules
+include ../Makefile.footer

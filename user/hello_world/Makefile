@@ -1,20 +1,12 @@
-TARGET = hello_world
+include ../Makefile.header
 
-# Default to building in the current directory, unless
-# overridden by the calling Makefile or on the command line.
-O=$(shell pwd)
+PROGRAMS = hello_world
 
-
-PROGS-y += $(TARGET)
-OBJS-y += hello_world.o
+hello_world_SOURCES = hello_world.c
+hello_world_LDADD   = ../liblwk/liblwk.a -lpthread
 
 INCLUDES += \
 	-I../liblwk/include \
 	-I../../include \
-	-I$O/../../include2 \
 
-
-$O/$(TARGET): $(addprefix $O/,$(OBJS-y) ../liblwk/liblwk.a)
-	$(call buildprog,$@,$^ -lpthread)
-
-include ../Make.rules
+include ../Makefile.footer
