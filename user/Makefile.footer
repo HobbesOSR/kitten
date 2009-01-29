@@ -16,10 +16,21 @@ define PROGRAM_template
 $(1)_OBJS  = $$($(1)_SOURCES:.c=.o)
 $(1)_OOBJS = $$(addprefix $$O/, $$($(1)_OBJS))
 
+# Separate out explicitly referenced libraries (e.g., ../lib/lib.a)
+# so that the $O/ prefix required for external builds can be added
 $(1)_LDADD_EXPLICIT  = $$(filter %.a, $$($(1)_LDADD))
 $(1)_OLDADD_EXPLICIT = $$(addprefix $$O/, $$($(1)_LDADD_EXPLICIT))
 $(1)_LDADD_OTHER     = $$(filter-out %.a, $$($(1)_LDADD))
 
+# Optionally embed some raw data in the ELF executable
+$(1)_RAWDATA_EXISTS  = $$(shell if [ -e $$($(1)_RAWDATA) ]; then echo "1"; fi)
+$(1)_ORAWDATA        = $$O/$(1)_rawdata.o
+$(1)_OLDADD_EXPLICIT += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
+CLEAN_FILES          += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
+$$($(1)_ORAWDATA): $$($(1)_RAWDATA)
+	$$(call buildrawobj,$$@,$$^,$$O/$(1)_rawdata)
+
+# Rule for building the target program
 $$O/$(1): $$($(1)_OOBJS) $$($(1)_OLDADD_EXPLICIT)
 	$$(call buildprog,$$@,$$^ $$($(1)_LDADD_OTHER))
 
@@ -34,6 +45,7 @@ define LIBRARY_template
 $(1)_OBJS  = $$($(1)_SOURCES:.c=.o)
 $(1)_OOBJS = $$(addprefix $$O/, $$($(1)_OBJS))
 
+# Rule for building the target library
 $$O/$(1).a: $$($(1)_OOBJS)
 	$$(call buildlib,$$@,$$^)
 
@@ -90,7 +102,17 @@ buildlib = \
 buildprog = \
 	$(call build,LD      $1,				\
 		$(RM) $1;					\
-		$(CC) -static -o $1 $2;				\
+		$(CC) -static $(CC_LDFLAGS) -o $1 $2;		\
+	)
+
+buildrawobj = \
+	$(call build,RAWOBJ  $1,				\
+		ln -s $2 $3;					\
+		objcopy -I binary -O elf64-x86-64 		\
+			--binary-architecture i386		\
+			$3 $1;					\
+		objcopy --rename-section .data=.rawdata $1;	\
+		$(RM) $3;					\
 	)
 
 #
