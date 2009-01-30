@@ -21,13 +21,6 @@ extern void schedule(void);
 #define MAX_SCHEDULE_TIMEOUT UINT64_MAX
 extern uint64_t schedule_timeout(uint64_t timeout);
 
-
-/** Function to initiate guest OS.
- * TODO: remove this
- */
-extern int (*run_guest_os)( void *arg );
-
-
 /** Each architecture must provide its own context-switch code
  * \ingroup arch
  */

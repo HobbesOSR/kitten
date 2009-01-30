@@ -32,6 +32,8 @@
 #include <lwk/interrupt.h>
 #include <lwk/sched.h>
 #include <arch/io.h>
+#include <arch/unistd.h>
+#include <arch/vsyscall.h>
 
 /**
  * Location of the ROM BIOS and VGA BIOS used by Palacios guests.
@@ -41,10 +43,17 @@ extern uint8_t rombios_start[], rombios_end[];
 extern uint8_t vgabios_start[], vgabios_end[];
 
 /**
+ * Palacios management and control function pointers.
+ */
+static struct v3_ctrl_ops v3_ops = {};
+
+/**
  * Global guest state... only one guest is supported currently.
  */
 static struct guest_info * g_vm_guest = NULL;
 static struct guest_info * irq_to_guest_map[NUM_IDT_ENTRIES];
+static paddr_t guest_iso_start;
+static size_t guest_iso_size;
 
 /**
  * Sends a keyboard key press event to Palacios for handling.
@@ -284,7 +293,7 @@ palacios_get_cpu_khz(void)
 static void
 palacios_yield_cpu(void)
 {
-	schedule();
+	//schedule();
 }
 
 /**
@@ -312,10 +321,6 @@ struct v3_os_hooks palacios_os_hooks = {
 static int
 palacios_run_guest(void *arg)
 {
-	struct v3_ctrl_ops v3_ops = {};
-
-	Init_V3(&palacios_os_hooks, &v3_ops);
-
 	struct v3_vm_config vm_config = {
 		.rombios		= rombios_start,
 		.rombios_size		= rombios_end - rombios_start,
@@ -323,8 +328,8 @@ palacios_run_guest(void *arg)
 		.vgabios_size		= vgabios_end - vgabios_start,
 		.mem_size		= (16 * 1024 * 1024),
 		.use_ramdisk		= 1,
-		.ramdisk		= (void *) initrd_start,
-		.ramdisk_size		= initrd_end - initrd_start,
+		.ramdisk		= (void *) guest_iso_start,
+		.ramdisk_size		= guest_iso_size,
         };
 
 	struct guest_info * vm_info = v3_ops.allocate_guest();
@@ -340,8 +345,29 @@ palacios_run_guest(void *arg)
 	return 0;
 }
 
+/**
+ * Kicks off a kernel thread to start and manage a guest operating system.
+ */
+static int
+sys_v3_start_guest(
+	paddr_t			iso_start,
+	size_t			iso_size
+)
+{
+	if (current->uid != 0)
+		return -EPERM;
 
-/** Direct keyboard interrupts to Palacios hypervisor */
+	guest_iso_start = iso_start;
+	guest_iso_size  = iso_size;
+
+	kthread_create(palacios_run_guest, NULL, "guest_os");
+
+	return 0;
+}
+
+/**
+ * Direct keyboard interrupts to the Palacios hypervisor.
+ */
 static irqreturn_t
 palacios_keyboard_interrupt(
 	unsigned int		vector,
@@ -363,12 +389,15 @@ palacios_keyboard_interrupt(
 	return IRQ_HANDLED;
 }
 
-
-/** Initialize the guest hypervisor and install our own interrupts. */
+/**
+ * Initialize the Palacios hypervisor.
+ */
 static void
-palacios_init( void )
+palacios_init(void)
 {
-	printk( "---- Initializing Palacios hypervisor support\n" );
+	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
+
+	Init_V3(&palacios_os_hooks, &v3_ops);
 
 	irq_request(
 		IRQ1_VECTOR,
@@ -378,7 +407,7 @@ palacios_init( void )
 		NULL
 	);
 
-	run_guest_os = palacios_run_guest;
+	syscall_register(__NR_v3_start_guest, (syscall_ptr_t) sys_v3_start_guest);
 }
 
 driver_init( "module", palacios_init );

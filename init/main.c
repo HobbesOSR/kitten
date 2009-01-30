@@ -157,19 +157,6 @@ start_kernel()
         kgdb_initial_breakpoint();
 #endif
 
-	/* TODO: Remove this. The run_guest_os hook is here temporarily until
-	 *       we have a mechanism allowing the normal init_task to start up
-	 *       guest operating systems. */
-	if (run_guest_os) {
-		/*
- 		 * Start up a guest operating system...
- 		 */
-		printk(KERN_INFO "Loading initial guest operating system...\n");
-		kthread_create(run_guest_os, NULL, "guest_os");
-		schedule();  /* This should not return */
-		BUG();
-	}
-
 	/*
 	 * Start up user-space...
 	 */

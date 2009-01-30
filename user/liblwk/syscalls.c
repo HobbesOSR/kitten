@@ -202,3 +202,8 @@ SYSCALL1(task_get_cpumask, user_cpumask_t *);
  * ELF related system calls.
  */
 SYSCALL2(elf_hwcap, id_t, uint32_t *);
+
+/**
+ * Palacios hypervisor control system calls.
+ */
+SYSCALL2(v3_start_guest, vaddr_t, size_t);

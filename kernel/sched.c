@@ -246,6 +246,3 @@ schedule_timeout(uint64_t timeout)
 
 	return timer_sleep_until(when);
 }
-
-/* TODO: remove this */
-int (*run_guest_os)( void *arg );

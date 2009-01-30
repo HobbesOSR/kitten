@@ -19,6 +19,7 @@ static int aspace_api_test(void);
 static int task_api_test(void);
 static int fd_test(void);
 static int socket_api_test(void);
+static int hypervisor_api_test(void);
 
 int
 main(int argc, char *argv[], char *envp[])
@@ -39,6 +40,7 @@ main(int argc, char *argv[], char *envp[])
 	aspace_api_test();
 	fd_test();
 	task_api_test();
+	hypervisor_api_test();
 	socket_api_test();
 
 	printf("Spinning forever...\n");
@@ -392,5 +394,46 @@ socket_api_test( void )
 	}
 
 	printf("TEST END: Sockets API\n");
+	return 0;
+}
+
+/* These specify the virtual address and size of the guest OS ISO image
+ * embedded in our ELF executable. If no ISO image is embedded they are 0. */
+int _binary_hello_world_rawdata_size  __attribute__ ((weak));
+int _binary_hello_world_rawdata_start __attribute__ ((weak));
+
+static int
+hypervisor_api_test(void)
+{
+	size_t  iso_size  = (size_t)  &_binary_hello_world_rawdata_size;
+	vaddr_t iso_start = (vaddr_t) &_binary_hello_world_rawdata_start;
+	paddr_t iso_start_paddr;
+	id_t my_aspace;
+	int status;
+
+	printf("\nTEST BEGIN: Hypervisor API\n");
+
+	printf("  Starting a guest OS...\n");
+
+	/* Make sure there is an embedded ISO image */
+	if (!iso_size) {
+		printf("    Failed, no ISO image available.\n");
+		return -1;
+	}
+
+	/* Determine the physical address of the ISO image */
+	aspace_get_myid(&my_aspace);
+	aspace_virt_to_phys(my_aspace, iso_start, &iso_start_paddr);
+
+	/* Fire it up! */
+	status = v3_start_guest(iso_start_paddr, iso_size);
+	if (status) {
+		printf("    Failed (status=%d).\n", status);
+		return -1;
+	}
+
+	printf("    Success.\n");
+
+	printf("TEST END: Hypervisor API\n");
 	return 0;
 }

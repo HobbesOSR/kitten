@@ -13,5 +13,6 @@
 #include <lwk/task.h>
 #include <lwk/elf.h>
 #include <lwk/auxvec.h>
+#include <lwk/palacios.h>
 
 #endif

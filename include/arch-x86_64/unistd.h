@@ -686,4 +686,7 @@ __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
 #define __NR_aspace_virt_to_phys 308
 __SYSCALL(__NR_aspace_virt_to_phys, sys_aspace_virt_to_phys)
 
+#define __NR_v3_start_guest	309
+__SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
+
 #endif
