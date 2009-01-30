@@ -683,4 +683,7 @@ __SYSCALL(__NR_task_get_cpumask, sys_task_get_cpumask)
 #define __NR_elf_hwcap          307
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
 
+#define __NR_aspace_virt_to_phys 308
+__SYSCALL(__NR_aspace_virt_to_phys, sys_aspace_virt_to_phys)
+
 #endif

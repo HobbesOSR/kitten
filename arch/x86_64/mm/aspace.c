@@ -447,3 +447,63 @@ arch_aspace_unsmartmap(struct aspace *src, struct aspace *dst,
 
 	return 0;
 }
+
+int
+arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
+{
+	xpte_t *pgd;	/* Page Global Directory: level 0 (root of tree) */
+	xpte_t *pud;	/* Page Upper Directory:  level 1 */
+	xpte_t *pmd;	/* Page Middle Directory: level 2 */
+	xpte_t *ptd;	/* Page Table Directory:  level 3 */
+
+	xpte_t *pge;	/* Page Global Directory Entry */
+	xpte_t *pue;	/* Page Upper Directory Entry */
+	xpte_t *pme;	/* Page Middle Directory Entry */
+	xpte_t *pte;	/* Page Table Directory Entry */
+
+	paddr_t result; /* The result of the translation */
+
+	/* Calculate indices into above directories based on vaddr specified */
+	const unsigned int pgd_index = (vaddr >> 39) & 0x1FF;
+	const unsigned int pud_index = (vaddr >> 30) & 0x1FF;
+	const unsigned int pmd_index = (vaddr >> 21) & 0x1FF;
+	const unsigned int ptd_index = (vaddr >> 12) & 0x1FF;
+
+	/* Traverse the Page Global Directory */
+	pgd = aspace->arch.pgd;
+	pge = &pgd[pgd_index];
+	if (!pge->present)
+		return -ENOENT;
+
+	/* Traverse the Page Upper Directory */
+	pud = __va(pge->base_paddr << 12);
+	pue = &pud[pud_index];
+	if (!pue->present)
+		return -ENOENT;
+	if (pue->pagesize) {
+		result = (pue->base_paddr << 30) | (vaddr & 0x3FFFFFFF);
+		goto out;
+	}
+
+	/* Traverse the Page Middle Directory */
+	pmd = __va(pue->base_paddr << 12);
+	pme = &pmd[pmd_index];
+	if (!pme->present)
+		return -ENOENT;
+	if (pme->pagesize) {
+		result = (pme->base_paddr << 21) | (vaddr & 0x1FFFFF);
+		goto out;
+	}
+
+	/* Traverse the Page Table Entry Directory */
+	ptd = __va(pme->base_paddr << 12);
+	pte = &ptd[ptd_index];
+	if (!pte->present)
+		return -ENOENT;
+	result = (pte->base_paddr << 12) | (vaddr & 0xFFF);
+
+out:
+	if (paddr)
+		*paddr = result;
+	return 0;
+}

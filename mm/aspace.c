@@ -227,8 +227,8 @@ sys_aspace_get_myid(id_t __user *id)
 	if ((status = aspace_get_myid(&_id)) != 0)
 		return status;
 
-	if (id && copy_to_user(id, &_id, sizeof(*id)))
-		return -EINVAL;
+	if (id && copy_to_user(id, &_id, sizeof(_id)))
+		return -EFAULT;
 
 	return 0;
 }
@@ -324,7 +324,7 @@ sys_aspace_create(id_t id_request, const char __user *name, id_t __user *id)
 	if ((status = aspace_create(id_request, _name, &_id)) != 0)
 		return status;
 
-	if (id && copy_to_user(id, &_id, sizeof(*id)))
+	if (id && copy_to_user(id, &_id, sizeof(_id)))
 		return -EFAULT;
 
 	return 0;
@@ -988,6 +988,44 @@ sys_aspace_unsmartmap(id_t src, id_t dst)
 	if (!id_ok(src) || !id_ok(dst))
 		return -EINVAL;
 	return aspace_unsmartmap(src, dst);
+}
+
+int
+__aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
+{
+	if (!aspace)
+		return -EINVAL;
+	return arch_aspace_virt_to_phys(aspace, vaddr, paddr);
+}
+
+int
+aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t *paddr)
+{
+	int status;
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	aspace = lookup_and_lock(id);
+	status = __aspace_virt_to_phys(aspace, vaddr, paddr);
+	if (aspace) spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return status;
+}
+
+int
+sys_aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t __user *paddr)
+{
+	int status;
+	paddr_t _paddr;
+
+	if ((status = aspace_virt_to_phys(id, vaddr, &_paddr)) != 0)
+		return status;
+
+	if (paddr && copy_to_user(paddr, &_paddr, sizeof(_paddr)))
+		return -EFAULT;
+
+	return 0;
 }
 
 int

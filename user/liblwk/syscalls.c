@@ -185,6 +185,7 @@ SYSCALL4(aspace_map_pmem, id_t, paddr_t, vaddr_t, size_t);
 SYSCALL3(aspace_unmap_pmem, id_t, vaddr_t, size_t);
 SYSCALL4(aspace_smartmap, id_t, id_t, vaddr_t, size_t);
 SYSCALL2(aspace_unsmartmap, id_t, id_t);
+SYSCALL3(aspace_virt_to_phys, id_t, vaddr_t, paddr_t *);
 SYSCALL1(aspace_dump2console, id_t);
 
 /**

@@ -86,6 +86,8 @@ extern int aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent);
 extern int aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent);
 extern int aspace_unsmartmap(id_t src, id_t dst);
 
+extern int aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t *paddr);
+
 extern int aspace_dump2console(id_t id);
 // @}
 
@@ -221,6 +223,8 @@ extern int __aspace_unmap_pmem(struct aspace *aspace,
 extern int __aspace_smartmap(struct aspace *src, struct aspace *dst,
                              vaddr_t start, size_t extent);
 extern int __aspace_unsmartmap(struct aspace *src, struct aspace *dst);
+extern int __aspace_virt_to_phys(struct aspace *aspace,
+                                 vaddr_t vaddr, paddr_t *paddr);
 // @}
 
 
@@ -250,6 +254,8 @@ extern int arch_aspace_smartmap(struct aspace *src, struct aspace *dst,
                                 vaddr_t start, size_t extent);
 extern int arch_aspace_unsmartmap(struct aspace *src, struct aspace *dst,
                                   vaddr_t start, size_t extent);
+extern int arch_aspace_virt_to_phys(struct aspace *aspace,
+                                    vaddr_t vaddr, paddr_t *paddr);
 
 // @}
 
@@ -276,6 +282,8 @@ extern int sys_aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent);
 extern int sys_aspace_smartmap(id_t src, id_t dst,
                                vaddr_t start, size_t extent);
 extern int sys_aspace_unsmartmap(id_t src, id_t dst);
+extern int sys_aspace_virt_to_phys(id_t id,
+                                   vaddr_t vaddr, paddr_t __user *paddr);
 extern int sys_aspace_dump2console(id_t id);
 
 //@}
