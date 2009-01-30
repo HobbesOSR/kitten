@@ -313,6 +313,7 @@ arch_memsys_init(size_t kmem_size)
 {
 	struct pmem_region query, result;
 	size_t initrd_size, umem_size;
+	paddr_t new_initrd_start, new_initrd_end;
 
 	if (!initrd_start)
 		return;
@@ -327,6 +328,9 @@ arch_memsys_init(size_t kmem_size)
 	pmem_update(&result);
 	memmove(__va(result.start), __va(initrd_start), initrd_size);
 
+	new_initrd_start = result.start;
+	new_initrd_end   = new_initrd_start + initrd_size;
+
 	/* Free the memory used by the old initrd location */
 	pmem_region_unset_all(&query);
 	query.start = round_down( initrd_start, PAGE_SIZE );
@@ -340,7 +344,7 @@ arch_memsys_init(size_t kmem_size)
 	}
 	
 	/* Update initrd_start and initrd_end to their new values */
-	initrd_start = result.start;
-	initrd_end   = initrd_start + initrd_size;
+	initrd_start = new_initrd_start;
+	initrd_end   = new_initrd_end;
 }
 
