@@ -28,7 +28,7 @@ $(1)_ORAWDATA        = $$O/$(1)_rawdata.o
 $(1)_OLDADD_EXPLICIT += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
 CLEAN_FILES          += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
 $$($(1)_ORAWDATA): $$($(1)_RAWDATA)
-	$$(call buildrawobj,$$@,$$^,$$O/$(1)_rawdata)
+	$$(call buildrawobj,$$@,$$^,$(1)_rawdata,$O)
 
 # Rule for building the target program
 $$O/$(1): $$($(1)_OOBJS) $$($(1)_OLDADD_EXPLICIT)
@@ -107,6 +107,7 @@ buildprog = \
 
 buildrawobj = \
 	$(call build,RAWOBJ  $1,				\
+		cd $4;						\
 		ln -s $2 $3;					\
 		objcopy -I binary -O elf64-x86-64 		\
 			--binary-architecture i386		\
