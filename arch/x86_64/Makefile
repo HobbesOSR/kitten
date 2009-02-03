@@ -48,7 +48,9 @@ cflags-y += $(call cc-option,-funit-at-a-time)
 cflags-y += $(call cc-option,-mno-sse -mno-mmx -mno-sse2 -mno-3dnow,)
 
 CFLAGS += $(cflags-y)
-AFLAGS += -m64 -Wa,--divide
+
+DIVIDE_FLAG=-Wa,--divide
+AFLAGS += -m64 $(call as-option,$(DIVIDE_FLAG))
 
 head-y := arch/x86_64/kernel/head.o arch/x86_64/kernel/head64.o arch/x86_64/kernel/init_task.o
 
