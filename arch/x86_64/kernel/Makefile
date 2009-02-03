@@ -8,3 +8,5 @@ obj-y		:= percpu.o setup.o e820.o cpuinfo.o resource.o \
 obj-$(CONFIG_KGDB) += kgdb.o
 
 obj-$(CONFIG_CRAY_XT) += rca/
+
+EXTRA_AFLAGS	:= -Wa,--divide
