@@ -293,7 +293,7 @@ palacios_get_cpu_khz(void)
 static void
 palacios_yield_cpu(void)
 {
-	//schedule();
+	schedule();
 }
 
 /**
