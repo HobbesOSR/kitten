@@ -13,6 +13,14 @@ config SERIAL_CONSOLE
 	depends on PC
 	default PC
 
+config VM_CONSOLE
+	bool "VM console"
+	depends on PC
+	default PC
+	help
+	  Special console device for use by guest virtual machines.
+	  If the kernel will be run under Palacios, say yes.
+
 config KEYBOARD
 	bool
 	depends on PC
