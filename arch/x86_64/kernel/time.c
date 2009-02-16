@@ -174,7 +174,7 @@ time_init(void)
 	if (this_cpu == 0) {
 		lapic_khz = lapic_calibrate_timer();
 	} else {
-		lapic_khz = arch_info->lapic_khz;
+		lapic_khz = cpu_info[0].arch.lapic_khz;
 	}
 
 	arch_info->lapic_khz   = lapic_khz;
