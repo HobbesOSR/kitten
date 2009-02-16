@@ -560,9 +560,6 @@ identify_cpu(void)
 		for (i = 0 ; i < NCAPINTS ; i++)
 			boot_cpu_data.arch.x86_capability[i] &= c->arch.x86_capability[i];
 	}
-
-	print_arch_cpuinfo(c);
-
 }
 
 /**

@@ -13,7 +13,7 @@ hello_world_LDADD   = ../liblwk/liblwk.a -lpthread
 # ELF executable.  The data is placed in the .rawdata ELF section, which
 # starts at the address specified in the CC_LDFLAGS passed to the linker.
 # NOTE: It's OK if the file doesn't exist... nothing gets embedded.
-hello_world_RAWDATA = /opt/vmm-tools/isos/puppy.iso
+hello_world_RAWDATA = /opt/vmm-tools/isos/puppy.isoss
 CC_LDFLAGS          += -Wl,--section-start -Wl,.rawdata=0x1000000
 
 include ../Makefile.footer
