@@ -351,7 +351,7 @@ NEXT_PAGE(level3_kernel_pgt)
 #ifndef CONFIG_CRAY_XT
         .fill   1,8,0
 #else
-        .quad   level2_seastar_pgt - __START_KERNEL_map + _KERNPG_TABLE
+        .quad   level2_seastar_pgt - __START_KERNEL_map + _PAGE_TABLE
 #endif
 
 NEXT_PAGE(level2_ident_pgt)
