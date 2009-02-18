@@ -2,10 +2,10 @@
 #include <lwk/bootmem.h>
 #include <lwk/string.h>
 #include <lwk/pmem.h>
+#include <lwk/tlbflush.h>
 #include <arch/page.h>
 #include <arch/pgtable.h>
 #include <arch/e820.h> 
-#include <arch/tlbflush.h>
 #include <arch/proto.h>
 
 /**
@@ -130,7 +130,7 @@ __set_fixmap(
 	pte     = pte_offset_kernel(pmd, virt_addr);
 	new_pte = pfn_pte(phys_addr >> PAGE_SHIFT, prot);
 	set_pte(pte, new_pte);
-	__flush_tlb_one(virt_addr);
+	__flush_tlb_kernel();
 }
 
 /**
@@ -294,7 +294,7 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 	} 
 
 	asm volatile("movq %%cr4,%0" : "=r" (mmu_cr4_features));
-	__flush_tlb_all();
+	__flush_tlb_kernel();
 
 	printk(KERN_DEBUG
 		"Allocated %lu KB for kernel page tables [0x%lx - 0x%lx)\n",

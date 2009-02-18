@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <sys/time.h>
 
 static int pmem_api_test(void);
 static int aspace_api_test(void);
@@ -150,6 +151,7 @@ hello_world_thread(void *arg)
 	int i;
 	const unsigned long id = (unsigned long) arg;
 	id_t my_cpu;
+	struct timeval tv;
 
 	/* Pause a bit to avoid cluttering up the console */
 	sleep(1);
@@ -159,7 +161,9 @@ hello_world_thread(void *arg)
 	printf( "%ld: Hello from a thread on cpu %u\n", id, my_cpu );
 	for (i = 0; i < 10; i++) {
 		sleep(5);
-		printf( "%ld: Meow %d!\n", id, i );
+		gettimeofday(&tv, NULL);
+		printf( "%ld: Meow %d! now=%ld.%06ld\n",
+			id, i, tv.tv_sec, tv.tv_usec );
 	}
 	printf( "%ld: That's all, folks!\n", id );
 

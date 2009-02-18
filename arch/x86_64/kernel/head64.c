@@ -8,6 +8,7 @@
 #include <lwk/params.h>
 #include <lwk/smp.h>
 #include <lwk/cpuinfo.h>
+#include <lwk/tlbflush.h>
 #include <arch/bootsetup.h>
 #include <arch/sections.h>
 #include <arch/pda.h>
@@ -16,7 +17,6 @@
 #include <arch/proto.h>
 #include <arch/page.h>
 #include <arch/pgtable.h>
-#include <arch/tlbflush.h>
 
 /**
  * Data passed to the kernel by the bootloader.

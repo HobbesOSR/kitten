@@ -10,6 +10,7 @@
 #include <lwk/log2.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/pmem.h>
+#include <lwk/tlbflush.h>
 #include <arch/uaccess.h>
 
 /**
@@ -667,6 +668,7 @@ aspace_del_region(id_t id, vaddr_t start, size_t extent)
 	status = __aspace_del_region(aspace, start, extent);
 	if (aspace) spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
+	flush_tlb();
 	return status;
 }
 
@@ -850,6 +852,7 @@ aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
 	status = __aspace_unmap_pmem(aspace, start, extent);
 	if (aspace) spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
+	flush_tlb();
 	return status;
 }
 
@@ -977,6 +980,7 @@ aspace_unsmartmap(id_t src, id_t dst)
 	spin_unlock(&src_spc->lock);
 	spin_unlock(&dst_spc->lock);
 	local_irq_restore(irqstate);
+	flush_tlb();
 	return status;
 }
 
