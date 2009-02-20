@@ -72,12 +72,14 @@ region_is_sane(const struct pmem_region *rgn)
 	if (rgn->end <= rgn->start)
 		return false;
 
-	for (i = 0; i < sizeof(rgn->name); i++)  {
-		if (rgn->name[i] == '\0')
-			break;
+	if (rgn->name_is_set) {
+		for (i = 0; i < sizeof(rgn->name); i++)  {
+			if (rgn->name[i] == '\0')
+				break;
+		}
+		if (i == sizeof(rgn->name))
+			return false;
 	}
-	if (i == sizeof(rgn->name))
-		return false;
 
 	return true;
 }
