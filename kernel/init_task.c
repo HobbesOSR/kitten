@@ -20,6 +20,11 @@
 #define INIT_ENVP_LEN 1024
 
 /**
+ * The init_task ELF executable.
+ */
+paddr_t init_elf_image;
+
+/**
  * Amount of memory to reserve for the init_task's heap.
  */
 unsigned long init_heap_size = (1024 * 1024 * 4);  /* 4 MB */

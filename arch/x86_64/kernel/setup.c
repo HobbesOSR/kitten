@@ -30,11 +30,6 @@ paddr_t __initdata initrd_start;
 paddr_t __initdata initrd_end;
 
 /**
- * The init_task ELF image.
- */
-paddr_t __initdata init_elf_image;
-
-/**
  * Base address and size of the Extended BIOS Data Area.
  */
 paddr_t __initdata ebda_addr;
@@ -130,7 +125,6 @@ reserve_memory(void)
 			reserve_bootmem(INITRD_START, INITRD_SIZE);
 			initrd_start = INITRD_START;
 			initrd_end = initrd_start+INITRD_SIZE;
-			init_elf_image = initrd_start;
 		} else {
 			printk(KERN_ERR
 			       "initrd extends beyond end of memory "

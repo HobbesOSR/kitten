@@ -346,5 +346,8 @@ arch_memsys_init(size_t kmem_size)
 	/* Update initrd_start and initrd_end to their new values */
 	initrd_start = new_initrd_start;
 	initrd_end   = new_initrd_end;
+
+	/* Assume the initrd image is the init_task ELF executable */
+	init_elf_image = initrd_start;
 }
 
