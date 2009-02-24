@@ -4,7 +4,7 @@
 #include <arch/io.h>
 
 /** Base address of the VGA frame buffer. */
-static volatile uint8_t * const vga_fb = (uint8_t *) 0xffffffff800b8000ul;
+static volatile uint8_t * const vga_fb = (uint8_t *) 0xffff8100000b8000ul;
 
 /** Current cursor row coordinate. */
 static int row = 0;
