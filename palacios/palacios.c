@@ -326,7 +326,7 @@ palacios_run_guest(void *arg)
 		.rombios_size		= rombios_end - rombios_start,
 		.vgabios		= vgabios_start,
 		.vgabios_size		= vgabios_end - vgabios_start,
-		.mem_size		= (16 * 1024 * 1024),
+		.mem_size		= (128 * 1024 * 1024),
 		.use_ramdisk		= 1,
 		.ramdisk		= (void *) guest_iso_start,
 		.ramdisk_size		= guest_iso_size,
