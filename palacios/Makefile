@@ -1,5 +1,5 @@
 # Interface glue between the LWK and Palacios
-obj-y += palacios.o
+obj-y += palacios.o palacios_socket.o
 
 # The palacios hypervisor requires a BIOS image in order to boot guest OSes
 obj-y += bios.o
@@ -8,6 +8,9 @@ obj-y += bios.o
 PALACIOS_PATH:=$(src)/../../palacios
 
 $(obj)/palacios.o :: EXTRA_CFLAGS = \
+	-I$(PALACIOS_PATH)/palacios/include \
+
+$(obj)/palacios_socket.o :: EXTRA_CFLAGS = \
 	-I$(PALACIOS_PATH)/palacios/include \
 
 $(obj)/bios.o :: EXTRA_AFLAGS = \
