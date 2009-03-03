@@ -27,7 +27,7 @@ paddr_t init_elf_image;
 /**
  * Amount of memory to reserve for the init_task's heap.
  */
-unsigned long init_heap_size = (1024 * 1024 * 4);  /* 4 MB */
+unsigned long init_heap_size = (1024 * 1024 * 16);  /* 16 MB */
 param(init_heap_size, ulong);
 
 /**
