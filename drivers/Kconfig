@@ -45,4 +45,8 @@ config NE2K
 	depends on NETWORK && LWIP_ARP
 	default PC
 
+config VMNET
+       bool "Paravirtualized Network Driver"
+       depends on NETWORK && LWIP_ARP
+
 endmenu
