@@ -37,6 +37,9 @@ uint32_t pkt_cntr = 0;
 
 
 uint8_t mac_addr[6];
+static char ipaddr[16];
+static char netmask[16];
+static char gateway[16];
 
 static const int rtl8139_debug = 1;
 
@@ -361,36 +364,41 @@ static err_t rtl8139_net_init(struct netif * const netif) {
 }
 
 
-
 void rtl8139_init( void ) {
-  rtl8139_hw_init();
-
+	rtl8139_hw_init();
+	
 	irq_request(
-		RTL8139_IDTVEC,
-		&rtl8139_interrupt,
-		0,
-		"rtl8139",
-		NULL
-	);
+		    RTL8139_IDTVEC,
+		    &rtl8139_interrupt,
+		    0,
+		    "rtl8139",
+		    NULL
+		    );
+
+	struct ip_addr ip = {inet_addr(ipaddr)};
+	struct ip_addr nm = {inet_addr(netmask)};
+	struct ip_addr gw = {inet_addr(gateway)};
   
+  	netif_add( &rtl8139_netif, 
+		   &ip, 
+		   &nm, 
+		   &gw, 
+		   0, 
+		   rtl8139_net_init, 
+		   ethernet_input
+ 		   );
+
+	printk("RTL8139 Configured\n");
+	printk("\tIP: %x\n", ip.addr);
+	printk("\tNETMASK: %x\n", nm.addr);
+	printk("\tGATEWAY: %x\n", gw.addr);
 
 
-  //  struct ip_addr ipaddr = { htonl(0 | 192 << 24 | 168 << 16 | 1 << 8 | 2 << 0) };
-  //struct ip_addr ipaddr = { htonl(0 | 127 << 24 | 1 << 0) };
-  struct ip_addr ipaddr = { htonl(0 | 172 << 24 | 20 << 16 | 5 << 0) };
-  struct ip_addr netmask = { htonl(0xffffff00) };
-  struct ip_addr gw = { htonl(0x00000000) };
-
-
-  netif_add( &rtl8139_netif, 
-	     &ipaddr, 
-	     &netmask, 
-	     &gw, 
-	     0, 
-	     rtl8139_net_init, 
-	     ethernet_input
-	     );
 }
 
 
 driver_init("net", rtl8139_init);
+
+driver_param_string(ipaddr, ipaddr, sizeof(ipaddr));
+driver_param_string(netmask, netmask, sizeof(netmask));
+driver_param_string(gateway, gateway, sizeof(gateway));
