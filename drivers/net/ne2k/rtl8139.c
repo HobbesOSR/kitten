@@ -27,16 +27,16 @@
 #define TX_BUF_SIZE 1536
 #define TX_FIFO_THRESH 256
 
-uint8_t rx_buf[RX_BUF_SIZE];
-uint8_t tx_buf[4][TX_BUF_SIZE] __attribute__((aligned(4)));
+static uint8_t rx_buf[RX_BUF_SIZE];
+static uint8_t tx_buf[4][TX_BUF_SIZE] __attribute__((aligned(4)));
 
-uint32_t cur_tx;
-uint32_t cur_rx;
-uint32_t tx_flag = (TX_FIFO_THRESH << 11) & 0x003f0000;
-uint32_t pkt_cntr = 0;
+static uint32_t cur_tx;
+static uint32_t cur_rx;
+static uint32_t tx_flag = (TX_FIFO_THRESH << 11) & 0x003f0000;
+static uint32_t pkt_cntr = 0;
 
 
-uint8_t mac_addr[6];
+static uint8_t mac_addr[6];
 static char ipaddr[16];
 static char netmask[16];
 static char gateway[16];
