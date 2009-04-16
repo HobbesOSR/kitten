@@ -1,3 +1,3 @@
-obj-$(CONFIG_VMNET)    += \
-       vmnet.o \
+obj-$(CONFIG_VMNET)	+= \
+	vmnet.o \
 

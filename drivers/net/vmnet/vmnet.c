@@ -27,13 +27,13 @@
 #define RX_BUF_SIZE 1536
 #define TX_BUF_SIZE 1536
 
-uint8_t rx_buf[RX_BUF_SIZE];
-uint8_t tx_buf[TX_BUF_SIZE];
+static uint8_t rx_buf[RX_BUF_SIZE];
+static uint8_t tx_buf[TX_BUF_SIZE];
 
-uint32_t tx_ctr = 0;
-uint32_t rx_ctr = 0;
+static uint32_t tx_ctr = 0;
+static uint32_t rx_ctr = 0;
 
-uint8_t mac_addr[6];
+static uint8_t mac_addr[6];
 
 static const int vmnet_debug = 1;
 
