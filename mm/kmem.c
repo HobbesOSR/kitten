@@ -3,6 +3,7 @@
 #include <lwk/kernel.h>
 #include <lwk/buddy.h>
 #include <lwk/log2.h>
+#include <lwk/spinlock.h>
 
 
 /**
@@ -31,6 +32,12 @@
  *       This may change to one per NUMA node in the future.
  */
 static struct buddy_mempool *kmem = NULL;
+
+
+/**
+ * Lock for serializing access to kmem and kmem_bytes_allocated.
+ */
+static DEFINE_SPINLOCK(kmem_lock);
 
 
 /**
@@ -130,6 +137,7 @@ kmem_alloc(size_t size)
 {
 	unsigned long order;
 	struct kmem_block_hdr *hdr;
+	unsigned long flags;
 
 	/* Make room for block header */
 	size += sizeof(struct kmem_block_hdr);
@@ -140,7 +148,12 @@ kmem_alloc(size_t size)
 		order = MIN_ORDER;
 
 	/* Allocate memory from the underlying buddy system */
-	if ((hdr = buddy_alloc(kmem, order)) == NULL)
+	spin_lock_irqsave(&kmem_lock, flags);
+	hdr = buddy_alloc(kmem, order);
+	if (hdr)
+		kmem_bytes_allocated += (1UL << order);
+	spin_unlock_irqrestore(&kmem_lock, flags);
+	if (hdr == NULL)
 		return NULL;
 
 	/* Zero the block */
@@ -149,9 +162,6 @@ kmem_alloc(size_t size)
 	/* Initialize the block header */
 	hdr->order = order;       /* kmem_free() needs this to free the block */
 	hdr->magic = KMEM_MAGIC;  /* used for sanity check */
-
-	/* Update statistics */
-	kmem_bytes_allocated += (1UL << order);
 
 	/* Return address of first byte after block header to caller */
 	return hdr + 1;
@@ -174,10 +184,11 @@ kmem_free(
 	const void *		addr
 )
 {
+	struct kmem_block_hdr *hdr;
+	unsigned long flags;
+
 	if( !addr )
 		return;
-
-	struct kmem_block_hdr *hdr;
 
 	BUG_ON((unsigned long)addr < sizeof(struct kmem_block_hdr));
 
@@ -186,9 +197,10 @@ kmem_free(
 	BUG_ON(hdr->magic != KMEM_MAGIC);
 
 	/* Return block to the underlying buddy system */
+	spin_lock_irqsave(&kmem_lock, flags);
 	buddy_free(kmem, hdr, hdr->order);
-
-	kmem_bytes_allocated -= (1 << hdr->order);
+	kmem_bytes_allocated -= (1UL << hdr->order);
+	spin_unlock_irqrestore(&kmem_lock, flags);
 }
 
 
@@ -214,12 +226,18 @@ kmem_get_pages(
 {
 	unsigned long block_order;
 	void *addr;
+	unsigned long flags;
 
 	/* Calculate the block size needed; convert page order to byte order */
 	block_order = order + ilog2(PAGE_SIZE);
 
 	/* Allocate memory from the underlying buddy system */
-	if ((addr = buddy_alloc(kmem, block_order)) == NULL)
+	spin_lock_irqsave(&kmem_lock, flags);
+	addr = buddy_alloc(kmem, block_order);
+	if (addr)
+		kmem_bytes_allocated += (1UL << block_order);
+	spin_unlock_irqrestore(&kmem_lock, flags);
+	if (addr == NULL)
 		return NULL;
 
 	/* Zero the block and return its address */
@@ -243,7 +261,12 @@ kmem_free_pages(
 	unsigned long		order
 )
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&kmem_lock, flags);
 	buddy_free(kmem, addr, order + ilog2(PAGE_SIZE));
+	kmem_bytes_allocated -= (1UL << order);
+	spin_unlock_irqrestore(&kmem_lock, flags);
 }
 
 
