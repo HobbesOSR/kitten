@@ -23,7 +23,9 @@ $(1)_OLDADD_EXPLICIT = $$(addprefix $$O/, $$($(1)_LDADD_EXPLICIT))
 $(1)_LDADD_OTHER     = $$(filter-out %.a, $$($(1)_LDADD))
 
 # Optionally embed some raw data in the ELF executable
+ifdef $(1)_RAWDATA
 $(1)_RAWDATA_EXISTS  = $$(shell if [ -e $$($(1)_RAWDATA) ]; then echo "1"; fi)
+endif
 $(1)_ORAWDATA        = $$O/$(1)_rawdata.o
 $(1)_OLDADD_EXPLICIT += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
 CLEAN_FILES          += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
