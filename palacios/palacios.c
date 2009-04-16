@@ -296,12 +296,17 @@ palacios_yield_cpu(void)
 	schedule();
 }
 
+/**
+ * Creates a kernel thread.
+ */
 static void 
-palacios_create_thread(int (*fn)(void * arg), void * arg, char * thread_name)
+palacios_start_kernel_thread(
+	int (*fn)		(void *arg),
+	void *			arg,
+	char *			thread_name)
 {
     kthread_create(fn, arg, thread_name);
 }
-
 
 /**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
@@ -319,7 +324,7 @@ struct v3_os_hooks palacios_os_hooks = {
 	.hook_interrupt		= palacios_hook_interrupt,
 	.ack_irq		= palacios_ack_irq,
 	.get_cpu_khz		= palacios_get_cpu_khz,
-	.start_kernel_thread    = palacios_create_thread,
+	.start_kernel_thread    = palacios_start_kernel_thread,
 	.yield_cpu		= palacios_yield_cpu,
 };
 
