@@ -101,6 +101,11 @@ config PALACIOS
 	  Include the Palacios virtual machine monitor. This enables Kitten
 	  to run guest operating systems alongside native applications.
 
+config PALACIOS_SOCKET
+	bool
+	depends on NETWORK && LWIP_TCP && LWIP_UDP && LWIP_SOCKET
+	default "y"
+
 config PALACIOS_PATH
 	string "Path to pre-built Palacios tree"
 	depends on PALACIOS

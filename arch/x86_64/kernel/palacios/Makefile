@@ -1,5 +1,6 @@
 # Interface glue between the LWK and Palacios
-obj-$(CONFIG_PALACIOS) += palacios.o palacios_socket.o
+obj-$(CONFIG_PALACIOS) += palacios.o
+obj-$(CONFIG_PALACIOS_SOCKET) += palacios_socket.o
 
 # Palacios requires a BIOS image in order to boot guest OSes
 obj-$(CONFIG_PALACIOS) += bios.o
