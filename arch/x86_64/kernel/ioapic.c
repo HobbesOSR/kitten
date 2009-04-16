@@ -187,8 +187,9 @@ ioapic_init_primary(
 	unsigned int num_pins = ioapic_get_num_pins(ioapic_index);
 	struct IO_APIC_route_entry cfg;
 
-	if (num_pins != 24)
-		panic("Expected IOAPIC to have 24 pins, has %u.", num_pins);
+	if ((num_pins != 16) && (num_pins != 24))
+		panic("Expected IOAPIC to have 16 or 24 pins, has %u.",
+			num_pins);
 
 	/* Mask (disable) all pins */
 	for (pin = 0; pin < num_pins; pin++) {
@@ -214,7 +215,11 @@ ioapic_init_primary(
 		cfg.vector        = IRQ0_VECTOR + pin;
 
 		ioapic_write_pin(ioapic_index, pin, cfg);
+		ioapic_unmask_pin(ioapic_index, pin);
 	}
+
+	if (num_pins <= 16)
+		return;
 
 	/*
 	 * Configure PCI IRQs.
@@ -231,12 +236,8 @@ ioapic_init_primary(
 		cfg.vector        = IRQ0_VECTOR + pin;
 
 		ioapic_write_pin(ioapic_index, pin, cfg);
-	} 
-
-	/* Unmask (enable) all of the pins that have been configured */
-	for (pin = 1; pin < 19; pin++) {
 		ioapic_unmask_pin(ioapic_index, pin);
-	}
+	} 
 }
 
 /**
