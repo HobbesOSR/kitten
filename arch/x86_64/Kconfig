@@ -92,6 +92,34 @@ config PHYSICAL_START
 
 endmenu
 
+menu "Virtualization"
+
+config PALACIOS
+	bool "Include Palacios virtual machine monitor"
+	default "n"
+	help
+	  Include the Palacios virtual machine monitor. This enables Kitten
+	  to run guest operating systems alongside native applications.
+
+config PALACIOS_PATH
+	string "Path to pre-built Palacios tree"
+	depends on PALACIOS
+	default "../palacios"
+	help
+	  Path to a built Palacios source tree. This path is used to
+	  find Palacios include files and libraries that need to be
+	  linked with the Kitten kernel image.
+
+config GUEST_OS_ISOIMAGE_PATH
+	string "Path to guest OS ISO image"
+	depends on PALACIOS
+	default "/opt/vmm-tools/isos/puppy.iso"
+	help
+	  Path to an ISO image to link with the example user/hello_world
+	  init task.  The hello_world init task will use this ISO image
+	  to spawn a guest OS virtual machine via Palacios.
+
+endmenu
 
 source "net/Kconfig"
 source "drivers/Kconfig"
