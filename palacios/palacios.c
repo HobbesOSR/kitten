@@ -340,8 +340,9 @@ palacios_run_guest(void *arg)
 		.vgabios		= vgabios_start,
 		.vgabios_size		= vgabios_end - vgabios_start,
 		.mem_size		= (128 * 1024 * 1024),
-		.use_ramdisk		= 1,
-		.ramdisk		= (void *) guest_iso_start,
+		.enable_pci		= 1,
+		.use_ram_hd		= 1,
+		.ramdisk		= (void *) __va(guest_iso_start),
 		.ramdisk_size		= guest_iso_size,
         };
 
