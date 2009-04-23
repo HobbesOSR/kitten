@@ -348,9 +348,7 @@ palacios_run_guest(void *arg)
 
 	struct guest_info * vm_info = v3_ops.allocate_guest();
 
-	v3_ops.config_guest(vm_info, &vm_config);
-
-	v3_ops.init_guest(vm_info);
+	v3_ops.init_guest(vm_info, &vm_config);
 	g_vm_guest = vm_info;
 
 	printk(KERN_INFO "Starting Guest OS...\n");
