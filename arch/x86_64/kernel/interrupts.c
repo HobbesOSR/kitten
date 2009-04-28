@@ -284,6 +284,13 @@ void
 do_interrupt(struct pt_regs *regs, unsigned int vector)
 {
 	idtvec_table[vector](regs, vector);
+
+#ifdef CONFIG_PALACIOS
+	/* Hack... let the guest OS ack the SeaStar interrupt */
+	if (vector == 238)
+		return;
+#endif
+
 	if (vector >= FIRST_EXTERNAL_VECTOR)
 		lapic_ack_interrupt();
 }

@@ -234,14 +234,12 @@ palacios_dispatch_interrupt(
 ) 
 {
 	struct v3_interrupt intr = {
-		.irq		= vector - IRQ0_VECTOR,  /* TODO: correct? */
+		.irq		= vector,
 		.error		= regs->orig_rax,
-		.should_ack	= 0,
+		.should_ack	= 1,
 	};
 
-	printk(KERN_DEBUG "%s: Delivering IRQ %u (vector %u) to guest.\n",
-	                  __func__, intr.irq, vector);
-	v3_deliver_irq(irq_to_guest_map[intr.irq], &intr);
+	v3_deliver_irq(irq_to_guest_map[vector], &intr);
 }
 
 /**
@@ -250,18 +248,22 @@ palacios_dispatch_interrupt(
 static int
 palacios_hook_interrupt(
 	struct guest_info *	vm,
-	unsigned int		irq
+	unsigned int		vector
 )
 {
-	if (irq_to_guest_map[irq]) {
+	if (irq_to_guest_map[vector]) {
 		printk(KERN_WARNING
-		       "%s: IRQ %d is already hooked.\n", __func__, irq);
+		       "%s: Interrupt vector %u is already hooked.\n",
+		       __func__, vector);
 		return -1;
 	}
 
-	printk(KERN_DEBUG "%s: Hooking IRQ %d to %p.\n", __func__, irq, vm);
-	irq_to_guest_map[irq] = vm;
-	set_idtvec_handler(irq, palacios_dispatch_interrupt);
+	printk(KERN_DEBUG
+	       "%s: Hooking interrupt vector %u to vm %p.\n",
+	       __func__, vector, vm);
+
+	irq_to_guest_map[vector] = vm;
+	set_idtvec_handler(vector, palacios_dispatch_interrupt);
 
 	return 0;
 }
@@ -270,8 +272,8 @@ palacios_hook_interrupt(
  * Acknowledges an interrupt.
  */
 static int
-palacios_ack_irq(
-	int			irq
+palacios_ack_interrupt(
+	int			vector
 ) 
 {
 	lapic_ack_interrupt();
@@ -322,7 +324,7 @@ struct v3_os_hooks palacios_os_hooks = {
 	.vaddr_to_paddr		= palacios_vaddr_to_paddr,
 	.paddr_to_vaddr		= palacios_paddr_to_vaddr,
 	.hook_interrupt		= palacios_hook_interrupt,
-	.ack_irq		= palacios_ack_irq,
+	.ack_irq		= palacios_ack_interrupt,
 	.get_cpu_khz		= palacios_get_cpu_khz,
 	.start_kernel_thread    = palacios_start_kernel_thread,
 	.yield_cpu		= palacios_yield_cpu,
