@@ -3,7 +3,8 @@ depends on PC
 
 config KERNEL_ARGS
 	string "Kernel Command Line Arguments"
-	default "console=vga,serial"
+	default "console=vga,serial" if !PALACIOS
+	default "console=serial" if PALACIOS
 	help
 	  Arguments to be passed to the kernel.
 	  If you are booting a guest OS that may use the VGA
