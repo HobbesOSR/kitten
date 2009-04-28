@@ -24,19 +24,16 @@ $(1)_LDADD_OTHER     = $$(filter-out %.a, $$($(1)_LDADD))
 
 # Optionally embed some raw data in the ELF executable
 ifdef $(1)_RAWDATA
-$(1)_RAWDATA_EXISTS  = $$(shell if [ -e $$($(1)_RAWDATA) ]; then echo "1"; fi)
+$(1)_OLDADD_EXPLICIT += $$O/$(1)_rawdata.o
+$$O/$(1)_rawdata.o: $$($(1)_RAWDATA) $(CONFIG)
+	$$(call buildrawobj,$$@,$$<,$(1)_rawdata,$O)
 endif
-$(1)_ORAWDATA        = $$O/$(1)_rawdata.o
-$(1)_OLDADD_EXPLICIT += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
-CLEAN_FILES          += $$(if $$($(1)_RAWDATA_EXISTS), $$($(1)_ORAWDATA),)
-$$($(1)_ORAWDATA): $$($(1)_RAWDATA)
-	$$(call buildrawobj,$$@,$$^,$(1)_rawdata,$O)
 
 # Rule for building the target program
 $$O/$(1): $$($(1)_OOBJS) $$($(1)_OLDADD_EXPLICIT)
 	$$(call buildprog,$$@,$$^ $$($(1)_LDADD_OTHER))
 
-CLEAN_FILES += $$O/$(1) $$($(1)_OOBJS)
+CLEAN_FILES += $$O/$(1) $$($(1)_OOBJS) $$O/$(1)_rawdata.o
 endef
 
 
@@ -121,7 +118,7 @@ buildrawobj = \
 #
 # Implicit rule for building .c files
 #
-$O/%.o: %.c
+$O/%.o: %.c $(CONFIG)
 	$(call build,CC      $@,				\
 		$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<		\
 	)
