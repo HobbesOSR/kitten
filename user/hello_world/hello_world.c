@@ -401,16 +401,18 @@ socket_api_test( void )
 	return 0;
 }
 
-/* These specify the virtual address and size of the guest OS ISO image
- * embedded in our ELF executable. If no ISO image is embedded they are 0. */
+/* These specify the virtual address start, end, and size
+ * of the guest OS ISO image embedded in our ELF executable. */
 int _binary_hello_world_rawdata_size  __attribute__ ((weak));
 int _binary_hello_world_rawdata_start __attribute__ ((weak));
+int _binary_hello_world_rawdata_end   __attribute__ ((weak));
 
 static int
 hypervisor_api_test(void)
 {
-	size_t  iso_size  = (size_t)  &_binary_hello_world_rawdata_size;
-	vaddr_t iso_start = (vaddr_t) &_binary_hello_world_rawdata_start;
+	volatile size_t  iso_size  = (size_t)  &_binary_hello_world_rawdata_size;
+	volatile vaddr_t iso_start = (vaddr_t) &_binary_hello_world_rawdata_start;
+	volatile vaddr_t iso_end   = (vaddr_t) &_binary_hello_world_rawdata_end;
 	paddr_t iso_start_paddr;
 	id_t my_aspace;
 	int status;
@@ -420,7 +422,7 @@ hypervisor_api_test(void)
 	printf("  Starting a guest OS...\n");
 
 	/* Make sure there is an embedded ISO image */
-	if (!iso_size) {
+	if (iso_size != (iso_end - iso_start)) {
 		printf("    Failed, no ISO image available.\n");
 		return -1;
 	}
