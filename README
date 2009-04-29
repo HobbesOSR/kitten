@@ -79,7 +79,9 @@ Platforms Supported
            - Tested on a Core2 Duo Laptop (2 CPUs)
            - Tested on a 4 socket dual-core Opteron system (8 CPUs)
        Cray XT
-           - Tested on quad-core Opteron compute nodes (4 CPUs)
+           - XT3: 1 socket dual-core Opteron compute nodes (2 CPUs)
+           - XT4: 1 socket quad-core Opteron compute nodes (4 CPUs)
+           - XT5: 2 socket quad-core Opteron compute nodes (8 CPUs)
 
 
 External builds
@@ -135,6 +137,9 @@ Instructions for Booting on Real Hardware
             initrd:       ./init_task
 
     Cray XT hardware:
+	These instructions are for 2.0 management system; 2.1 requires
+	a different set of steps.
+
         Do 'make config' and choose:
             System Architecture ---> Red Storm (Cray XT3/XT4)
         Rebuild, and copy the following files to /bootimages/cageN/CNL0/:
