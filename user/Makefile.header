@@ -2,7 +2,7 @@
 
 # Include .config to get build options
 ifdef CONFIG
-include $(CONFIG)
+include $O/$(CONFIG)
 endif
 
 # Default to building in the current directory, unless
