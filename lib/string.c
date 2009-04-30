@@ -625,3 +625,18 @@ strerror(int errnum)
 	return "unknown";
 }
 
+
+/**
+ * Duplicate a string with kmem_alloc.
+ */
+char *
+kstrdup(
+	const char *		old,
+	gfp_t			__unused(gfp)
+)
+{
+	const size_t len = strlen( old );
+	char * new = kmem_alloc( len+1 );
+	memcpy( new, old, len );
+	return new;
+}
