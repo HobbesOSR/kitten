@@ -15,8 +15,8 @@
 #ifndef _KREF_H_
 #define _KREF_H_
 
-#include <linux/types.h>
-#include <asm/atomic.h>
+#include <lwk/types.h>
+#include <arch/atomic.h>
 
 struct kref {
 	atomic_t refcount;

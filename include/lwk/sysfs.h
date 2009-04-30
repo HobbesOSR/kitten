@@ -12,10 +12,10 @@
 #ifndef _SYSFS_H_
 #define _SYSFS_H_
 
-#include <linux/compiler.h>
-#include <linux/errno.h>
-#include <linux/list.h>
-#include <asm/atomic.h>
+#include <lwk/compiler.h>
+#include <lwk/errno.h>
+#include <lwk/list.h>
+#include <arch/atomic.h>
 
 struct kobject;
 struct module;

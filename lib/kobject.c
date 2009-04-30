@@ -12,11 +12,11 @@
  * about using the kobject interface.
  */
 
-#include <linux/kobject.h>
-#include <linux/string.h>
-#include <linux/module.h>
-#include <linux/stat.h>
-#include <linux/slab.h>
+#include <lwk/kobject.h>
+#include <lwk/string.h>
+//#include <lwk/module.h>
+#include <lwk/stat.h>
+//#include <lwk/slab.h>
 
 /*
  * populate_dir - populate directory with attributes.
