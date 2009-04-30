@@ -16,6 +16,7 @@
 # define __acquire(x)	__context__(1)
 # define __release(x)	__context__(-1)
 # define __cond_lock(x)	((x) ? ({ __context__(1); 1; }) : 0)
+# define __unused(x)	x __attribute__((unused))
 extern void __chk_user_ptr(void __user *);
 extern void __chk_io_ptr(void __iomem *);
 #else
@@ -34,6 +35,7 @@ extern void __chk_io_ptr(void __iomem *);
 # define __acquire(x) (void)0
 # define __release(x) (void)0
 # define __cond_lock(x) (x)
+# define __unused(x) x
 #endif
 
 #ifdef __KERNEL__
