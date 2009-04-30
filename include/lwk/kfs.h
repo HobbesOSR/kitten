@@ -43,6 +43,9 @@ struct kfs_fops
 	);
 };
 
+/** Do nothing file operations */
+extern struct kfs_fops kfs_default_fops;
+
 #define MAX_PATHLEN		1024
 
 struct kfs_file

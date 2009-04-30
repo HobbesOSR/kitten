@@ -19,3 +19,5 @@ lib-y := \
 	kasprintf.o \
 	kobject.o \
 	kref.o \
+	sysfs.o \
+	sysfs-stubs.o \

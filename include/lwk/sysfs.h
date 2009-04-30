@@ -20,6 +20,12 @@
 struct kobject;
 struct module;
 
+#ifdef __LWK__
+/** Remap the sysfs directory entry to a KFS file */
+#define sysfs_dirent kfs_file
+#endif
+
+
 /* FIXME
  * The *owner field is no longer used.
  * x86 tree has been cleaned up. The owner
@@ -127,7 +133,7 @@ struct sysfs_dirent *sysfs_get_dirent(struct sysfs_dirent *parent_sd,
 struct sysfs_dirent *sysfs_get(struct sysfs_dirent *sd);
 void sysfs_put(struct sysfs_dirent *sd);
 void sysfs_printk_last_file(void);
-int __must_check sysfs_init(void);
+void sysfs_init(void);
 
 #else /* CONFIG_SYSFS */
 
