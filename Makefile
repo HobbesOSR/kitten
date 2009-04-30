@@ -305,7 +305,7 @@ LWKINCLUDE      := -Iinclude \
                    $(if $(KBUILD_SRC),-Iinclude2 -I$(srctree)/include) \
 		   -include include/lwk/autoconf.h
 
-CPPFLAGS        := -D__KERNEL__ $(LWKINCLUDE)
+CPPFLAGS        := -D__KERNEL__ $(LWKINCLUDE) -D__LWK__
 
 CFLAGS 		:= -std=gnu99 \
 		   -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
