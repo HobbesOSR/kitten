@@ -155,3 +155,61 @@ console=rcal0 net=seastar
 
 	Run 'create_bi cageN'
 	Reboot the nodes 'xtbootsys --reboot --partition p4 c5-0c0s1n0'
+
+
+Instructions for Building with Palacios VMM Support
+===================================================
+Palacios is a virtual machine monitor (VMM) being developed by the V3VEE
+project (http://v3vee.org).  Palacios is distributed and built separately
+from Kitten, but can be linked with Kitten as part of the normal Kitten
+build process.  The Kitten+Palacios combination allows full guest operating
+system images to be launched and managed similarly to native Kitten tasks.
+
+Palacios currently supports AMD x86_64 systems with hardware support for
+virtualization (SVM).  This includes most recent AMD Opteron processors
+as well as versions 0.9.1 or newer of the QEMU full system simulator
+(http://www.qemu.org).  Intel processors are currently not supported.
+
+    Installation Steps:
+
+    1. Download the latest Kitten and Palacios releases:
+           http://software.sandia.gov/trac/kitten
+           http://www.v3vee.org/download
+
+    2. Unpack them into the same directory:
+           > cd where-id-like-to-build
+           > tar xzvf downloaded-file-location/palacios.tar.gz
+           > tar xzvf downloaded-file-locaiton/kitten.tar.gz
+
+    3. Build Palacios:
+           > make -C palacios/build palacios-full64
+
+    4. Configure Kitten to link with Palacios:
+           > make -C kitten config # or menuconfig or xconfig
+
+       Answer 'Y' when prompted for:
+           "Include Palacios virtual machine monitor:"
+       Specify the path to the guest ISO image to boot when prompted for:
+           "Path to guest OS ISO image:"
+
+       Puppy Linux 3.01 is an example guest OS ISO image that is known to work:
+           http://www.puppylinux.org/downloads/official-releases
+
+    5. Build Kitten
+           > make -C kitten isoimage
+
+       If successful, a bootable ISO image will be located at:
+           kitten/arch/x86_64/boot/image.iso
+
+       This requires the "syslinux" package to create a bootable ISO image.
+       Most Linux distributions include a syslinux package, but it is usually
+       not part of the standard install.
+
+    6. Boot the resulting image:
+           > qemu-system-x86_64 -cdrom kitten/arch/x86_64/boot/image.iso -m 1024 -serial stdio
+
+       By default the guest OS's console is output to the VGA device and
+       Kitten's console is output to the serial port.
+
+       Instructions for booting on real hardware are given above.
+
