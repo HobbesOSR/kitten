@@ -69,7 +69,7 @@ static struct kgdb_io kgdboc_io_ops = {
 
 static int __init opt_kgdboc_console(char *str)
 {
-	if (driver_init_by_name(str))
+	if (driver_init_by_name("console",str))
                 printk(KERN_WARNING "KGDB failed to install console=%s\n", str);
         else
                 printk(KERN_INFO "KGDB attached to console=%s\n", str);
