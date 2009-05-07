@@ -213,6 +213,8 @@ kfs_mkdirent(
 		file = htable_lookup( parent->files, name );
 	if( !file )
 		file = kmem_alloc( sizeof(*file) );
+	else
+		printk( KERN_WARNING "%s: '%s' already exists\n", __func__, name );
 	if( !file )
 		return NULL;
 
