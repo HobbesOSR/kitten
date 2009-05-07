@@ -10,6 +10,7 @@
 
 struct kfs_file * sysfs_root;
 
+struct kobject * kernel_kobj;
 
 void
 sysfs_init( void )
@@ -23,6 +24,12 @@ sysfs_init( void )
 	);
 
 	printk( "%s: root=%p\n", __func__, sysfs_root );
+
+	// Create the /sys/kernel kobject
+	kernel_kobj = kobject_create();
+	kobject_set_name( kernel_kobj, "kernel" );
+	if( sysfs_create_dir( kernel_kobj ) != 0 )
+		panic( "Unable to create /sys/kernel!\n" );
 }
 
 driver_init( "kfs",  sysfs_init );
@@ -39,7 +46,6 @@ static struct kfs_fops kobject_fops = {
 int sysfs_create_dir(struct kobject * kobj)
 {
 	struct sysfs_dirent *parent_sd, *sd;
-	int error = 0;
 
 	BUG_ON(!kobj);
 
@@ -49,7 +55,7 @@ int sysfs_create_dir(struct kobject * kobj)
 		parent_sd = sysfs_root;
 
 #ifdef __LWK__
-	kobj->sd = kfs_mkdirent(
+	kobj->sd = sd = kfs_mkdirent(
 		parent_sd,
 		kobject_name(kobj),
 		&kfs_default_fops,
@@ -59,6 +65,7 @@ int sysfs_create_dir(struct kobject * kobj)
 	);
 	return kobj->sd == NULL;
 #else
+	int error = 0;
 	error = create_dir(kobj, parent_sd, kobject_name(kobj), &sd);
 	if (!error)
 		kobj->sd = sd;
