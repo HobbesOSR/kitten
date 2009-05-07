@@ -28,8 +28,8 @@ long
 sys_clone(
 	unsigned long		flags,
 	unsigned long		new_stack_ptr,
-	void __user *		parent_tid_ptr,
-	void __user *		child_tid_ptr,
+	int __user *		parent_tid_ptr,
+	int __user *		child_tid_ptr,
 	struct pt_regs *	parent_regs
 )
 {

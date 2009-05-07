@@ -394,9 +394,10 @@ futex_cmp_requeue(
 	if ((status = get_user(curval, uaddr1)) != 0)
 		goto out_unlock;
 
-	if (curval != cmpval)
+	if (curval != cmpval) {
 		status = -EAGAIN;
 		goto out_unlock;
+	}
 
 	head1 = &queue1->futex_list;
 	head2 = &queue2->futex_list;
