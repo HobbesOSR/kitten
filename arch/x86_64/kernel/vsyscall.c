@@ -52,6 +52,16 @@ vtime(time_t *t)
 	return ret;
 }
 
+long __vsyscall(2)
+vgetcpu(unsigned *cpu, unsigned *node, void *tcache)
+{
+	asm volatile("syscall"
+		:
+		: "a" (__NR_task_get_cpu),"D" (cpu)
+		: __syscall_clobber );
+	return 0;
+}
+
 void __init
 vsyscall_map(void)
 {
@@ -67,5 +77,7 @@ vsyscall_map(void)
 			VSYSCALL_ADDR(__NR_vgettimeofday));
 	BUG_ON((unsigned long) &vtime !=
 			VSYSCALL_ADDR(__NR_vtime));
+	BUG_ON((unsigned long) &vgetcpu !=
+			VSYSCALL_ADDR(__NR_vgetcpu));
 }
 
