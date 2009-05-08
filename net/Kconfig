@@ -2,61 +2,67 @@ menu "Networking"
 
 config NETWORK
 	bool "Enable Networking"
-	default Y
+	default y
 
 config LWIP_TCP
-	bool "Enable TCP support"
+	bool
 	depends on NETWORK
-	default Y
+	default y
+	help
+	  Enable TCP support
 
 config LWIP_UDP
-	bool "Enable UDP support"
+	bool
 	depends on NETWORK
-	default Y
+	default y
+	help
+	  Enable UDP support
 
 config LWIP_SOCKET
-	bool "Enable socket API"
+	bool
 	depends on NETWORK
-	default N
+	default y
+	help
+	  Allows threads to open sockets with the POSIX calls.
 
-config LWIP_ARP
-	bool "Enable ARP support"
-	depends on NETWORK
-	default N
-
-config LWIP_DHCP
-	bool "Enable DHCP support"
-	depends on NETWORK
-	default N
-
-config LWIP_AUTOIP
-	bool "Enable DHCP"
-	depends on NETWORK
-	default N
-
-config LWIP_SNMP
-	bool "Enable SNMP"
-	depends on NETWORK
-	default N
-
-config LWIP_IGMP
-	bool "Enable IGMP"
-	depends on NETWORK
-	default N
-
-config LWIP_DNS
-	bool "Enable DNS"
-	depends on NETWORK
-	default N
-
-config PPP_SUPPORT
-	bool "Enable PPP"
-	depends on NETWORK
-	default N
-
-config PPPOE_SUPPORT
-	bool "Enable PPPOE"
-	depends on NETWORK
-	default N
+# config LWIP_ARP
+# 	bool "Enable ARP support"
+# 	depends on NETWORK
+# 	default N
+# 
+# config LWIP_DHCP
+# 	bool "Enable DHCP support"
+# 	depends on NETWORK
+# 	default N
+# 
+# config LWIP_AUTOIP
+# 	bool "Enable DHCP"
+# 	depends on NETWORK
+# 	default N
+# 
+# config LWIP_SNMP
+# 	bool "Enable SNMP"
+# 	depends on NETWORK
+# 	default N
+# 
+# config LWIP_IGMP
+# 	bool "Enable IGMP"
+# 	depends on NETWORK
+# 	default N
+# 
+# config LWIP_DNS
+# 	bool "Enable DNS"
+# 	depends on NETWORK
+# 	default N
+# 
+# config PPP_SUPPORT
+# 	bool "Enable PPP"
+# 	depends on NETWORK
+# 	default N
+# 
+# config PPPOE_SUPPORT
+# 	bool "Enable PPPOE"
+# 	depends on NETWORK
+# 	default N
 
 endmenu
