@@ -21,3 +21,4 @@ lib-y := \
 	kref.o \
 	sysfs.o \
 	sysfs-stubs.o \
+	klist.o \

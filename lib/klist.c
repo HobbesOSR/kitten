@@ -34,9 +34,9 @@
  * all accessors have finished).
  */
 
-#include <linux/klist.h>
-#include <linux/module.h>
-#include <linux/sched.h>
+#include <lwk/klist.h>
+#include <lwk/sched.h>
+#include <lwk/linux_compat.h>
 
 /*
  * Use the lowest bit of n_klist to mark deleted nodes and exclude
@@ -195,7 +195,7 @@ static void klist_release(struct kref *kref)
 
 		waiter->woken = 1;
 		mb();
-		wake_up_process(waiter->process);
+		sched_wakeup_task(waiter->process, TASKSTATE_NORMAL);
 		list_del(&waiter->list);
 	}
 	spin_unlock(&klist_remove_lock);
@@ -250,12 +250,12 @@ void klist_remove(struct klist_node *n)
 	klist_del(n);
 
 	for (;;) {
-		set_current_state(TASK_UNINTERRUPTIBLE);
+		set_current_state(TASKSTATE_UNINTERRUPTIBLE);
 		if (waiter.woken)
 			break;
 		schedule();
 	}
-	__set_current_state(TASK_RUNNING);
+	__set_current_state(TASKSTATE_READY);
 }
 EXPORT_SYMBOL_GPL(klist_remove);
 
