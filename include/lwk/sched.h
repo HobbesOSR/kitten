@@ -46,10 +46,17 @@ extern void arch_idle_task_loop_body(void);
  *
  * If the caller does not need such serialisation then use __set_current_state()
  */
-#define __set_current_state(state_value)			\
-	do { current->state = (state_value); } while (0)
-#define set_current_state(state_value)		\
-	set_mb(current->state, (state_value))
+#define __set_task_state(tsk, state_value) \
+	do { (tsk)->state = (state_value); } while (0)
+#define set_task_state(tsk, state_value) \
+	set_mb((tsk)->state, (state_value))
+
+#define __set_current_state(state_value) \
+	__set_task_state( current, state_value )
+#define set_current_state(state_value) \
+	set_task_state( current, state_value )
+
+
 
 
 #endif
