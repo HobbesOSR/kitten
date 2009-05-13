@@ -16,6 +16,7 @@ obj-y := \
 	elf_liblwk.o \
 	task.o \
 	sched.o \
+	completion.o \
 	waitq.o \
 	timer.o \
 	init_task.o \
