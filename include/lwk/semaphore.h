@@ -9,8 +9,9 @@
 #ifndef __LINUX_SEMAPHORE_H
 #define __LINUX_SEMAPHORE_H
 
-#include <linux/list.h>
-#include <linux/spinlock.h>
+#include <lwk/linux_compat.h>
+#include <lwk/list.h>
+#include <lwk/spinlock.h>
 
 /* Please don't access any members of this structure directly */
 struct semaphore {
@@ -21,7 +22,7 @@ struct semaphore {
 
 #define __SEMAPHORE_INITIALIZER(name, n)				\
 {									\
-	.lock		= __SPIN_LOCK_UNLOCKED((name).lock),		\
+	.lock		= SPIN_LOCK_UNLOCKED,				\
 	.count		= n,						\
 	.wait_list	= LIST_HEAD_INIT((name).wait_list),		\
 }
@@ -31,9 +32,9 @@ struct semaphore {
 
 static inline void sema_init(struct semaphore *sem, int val)
 {
-	static struct lock_class_key __key;
+	//static struct lock_class_key __key;
 	*sem = (struct semaphore) __SEMAPHORE_INITIALIZER(*sem, val);
-	lockdep_init_map(&sem->lock.dep_map, "semaphore->lock", &__key, 0);
+	//lockdep_init_map(&sem->lock.dep_map, "semaphore->lock", &__key, 0);
 }
 
 #define init_MUTEX(sem)		sema_init(sem, 1)

@@ -23,6 +23,7 @@ obj-y := \
 	netdev.o \
 	kfs.o \
 	interrupt.o \
+	semaphore.o \
 
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o

@@ -25,13 +25,11 @@
  * semaphore.  If it's zero, there may be tasks waiting on the wait_list.
  */
 
-#include <linux/compiler.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/sched.h>
-#include <linux/semaphore.h>
-#include <linux/spinlock.h>
-#include <linux/ftrace.h>
+#include <lwk/compiler.h>
+#include <lwk/kernel.h>
+#include <lwk/sched.h>
+#include <lwk/semaphore.h>
+#include <lwk/spinlock.h>
 
 static noinline void __down(struct semaphore *sem);
 static noinline int __down_interruptible(struct semaphore *sem);
@@ -201,7 +199,7 @@ struct semaphore_waiter {
  * constant, and thus optimised away by the compiler.  Likewise the
  * 'timeout' parameter for the cases without timeouts.
  */
-static inline int __sched __down_common(struct semaphore *sem, long state,
+static inline int __down_common(struct semaphore *sem, long state,
 								long timeout)
 {
 	struct task_struct *task = current;
@@ -212,8 +210,10 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 	waiter.up = 0;
 
 	for (;;) {
+#ifndef __LWK__
 		if (signal_pending_state(state, task))
 			goto interrupted;
+#endif
 		if (timeout <= 0)
 			goto timed_out;
 		__set_task_state(task, state);
@@ -228,36 +228,39 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 	list_del(&waiter.list);
 	return -ETIME;
 
+#ifndef __LWK__
  interrupted:
 	list_del(&waiter.list);
 	return -EINTR;
+#endif
 }
 
-static noinline void __sched __down(struct semaphore *sem)
+static noinline void __down(struct semaphore *sem)
 {
-	__down_common(sem, TASK_UNINTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+	__down_common(sem, TASKSTATE_UNINTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
 }
 
-static noinline int __sched __down_interruptible(struct semaphore *sem)
+static noinline int __down_interruptible(struct semaphore *sem)
 {
-	return __down_common(sem, TASK_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+	return __down_common(sem, TASKSTATE_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
 }
 
-static noinline int __sched __down_killable(struct semaphore *sem)
+static noinline int __down_killable(struct semaphore *sem)
 {
-	return __down_common(sem, TASK_KILLABLE, MAX_SCHEDULE_TIMEOUT);
+	//return __down_common(sem, TASKSTATE_KILLABLE, MAX_SCHEDULE_TIMEOUT);
+	return __down_common(sem, TASKSTATE_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
 }
 
-static noinline int __sched __down_timeout(struct semaphore *sem, long jiffies)
+static noinline int __down_timeout(struct semaphore *sem, long jiffies)
 {
-	return __down_common(sem, TASK_UNINTERRUPTIBLE, jiffies);
+	return __down_common(sem, TASKSTATE_UNINTERRUPTIBLE, jiffies);
 }
 
-static noinline void __sched __up(struct semaphore *sem)
+static noinline void __up(struct semaphore *sem)
 {
 	struct semaphore_waiter *waiter = list_first_entry(&sem->wait_list,
 						struct semaphore_waiter, list);
 	list_del(&waiter->list);
 	waiter->up = 1;
-	wake_up_process(waiter->task);
+	sched_wakeup_task(waiter->task, TASKSTATE_NORMAL);
 }
