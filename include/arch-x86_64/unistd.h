@@ -139,7 +139,7 @@ __SYSCALL(__NR_vfork, syscall_not_implemented)
 #define __NR_execve                             59
 __SYSCALL(__NR_execve, syscall_not_implemented)
 #define __NR_exit                               60
-__SYSCALL(__NR_exit, sys_task_exit)
+__SYSCALL(__NR_exit, sys_exit)
 #define __NR_wait4                              61
 __SYSCALL(__NR_wait4, syscall_not_implemented)
 #define __NR_kill                               62

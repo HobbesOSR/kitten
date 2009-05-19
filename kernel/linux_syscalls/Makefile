@@ -19,4 +19,5 @@ obj-y := \
 	set_tid_address.o \
 	sched_getaffinity.o \
 	getrlimit.o \
+	exit.o \
 
