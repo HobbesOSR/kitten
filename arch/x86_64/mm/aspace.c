@@ -331,17 +331,9 @@ write_pte(
 	if ((flags & VM_EXEC) == 0)
 		_pte.no_exec = 1;
 
-	if (pagesz == VM_PAGE_4KB) {
-		_pte.base_paddr = paddr >> 12;
-	} else if (pagesz == VM_PAGE_2MB) {
+	_pte.base_paddr = paddr >> 12;
+	if ((pagesz == VM_PAGE_2MB) || (pagesz == VM_PAGE_1GB))
 		_pte.pagesize = 1;
-		_pte.base_paddr = paddr >> 21;
-	} else if (pagesz == VM_PAGE_1GB) {
-		_pte.pagesize = 1;
-		_pte.base_paddr = paddr >> 30;
-	} else {
-		panic("Invalid page size 0x%lx.", pagesz);
-	}
 
 	*pte = _pte;
 }
