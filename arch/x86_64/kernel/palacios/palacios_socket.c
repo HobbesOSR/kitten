@@ -207,4 +207,4 @@ palacios_socket_init(void)
   	V3_Init_Sockets(&palacios_sock_hooks);
 }
 
-driver_init("net", palacios_socket_init);
+driver_init("module", palacios_socket_init);
