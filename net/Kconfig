@@ -1,8 +1,8 @@
 menu "Networking"
 
 config NETWORK
-	bool "Enable Networking"
-	default y
+	bool "Enable lwIP TCP/IP stack"
+	default n
 
 config LWIP_TCP
 	bool
@@ -25,10 +25,13 @@ config LWIP_SOCKET
 	help
 	  Allows threads to open sockets with the POSIX calls.
 
-# config LWIP_ARP
-# 	bool "Enable ARP support"
-# 	depends on NETWORK
-# 	default N
+config LWIP_ARP
+ 	bool
+ 	depends on NETWORK
+ 	default y
+	help
+	  Enables address resolution protocol
+
 # 
 # config LWIP_DHCP
 # 	bool "Enable DHCP support"
