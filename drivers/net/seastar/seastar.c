@@ -16,7 +16,7 @@
 #include <arch/page.h>
 #include <lwip/netif.h>
 #include <lwip/inet.h>
-#include <lwip/ip.h>
+#include <lwip/tcpip.h>
 #include "memory.h"
 #include "command.h"
 
@@ -489,7 +489,7 @@ seastar_init( void )
 		&gw,
 		0,
 		seastar_net_init,
-		ip_input
+		tcpip_input
 	);
 }
 	

@@ -8,7 +8,7 @@
 #include <lwk/interrupt.h>
 #include <lwip/netif.h>
 #include <lwip/inet.h>
-#include <lwip/ip.h>
+#include <lwip/tcpip.h>
 #include <lwip/etharp.h>
 #include <arch/page.h>
 #include <arch/proto.h>
@@ -240,6 +240,7 @@ static err_t vmnet_net_init(struct netif * const netif) {
   netif->flags         = 0
     | NETIF_FLAG_LINK_UP
     | NETIF_FLAG_UP
+    | NETIF_FLAG_ETHARP
     ;
 
 
@@ -289,7 +290,7 @@ void vmnet_init( void ) {
             &gw,
             0,
             vmnet_net_init,
-            ethernet_input
+            tcpip_input
             );
 }
 

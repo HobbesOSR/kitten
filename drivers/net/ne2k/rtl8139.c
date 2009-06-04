@@ -14,7 +14,7 @@
 #include <lwk/interrupt.h>
 #include <lwip/netif.h>
 #include <lwip/inet.h>
-#include <lwip/ip.h>
+#include <lwip/tcpip.h>
 #include <lwip/etharp.h>
 #include <arch/page.h>
 #include <arch/proto.h>
@@ -342,6 +342,7 @@ static err_t rtl8139_net_init(struct netif * const netif) {
   netif->flags		= 0
     | NETIF_FLAG_LINK_UP
     | NETIF_FLAG_UP
+    | NETIF_FLAG_ETHARP
     ;
   
 
@@ -378,14 +379,15 @@ void rtl8139_init( void ) {
 	struct ip_addr ip = {inet_addr(ipaddr)};
 	struct ip_addr nm = {inet_addr(netmask)};
 	struct ip_addr gw = {inet_addr(gateway)};
-  
+
+
   	netif_add( &rtl8139_netif, 
 		   &ip, 
 		   &nm, 
 		   &gw, 
 		   0, 
 		   rtl8139_net_init, 
-		   ethernet_input
+		   tcpip_input
  		   );
 
 	printk("RTL8139 Configured\n");
