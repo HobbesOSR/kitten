@@ -1,6 +1,7 @@
 #ifndef _lwipopts_h_
 #define _lwipopts_h_
 
+#define SYS_LIGHTWEIGHT_PROT 1
 #define NO_SYS 0
 
 #ifdef CONFIG_LWIP_SOCKET

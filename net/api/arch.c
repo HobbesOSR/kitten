@@ -14,6 +14,8 @@
 spinlock_t sem_lock;
 spinlock_t mbox_lock;
 
+spinlock_t sys_lock;
+
 /** Debuging output toggle.
  * 0 == none
  * 1 == creation / deletion
@@ -30,6 +32,7 @@ sys_init( void )
 {
 	spin_lock_init( &sem_lock );
 	spin_lock_init( &mbox_lock );
+	spin_lock_init( &sys_lock );
 }
 
 
@@ -127,6 +130,24 @@ sys_arch_sem_wait(
 	}
 }
 
+
+sys_prot_t 
+sys_arch_protect( void )
+{
+    sys_prot_t irqstate;
+    spin_lock_irqsave(&sys_lock, irqstate);
+
+    return irqstate;
+}
+
+
+void 
+sys_arch_unprotect(
+	sys_prot_t		pval
+)
+{
+    spin_unlock_irqrestore(&sys_lock, pval);
+}
 
 
 sys_mbox_t

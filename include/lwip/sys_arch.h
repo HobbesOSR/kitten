@@ -32,4 +32,7 @@ typedef struct mbox * sys_mbox_t;
 
 typedef int sys_thread_t;
 
+
+typedef unsigned long sys_prot_t;
+
 #endif
