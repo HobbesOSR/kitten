@@ -140,7 +140,7 @@ Instructions for Booting on Real Hardware
             console=vga
             console=serial
             console=vga,serial
-            console=serial port=0x2f8 baud=9600
+            console=serial serial.port=0x2f8 serial.baud=9600
 
     Cray XT hardware:
 	These instructions are for 2.0 management system; 2.1 requires
