@@ -135,6 +135,12 @@ Instructions for Booting on Real Hardware
         Rebuild, and use the following files:
             kernel image: ./arch/x86_64/boot/bzImage
             initrd:       ./init_task
+        In order to see any output a console must be specified via the
+        console parameter on the kernel boot command line.  Examples:
+            console=vga
+            console=serial
+            console=vga,serial
+            console=serial port=0x2f8 baud=9600
 
     Cray XT hardware:
 	These instructions are for 2.0 management system; 2.1 requires
