@@ -311,6 +311,53 @@ palacios_start_kernel_thread(
 }
 
 /**
+ * Allocates a mutex.
+ * Returns NULL on failure.
+ */
+static void *
+palacios_mutex_alloc(void)
+{
+	spinlock_t *lock = kmem_alloc(sizeof(spinlock_t));
+	if (lock)
+		spin_lock_init(lock);
+	return lock;
+}
+
+/**
+ * Frees a mutex.
+ */
+static void
+palacios_mutex_free(
+	void *			mutex
+) 
+{
+	kmem_free(mutex);
+}
+
+/**
+ * Locks a mutex.
+ */
+static void 
+palacios_mutex_lock(
+	void *			mutex, 
+	int			must_spin
+)
+{
+	spin_lock((spinlock_t *)mutex);
+}
+
+/**
+ * Unlocks a mutex.
+ */
+static void 
+palacios_mutex_unlock(
+	void *			mutex
+) 
+{
+	spin_unlock((spinlock_t *)mutex);
+}
+
+/**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
  */
 struct v3_os_hooks palacios_os_hooks = {
@@ -328,6 +375,10 @@ struct v3_os_hooks palacios_os_hooks = {
 	.get_cpu_khz		= palacios_get_cpu_khz,
 	.start_kernel_thread    = palacios_start_kernel_thread,
 	.yield_cpu		= palacios_yield_cpu,
+	.mutex_alloc		= palacios_mutex_alloc,
+	.mutex_free		= palacios_mutex_free,
+	.mutex_lock		= palacios_mutex_lock, 
+	.mutex_unlock		= palacios_mutex_unlock,
 };
 
 /**

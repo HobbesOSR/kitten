@@ -34,7 +34,14 @@ palacios_tcp_socket(
 	const int nonblocking
 )
 {
-	return lwip_socket(PF_INET, SOCK_STREAM, 0);
+	int sock = lwip_socket(PF_INET, SOCK_STREAM, 0);
+	
+	if (nodelay) {
+		setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+		           &nodelay, sizeof(nodelay));
+	}
+       
+	return sock;
 }
 
 //ignore the arguments given here currently
