@@ -416,7 +416,7 @@ arch_aspace_smartmap(struct aspace *src, struct aspace *dst,
 		src_pge = &src_pgd[i];
 		dst_pge = &dst_pgd[(start >> 39) & 0x1FF];
 		BUG_ON(dst_pge->present);
-		dst_pge = src_pge;
+		*dst_pge = *src_pge;
 	}
 
 	return 0;
