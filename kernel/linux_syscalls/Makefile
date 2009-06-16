@@ -20,4 +20,5 @@ obj-y := \
 	sched_getaffinity.o \
 	getrlimit.o \
 	exit.o \
+	getpid.o \
 

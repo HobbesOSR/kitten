@@ -94,7 +94,7 @@ __SYSCALL(__NR_alarm, syscall_not_implemented)
 #define __NR_setitimer                          38
 __SYSCALL(__NR_setitimer, syscall_not_implemented)
 #define __NR_getpid                             39
-__SYSCALL(__NR_getpid, syscall_not_implemented)
+__SYSCALL(__NR_getpid, sys_getpid)
 
 #define __NR_sendfile                           40
 __SYSCALL(__NR_sendfile, syscall_not_implemented)
