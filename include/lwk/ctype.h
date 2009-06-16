@@ -1,6 +1,11 @@
 #ifndef _LWK_CTYPE_H
 #define _LWK_CTYPE_H
 
+/* User-level code uses the normal system-provided ctype.h header */
+#ifndef __KERNEL__
+#include <ctype.h>
+#else
+
 /*
  * NOTE! This ctype does not handle EOF like the standard C
  * library is required to.
@@ -51,4 +56,5 @@ static inline unsigned char __toupper(unsigned char c)
 #define tolower(c) __tolower(c)
 #define toupper(c) __toupper(c)
 
+#endif
 #endif
