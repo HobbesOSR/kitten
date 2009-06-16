@@ -473,7 +473,8 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 	if (!pue->present)
 		return -ENOENT;
 	if (pue->pagesize) {
-		result = (pue->base_paddr << 30) | (vaddr & 0x3FFFFFFF);
+		result = (((xpte_1GB_t *)pue)->base_paddr << 30)
+		         | (vaddr & 0x3FFFFFFF);
 		goto out;
 	}
 
@@ -483,7 +484,8 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 	if (!pme->present)
 		return -ENOENT;
 	if (pme->pagesize) {
-		result = (pme->base_paddr << 21) | (vaddr & 0x1FFFFF);
+		result = (((xpte_2MB_t *)pme)->base_paddr << 21)
+		         | (vaddr & 0x1FFFFF);
 		goto out;
 	}
 
@@ -492,7 +494,8 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 	pte = &ptd[ptd_index];
 	if (!pte->present)
 		return -ENOENT;
-	result = (pte->base_paddr << 12) | (vaddr & 0xFFF);
+	result = (((xpte_4KB_t *)pte)->base_paddr << 12)
+	         | (vaddr & 0xFFF);
 
 out:
 	if (paddr)

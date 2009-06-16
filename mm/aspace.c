@@ -1009,11 +1009,15 @@ aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t *paddr)
 	struct aspace *aspace;
 	unsigned long irqstate;
 
+	if (id == MY_ID)
+		id = current->aspace->id;
+
 	local_irq_save(irqstate);
 	aspace = lookup_and_lock(id);
 	status = __aspace_virt_to_phys(aspace, vaddr, paddr);
 	if (aspace) spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
+
 	return status;
 }
 

@@ -72,7 +72,6 @@ create_init_task(void)
 	status =
 	elf_load(
 		__va(init_elf_image),
-		init_elf_image,
 		"init_task",
 		INIT_ASPACE_ID,
 		PAGE_SIZE,

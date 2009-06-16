@@ -697,7 +697,6 @@ make_region(
 int
 elf_load(
 	void *          elf_image,
-	paddr_t         elf_image_paddr,
 	const char *    name,
 	id_t            desired_aspace_id,
 	vmpagesize_t    pagesz,
@@ -719,6 +718,7 @@ elf_load(
 	size_t heap_extent, stack_extent;
 	paddr_t heap_pmem, stack_pmem;
 	uint32_t hwcap;
+	paddr_t elf_image_paddr;
 
 	if (!elf_image || !start_state || !alloc_pmem)
 		return -EINVAL;
@@ -733,7 +733,12 @@ elf_load(
 		return -EINVAL;
 	}
 
-	if ((status = aspace_create(desired_aspace_id, "init_task", &aspace_id))) {
+	if (aspace_virt_to_phys(MY_ID, (vaddr_t)elf_image, &elf_image_paddr)) {
+		print("Couldn't determine phys address of ELF image.");
+		return -EINVAL;
+	}
+
+	if ((status = aspace_create(desired_aspace_id, name, &aspace_id))) {
 		print("Failed to create aspace (status=%d).", status);
 		return status;
 	}

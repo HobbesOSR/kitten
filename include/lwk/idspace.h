@@ -21,6 +21,11 @@ typedef unsigned int id_t;
 #define ANY_ID ((id_t) (-1))
 
 /**
+ * Used to specify the caller's ID.
+ */
+#define MY_ID (ANY_ID)
+
+/**
  * Represents an error return from idspace_alloc_id().
  */
 #define ERROR_ID (ANY_ID)

@@ -439,7 +439,6 @@ elf_load_executable(
 int
 elf_load(
 	void *          elf_image,
-	paddr_t         elf_image_paddr,
 	const char *    name,
 	id_t            desired_aspace_id,
 	vmpagesize_t    pagesz,
