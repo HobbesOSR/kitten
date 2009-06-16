@@ -69,7 +69,7 @@ main(int argc, char *argv[], char *envp[])
 			exit(-1);
 		}
 	}
-	printf("   OK\n");
+	printf("    OK\n");
 
 	/* Create SMARTMAP mappings for each rank */
 	printf("Creating SMARTMAP mappings...\n");
@@ -92,7 +92,7 @@ main(int argc, char *argv[], char *envp[])
 			}
 		}
 	}
-	printf("   OK\n");
+	printf("    OK\n");
 
 	/* Create a task for each rank */
 	printf("Creating tasks...\n");
@@ -113,7 +113,7 @@ main(int argc, char *argv[], char *envp[])
 			exit(-1);
 		}
 	}
-	printf("   OK\n");
+	printf("    OK\n");
 
 	printf("LOADER DONE.\n");
 
