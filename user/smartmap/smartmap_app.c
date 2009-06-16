@@ -67,7 +67,7 @@ int main( int argc, char **argv )
 	printf("Simulating barrier by sleeping 3 secs\n");
 	sleep(3);
 
-	/* Rank 0 print's out each other rank's data array */
+	/* Rank 0 prints out each other rank's data array */
 	if (get_my_rank() == 0) {
 		for (rank = 1; rank < get_num_ranks(); rank++) {
 			datap = (int *)remote_address(rank, &data);

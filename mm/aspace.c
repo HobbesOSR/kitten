@@ -695,8 +695,8 @@ map_pmem(struct aspace *aspace,
 
 	if (umem_only &&
 	    !pmem_is_type(PMEM_TYPE_UMEM, pmem, extent) &&
-	    !pmem_is_type(PMEM_TYPE_INIT_TASK, pmem, extent)
-	) {
+	    !pmem_is_type(PMEM_TYPE_INIT_TASK, pmem, extent))
+	{
 		printk(KERN_WARNING
 		       "User-space tried to map non-UMEM "
 		       "(pmem=0x%lx, extent=0x%lx).\n",
