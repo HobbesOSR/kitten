@@ -45,7 +45,7 @@ pmem_alloc_umem(size_t size, size_t alignment, struct pmem_region *rgn)
 }
 
 bool
-pmem_is_umem(paddr_t start, size_t extent)
+pmem_is_type(pmem_type_t type, paddr_t start, size_t extent)
 {
 	struct pmem_region query, result;
 	int status;
@@ -53,7 +53,7 @@ pmem_is_umem(paddr_t start, size_t extent)
 	pmem_region_unset_all(&query);
 	query.start = start;
 	query.end   = start + extent;
-	query.type  = PMEM_TYPE_UMEM; query.type_is_set = true; 
+	query.type  = type; query.type_is_set = true; 
 	result.end  = 0;
 
 	while ((status = pmem_query(&query, &result)) == 0) {
