@@ -45,10 +45,18 @@ get_my_rank(void)
 int
 get_num_ranks(void)
 {
+	int i, num_ranks=0;
 	cpu_set_t cpuset;
+
 	CPU_ZERO(&cpuset);
 	sched_getaffinity(0, sizeof(cpuset), &cpuset);
-	return CPU_COUNT(&cpuset);
+
+	for (i = 0; i < sizeof(cpuset) * 8; i++) {
+		if (CPU_ISSET(i, &cpuset))
+			++num_ranks;
+	}
+
+	return num_ranks;
 }
 
 
