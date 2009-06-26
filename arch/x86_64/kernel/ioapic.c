@@ -23,16 +23,10 @@ static DEFINE_SPINLOCK(ioapic_lock);
 unsigned int ioapic_num;
 
 /**
- * Array containing the IDs of the IO APICs in the system.
+ * Information about each IO APIC in the system.
  * The array is indexed by ioapic_index.
  */
-unsigned int ioapic_id[MAX_IO_APICS];
-
-/**
- * Addresses of the IO APICs in the system.
- * The array is indexed by ioapic_index.
- */
-uintptr_t ioapic_phys_addr[MAX_IO_APICS];
+struct ioapic_info ioapic_info[MAX_IO_APICS];
 
 /**
  * Resource entries for the IO APIC memory mapping.
@@ -64,7 +58,7 @@ static struct ioapic *
 ioapic_base_addr(int ioapic_index)
 {
 	return (void *) __fix_to_virt(FIX_IO_APIC_BASE_0 + ioapic_index)
-		 + (ioapic_phys_addr[ioapic_index] & ~PAGE_MASK);
+		 + (ioapic_info[ioapic_index].phys_addr & ~PAGE_MASK);
 }
 
 /**
@@ -176,68 +170,57 @@ ioapic_get_num_pins(unsigned int ioapic_index)
 }
 
 /**
+ * This keeps track of the next vector to assign to an IO APIC pin.
+ */
+static unsigned int vector = IRQ0_VECTOR;
+
+/**
  * Initializes the primary IO APIC (the one connected to the ISA IRQs).
  */
 static void __init
-ioapic_init_primary(
+ioapic_init_pins(
 	unsigned int ioapic_index
 )
 {
 	unsigned int pin;
 	unsigned int num_pins = ioapic_get_num_pins(ioapic_index);
 	struct IO_APIC_route_entry cfg;
-
-	if ((num_pins != 16) && (num_pins != 24))
-		panic("Expected IOAPIC to have 16 or 24 pins, has %u.",
-			num_pins);
+	struct ioapic_info *ioapic = &ioapic_info[ioapic_index];
+	struct ioapic_pin_info *pin_info;
 
 	/* Mask (disable) all pins */
 	for (pin = 0; pin < num_pins; pin++) {
 		ioapic_mask_pin(ioapic_index, pin);
 	}
 
-	/*
-	 * Configure ISA IRQs.
-	 * (Assuming pins [1,15] are the standard ISA IRQs)
-	 * (Assuming pin 2 is hooked to the timer interrupt)
-	 * (Assuming pin 0 is hooked to the old i8259 PIC... don't use it)
-	 */
-	for (pin = 1; pin <= 15; pin++) {
+	/* Configure all of the pins that we know about */
+	for (pin = 0; pin < num_pins; pin++) {
+
+		/* Make sure the pin is one we care about */
+		pin_info = &ioapic->pin_info[pin];
+		if (!pin_info->valid)
+			continue;
+		if (pin_info->delivery_mode != ioapic_fixed)
+			continue;
+
+		/* Assign a vector to the pin */
+		if ((vector - IRQ0_VECTOR) <= pin)
+			vector = IRQ0_VECTOR + pin;
+		pin_info->os_assigned_vector = vector++;
+
+		/* Program the pin */
 		cfg = ioapic_read_pin(ioapic_index, pin);
 
-		cfg.delivery_mode = ioapic_fixed;
+		cfg.delivery_mode = pin_info->delivery_mode;
 		cfg.dest_mode     = ioapic_physical_dest;
-		cfg.polarity      = (pin == 8)
-		                        ? ioapic_active_low
-		                        : ioapic_active_high;
-		cfg.trigger       = ioapic_edge_sensitive;
+		cfg.polarity      = pin_info->polarity;
+		cfg.trigger       = pin_info->trigger;
 		cfg.dest          = (uint8_t) cpu_info[0].physical_id;
-		cfg.vector        = IRQ0_VECTOR + pin;
+		cfg.vector        = pin_info->os_assigned_vector;
 
 		ioapic_write_pin(ioapic_index, pin, cfg);
 		ioapic_unmask_pin(ioapic_index, pin);
 	}
-
-	if (num_pins <= 16)
-		return;
-
-	/*
-	 * Configure PCI IRQs.
-	 * (Assuming pins [16,19] are PCI INTA, INTB, INTC, and INTD)
-	 */
-	for (pin = 16; pin <= 19; pin++) {
-		cfg = ioapic_read_pin(ioapic_index, pin);
-
-		cfg.delivery_mode = ioapic_fixed;
-		cfg.dest_mode     = ioapic_physical_dest;
-		cfg.polarity      = ioapic_active_low;
-		cfg.trigger       = ioapic_level_sensitive;
-		cfg.dest          = (uint8_t) cpu_info[0].physical_id;
-		cfg.vector        = IRQ0_VECTOR + pin;
-
-		ioapic_write_pin(ioapic_index, pin, cfg);
-		ioapic_unmask_pin(ioapic_index, pin);
-	} 
 }
 
 /**
@@ -253,9 +236,9 @@ ioapic_map(void)
 #ifdef CONFIG_PC
 	if (ioapic_num == 0) {
 		printk(KERN_WARNING "Assuming 1 I/O APIC.\n");
-		ioapic_num   = 1; /* assume there is one ioapic */
-		ioapic_id[0] = 1; /* and that its ID is 1 */
-		ioapic_phys_addr[0] = IOAPIC_DEFAULT_PHYS_BASE;
+		ioapic_num               = 1; /* assume there is one ioapic */
+		ioapic_info[0].phys_id   = 1; /* and that its hw ID is 1 */
+		ioapic_info[0].phys_addr = IOAPIC_DEFAULT_PHYS_BASE;
 	}
 #endif
 
@@ -276,13 +259,14 @@ ioapic_map(void)
 		sprintf(name, "IO APIC %u", i);
 		ioapic_resources[i].name  = name;
 		ioapic_resources[i].flags = IORESOURCE_MEM | IORESOURCE_BUSY;
-		ioapic_resources[i].start = ioapic_phys_addr[i];
-		ioapic_resources[i].end   = ioapic_phys_addr[i] + 4096 - 1;
+		ioapic_resources[i].start = ioapic_info[i].phys_addr;
+		ioapic_resources[i].end   = ioapic_info[i].phys_addr + 4096 - 1;
 		request_resource(&iomem_resource, &ioapic_resources[i]);
 		name += name_size;
 
 		/* Map the IO APIC into the kernel */
-		set_fixmap_nocache(FIX_IO_APIC_BASE_0 + i, ioapic_phys_addr[i]);
+		set_fixmap_nocache(FIX_IO_APIC_BASE_0 + i,
+		                   ioapic_info[i].phys_addr);
 
 		printk(KERN_DEBUG
 		       "IO APIC mapped to virtual address 0x%016lx\n",
@@ -300,9 +284,23 @@ ioapic_init(void)
 	if (ioapic_num == 0)
 		return;
 
-	/* TODO: For now, only initializes the first one. */
-	ioapic_init_primary(0);
+	for (int i = 0; i < ioapic_num; i++)
+		ioapic_init_pins(i);
+
 	ioapic_dump();
+}
+
+/**
+ * Looks up the ioapic_info structure for the specified IO APIC.
+ */
+struct ioapic_info *
+ioapic_info_lookup(unsigned int phys_id)
+{
+	for (int i = 0; i < ioapic_num; i++) {
+		if (ioapic_info[i].phys_id == phys_id);
+			return &ioapic_info[i];
+	}
+	return NULL;
 }
 
 /**
@@ -328,7 +326,7 @@ ioapic_dump(void)
 		spin_unlock_irqrestore(&ioapic_lock, flags);
 
 		printk(KERN_DEBUG "Dump of IO APIC %u (physical id %u):\n",
-		                  ioapic_index, ioapic_id[ioapic_index]);
+		                  ioapic_index, ioapic_info[ioapic_index].phys_id);
 		printk(KERN_DEBUG "  register #00: %08X\n", reg_00.raw);
 		printk(KERN_DEBUG "    physical APIC id: %02u\n", reg_00.bits.ID);
 		printk(KERN_DEBUG "  register #01: %08X\n", *(int *)&reg_01);

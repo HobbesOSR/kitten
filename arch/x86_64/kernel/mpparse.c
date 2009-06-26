@@ -64,13 +64,6 @@ int           mp_bus_id_to_pci_bus [MAX_MP_BUSSES] = { [0 ... MAX_MP_BUSSES-1] =
 int nr_ioapics = 0;
 struct mpc_config_ioapic mp_ioapics[MAX_IO_APICS];
 
-/**
- * MP IRQ information
- */
-int mp_irq_entries = 0;
-struct mpc_config_intsrc mp_irqs[MAX_IRQ_SOURCES];
-
-
 /* TODO: move these */
 int pic_mode;
 
@@ -214,8 +207,8 @@ MP_ioapic_info(struct mpc_config_ioapic *m)
 	mp_ioapics[nr_ioapics] = *m;
 	nr_ioapics++;
 
-	ioapic_id[ioapic_num]        = m->mpc_apicid;
-	ioapic_phys_addr[ioapic_num] = m->mpc_apicaddr;
+	ioapic_info[ioapic_num].phys_id   = m->mpc_apicid;
+	ioapic_info[ioapic_num].phys_addr = m->mpc_apicaddr;
 	ioapic_num++;
 }
 
@@ -225,15 +218,87 @@ MP_ioapic_info(struct mpc_config_ioapic *m)
 static void __init
 MP_intsrc_info(struct mpc_config_intsrc *m)
 {
-	mp_irqs [mp_irq_entries] = *m;
 	printk(KERN_DEBUG
 		"Int: type %d, pol %d, trig %d, bus %d,"
 		" BUS IRQ %02d, APIC ID %d, APIC INTIN# %02d\n",
 			m->mpc_irqtype, m->mpc_irqflag & 3,
 			(m->mpc_irqflag >> 2) & 3, m->mpc_srcbus,
 			m->mpc_srcbusirq, m->mpc_dstapic, m->mpc_dstirq);
-	if (++mp_irq_entries >= MAX_IRQ_SOURCES)
-		panic("Max # of irq sources exceeded!!\n");
+
+	struct ioapic_info *ioapic_info = ioapic_info_lookup(m->mpc_dstapic);
+	if (!ioapic_info)
+		panic("Int entry specifies invalid destination APIC ID.");
+
+	if (m->mpc_dstirq >= MAX_IO_APIC_PINS)
+		panic("Int entry specifies INTIN# > MAX_IO_APICS.");
+
+	struct ioapic_pin_info *pin_info = &ioapic_info->pin_info[m->mpc_dstirq];
+
+	unsigned int delivery_mode;
+	switch (m->mpc_irqtype) {
+		case 0:  delivery_mode = ioapic_fixed;  break;
+		case 1:  delivery_mode = ioapic_NMI;    break;
+		case 2:  delivery_mode = ioapic_SMI;    break;
+		case 3:  delivery_mode = ioapic_ExtINT; break;
+		default: panic("Int entry specifies invalid delivery mode.");
+	}
+
+	unsigned int polarity;
+	switch (m->mpc_irqflag & 3) {
+		case 0:  
+			/* Use the default for the source bus type */
+			switch (mp_bus_id_to_type[m->mpc_srcbus]) {
+				case MP_BUS_ISA:
+					polarity = ioapic_active_high;
+					break;
+				case MP_BUS_PCI:
+					polarity = ioapic_active_low;
+					break;
+				default:
+					panic("Default for bus type unknown.");
+			}
+			break;
+		case 1:
+			polarity = ioapic_active_high;
+			break;
+		case 3:
+			polarity = ioapic_active_low;
+			break;
+		default:
+			panic("Int entry specifies invalid polarity.");
+	}
+	
+	unsigned int trigger;
+	switch ((m->mpc_irqflag >> 2) & 3) {
+		case 0:
+			/* Use the default for the source bus type */
+			switch (mp_bus_id_to_type[m->mpc_srcbus]) {
+				case MP_BUS_ISA:
+					trigger = ioapic_edge_sensitive;
+					break;
+				case MP_BUS_PCI:
+					trigger = ioapic_level_sensitive;
+					break;
+				default:
+					panic("Default for bus type unknown.");
+			}
+			break;
+		case 1:
+			trigger = ioapic_edge_sensitive;
+			break;
+		case 3:
+			trigger = ioapic_level_sensitive;
+			break;
+		default:
+			panic("Int entry specifies invalid trigger mode.");
+	}
+
+	pin_info->valid		=	true;
+	pin_info->delivery_mode	=	delivery_mode;
+	pin_info->polarity	=	polarity;
+	pin_info->trigger	=	trigger;
+	pin_info->src_bus_id	=	m->mpc_srcbus;
+	pin_info->src_bus_irq	=	m->mpc_srcbusirq;
 }
 
 /**

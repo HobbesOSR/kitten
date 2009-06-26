@@ -133,9 +133,6 @@ struct IO_APIC_route_entry {
 /* I/O APIC entries */
 extern struct mpc_config_ioapic mp_ioapics[MAX_IO_APICS];
 
-/* # of MP IRQ source entries */
-extern int mp_irq_entries;
-
 /* MP IRQ source entries */
 extern struct mpc_config_intsrc mp_irqs[MAX_IRQ_SOURCES];
 
@@ -196,13 +193,28 @@ void enable_NMI_through_LVT0 (void * dummy);
 
 extern spinlock_t i8259A_lock;
 
+struct ioapic_pin_info {
+	bool			valid;
+	unsigned int		delivery_mode;
+	unsigned int		polarity;
+	unsigned int		trigger;
+	unsigned int		src_bus_id;
+	unsigned int		src_bus_irq;
+	unsigned int		os_assigned_vector;
+};
+
+struct ioapic_info {
+	unsigned int		phys_id;
+	paddr_t			phys_addr;
+	struct ioapic_pin_info	pin_info[MAX_IO_APIC_PINS];
+};
+
 extern unsigned int ioapic_num;
-extern unsigned int ioapic_id[MAX_IO_APICS];
-extern unsigned long ioapic_phys_addr[MAX_IO_APICS];
+extern struct ioapic_info ioapic_info[MAX_IO_APICS];
 
 extern void __init ioapic_map(void);
 extern void __init ioapic_init(void);
+extern struct ioapic_info *ioapic_info_lookup(unsigned int phys_id);
 extern void ioapic_dump(void);
-
 
 #endif

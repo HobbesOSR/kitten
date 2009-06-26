@@ -118,6 +118,8 @@
 #define MAX_IO_APICS 16
 #define MAX_LOCAL_APIC 256
 
+#define MAX_IO_APIC_PINS 24
+
 /*
  * All x86-64 systems are xAPIC compatible.
  * In the following, "apicid" is a physical APIC ID.
