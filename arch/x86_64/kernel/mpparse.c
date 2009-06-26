@@ -228,7 +228,7 @@ MP_intsrc_info(struct mpc_config_intsrc *m)
 	mp_irqs [mp_irq_entries] = *m;
 	printk(KERN_DEBUG
 		"Int: type %d, pol %d, trig %d, bus %d,"
-		" IRQ %02x, APIC ID %x, APIC INT %02x\n",
+		" BUS IRQ %02d, APIC ID %d, APIC INTIN# %02d\n",
 			m->mpc_irqtype, m->mpc_irqflag & 3,
 			(m->mpc_irqflag >> 2) & 3, m->mpc_srcbus,
 			m->mpc_srcbusirq, m->mpc_dstapic, m->mpc_dstirq);
@@ -244,7 +244,7 @@ MP_lintsrc_info (struct mpc_config_lintsrc *m)
 {
 	printk(KERN_DEBUG
 		"Lint: type %d, pol %d, trig %d, bus %d,"
-		" IRQ %02x, APIC ID %x, APIC LINT %02x\n",
+		" BUS IRQ %02d, APIC ID %d, APIC LINTIN# %02d\n",
 			m->mpc_irqtype, m->mpc_irqflag & 3,
 			(m->mpc_irqflag >> 2) &3, m->mpc_srcbusid,
 			m->mpc_srcbusirq, m->mpc_destapic, m->mpc_destapiclint);
