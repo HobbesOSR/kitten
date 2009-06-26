@@ -42,6 +42,8 @@ include/arch
 init_task
 user/hello_world/hello_world
 user/liblwk/liblwk.a
+user/smartmap/loader
+user/smartmap/smartmap_app
 docs/html/*
 docs/latex/*
 *.orig
