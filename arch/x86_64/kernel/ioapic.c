@@ -297,7 +297,7 @@ struct ioapic_info *
 ioapic_info_lookup(unsigned int phys_id)
 {
 	for (int i = 0; i < ioapic_num; i++) {
-		if (ioapic_info[i].phys_id == phys_id);
+		if (ioapic_info[i].phys_id == phys_id)
 			return &ioapic_info[i];
 	}
 	return NULL;
