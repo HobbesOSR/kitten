@@ -182,7 +182,7 @@ MP_bus_info(struct mpc_config_bus *m)
 }
 
 /**
- * Parses an MP table BUS entry.
+ * Parses an MP table I/O APIC entry.
  */
 static void __init
 MP_ioapic_info(struct mpc_config_ioapic *m)
