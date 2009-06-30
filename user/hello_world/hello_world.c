@@ -52,7 +52,7 @@ main(int argc, char *argv[], char *envp[])
 	printf("   That's all, folks!\n");
 
 	while(1)
-		sched_yield();
+		sleep(100000);
 }
 
 static int
@@ -168,7 +168,7 @@ hello_world_thread(void *arg)
 	printf( "%ld: That's all, folks!\n", id );
 
 	while(1)
-		sched_yield();
+		sleep(100000);
 }
 
 static int 
