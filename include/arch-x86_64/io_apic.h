@@ -193,13 +193,17 @@ void enable_NMI_through_LVT0 (void * dummy);
 
 extern spinlock_t i8259A_lock;
 
+struct ioapic_src_info {
+	unsigned int		bus_id;
+	unsigned int		bus_irq;
+};
+
 struct ioapic_pin_info {
-	bool			valid;
+	unsigned int		num_srcs;
+	struct ioapic_src_info	src_info[MAX_IO_APIC_SRCS];
 	unsigned int		delivery_mode;
 	unsigned int		polarity;
 	unsigned int		trigger;
-	unsigned int		src_bus_id;
-	unsigned int		src_bus_irq;
 	unsigned int		os_assigned_vector;
 };
 

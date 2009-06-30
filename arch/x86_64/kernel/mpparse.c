@@ -229,11 +229,6 @@ MP_intsrc_info(struct mpc_config_intsrc *m)
 	if (!ioapic_info)
 		panic("Int entry specifies invalid destination APIC ID.");
 
-	if (m->mpc_dstirq >= MAX_IO_APIC_PINS)
-		panic("Int entry specifies INTIN# > MAX_IO_APICS.");
-
-	struct ioapic_pin_info *pin_info = &ioapic_info->pin_info[m->mpc_dstirq];
-
 	unsigned int delivery_mode;
 	switch (m->mpc_irqtype) {
 		case 0:  delivery_mode = ioapic_fixed;  break;
@@ -293,12 +288,37 @@ MP_intsrc_info(struct mpc_config_intsrc *m)
 			panic("Int entry specifies invalid trigger mode.");
 	}
 
-	pin_info->valid		=	true;
-	pin_info->delivery_mode	=	delivery_mode;
-	pin_info->polarity	=	polarity;
-	pin_info->trigger	=	trigger;
-	pin_info->src_bus_id	=	m->mpc_srcbus;
-	pin_info->src_bus_irq	=	m->mpc_srcbusirq;
+	if (m->mpc_dstirq >= MAX_IO_APIC_PINS)
+		panic("Int entry specifies INTIN# > MAX_IO_APICS.");
+
+	struct ioapic_pin_info *pin_info = &ioapic_info->pin_info[m->mpc_dstirq];
+
+	/*
+	 * The first int entry encountered using the pin sets the pin config,
+	 * all others must specify the same exact pin config.
+	 */
+	if (pin_info->num_srcs == 0) {
+		pin_info->delivery_mode	=	delivery_mode;
+		pin_info->polarity	=	polarity;
+		pin_info->trigger	=	trigger;
+	} else {
+		if (pin_info->delivery_mode != delivery_mode)
+			panic("Int entry specifies incompatible delivery_mode.");
+		if (pin_info->polarity != polarity)
+			panic("Int entry specifies incompatible polarity.");
+		if (pin_info->trigger != trigger)
+			panic("Int entry specifies incompatible trigger.");
+	}
+
+	if (pin_info->num_srcs == MAX_IO_APIC_SRCS)
+		panic("Too many devices sharing I/O APIC pin.");
+
+	struct ioapic_src_info *src_info = &pin_info->src_info[pin_info->num_srcs];
+
+	src_info->bus_id	=	m->mpc_srcbus;
+	src_info->bus_irq	=	m->mpc_srcbusirq;
+
+	++pin_info->num_srcs;
 }
 
 /**

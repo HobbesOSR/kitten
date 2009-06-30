@@ -198,14 +198,22 @@ ioapic_init_pins(
 
 		/* Make sure the pin is one we care about */
 		pin_info = &ioapic->pin_info[pin];
-		if (!pin_info->valid)
+		if (pin_info->num_srcs == 0)
 			continue;
 		if (pin_info->delivery_mode != ioapic_fixed)
 			continue;
 
-		/* Assign a vector to the pin */
-		if ((vector - IRQ0_VECTOR) <= pin)
+		/* Shared pins are allowed, but less than ideal */
+		if (pin_info->num_srcs > 1) {
+			printk(KERN_WARNING
+				"I/O APIC %d pin %d is shared by %d devices.\n",
+				ioapic->phys_id, pin, pin_info->num_srcs);
+		}
+
+		/* Assign an interrupt vector to the pin */
+		if ((vector - IRQ0_VECTOR) <= pin) {
 			vector = IRQ0_VECTOR + pin;
+		}
 		pin_info->os_assigned_vector = vector++;
 
 		/* Program the pin */
