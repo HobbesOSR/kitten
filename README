@@ -217,5 +217,8 @@ as well as versions 0.9.1 or newer of the QEMU full system simulator
        By default the guest OS's console is output to the VGA device and
        Kitten's console is output to the serial port.
 
+       If booting Puppy Linux, type "puppy acpi=off pfix=nox" at the boot prompt.
+       This turns ACPI off and disables X windows.
+
        Instructions for booting on real hardware are given above.
 
