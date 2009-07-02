@@ -23,7 +23,15 @@ config LOCALVERSION_AUTO
 
 config SYSFS
 	bool
-	default y
+	default "y"
 	help
 	  Enable the Linux sysfs compatability wrappers.
 	  Always on!
+
+config PCI_DEVICE_DB
+	bool
+	default "n"
+	help
+	  Include PCI device database in kernel image.  This is used
+	  to convert PCI device IDs to human readable strings.
+	  Enabling this option adds about 400 KB to the kernel image.

@@ -21,6 +21,7 @@
 #include <lwk/kgdb.h>
 #include <lwk/driver.h>
 #include <lwk/kfs.h>
+#include <lwk/pci/pci.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -152,6 +153,11 @@ start_kernel()
 		if (!cpu_isset(cpu, cpu_online_map))
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
+
+	/*
+	 * Initialize the PCI subsystem.
+	 */
+	init_pci();
 
 #ifdef CONFIG_KGDB
         kgdb_initial_breakpoint();
