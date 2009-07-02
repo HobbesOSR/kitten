@@ -22,3 +22,4 @@ lib-y := \
 	sysfs.o \
 	sysfs-stubs.o \
 	klist.o \
+	sscanf.o \
