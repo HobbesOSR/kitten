@@ -394,9 +394,25 @@ palacios_run_guest(void *arg)
 		.vgabios_size		= vgabios_end - vgabios_start,
 		.mem_size		= (128 * 1024 * 1024),
 		.enable_pci		= 1,
-		.use_ram_cd		= 1,
-		.ramdisk		= (void *) __va(guest_iso_start),
-		.ramdisk_size		= guest_iso_size,
+		
+ 		.pri_disk_type          = CDROM,
+ 		.pri_disk_con           = RAM,
+ 		.pri_disk_info.ram.data_ptr = (void *) __va(guest_iso_start), 
+		.pri_disk_info.ram.size = guest_iso_size,
+
+		/*
+ 		.pri_disk_type          = CDROM,
+ 		.pri_disk_con           = NETWORK,
+		.pri_disk_info.net.ip_str = "172.22.0.1",
+		.pri_disk_info.net.port = 9502,
+		.pri_disk_info.net.disk_name = "ubuntu-cd",
+
+		.sec_disk_type          = HARDDRIVE,
+		.sec_disk_con           = NETWORK,
+		.sec_disk_info.net.ip_str = "172.22.0.1",
+		.sec_disk_info.net.port = 9502,
+		.sec_disk_info.net.disk_name = "ubuntu-hdd"
+		*/
         };
 
 	struct guest_info * vm_info = v3_ops.allocate_guest();
