@@ -750,7 +750,7 @@ elf_load(
 		elf_image_paddr, /* where it is in physical memory */
 		aspace_id,       /* the address space to map it into */
 		pagesz,          /* page size to map it with */
-		0,               /* arg to pass to alloc_pmem */
+		alloc_pmem_arg,  /* arg to pass to alloc_pmem */
 		alloc_pmem       /* func to use to allocate phys mem */
 	);
 	if (status) {
