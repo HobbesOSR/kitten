@@ -67,8 +67,6 @@ do {							\
 } while (0)
 # define mutex_destroy(mutex)				do { } while (0)
 
-#define __SPIN_LOCK_UNLOCKED(name) SPIN_LOCK_UNLOCKED
-
 #define __MUTEX_INITIALIZER(lockname) \
 		{ .count = ATOMIC_INIT(1) \
 		, .wait_lock = __SPIN_LOCK_UNLOCKED(lockname.wait_lock) \

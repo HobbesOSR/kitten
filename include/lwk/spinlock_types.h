@@ -51,6 +51,8 @@ typedef struct {
 			{	.raw_lock = __RAW_RW_LOCK_UNLOCKED }
 #endif
 
+#define __SPIN_LOCK_UNLOCKED(name) SPIN_LOCK_UNLOCKED
+
 #define DEFINE_SPINLOCK(x)	spinlock_t x = SPIN_LOCK_UNLOCKED
 #define DEFINE_RWLOCK(x)	rwlock_t x = RW_LOCK_UNLOCKED
 
