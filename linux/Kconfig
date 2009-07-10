@@ -1,0 +1,5 @@
+menu "Linux Compatibility Layer"
+
+source "linux/drivers/infiniband/Kconfig"
+
+endmenu
