@@ -55,11 +55,11 @@ static struct console l0_console = {
 /**
  * Initializes the Cray XT L0 console.
  */
-void l0_console_init(void)
+int l0_console_init(void)
 {
 	if (initialized) {
 		printk(KERN_ERR "RCA L0 console already initialized.\n");
-		return;
+		return -1;
 	}
 
 	/* Read the configuration information provided by the L0 */
@@ -83,7 +83,9 @@ void l0_console_init(void)
 	/* Register the L0 console with the LWK */
 	console_register(&l0_console);
 	initialized = 1;
+
+	return 0;
 }
 
-driver_init("console",l0_console_init);
+driver_init("console", l0_console_init);
 

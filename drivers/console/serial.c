@@ -126,14 +126,14 @@ int kgdboc_serial_register(struct console *);
 /**
  * Initializes and registers the serial console driver.
  */
-void serial_console_init(void)
+int serial_console_init(void)
 {
 	// Setup the divisor latch registers for the specified baud rate
 	unsigned int div = SERIAL_MAX_BAUD / baud;
 
 	if (initialized) {
 		printk(KERN_ERR "Serial console already initialized.\n");
-		return;
+		return -1;
 	}
 
 	outb( inb(port+LCR) | LCR_DLAB	, port+LCR ); // set DLAB
@@ -157,9 +157,11 @@ void serial_console_init(void)
 	console_register(&serial_console);
 #endif
 	initialized = 1;
+
+	return 0;
 }
 
-driver_init("console",serial_console_init);
+driver_init("console", serial_console_init);
 
 /**
  * Configurable parameters for controlling the serial port

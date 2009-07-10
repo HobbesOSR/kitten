@@ -139,19 +139,21 @@ static struct console vga_console = {
 /**
  * Initializes and registers the VGA console driver.
  */
-void vga_console_init(void)
+int vga_console_init(void)
 {
 	if (initialized) {
 		printk(KERN_ERR "VGA console already initialized.\n");
-		return;
+		return -1;
 	}
 
 	vga_set_font_color(0x0F /* White */);
 	console_register(&vga_console);
 	initialized = 1;
+
+	return 0;
 }
 
-driver_init("console",vga_console_init);
+driver_init("console", vga_console_init);
 
 /**
  * Sets the row on the screen to start printing at.

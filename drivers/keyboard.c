@@ -42,7 +42,7 @@ do_keyboard_interrupt(
 /**
  * Register handlers for standard PC devices.
  */
-void
+int
 keyboard_init( void )
 {
 	irq_request(
@@ -52,6 +52,8 @@ keyboard_init( void )
 		"keyboard",
 		NULL
 	);
+
+	return 0;
 }
 
 

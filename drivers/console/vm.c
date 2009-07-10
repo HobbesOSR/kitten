@@ -66,14 +66,16 @@ static struct console vm_console = {
 /**
  * Initializes and registers the vm console driver.
  */
-void vm_console_init(void) {
+int vm_console_init(void) {
 	if (initialized) {
 		printk(KERN_ERR "VM console already initialized.\n");
-		return;
+		return -1;
 	}
 
 	console_register(&vm_console);
 	initialized = 1;
+
+	return 0;
 }
 
 

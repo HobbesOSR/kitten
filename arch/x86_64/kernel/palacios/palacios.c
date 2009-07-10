@@ -473,7 +473,7 @@ palacios_keyboard_interrupt(
 /**
  * Initialize the Palacios hypervisor.
  */
-static void
+static int
 palacios_init(void)
 {
 	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
@@ -489,6 +489,8 @@ palacios_init(void)
 	);
 
 	syscall_register(__NR_v3_start_guest, (syscall_ptr_t) sys_v3_start_guest);
+
+	return 0;
 }
 
 driver_init( "module", palacios_init );

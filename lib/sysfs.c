@@ -12,7 +12,7 @@ struct kfs_file * sysfs_root;
 
 struct kobject * kernel_kobj;
 
-void
+int
 sysfs_init( void )
 {
 	sysfs_root = kfs_create(
@@ -30,6 +30,8 @@ sysfs_init( void )
 	kobject_set_name( kernel_kobj, "kernel" );
 	if( sysfs_create_dir( kernel_kobj ) != 0 )
 		panic( "Unable to create /sys/kernel!\n" );
+
+	return 0;
 }
 
 driver_init( "kfs",  sysfs_init );

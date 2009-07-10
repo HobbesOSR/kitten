@@ -133,7 +133,7 @@ struct sysfs_dirent *sysfs_get_dirent(struct sysfs_dirent *parent_sd,
 struct sysfs_dirent *sysfs_get(struct sysfs_dirent *sd);
 void sysfs_put(struct sysfs_dirent *sd);
 void sysfs_printk_last_file(void);
-void sysfs_init(void);
+int sysfs_init(void);
 
 #else /* CONFIG_SYSFS */
 

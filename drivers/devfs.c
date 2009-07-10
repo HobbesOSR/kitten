@@ -86,7 +86,7 @@ dev_zero_fops = {
 #include <lwk/kobject.h>
 
 
-void
+int
 devfs_init(void)
 {
 	kfs_create( "/dev/console", &console_fops, 0666, 0, 0 );
@@ -94,6 +94,8 @@ devfs_init(void)
 	kfs_create( "/dev/zero", &dev_zero_fops, 0666, 0, 0 );
 
 	struct kobject * kobj = kobject_create();
+
+	return 0;
 }
 
 

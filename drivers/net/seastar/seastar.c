@@ -472,11 +472,11 @@ seastar_net_init(
 
 /** Bring up the Seastar hardware and IP network.
  */
-void
+int
 seastar_init( void )
 {
 	if( seastar_hw_init( upper_pending, NUM_PENDINGS ) < 0 )
-		return;
+		return -1;
 
 	struct ip_addr ipaddr = nid2ip( local_nid );
 	struct ip_addr netmask = { htonl( 0xFFFF0000 ) };
@@ -491,6 +491,8 @@ seastar_init( void )
 		seastar_net_init,
 		tcpip_input
 	);
+
+	return 0;
 }
 	
 

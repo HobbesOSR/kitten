@@ -264,7 +264,7 @@ static err_t vmnet_net_init(struct netif * const netif) {
 
 
 
-void vmnet_init( void ) {
+int vmnet_init( void ) {
     vmnet_hw_init();
 
     irq_request(
@@ -292,6 +292,8 @@ void vmnet_init( void ) {
             vmnet_net_init,
             tcpip_input
             );
+
+  return 0;
 }
 
 

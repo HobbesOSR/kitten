@@ -208,10 +208,11 @@ struct v3_socket_hooks palacios_sock_hooks = {
   	.recvfrom_ip = palacios_recvfrom_ip,
 };
 
-void 
+int 
 palacios_socket_init(void) 
 {
   	V3_Init_Sockets(&palacios_sock_hooks);
+	return 0;
 }
 
 driver_init("module", palacios_socket_init);

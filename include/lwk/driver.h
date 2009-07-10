@@ -85,7 +85,7 @@
 struct driver_info {
 	const char *	name;		//!< name of the driver
 	const char *	type;		//!< Device type
-	void		(*init)(void);	//!< driver initialization function
+	int		(*init)(void);	//!< driver initialization function
 	int		init_called;	//!< set when .init() has been called,
 					//!< used to prevent double inits.
 };

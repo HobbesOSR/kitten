@@ -380,7 +380,7 @@ static err_t rtl8139_net_init(struct netif * const netif) {
 }
 
 
-void rtl8139_init( void ) {
+int rtl8139_init( void ) {
 	rtl8139_hw_init();
 	
 	irq_request(
@@ -410,7 +410,7 @@ void rtl8139_init( void ) {
 	printk("\tNETMASK: %x\n", nm.addr);
 	printk("\tGATEWAY: %x\n", gw.addr);
 
-
+	return 0;
 }
 
 
