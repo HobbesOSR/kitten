@@ -56,19 +56,19 @@
 
 #include <lwk/params.h>
 
-#define driver_param(name, type) \
+#define DRIVER_PARAM(name, type) \
 	__param_named(__DRIVER_PARAM_PREFIX, name, name, type)
 
-#define driver_param_named(name, value, type) \
+#define DRIVER_PARAM_NAMED(name, value, type) \
 	__param_named(__DRIVER_PARAM_PREFIX, name, value, type)
 
-#define driver_param_string(name, string, len) \
+#define DRIVER_PARAM_STRING(name, string, len) \
 	__param_string(__DRIVER_PARAM_PREFIX, name, string, len)
 
-#define driver_param_array(name, type, nump) \
+#define DRIVER_PARAM_ARRAY(name, type, nump) \
 	__param_array_named(__DRIVER_PARAM_PREFIX, name, name, type, nump)
 
-#define driver_param_array_named(name, array, type, nump) \
+#define DRIVER_PARAM_ARRAY_NAMED(name, array, type, nump) \
 	__param_array_named(__DRIVER_PARAM_PREFIX, name, array, type, nump)
 
 /** @} */
@@ -76,7 +76,7 @@
 /** Driver initialization structure.
  *
  * Every driver defines one of these structures via the
- * driver_init() macro.  The structure gets placed in the 
+ * DRIVER_INIT() macro.  The structure gets placed in the 
  * __driver_table ELF section and the kernel walks this table
  * to find/initialize all drivers in the system.
  *
@@ -96,7 +96,7 @@ struct driver_info {
  * \param type should be one of the known types.
  * \param init_func should take be a thunk that will bring up the driver.
  */
-#define driver_init(type,init_func) 					\
+#define DRIVER_INIT(type,init_func) 					\
 	static char __driver_name[] = DRIVER_NAME;			\
 	static char __driver_type[] = type;				\
 	static struct driver_info const __driver_info			\
@@ -124,7 +124,7 @@ extern struct driver_info __stop___driver_table[];
  * \note This is a placeholder.
  * Currently drivers are never unloaded once loaded.
  */
-#define driver_exit(exit_func)	
+#define DRIVER_EXIT(exit_func)	
 
 
 /** Initialize a single device.

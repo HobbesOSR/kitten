@@ -493,5 +493,5 @@ palacios_init(void)
 	return 0;
 }
 
-driver_init( "module", palacios_init );
+DRIVER_INIT( "module", palacios_init );
 

@@ -414,8 +414,8 @@ int rtl8139_init( void ) {
 }
 
 
-driver_init("net", rtl8139_init);
+DRIVER_INIT("net", rtl8139_init);
 
-driver_param_string(ipaddr, ipaddr, sizeof(ipaddr));
-driver_param_string(netmask, netmask, sizeof(netmask));
-driver_param_string(gateway, gateway, sizeof(gateway));
+DRIVER_PARAM_STRING(ipaddr, ipaddr, sizeof(ipaddr));
+DRIVER_PARAM_STRING(netmask, netmask, sizeof(netmask));
+DRIVER_PARAM_STRING(gateway, gateway, sizeof(gateway));

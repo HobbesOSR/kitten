@@ -79,5 +79,5 @@ int vm_console_init(void) {
 }
 
 
-driver_init("console", vm_console_init);
-driver_param(port, uint);
+DRIVER_INIT("console", vm_console_init);
+DRIVER_PARAM(port, uint);

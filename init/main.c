@@ -51,7 +51,7 @@ start_kernel()
 	/*
  	 * Parse the kernel boot command line.
  	 * This is where boot-time configurable variables get set,
- 	 * e.g., the ones with param() and driver_param() specifiers.
+ 	 * e.g., the ones with param() and DRIVER_PARAM() specifiers.
  	 */
 	parse_params(lwk_command_line);
 

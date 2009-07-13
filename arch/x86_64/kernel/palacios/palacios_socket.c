@@ -215,4 +215,4 @@ palacios_socket_init(void)
 	return 0;
 }
 
-driver_init("module", palacios_socket_init);
+DRIVER_INIT("module", palacios_socket_init);

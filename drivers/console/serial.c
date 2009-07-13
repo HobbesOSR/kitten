@@ -161,14 +161,14 @@ int serial_console_init(void)
 	return 0;
 }
 
-driver_init("console", serial_console_init);
+DRIVER_INIT("console", serial_console_init);
 
 /**
  * Configurable parameters for controlling the serial port
  * I/O port address and baud.
  */
-driver_param(port, uint);
-driver_param(baud, uint);
+DRIVER_PARAM(port, uint);
+DRIVER_PARAM(baud, uint);
 #ifdef CONFIG_KGDB
-driver_param(kgdb, uint);
+DRIVER_PARAM(kgdb, uint);
 #endif

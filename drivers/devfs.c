@@ -99,5 +99,5 @@ devfs_init(void)
 }
 
 
-driver_init( "kfs", devfs_init );
+DRIVER_INIT( "kfs", devfs_init );
 

@@ -34,7 +34,7 @@ sysfs_init( void )
 	return 0;
 }
 
-driver_init( "kfs",  sysfs_init );
+DRIVER_INIT( "kfs",  sysfs_init );
 
 
 static struct kfs_fops kobject_fops = {

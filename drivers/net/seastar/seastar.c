@@ -497,4 +497,4 @@ seastar_init( void )
 	
 
 
-driver_init( "net", seastar_init );
+DRIVER_INIT( "net", seastar_init );

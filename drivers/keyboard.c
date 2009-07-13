@@ -57,4 +57,4 @@ keyboard_init( void )
 }
 
 
-driver_init( "late", keyboard_init );
+DRIVER_INIT( "late", keyboard_init );

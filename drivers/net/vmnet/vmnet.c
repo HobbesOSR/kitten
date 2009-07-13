@@ -297,4 +297,4 @@ int vmnet_init( void ) {
 }
 
 
-driver_init("net", vmnet_init);
+DRIVER_INIT("net", vmnet_init);

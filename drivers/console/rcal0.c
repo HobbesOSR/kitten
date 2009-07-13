@@ -87,5 +87,5 @@ int l0_console_init(void)
 	return 0;
 }
 
-driver_init("console", l0_console_init);
+DRIVER_INIT("console", l0_console_init);
 

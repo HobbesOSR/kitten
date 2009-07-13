@@ -153,7 +153,7 @@ int vga_console_init(void)
 	return 0;
 }
 
-driver_init("console", vga_console_init);
+DRIVER_INIT("console", vga_console_init);
 
 /**
  * Sets the row on the screen to start printing at.
@@ -161,5 +161,5 @@ driver_init("console", vga_console_init);
  * At least on x86-64, this is set automatically as part
  * of the bootstrap process.
  */
-driver_param(row, int);
+DRIVER_PARAM(row, int);
 
