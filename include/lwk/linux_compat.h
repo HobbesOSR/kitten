@@ -31,7 +31,6 @@
 	printk(KERN_WARNING "(WARNING) %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__ )
 
 /* The lwk always zeros memory */
-#define GFP_KERNEL 0
 #define kzalloc( size, unused) kmem_alloc(size)
 #define kmalloc( size, unused) kmem_alloc(size)
 #define kfree( ptr ) kmem_free(ptr)
