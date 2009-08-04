@@ -237,23 +237,23 @@ static inline int __down_common(struct semaphore *sem, long state,
 
 static noinline void __down(struct semaphore *sem)
 {
-	__down_common(sem, TASKSTATE_UNINTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+	__down_common(sem, TASK_UNINTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
 }
 
 static noinline int __down_interruptible(struct semaphore *sem)
 {
-	return __down_common(sem, TASKSTATE_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+	return __down_common(sem, TASK_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
 }
 
 static noinline int __down_killable(struct semaphore *sem)
 {
-	//return __down_common(sem, TASKSTATE_KILLABLE, MAX_SCHEDULE_TIMEOUT);
-	return __down_common(sem, TASKSTATE_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+	//return __down_common(sem, TASK_KILLABLE, MAX_SCHEDULE_TIMEOUT);
+	return __down_common(sem, TASK_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
 }
 
 static noinline int __down_timeout(struct semaphore *sem, uint64_t timeout)
 {
-	return __down_common(sem, TASKSTATE_UNINTERRUPTIBLE, timeout);
+	return __down_common(sem, TASK_UNINTERRUPTIBLE, timeout);
 }
 
 static noinline void __up(struct semaphore *sem)
@@ -262,5 +262,5 @@ static noinline void __up(struct semaphore *sem)
 						struct semaphore_waiter, list);
 	list_del(&waiter->list);
 	waiter->up = 1;
-	sched_wakeup_task(waiter->task, TASKSTATE_NORMAL);
+	sched_wakeup_task(waiter->task, TASK_NORMAL);
 }

@@ -129,7 +129,7 @@ repeat_lock_runq:
 		goto repeat_lock_runq;
 	}
 	if (task->state & valid_states) {
-		set_task_state(task, TASKSTATE_READY);
+		set_task_state(task, TASK_RUNNING);
 		status = 0;
 	} else {
 		status = -EINVAL;
@@ -182,13 +182,13 @@ schedule(void)
 	if (!list_empty(&prev->sched_link)) {
 		list_del(&prev->sched_link);
 		/* If the task has exited, don't re-link it */
-		if (prev->state != TASKSTATE_EXIT_ZOMBIE)
+		if (prev->state != TASK_EXIT_ZOMBIE)
 			list_add_tail(&prev->sched_link, &runq->task_list);
 	}
 
 	/* Look for a ready to execute task */
 	list_for_each_entry(task, &runq->task_list, sched_link) {
-		if (task->state == TASKSTATE_READY) {
+		if (task->state == TASK_RUNNING) {
 			next = task;
 			break;
 		}

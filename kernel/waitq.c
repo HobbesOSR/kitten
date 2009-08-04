@@ -83,7 +83,7 @@ waitq_prepare_to_wait(waitq_t *waitq, waitq_entry_t *entry, taskstate_t state)
 void
 waitq_finish_wait(waitq_t *waitq, waitq_entry_t *entry)
 {
-	set_task_state(entry->task, TASKSTATE_READY);
+	set_task_state(entry->task, TASK_RUNNING);
 	waitq_remove_entry(waitq, entry);
 }
 
@@ -97,10 +97,7 @@ waitq_wakeup(waitq_t *waitq)
 	spin_lock_irqsave(&waitq->lock, irqstate);
 	list_for_each(tmp, &waitq->waitq) {
 		entry  = list_entry(tmp, waitq_entry_t, link);
-		sched_wakeup_task(
-			entry->task,
-			(TASKSTATE_UNINTERRUPTIBLE | TASKSTATE_INTERRUPTIBLE)
-		);
+		sched_wakeup_task(entry->task, TASK_NORMAL);
 	}
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
@@ -131,12 +128,7 @@ waitq_wake_nr_locked( waitq_t * waitq, int nr )
 	list_for_each_entry(entry, &waitq->waitq, link) {
 		if( ++count > nr )
 			break;
-
-		sched_wakeup_task(
-			entry->task,
-			(TASKSTATE_UNINTERRUPTIBLE | TASKSTATE_INTERRUPTIBLE)
-		);
-
+		sched_wakeup_task(entry->task, TASK_NORMAL);
 	}
 
 	return count - 1;

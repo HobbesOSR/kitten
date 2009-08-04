@@ -53,7 +53,7 @@ do {                                                               \
 	DECLARE_WAITQ_ENTRY(__entry, current);                     \
 	for (;;) {                                                 \
 		waitq_prepare_to_wait(&waitq, &__entry,            \
-		                      TASKSTATE_UNINTERRUPTIBLE);  \
+		                      TASK_UNINTERRUPTIBLE);       \
 		if (condition)                                     \
 			break;                                     \
 		schedule();                                        \

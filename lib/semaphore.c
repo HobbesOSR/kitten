@@ -60,7 +60,7 @@ void __down(struct semaphore *sem)
 	DECLARE_WAITQ_ENTRY(wait, tsk);
 	unsigned long flags;
 
-	tsk->state = TASKSTATE_UNINTERRUPTIBLE;
+	tsk->state = TASK_UNINTERRUPTIBLE;
 	spin_lock_irqsave(&sem->wait.lock, flags);
 	waitq_add_entry_locked(&sem->wait, &wait);
 
@@ -84,12 +84,12 @@ void __down(struct semaphore *sem)
 		schedule();
 
 		spin_lock_irqsave(&sem->wait.lock, flags);
-		tsk->state = TASKSTATE_UNINTERRUPTIBLE;
+		tsk->state = TASK_UNINTERRUPTIBLE;
 	}
 	waitq_remove_entry_locked(&sem->wait, &wait);
 	waitq_wake_nr_locked(&sem->wait, 1);
 	spin_unlock_irqrestore(&sem->wait.lock, flags);
-	tsk->state = TASKSTATE_READY;
+	tsk->state = TASK_RUNNING;
 }
 
 int __down_interruptible(struct semaphore *sem)
@@ -99,7 +99,7 @@ int __down_interruptible(struct semaphore *sem)
 	DECLARE_WAITQ_ENTRY(wait, tsk);
 	unsigned long flags;
 
-	tsk->state = TASKSTATE_INTERRUPTIBLE;
+	tsk->state = TASK_INTERRUPTIBLE;
 	spin_lock_irqsave(&sem->wait.lock, flags);
 	waitq_add_entry_locked(&sem->wait, &wait);
 
@@ -139,13 +139,13 @@ int __down_interruptible(struct semaphore *sem)
 		schedule();
 
 		spin_lock_irqsave(&sem->wait.lock, flags);
-		tsk->state = TASKSTATE_INTERRUPTIBLE;
+		tsk->state = TASK_INTERRUPTIBLE;
 	}
 	waitq_remove_entry_locked(&sem->wait, &wait);
 	waitq_wake_nr_locked(&sem->wait, 1);
 	spin_unlock_irqrestore(&sem->wait.lock, flags);
 
-	tsk->state = TASKSTATE_READY;
+	tsk->state = TASK_RUNNING;
 	return retval;
 }
 

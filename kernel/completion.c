@@ -97,7 +97,7 @@ wait_for_common(struct completion *x, long timeout, int state)
  */
 void wait_for_completion(struct completion *x)
 {
-	wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASKSTATE_UNINTERRUPTIBLE);
+	wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
 }
 
 /**
@@ -112,7 +112,7 @@ void wait_for_completion(struct completion *x)
 unsigned long
 wait_for_completion_timeout(struct completion *x, unsigned long timeout)
 {
-	return wait_for_common(x, timeout, TASKSTATE_UNINTERRUPTIBLE);
+	return wait_for_common(x, timeout, TASK_UNINTERRUPTIBLE);
 }
 
 /**
@@ -124,7 +124,7 @@ wait_for_completion_timeout(struct completion *x, unsigned long timeout)
  */
 int wait_for_completion_interruptible(struct completion *x)
 {
-	long t = wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASKSTATE_INTERRUPTIBLE);
+	long t = wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_INTERRUPTIBLE);
 	if (t == -ERESTARTSYS)
 		return t;
 	return 0;
@@ -142,7 +142,7 @@ unsigned long
 wait_for_completion_interruptible_timeout(struct completion *x,
 					  unsigned long timeout)
 {
-	return wait_for_common(x, timeout, TASKSTATE_INTERRUPTIBLE);
+	return wait_for_common(x, timeout, TASK_INTERRUPTIBLE);
 }
 
 

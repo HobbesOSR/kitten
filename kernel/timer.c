@@ -80,7 +80,7 @@ timer_del(struct timer *timer)
 static void
 wakeup_task(uintptr_t task)
 {
-	sched_wakeup_task((struct task_struct *)task, TASKSTATE_NORMAL);
+	sched_wakeup_task((struct task_struct *)task, TASK_NORMAL);
 }
 
 

@@ -36,18 +36,24 @@
  *
  * @{
  */
-#define TASKSTATE_READY                (1 << 0)	//!< Running
-#define TASKSTATE_UNINTERRUPTIBLE      (1 << 1) //!< Uninterruptable sleep
-#define TASKSTATE_INTERRUPTIBLE        (1 << 2)	//!< Interruptable sleep
-#define TASKSTATE_EXIT_ZOMBIE          (1 << 3)	//!< Exited, but not yet reaped
-#define TASKSTATE_NORMAL	 	\
-	( TASKSTATE_READY		\
-	| TASKSTATE_UNINTERRUPTIBLE	\
-	| TASKSTATE_INTERRUPTIBLE	\
-	)
+#define TASK_RUNNING                   (1 << 0) //!< Running
+#define TASK_INTERRUPTIBLE             (1 << 1) //!< Interruptable sleep
+#define TASK_UNINTERRUPTIBLE           (1 << 2) //!< Uninterruptable sleep
+#define TASK_STOPPED                   (1 << 3) //!< Stopped
+#define TASK_EXIT_ZOMBIE               (1 << 3) //!< Exited, but not yet reaped
+//@}
+
+/** \group Convenience task state bitmasks
+ *
+ * These are commonly used combinations of task states:
+ *
+ * @{
+ */
+#define TASK_NORMAL                    (TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)
+#define TASK_ALL                       (TASK_NORMAL | TASK_STOPPED)
+//@}
 
 typedef unsigned int taskstate_t;
-//@}
 
 /** \group Wait states
  *

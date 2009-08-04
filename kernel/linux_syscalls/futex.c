@@ -230,13 +230,13 @@ futex_wait(
 	queue_unlock(queue);
 
 	/* Add ourself to the futex's waitq and go to sleep */
-	current->state = TASKSTATE_INTERRUPTIBLE;
+	current->state = TASK_INTERRUPTIBLE;
 	waitq_add_entry(&futex.waitq, &wait);
 
 	if (!list_empty(&futex.link))
 		time_remain = schedule_timeout(timeout);
 
-	current->state = TASKSTATE_READY;
+	current->state = TASK_RUNNING;
 
 	/*
  	 * NOTE: We don't remove ourself from the waitq because

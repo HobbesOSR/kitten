@@ -152,9 +152,9 @@ __mutex_lock_common(struct mutex *lock, long state)
 		 * TASK_UNINTERRUPTIBLE case.)
 		 */
 #if 0
-		if (unlikely((state == TASKSTATE_INTERRUPTIBLE &&
+		if (unlikely((state == TASK_INTERRUPTIBLE &&
 					signal_pending(task)) ||
-			      (state == TASKSTATE_KILLABLE &&
+			      (state == TASK_KILLABLE &&
 					fatal_signal_pending(task)))) {
 			mutex_remove_waiter(lock, &waiter,
 					    task_thread_info(task));
@@ -213,7 +213,7 @@ __mutex_unlock_common_slowpath(atomic_t *lock_count, int nested)
 				list_entry(lock->wait_list.next,
 					   struct mutex_waiter, list);
 
-		sched_wakeup_task( waiter->task, TASKSTATE_NORMAL );
+		sched_wakeup_task( waiter->task, TASK_NORMAL );
 		call_schedule = 1;
 	}
 
@@ -261,7 +261,7 @@ __mutex_lock_slowpath(atomic_t *lock_count)
 {
 	struct mutex *lock = container_of(lock_count, struct mutex, count);
 
-	__mutex_lock_common(lock, TASKSTATE_UNINTERRUPTIBLE);
+	__mutex_lock_common(lock, TASK_UNINTERRUPTIBLE);
 }
 
 static noinline int
@@ -269,7 +269,7 @@ __mutex_lock_interruptible_slowpath(atomic_t *lock_count)
 {
 	struct mutex *lock = container_of(lock_count, struct mutex, count);
 
-	return __mutex_lock_common(lock, TASKSTATE_INTERRUPTIBLE);
+	return __mutex_lock_common(lock, TASK_INTERRUPTIBLE);
 }
 
 /*

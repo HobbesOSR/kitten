@@ -69,7 +69,7 @@ __rwsem_do_wake(struct rw_semaphore *sem, int wakewrite)
 		/* Don't touch waiter after ->task has been NULLed */
 		smp_mb();
 		waiter->task = NULL;
-		sched_wakeup_task(tsk, TASKSTATE_NORMAL);
+		sched_wakeup_task(tsk, TASK_NORMAL);
 		goto out;
 	}
 
@@ -83,7 +83,7 @@ __rwsem_do_wake(struct rw_semaphore *sem, int wakewrite)
 		tsk = waiter->task;
 		smp_mb();
 		waiter->task = NULL;
-		sched_wakeup_task(tsk, TASKSTATE_NORMAL);
+		sched_wakeup_task(tsk, TASK_NORMAL);
 		woken++;
 		if (list_empty(&sem->wait_list))
 			break;
@@ -113,7 +113,7 @@ __rwsem_wake_one_writer(struct rw_semaphore *sem)
 	tsk = waiter->task;
 	smp_mb();
 	waiter->task = NULL;
-	sched_wakeup_task(tsk, TASKSTATE_NORMAL);
+	sched_wakeup_task(tsk, TASK_NORMAL);
 	return sem;
 }
 
@@ -135,7 +135,7 @@ void __down_read(struct rw_semaphore *sem)
 	}
 
 	tsk = current;
-	tsk->state = TASKSTATE_UNINTERRUPTIBLE;
+	tsk->state = TASK_UNINTERRUPTIBLE;
 
 	/* set up my own style of waitqueue */
 	waiter.task = tsk;
@@ -151,10 +151,10 @@ void __down_read(struct rw_semaphore *sem)
 		if (!waiter.task)
 			break;
 		schedule();
-		tsk->state = TASKSTATE_UNINTERRUPTIBLE;
+		tsk->state = TASK_UNINTERRUPTIBLE;
 	}
 
-	tsk->state = TASKSTATE_READY;
+	tsk->state = TASK_RUNNING;
  out:
 	;
 }
@@ -200,7 +200,7 @@ void __down_write_nested(struct rw_semaphore *sem, int subclass)
 	}
 
 	tsk = current;
-	tsk->state = TASKSTATE_UNINTERRUPTIBLE;
+	tsk->state = TASK_UNINTERRUPTIBLE;
 
 	/* set up my own style of waitqueue */
 	waiter.task = tsk;
@@ -216,10 +216,10 @@ void __down_write_nested(struct rw_semaphore *sem, int subclass)
 		if (!waiter.task)
 			break;
 		schedule();
-		tsk->state = TASKSTATE_UNINTERRUPTIBLE;
+		tsk->state = TASK_UNINTERRUPTIBLE;
 	}
 
-	tsk->state = TASKSTATE_READY;
+	tsk->state = TASK_RUNNING;
  out:
 	;
 }

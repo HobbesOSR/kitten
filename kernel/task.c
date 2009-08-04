@@ -160,7 +160,7 @@ __task_create(
 	tsk		= &task_union->task_info;
 	tsk->id		= id;
 	tsk->aspace	= aspace_acquire(start_state->aspace_id);
-	tsk->state	= TASKSTATE_READY;
+	tsk->state	= TASK_RUNNING;
 	tsk->uid	= start_state->uid;
 	tsk->gid	= start_state->gid;
 	tsk->cpu_id	= start_state->cpu_id;
@@ -280,7 +280,7 @@ task_exit(int status)
 	/* Mark the task as exited...
 	 * schedule() will remove it from the run queue */
 	current->exit_status = status;
-	current->state = TASKSTATE_EXIT_ZOMBIE;
+	current->state = TASK_EXIT_ZOMBIE;
 	schedule(); /* task is dead, so this should never return */
 	BUG();
 	while (1) {}
