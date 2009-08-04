@@ -43,22 +43,77 @@ extern int waitq_wake_nr_locked(waitq_t *waitq, int nr);
 extern void waitq_remove_entry(waitq_t *waitq, waitq_entry_t *entry);
 extern void waitq_remove_entry_locked(waitq_t *waitq, waitq_entry_t *entry);
 
-/**
- * This puts the task to sleep until condition becomes true.
- * This must be a macro because condition is tested repeatedly, not just
- * when wait_event() is first called.
- */
-#define wait_event(waitq, condition)                               \
-do {                                                               \
-	DECLARE_WAITQ_ENTRY(__entry, current);                     \
-	for (;;) {                                                 \
-		waitq_prepare_to_wait(&waitq, &__entry,            \
-		                      TASK_UNINTERRUPTIBLE);       \
-		if (condition)                                     \
-			break;                                     \
-		schedule();                                        \
-	}                                                          \
-	waitq_finish_wait(&waitq, &__entry);                       \
+#define __wait_event(waitq, condition)                                \
+do {                                                                  \
+	DECLARE_WAITQ_ENTRY(__entry, current);                        \
+	for (;;) {                                                    \
+		waitq_prepare_to_wait(&waitq, &__entry,               \
+		                      TASK_UNINTERRUPTIBLE);          \
+		if (condition)                                        \
+			break;                                        \
+		schedule();                                           \
+	}                                                             \
+	waitq_finish_wait(&waitq, &__entry);                          \
 } while (0)
+
+/**
+ * wait_event - sleep until a condition becomes true
+ * @waitq: the waitqueue to wait on
+ * @condition: a C expression for the event to wait for
+ *
+ * The process is put to sleep (TASK_UNINTERRUPTIBLE) until the
+ * @condition evaluates to true. The @condition is checked each time
+ * the waitqueue @waitq is woken up.
+ *
+ * wake_up() has to be called after changing any variable that could
+ * change the result of the wait condition.
+ */
+#define wait_event(waitq, condition)                                  \
+do {                                                                  \
+	if (condition)                                                \
+		break;                                                \
+	__wait_event(waitq, condition);                               \
+} while (0)
+
+#define __wait_event_interruptible(waitq, condition, ret)             \
+do {                                                                  \
+	DECLARE_WAITQ_ENTRY(__entry, current);                        \
+	for (;;) {                                                    \
+		waitq_prepare_to_wait(&waitq, &__entry,               \
+		                      TASK_INTERRUPTIBLE);            \
+		if (condition)                                        \
+			break;                                        \
+		if (0 /* TODO: !signal_pending(current) */) {         \
+			schedule();                                   \
+			continue;                                     \
+		}                                                     \
+		ret = -ERESTARTSYS;                                   \
+		break;                                                \
+	}                                                             \
+	waitq_finish_wait(&waitq, &__entry);                          \
+} while (0)
+
+/**
+ * wait_event_interruptible - sleep until a condition becomes true
+ * @waitq: the waitqueue to wait on
+ * @condition: a C expression for the event to wait for
+ *
+ * The process is put to sleep (TASK_INTERRUPTIBLE) until the
+ * @condition evaluates to true or a signal is received. The
+ * @condition is checked each time the waitqueue @waitq is woken up.
+ *
+ * wake_up() has to be called after changing any variable that could
+ * change the result of the wait condition.
+ *
+ * The function will return -ERESTARTSYS if it was interrupted by a
+ * signal and 0 if @condition evaluated to true.
+ */
+#define wait_event_interruptible(waitq, condition)                   \
+({                                                                   \
+	int __ret = 0;                                               \
+	if (!(condition))                                            \
+		__wait_event_interruptible(waitq, condition, __ret); \
+	__ret;                                                       \
+})
 
 #endif
