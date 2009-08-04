@@ -163,7 +163,7 @@ __mutex_lock_common(struct mutex *lock, long state)
 			return -EINTR;
 		}
 #endif
-		set_mb( task->state, state );
+		set_task_state(task, state);
 
 		/* didnt get the lock, go to sleep: */
 		spin_unlock_mutex(&lock->wait_lock, flags);

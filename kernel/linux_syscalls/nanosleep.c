@@ -1,6 +1,7 @@
 #include <lwk/kernel.h>
 #include <lwk/time.h>
 #include <lwk/timer.h>
+#include <lwk/sched.h>
 #include <arch/uaccess.h>
 
 int
@@ -16,7 +17,7 @@ sys_nanosleep(const struct timespec __user *req, struct timespec __user *rem)
 
 	uint64_t when = get_time() + timespec_to_ns(_req);
 
-	set_mb(current->state, TASKSTATE_INTERRUPTIBLE);
+	set_task_state(current, TASKSTATE_INTERRUPTIBLE);
 	uint64_t remain = timer_sleep_until(when);
 	if( !remain )
 		return 0;

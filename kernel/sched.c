@@ -129,7 +129,7 @@ repeat_lock_runq:
 		goto repeat_lock_runq;
 	}
 	if (task->state & valid_states) {
-		set_mb(task->state, TASKSTATE_READY);
+		set_task_state(task, TASKSTATE_READY);
 		status = 0;
 	} else {
 		status = -EINVAL;

@@ -76,14 +76,14 @@ waitq_prepare_to_wait(waitq_t *waitq, waitq_entry_t *entry, taskstate_t state)
 	spin_lock_irqsave(&waitq->lock, irqstate);
 	if (list_empty(&entry->link))
 		list_add(&entry->link, &waitq->waitq);
-	set_mb(entry->task->state, state);
+	set_task_state(entry->task, state);
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
 
 void
 waitq_finish_wait(waitq_t *waitq, waitq_entry_t *entry)
 {
-	set_mb(entry->task->state, TASKSTATE_READY);
+	set_task_state(entry->task, TASKSTATE_READY);
 	waitq_remove_entry(waitq, entry);
 }
 
