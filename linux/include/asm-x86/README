@@ -1,0 +1,15 @@
+Unmodified Linux Headers
+========================
+
+Slightly Modified Linux Headers
+===============================
+
+Extensively Modified Linux Headers
+==================================
+
+LWK-specific Linux Compatibility Headers
+========================================
+errno.h		Maps directly to LWK version of same name
+atomic.h	Maps directly to LWK version of same name
+uaccess.h	Maps directly to LWK version of same name
+device.h	Empty stub, no arch-specific device data on LWK

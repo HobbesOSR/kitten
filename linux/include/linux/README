@@ -1,0 +1,59 @@
+All Linux files from 2.6.27.
+
+Unmodified Linux Headers
+========================
+completion.h
+err.h
+rbtree.h
+kdev_t.h
+kref.h
+device.h
+kobject.h
+sysfs.h
+klist.h
+workqueue.h
+timer.h
+jhash.h
+kthread.h
+
+Slightly Modified Linux Headers
+===============================
+idr.h		Modified to remove RCU usage
+
+Extensively Modified Linux Headers
+==================================
+dma-mapping.h	LWK-specific implementation of dma-mapping API
+mm.h		LWK-specific implementation of mem management subsystem
+gfp.h		LWK-specific implementation of get free pages API
+random.h	LWK-specific implementation of random.h
+slab.h		LWK-specific implementation of slab.h
+sched.h		Maps directly to LWK version of same name and does a impedance matching.
+
+LWK-specific Linux Compatibility Headers
+========================================
+wait.h		Maps Linux wait queues to LWK wait queues
+compiler.h	Maps directly to LWK version of same name
+spinlock.h	Maps directly to LWK version of same name
+stddef.h	Maps directly to LWK version of same name
+kernel.h	Catch-all header for misc. things
+types.h		Maps directly to LWK version of same name
+list.h		Maps directly to LWK version of same name
+rwsem.h		Maps directly to LWK version of same name
+semaphore.h	Maps directly to LWK version of same name
+ioport.h	Maps directly to lwk/resource.h
+errno.h		Maps directly to LWK version of same name
+pm.h		Defines stubs, LWK doesn't have device power management
+lockdep.h	Defines stubs, LWK doesn't have lock dependency tracking
+pm_wakeup.h	Empty
+debugobjects.h	Empty
+jiffies.h	LWK doesn't have jiffies, this does impedance matching
+ktime.h		Includes jiffies.h, empty otherwise
+module.h	Defines stubs, LWK doesn't have modules
+linkage.h	Maps directly to LWK version of same name
+bitops.h	Maps directly to LWK version of same name
+interrupt.h	Empty
+init.h		Maps directly to LWK version of same name
+string.h	Maps directly to LWK version of same name, adds a few Linux only prototypes
+mutex.h		Maps directly to LWK version of same name
+sched.h		Maps directly to LWK version of same name
+stat.h		Maps directly to LWK version of same name
