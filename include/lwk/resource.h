@@ -103,4 +103,21 @@ extern int allocate_resource(struct resource *root, struct resource *new,
 extern int adjust_resource(struct resource *res, unsigned long start,
 		           unsigned long size);
 
+/* Linux compatibility cruft */
+extern struct resource * __request_region(struct resource *parent,
+                                          unsigned long start, unsigned long n,
+                                          const char *name);
+extern int __check_region(struct resource *parent, unsigned long start, unsigned long n);
+extern void __release_region(struct resource *parent, unsigned long start, unsigned long n);
+#define request_region(start,n,name) \
+		__request_region(&ioport_resource, (start), (n), (name))
+#define request_mem_region(start,n,name) \
+		__request_region(&iomem_resource, (start), (n), (name))
+#define release_region(start,n) \
+		__release_region(&ioport_resource, (start), (n))
+#define check_mem_region(start,n) \
+		__check_region(&iomem_resource, (start), (n))
+#define release_mem_region(start,n) \
+		__release_region(&iomem_resource, (start), (n))
+
 #endif

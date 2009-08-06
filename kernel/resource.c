@@ -287,3 +287,120 @@ int adjust_resource(struct resource *res, unsigned long start, unsigned long siz
 	return result;
 }
 
+/**
+ * __request_region - create a new busy resource region
+ * @parent: parent resource descriptor
+ * @start: resource start address
+ * @n: resource region size
+ * @name: reserving caller's ID string
+ */
+struct resource * __request_region(struct resource *parent,
+				   unsigned long start, unsigned long n,
+				   const char *name)
+{
+	struct resource *res = kmem_alloc(sizeof(*res));
+
+	if (res) {
+		res->name = name;
+		res->start = start;
+		res->end = start + n - 1;
+		res->flags = IORESOURCE_BUSY;
+
+		write_lock(&resource_lock);
+
+		for (;;) {
+			struct resource *conflict;
+
+			conflict = __request_resource(parent, res);
+			if (!conflict)
+				break;
+			if (conflict != parent) {
+				parent = conflict;
+				if (!(conflict->flags & IORESOURCE_BUSY))
+					continue;
+			}
+
+			/* Uhhuh, that didn't work out.. */
+			kmem_free(res);
+			res = NULL;
+			break;
+		}
+		write_unlock(&resource_lock);
+	}
+	return res;
+}
+
+/**
+ * __check_region - check if a resource region is busy or free
+ * @parent: parent resource descriptor
+ * @start: resource start address
+ * @n: resource region size
+ *
+ * Returns 0 if the region is free at the moment it is checked,
+ * returns %-EBUSY if the region is busy.
+ *
+ * NOTE:
+ * This function is deprecated because its use is racy.
+ * Even if it returns 0, a subsequent call to request_region()
+ * may fail because another driver etc. just allocated the region.
+ * Do NOT use it.  It will be removed from the kernel.
+ */
+int __check_region(struct resource *parent, unsigned long start,
+			unsigned long n)
+{
+	struct resource * res;
+
+	res = __request_region(parent, start, n, "check-region");
+	if (!res)
+		return -EBUSY;
+
+	release_resource(res);
+	kmem_free(res);
+	return 0;
+}
+
+/**
+ * __release_region - release a previously reserved resource region
+ * @parent: parent resource descriptor
+ * @start: resource start address
+ * @n: resource region size
+ *
+ * The described resource region must match a currently busy region.
+ */
+void __release_region(struct resource *parent, unsigned long start,
+			unsigned long n)
+{
+	struct resource **p;
+	unsigned long end;
+
+	p = &parent->child;
+	end = start + n - 1;
+
+	write_lock(&resource_lock);
+
+	for (;;) {
+		struct resource *res = *p;
+
+		if (!res)
+			break;
+		if (res->start <= start && res->end >= end) {
+			if (!(res->flags & IORESOURCE_BUSY)) {
+				p = &res->child;
+				continue;
+			}
+			if (res->start != start || res->end != end)
+				break;
+			*p = res->sibling;
+			write_unlock(&resource_lock);
+			kmem_free(res);
+			return;
+		}
+		p = &res->sibling;
+	}
+
+	write_unlock(&resource_lock);
+
+	printk(KERN_WARNING "Trying to free nonexistent resource "
+		"<%016llx-%016llx>\n", (unsigned long long)start,
+		(unsigned long long)end);
+}
