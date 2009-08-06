@@ -19,7 +19,7 @@
  */
 static irqreturn_t
 do_keyboard_interrupt(
-	unsigned int		vector,
+	int			vector,
 	void *			unused
 )
 {

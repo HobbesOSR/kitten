@@ -277,7 +277,7 @@ seastar_tx_end(
  */
 int
 seastar_interrupt(
-	unsigned int		vector,
+	int			vector,
 	void *			priv
 )
 {

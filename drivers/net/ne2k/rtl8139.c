@@ -224,7 +224,7 @@ static void rtl8139_clear_irq(uint32_t interrupts) {
 
 static irqreturn_t
 rtl8139_interrupt(
-	unsigned int		vector,
+	int			vector,
 	void *			priv
 )
 {

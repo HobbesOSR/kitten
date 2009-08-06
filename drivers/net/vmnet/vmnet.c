@@ -197,7 +197,7 @@ static void vmnet_rx(struct netif * const netif) {
 
 static irqreturn_t
 vmnet_interrupt(
-       unsigned int            vector,
+       int                     vector,
        void *                  priv
 )
 {

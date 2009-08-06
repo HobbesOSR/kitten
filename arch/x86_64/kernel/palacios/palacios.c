@@ -451,7 +451,7 @@ sys_v3_start_guest(
  */
 static irqreturn_t
 palacios_keyboard_interrupt(
-	unsigned int		vector,
+	int			vector,
 	void *			unused
 )
 {

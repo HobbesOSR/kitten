@@ -11,12 +11,12 @@
 typedef int irqreturn_t;
 #define IRQ_NONE	(0)
 #define IRQ_HANDLED	(1)
-#define IRQ_RETVAL	((x) != 0)
+#define IRQ_RETVAL(x)	((x) != 0)
 
 /**
  * IRQ handler prototype.
  */
-typedef irqreturn_t (*irq_handler_t)(unsigned int irq, void *dev_id);
+typedef irqreturn_t (*irq_handler_t)(int irq, void *dev_id);
 
 /**
  * Registers an interrupt handler.
