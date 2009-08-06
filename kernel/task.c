@@ -203,6 +203,10 @@ __task_create(
 	htable_add(htable, tsk);
 	spin_unlock_irqrestore(&htable_lock, irqstate);
 
+	/* Setup aliases needed for Linux compatibility layer */
+	tsk->comm = tsk->name;
+	tsk->mm   = tsk->aspace;
+
 	return tsk;  /* Success! */
 
 fail_arch:

@@ -181,6 +181,10 @@ struct task_struct {
 
 	struct arch_task	arch;            /* arch specific task info */
 	struct kfs_file *	files[ MAX_FILES ];
+
+	/* Stuff needed for the Linux compatibility layer */
+	char *			comm;            /* The task's name */
+	void *			mm;              /* Address space task is in */
 };
 
 union task_union {
