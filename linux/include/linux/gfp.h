@@ -4,6 +4,8 @@
 #include <linux/types.h>
 #include <linux/stddef.h>
 #include <linux/linkage.h>
+#include <linux/mm.h>
+#include <asm/page.h>
 
 struct vm_area_struct;
 
@@ -104,10 +106,34 @@ struct vm_area_struct;
 /* 4GB DMA on some platforms */
 #define GFP_DMA32	__GFP_DMA32
 
-extern unsigned long get_zeroed_page(gfp_t gfp_mask);
+struct page;
 
-extern void free_pages(unsigned long addr, unsigned int order);
-extern void free_page(unsigned long addr);
+extern unsigned long
+get_zeroed_page(gfp_t gfp_mask);
+
+extern unsigned long
+__get_free_pages(gfp_t gfp_mask, unsigned int order);
+
+extern unsigned long
+__get_free_page(gfp_t gfp_mask);
+
+extern void
+__free_pages(struct page *page, unsigned int order);
+
+extern void
+__free_page(struct page *page);
+
+extern void
+free_pages(unsigned long addr, unsigned int order);
+
+extern void
+free_page(unsigned long addr);
+
+extern struct page *
+alloc_pages(gfp_t gfp_mask, unsigned int order);
+
+extern struct page *
+alloc_page(gfp_t gfp_mask);
 
 #if 0
 /* Convert GFP flags to their corresponding migrate type */

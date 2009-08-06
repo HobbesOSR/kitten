@@ -6,5 +6,6 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/workqueue.h>
+#include <linux/byteorder.h>
 
 #endif

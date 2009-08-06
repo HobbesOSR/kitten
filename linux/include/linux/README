@@ -15,6 +15,11 @@ workqueue.h
 timer.h
 jhash.h
 kthread.h
+pci_regs.h
+pci.h
+pci_ids.h
+mod_devicetable.h
+dmapool.h
 
 Slightly Modified Linux Headers
 ===============================
@@ -28,6 +33,9 @@ gfp.h		LWK-specific implementation of get free pages API
 random.h	LWK-specific implementation of random.h
 slab.h		LWK-specific implementation of slab.h
 sched.h		Maps directly to LWK version of same name and does a impedance matching.
+scatterlist.h	LWK specific implementation
+byteorder.h	Maps directly to LWK version of same name and adds some things from Linux not in the LWK header
+hardirq.h	LWK-specific implementation
 
 LWK-specific Linux Compatibility Headers
 ========================================
@@ -36,11 +44,11 @@ compiler.h	Maps directly to LWK version of same name
 spinlock.h	Maps directly to LWK version of same name
 stddef.h	Maps directly to LWK version of same name
 kernel.h	Catch-all header for misc. things
-types.h		Maps directly to LWK version of same name
+types.h		Maps to LWK version of same name, adds a few Linux only things
 list.h		Maps directly to LWK version of same name
 rwsem.h		Maps directly to LWK version of same name
 semaphore.h	Maps directly to LWK version of same name
-ioport.h	Maps directly to lwk/resource.h
+ioport.h	Maps to lwk/resource.h, adds a few Linux only structures
 errno.h		Maps directly to LWK version of same name
 pm.h		Defines stubs, LWK doesn't have device power management
 lockdep.h	Defines stubs, LWK doesn't have lock dependency tracking
@@ -52,8 +60,12 @@ module.h	Defines stubs, LWK doesn't have modules
 linkage.h	Maps directly to LWK version of same name
 bitops.h	Maps directly to LWK version of same name
 interrupt.h	Empty
-init.h		Maps directly to LWK version of same name
+init.h		Maps to LWK version of same name, adds a few Linux only things
 string.h	Maps directly to LWK version of same name, adds a few Linux only prototypes
 mutex.h		Maps directly to LWK version of same name
 sched.h		Maps directly to LWK version of same name
 stat.h		Maps directly to LWK version of same name
+log2.h		Maps directly to LWK version of same name
+moduleparam.h	Maps to linux/module.h
+delay.h		Maps directly to LWK version of same name
+bitmap.h	Maps directly to LWK version of same name

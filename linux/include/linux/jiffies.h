@@ -11,6 +11,7 @@
  * Change all jiffies references to get_time().
  */
 #define jiffies			get_time()
+#define HZ			1000000000ul
 
 /**
  * These macros are for handling wrap-around.
