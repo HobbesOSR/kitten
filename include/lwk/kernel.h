@@ -15,6 +15,7 @@
 #include <lwk/errno.h>
 #include <lwk/utsname.h>
 #include <lwk/print.h>
+#include <lwk/log2.h>
 #include <arch/byteorder.h>
 #include <arch/bug.h>
 
