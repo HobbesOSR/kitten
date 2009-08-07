@@ -5,8 +5,8 @@
 #include <lwk/kfs.h>
 #include <lwk/print.h>
 #include <lwk/driver.h>
-#include <lwk/kobject.h>
-#include <lwk/sysfs.h>
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
 
 struct kfs_file * sysfs_root;
 
@@ -37,7 +37,7 @@ sysfs_init( void )
 DRIVER_INIT( "kfs",  sysfs_init );
 
 
-static struct kfs_fops kobject_fops = {
+struct kfs_fops kobject_fops = {
 };
 
 

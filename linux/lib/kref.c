@@ -11,8 +11,8 @@
  *
  */
 
-#include <lwk/linux_compat.h>
-#include <lwk/kref.h>
+#include <linux/kref.h>
+#include <linux/module.h>
 
 /**
  * kref_set - initialize object and set refcount to requested number.

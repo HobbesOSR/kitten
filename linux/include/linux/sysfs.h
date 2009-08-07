@@ -20,6 +20,11 @@
 struct kobject;
 struct module;
 
+#ifdef __LWK__
+/** Remap the sysfs directory entry to a KFS file */
+#define sysfs_dirent kfs_file
+#endif
+
 /* FIXME
  * The *owner field is no longer used, but leave around
  * until the tree gets cleaned up fully.

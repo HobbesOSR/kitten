@@ -34,9 +34,9 @@
  * all accessors have finished).
  */
 
-#include <lwk/klist.h>
-#include <lwk/sched.h>
-#include <lwk/linux_compat.h>
+#include <linux/klist.h>
+#include <linux/module.h>
+#include <linux/sched.h>
 
 /*
  * Use the lowest bit of n_klist to mark deleted nodes and exclude

@@ -16,10 +16,4 @@ lib-y := \
 	mutex.o \
 	semaphore.o \
 	rwsem-spinlock.o \
-	kasprintf.o \
-	kobject.o \
-	kref.o \
-	sysfs.o \
-	sysfs-stubs.o \
-	klist.o \
 	sscanf.o \

@@ -12,9 +12,11 @@
  * about using the kobject interface.
  */
 
-#include <lwk/kobject.h>
-#include <lwk/string.h>
-#include <lwk/stat.h>
+#include <linux/kobject.h>
+#include <linux/string.h>
+#include <linux/module.h>
+#include <linux/stat.h>
+#include <linux/slab.h>
 
 /*
  * populate_dir - populate directory with attributes.
@@ -792,7 +794,7 @@ static struct kset *kset_create(const char *name,
 	kset = kzalloc(sizeof(*kset), GFP_KERNEL);
 	if (!kset)
 		return NULL;
-	kobject_set_name(&kset->kobj, name);
+	kobject_set_name(&kset->kobj, "%s", name);
 	kset->uevent_ops = uevent_ops;
 	kset->kobj.parent = parent_kobj;
 

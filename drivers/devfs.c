@@ -82,22 +82,14 @@ dev_zero_fops = {
 };
 
 
-
-#include <lwk/kobject.h>
-
-
 int
 devfs_init(void)
 {
 	kfs_create( "/dev/console", &console_fops, 0666, 0, 0 );
 	kfs_create( "/dev/null", &dev_null_fops, 0666, 0, 0 );
 	kfs_create( "/dev/zero", &dev_zero_fops, 0666, 0, 0 );
-
-	struct kobject * kobj = kobject_create();
-
 	return 0;
 }
 
 
 DRIVER_INIT( "kfs", devfs_init );
-

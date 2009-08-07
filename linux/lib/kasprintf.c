@@ -5,18 +5,12 @@
  */
 
 #include <stdarg.h>
-#include <lwk/types.h>
-#include <lwk/string.h>
-#include <lwk/print.h>
-#include <lwk/kmem.h>
+#include <linux/module.h>
+#include <linux/types.h>
+#include <linux/string.h>
 
 /* Simplified asprintf. */
-char *
-kvasprintf(
-	int			__unused(level),
-	const char *		fmt,
-	va_list			ap
-)
+char *kvasprintf(gfp_t gfp, const char *fmt, va_list ap)
 {
 	unsigned int len;
 	char *p;
@@ -26,7 +20,7 @@ kvasprintf(
 	len = vsnprintf(NULL, 0, fmt, aq);
 	va_end(aq);
 
-	p = kmem_alloc(len+1);
+	p = kmalloc(len+1, gfp);
 	if (!p)
 		return NULL;
 
@@ -34,21 +28,17 @@ kvasprintf(
 
 	return p;
 }
+EXPORT_SYMBOL(kvasprintf);
 
-
-char *
-kasprintf(
-	int			level,
-	const char *		fmt,
-	...
-)
+char *kasprintf(gfp_t gfp, const char *fmt, ...)
 {
 	va_list ap;
 	char *p;
 
 	va_start(ap, fmt);
-	p = kvasprintf(level, fmt, ap);
+	p = kvasprintf(gfp, fmt, ap);
 	va_end(ap);
 
 	return p;
 }
+EXPORT_SYMBOL(kasprintf);
