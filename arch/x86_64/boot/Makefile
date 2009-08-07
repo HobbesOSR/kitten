@@ -66,7 +66,7 @@ FDINITRD = $(shell echo $(CONFIG_INIT_TASK_IMAGE))
 # Set this if you want to pass append arguments to the isoimage kernel
 FDARGS = $(KERNEL_ARGS) init_argv=$(CONFIG_INIT_TASK_ARGS) init_envp=$(CONFIG_INIT_TASK_ENVS)
 
-image_cmdline = TIMEOUT 1\nDEFAULT lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
+image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 
 # This requires being root or having syslinux 2.02 or higher installed
 isoimage: $(BOOTIMAGE) $(FDINITRD)
