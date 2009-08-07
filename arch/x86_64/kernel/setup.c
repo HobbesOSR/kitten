@@ -12,6 +12,7 @@
 #include <arch/mpspec.h>
 #include <arch/pda.h>
 #include <arch/io_apic.h>
+#include <arch/pgtable.h>
 
 /**
  * Bitmap of of PTE/PMD entry flags that are supported.
@@ -62,8 +63,25 @@ discover_ebda(void)
 }
 
 /**
+ * Checks to see if the "No Execute" memory protection bit is supported.
+ * The NX bit is not available on some very early Intel x86_64 processors
+ * and can be disabled on newer systems via a BIOS setting.
+ */
+static void __init
+check_for_nx_bit(void)
+{
+	unsigned long efer;
+
+	rdmsrl(MSR_EFER, efer);
+	if (!(efer & EFER_NX)) {
+		printk(KERN_WARNING "_PAGE_NX disabled.\n");
+		__supported_pte_mask &= ~_PAGE_NX;
+	}
+}
+
+/**
  * This sets up the bootstrap memory allocator.  It is a simple
- * bitmap based allocator that tracks memory at a page grandularity.
+ * bitmap based allocator that tracks memory at a page granularity.
  * Once the bootstrap process is complete, each unallocated page
  * is added to the real memory allocator's free pool.  Memory allocated
  * during bootstrap remains allocated forever, unless explicitly
@@ -227,6 +245,7 @@ setup_arch(void)
 	 * it runs inside of the identity map... memory below PAGE_OFFSET is
 	 * from whatever task was running when the kernel got invoked.
 	 */
+	check_for_nx_bit();
 	init_kernel_pgtables(0, (end_pfn_map << PAGE_SHIFT));
 
 	/*
@@ -246,7 +265,7 @@ setup_arch(void)
 	 * Initialize resources.  Resources reserve sections of normal memory
 	 * (iomem) and I/O ports (ioport) for devices and other system
 	 * resources.  For each resource type, there is a tree which tracks
-	 * which regions are in use.  This eliminates the possiblity of
+	 * which regions are in use.  This eliminates the possibility of
 	 * conflicts... e.g., two devices trying to use the same iomem region.
 	 */
 	init_resources();
