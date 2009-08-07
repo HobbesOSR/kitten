@@ -3,6 +3,7 @@
 #include <lwk/cpuinfo.h>
 #include <lwk/bootmem.h>
 #include <lwk/smp.h>
+#include <lwk/sched.h>
 #include <arch/bootsetup.h>
 #include <arch/e820.h>
 #include <arch/page.h>
@@ -294,6 +295,6 @@ setup_arch(void)
 
 	ioapic_init();
 
-	lapic_set_timer(1000000000);
+	lapic_set_timer_freq(SCHED_HZ);
 }
 

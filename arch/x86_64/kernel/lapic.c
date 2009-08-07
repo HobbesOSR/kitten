@@ -139,8 +139,8 @@ lapic_init(void)
 	apic_write(APIC_ESR, 0); /* spec says to clear after enabling LVTERR */
 }
 
-void 
-lapic_set_timer(uint32_t count)
+static void 
+lapic_set_timer_count(uint32_t count)
 {
 	uint32_t lvt;
 
@@ -155,6 +155,20 @@ lapic_set_timer(uint32_t count)
 	lvt &= ~APIC_LVT_MASKED;
 	lvt |= APIC_LVT_TIMER_PERIODIC;
 	apic_write(APIC_LVTT, lvt);
+}
+
+/**
+ * Configures the APIC timer to fire at 'hz' times per second.
+ */
+void
+lapic_set_timer_freq(unsigned int hz)
+{
+	uint64_t ns            = 1000000000ul / hz;
+	double   cycles_per_ns = (cpu_info[this_cpu].arch.lapic_khz * 1000.0) / 1e9;
+	uint32_t count         = (uint32_t)(ns * cycles_per_ns);
+
+	printk(KERN_DEBUG "CPU %u: LAPIC timer set to %u Hz.\n", this_cpu, hz);
+	lapic_set_timer_count(count);
 }
 
 void
@@ -188,7 +202,7 @@ lapic_calibrate_timer(void)
 	unsigned int apic_Hz;
 
 	/* Start the APIC counter running for calibration */
-	lapic_set_timer(4000000000);
+	lapic_set_timer_count(4000000000);
 
 	apic_start = apic_read(APIC_TMCCT);
 	tsc_start  = get_cycles_sync();

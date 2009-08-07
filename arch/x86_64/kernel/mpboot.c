@@ -29,7 +29,7 @@ start_secondary(void)
 {
 	cpu_init();
 	cpu_set(this_cpu, cpu_online_map);
-	lapic_set_timer(1000000000);
+	lapic_set_timer_freq(SCHED_HZ);
 	schedule(); /* runs idle_task, since that's the only task
 	             * on the CPU's run queue at this point */
 }
