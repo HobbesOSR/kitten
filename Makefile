@@ -302,7 +302,8 @@ AFLAGS_KERNEL	=
 # Use LWKINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
 LWKINCLUDE      := -Iinclude \
-                   $(if $(KBUILD_SRC),-Iinclude2 -I$(srctree)/include) \
+		   -Ilinux/include \
+		   $(if $(KBUILD_SRC),-Iinclude2 -I$(srctree)/include) \
 		   -include include/lwk/autoconf.h
 
 CPPFLAGS        := -D__KERNEL__ $(LWKINCLUDE) -D__LWK__
@@ -440,6 +441,7 @@ init-y		:= init/
 drivers-y	:= drivers/
 net-y		:= net/
 libs-y		:= lib/
+linux-y		:= linux/
 #core-y		:= usr/
 endif # KBUILD_EXTMOD
 
@@ -535,11 +537,13 @@ core-y		+= kernel/ mm/ modules/
 
 vmlwk-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+		     $(linux-y) $(linux-m) \
 		     $(net-y) $(net-m) $(libs-y) $(libs-m)))
 
 vmlwk-alldirs	:= $(sort $(vmlwk-dirs) $(patsubst %/,%,$(filter %/, \
 		     $(init-n) $(init-) \
 		     $(core-n) $(core-) $(drivers-n) $(drivers-) \
+		     $(linux-n) $(linux-) \
 		     $(net-n)  $(net-)  $(libs-n)    $(libs-))))
 
 init-y		:= $(patsubst %/, %/built-in.o, $(init-y))
@@ -549,6 +553,7 @@ net-y		:= $(patsubst %/, %/built-in.o, $(net-y))
 libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
 libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
 libs-y		:= $(libs-y1) $(libs-y2)
+linux-y		:= $(patsubst %/, %/built-in.o, $(linux-y))
 
 # Link the LWK with the Palacios virtual machine monitor
 libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/palacios/build/libv3vee.a
@@ -582,7 +587,7 @@ libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/palacios/lib/xed/libxed32e.a
 # System.map is generated to document addresses of all kernel symbols
 
 vmlwk-init := $(head-y) $(init-y)
-vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y)
+vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y) $(linux-y)
 vmlwk-all  := $(vmlwk-init) $(vmlwk-main)
 vmlwk-lds  := arch/$(ARCH)/kernel/vmlwk.lds
 
