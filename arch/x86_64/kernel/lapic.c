@@ -163,12 +163,12 @@ lapic_set_timer_count(uint32_t count)
 void
 lapic_set_timer_freq(unsigned int hz)
 {
-	uint64_t ns            = 1000000000ul / hz;
-	double   cycles_per_ns = (cpu_info[this_cpu].arch.lapic_khz * 1000.0) / 1e9;
-	uint32_t count         = (uint32_t)(ns * cycles_per_ns);
+	uint64_t count = cpu_info[this_cpu].arch.lapic_khz * 1000ul / hz;
+	lapic_set_timer_count((uint32_t)count);
 
-	printk(KERN_DEBUG "CPU %u: LAPIC timer set to %u Hz.\n", this_cpu, hz);
-	lapic_set_timer_count(count);
+	printk(KERN_DEBUG
+	       "CPU %u: LAPIC timer set to %u Hz (count=%llu).\n",
+               this_cpu, hz, count);
 }
 
 void
