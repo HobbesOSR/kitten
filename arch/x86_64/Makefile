@@ -21,7 +21,7 @@
 #           Modifications for Kitten. Remove unneeded stuff.
 #
 
-LDFLAGS		:= -m elf_x86_64
+LDFLAGS		:= -m elf_x86_64 --whole-archive
 OBJCOPYFLAGS	:= -O binary -R .note -R .comment -S
 LDFLAGS_vmlinux :=
 CHECKFLAGS      += -D__x86_64__ -m64

@@ -207,16 +207,18 @@ kfs_mkdirent(
 	);
 
 	struct kfs_file * file = 0;
+	int new_entry = 0;
 
 	// Try a lookup in the parent first, then allocate a new file
 	if( parent && name )
 		file = htable_lookup( parent->files, name );
-	if( !file )
+	if( !file ) {
 		file = kmem_alloc( sizeof(*file) );
-	else
+		if (!file)
+			return NULL;
+		new_entry = 1;
+	} else
 		printk( KERN_WARNING "%s: '%s' already exists\n", __func__, name );
-	if( !file )
-		return NULL;
 
 	// If this is a new allocation, create the directory table
 	// \todo Do this only when a sub-file is created
@@ -246,7 +248,7 @@ kfs_mkdirent(
 		file->name[offset] = '\0';
 	}
 
-	if( parent )
+	if( parent && new_entry )
 		htable_add( parent->files, file );
 
 	return file;

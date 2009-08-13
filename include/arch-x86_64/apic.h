@@ -104,7 +104,7 @@ extern unsigned boot_cpu_id;
 
 extern void __init lapic_map(void);
 extern void __init lapic_init(void);
-extern void lapic_set_timer(uint32_t count);
+extern void lapic_set_timer_freq(unsigned int hz);
 extern unsigned int lapic_calibrate_timer(void);
 extern void lapic_dump(void);
 extern void lapic_send_init_ipi(unsigned int cpu);

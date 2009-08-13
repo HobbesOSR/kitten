@@ -157,7 +157,7 @@ find_early_table_space(unsigned long end)
  	 * Consult the memory map to find a region of suitable size.
  	 */
  	start = 0x8000;
- 	table_start = find_e820_area(start, end, tables);
+ 	table_start = find_e820_area(start, end, tables, PAGE_SIZE);
 	if (table_start == -1UL)
 		panic("Cannot find space for the kernel page tables");
 
