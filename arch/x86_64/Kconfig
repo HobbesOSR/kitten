@@ -1,10 +1,14 @@
 mainmenu "Kitten Kernel Configuration"
 
-config x86_64
+config X86_64
 	bool
 	default y
 	help
-	  Support for the x86-64 architecture.
+	  Support for the x86_64 architecture.
+
+config X86
+	bool
+	default y
 
 source "init/Kconfig"
 
