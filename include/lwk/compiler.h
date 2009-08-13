@@ -92,15 +92,15 @@ extern void __chk_io_ptr(void __iomem *);
  * Allow us to avoid 'defined but not used' warnings on functions and data,
  * as well as force them to be emitted to the assembly file.
  *
- * As of gcc 3.3, static functions that are not marked with attribute((used))
- * may be elided from the assembly file.  As of gcc 3.3, static data not so
+ * As of gcc 3.4, static functions that are not marked with attribute((used))
+ * may be elided from the assembly file.  As of gcc 3.4, static data not so
  * marked will not be elided, but this may change in a future gcc version.
  *
  * In prior versions of gcc, such functions and data would be emitted, but
  * would be warned about except with attribute((unused)).
  */
-#ifndef __attribute_used__
-# define __attribute_used__	/* unimplemented */
+#ifndef __used
+# define __used			/* unimplemented */
 #endif
 
 /*

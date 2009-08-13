@@ -39,7 +39,7 @@ struct kparam_array {
 #define __param_call(prefix, name, set, get, arg)			\
 	static char __param_str_##name[] = prefix #name;		\
 	static struct kernel_param const __param_##name			\
-	__attribute_used__						\
+	__used								\
     __attribute__ ((unused,__section__ ("__param"),aligned(sizeof(void *)))) \
 	= { __param_str_##name, set, get, arg }
 

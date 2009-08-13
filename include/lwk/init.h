@@ -45,8 +45,8 @@
 #define __cpuinit	__init
 #define __initdata	__attribute__ ((__section__ (".init.data")))
 #define __exitdata	__attribute__ ((__section__(".exit.data")))
-#define __exit_call	__attribute_used__ __attribute__ ((__section__ (".exitcall.exit")))
-#define __exit		__attribute_used__ __attribute__ ((__section__(".exit.text")))
+#define __exit_call	__used __attribute__ ((__section__ (".exitcall.exit")))
+#define __exit		__used __attribute__ ((__section__(".exit.text")))
 #define __cpuinitdata	__initdata
 
 /* For assembly routines */

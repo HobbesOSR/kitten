@@ -100,7 +100,7 @@ struct driver_info {
 	static char __driver_name[] = DRIVER_NAME;			\
 	static char __driver_type[] = type;				\
 	static struct driver_info const __driver_info			\
-	__attribute_used__						\
+	__used								\
 	__attribute__ ((unused,__section__ ("__driver_table"),		\
 			aligned(sizeof(void *))))			\
 	= { __driver_name, __driver_type, init_func };
