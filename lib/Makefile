@@ -15,5 +15,4 @@ lib-y := \
 	htable.o \
 	mutex.o \
 	semaphore.o \
-	rwsem-spinlock.o \
 	sscanf.o \
