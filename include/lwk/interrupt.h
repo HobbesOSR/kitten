@@ -1,6 +1,8 @@
 #ifndef _LWK_INTERRUPT_H
 #define _LWK_INTERRUPT_H
 
+#include <arch/interrupt.h>
+
 /**
  * IRQ handler return type.
  *

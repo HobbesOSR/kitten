@@ -342,8 +342,10 @@ ENTRY(asm_interrupt)
 	/*
 	 * Call C code interrupt handler entry point
 	 */
+	incl %gs:pda_irqcount		/* Mark that we're in an interrupt   */
 	movq %rsp, %rdi			/* ARG0: pointer to 'struct pt_regs' */
 	call do_interrupt		/* Call common C handler             */
+	decl %gs:pda_irqcount		/* Unmark that we're in an interrupt */
 
 	/*
 	 * If returning to user-space, reschedule and restore user-space GS
