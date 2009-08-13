@@ -11,6 +11,7 @@
 #include <lwk/stddef.h>
 #include <lwk/types.h>
 #include <lwk/compiler.h>
+#include <lwk/bitops.h>
 #include <lwk/kmem.h>
 #include <lwk/errno.h>
 #include <lwk/utsname.h>
