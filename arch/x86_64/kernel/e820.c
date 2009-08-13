@@ -50,43 +50,48 @@ unsigned long end_user_pfn = MAXMEM>>PAGE_SHIFT;
 extern struct resource code_resource, data_resource;
 
 /* Check for some hardcoded bad areas that early boot is not allowed to touch */ 
-static inline int bad_addr(unsigned long *addrp, unsigned long size)
+static inline int bad_addr(unsigned long *addrp,
+                           unsigned long size, unsigned long align)
 { 
 	unsigned long addr = *addrp, last = addr + size; 
 
 	/* various gunk below that needed for SMP startup */
 	if (addr < 0x8000) { 
 		*addrp = 0x8000;
-		return 1; 
+		goto error;
 	}
 
 	/* direct mapping tables of the kernel */
 	if (last >= table_start<<PAGE_SHIFT && addr < table_end<<PAGE_SHIFT) { 
 		*addrp = table_end << PAGE_SHIFT; 
-		return 1;
+		goto error;
 	} 
 
 	/* initrd image */ 
 	if (LOADER_TYPE && INITRD_START && last >= INITRD_START && 
 	    addr < INITRD_START+INITRD_SIZE) { 
 		*addrp = INITRD_START + INITRD_SIZE; 
-		return 1;
+		goto error;
 	} 
 
 	/* kernel code + 640k memory hole (later should not be needed, but 
 	   be paranoid for now) */
 	if (last >= 640*1024 && addr < __pa_symbol(&_end)) { 
 		*addrp = __pa_symbol(&_end);
-		return 1;
+		goto error;
 	}
 
 	if (last >= ebda_addr && addr < ebda_addr + ebda_size) {
 		*addrp = ebda_addr + ebda_size;
-		return 1;
+		goto error;
 	}
 
-	/* XXX ramdisk image here? */ 
+	/* Success */
 	return 0;
+
+error:
+	*addrp = round_up(*addrp, align);
+	return 1;
 } 
 
 /*
@@ -140,19 +145,21 @@ int __init e820_all_mapped(unsigned long start, unsigned long end, unsigned type
 /* 
  * Find a free area in a specific range. 
  */ 
-unsigned long __init find_e820_area(unsigned long start, unsigned long end, unsigned size) 
+unsigned long __init find_e820_area(unsigned long start, unsigned long end,
+                                    unsigned long size, unsigned long align) 
 { 
 	int i; 
 	for (i = 0; i < e820.nr_map; i++) { 
 		struct e820entry *ei = &e820.map[i]; 
-		unsigned long addr = ei->addr, last; 
+		unsigned long addr, last; 
 		if (ei->type != E820_RAM) 
 			continue; 
+		addr = round_up(ei->addr, align);
 		if (addr < start) 
-			addr = start;
+			addr = round_up(start, align);
 		if (addr > ei->addr + ei->size) 
 			continue; 
-		while (bad_addr(&addr, size) && addr+size <= ei->addr+ei->size)
+		while (bad_addr(&addr, size, align) && addr+size <= ei->addr+ei->size)
 			;
 		last = addr + size;
 		if (last > ei->addr + ei->size)
