@@ -35,12 +35,7 @@
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
 
-/**
- * Location of the ROM BIOS and VGA BIOS used by Palacios guests.
- * These are kernel virtual pointers to the memory.
- */
-extern uint8_t rombios_start[], rombios_end[];
-extern uint8_t vgabios_start[], vgabios_end[];
+
 
 /**
  * Palacios management and control function pointers.
@@ -388,10 +383,6 @@ static int
 palacios_run_guest(void *arg)
 {
 	struct v3_vm_config vm_config = {
-		.rombios		= rombios_start,
-		.rombios_size		= rombios_end - rombios_start,
-		.vgabios		= vgabios_start,
-		.vgabios_size		= vgabios_end - vgabios_start,
 		.mem_size		= (128 * 1024 * 1024),
 		.enable_pci		= 1,
 		

@@ -551,8 +551,7 @@ libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
 libs-y		:= $(libs-y1) $(libs-y2)
 
 # Link the LWK with the Palacios virtual machine monitor
-libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/palacios/build/libv3vee.a
-libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/palacios/lib/xed/libxed32e.a
+libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/libv3vee.a 
 
 # Build vmlwk
 # ---------------------------------------------------------------------------
