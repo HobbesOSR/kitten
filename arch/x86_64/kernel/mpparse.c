@@ -211,8 +211,18 @@ MP_intsrc_info(struct mpc_config_intsrc *m)
 			m->mpc_srcbusirq, m->mpc_dstapic, m->mpc_dstirq);
 
 	struct ioapic_info *ioapic_info = ioapic_info_lookup(m->mpc_dstapic);
-	if (!ioapic_info)
-		panic("Int entry specifies invalid destination APIC ID.");
+	if (!ioapic_info) {
+		printk(KERN_ERR "BIOS BUG: INTSRC has unknown destination APIC.\n");
+
+		if (ioapic_num == 0) {
+			/* Attempt to work around the BIOS BUG */
+			printk(KERN_ERR "Attempting to work-around by assuming destination APIC exists.\n");
+			ioapic_info = ioapic_info_store(m->mpc_dstapic, IOAPIC_DEFAULT_PHYS_BASE);
+		} else {
+			printk(KERN_ERR "Ignoring bogus INTSRC entry.\n");
+			return;
+		}
+	}
 
 	unsigned int delivery_mode;
 	switch (m->mpc_irqtype) {
