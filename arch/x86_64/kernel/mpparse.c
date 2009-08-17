@@ -58,12 +58,6 @@ static int    mp_current_pci_id = 0;
 unsigned char mp_bus_id_to_type    [MAX_MP_BUSSES] = { [0 ... MAX_MP_BUSSES-1] = -1 };
 int           mp_bus_id_to_pci_bus [MAX_MP_BUSSES] = { [0 ... MAX_MP_BUSSES-1] = -1 };
 
-/**
- * MP IO APIC information
- */
-int nr_ioapics = 0;
-struct mpc_config_ioapic mp_ioapics[MAX_IO_APICS];
-
 /* TODO: move these */
 int pic_mode;
 
@@ -194,22 +188,13 @@ MP_ioapic_info(struct mpc_config_ioapic *m)
 
 	printk(KERN_DEBUG "I/O APIC #%d Version %d at 0x%X\n",
 		m->mpc_apicid, m->mpc_apicver, m->mpc_apicaddr);
-	if (nr_ioapics >= MAX_IO_APICS) {
-		printk(KERN_ERR "Max # of I/O APICs (%d) exceeded (found %d).\n",
-			MAX_IO_APICS, nr_ioapics);
-		panic("Recompile kernel with bigger MAX_IO_APICS!.\n");
-	}
 	if (!m->mpc_apicaddr) {
 		printk(KERN_ERR "WARNING: bogus zero I/O APIC address"
 			" found in MP table, skipping!\n");
 		return;
 	}
-	mp_ioapics[nr_ioapics] = *m;
-	nr_ioapics++;
 
-	ioapic_info[ioapic_num].phys_id   = m->mpc_apicid;
-	ioapic_info[ioapic_num].phys_addr = m->mpc_apicaddr;
-	ioapic_num++;
+	ioapic_info_store(m->mpc_apicid, m->mpc_apicaddr);
 }
 
 /**

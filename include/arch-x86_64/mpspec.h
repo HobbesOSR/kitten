@@ -175,7 +175,6 @@ extern unsigned int boot_cpu_physical_apicid;
 extern int smp_found_config;
 extern void find_mp_config(void);
 extern void get_mp_config(void);
-extern int nr_ioapics;
 extern unsigned char apic_version [MAX_APICS];
 extern int mpc_default_type;
 extern unsigned long mp_lapic_addr;

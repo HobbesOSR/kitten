@@ -299,6 +299,27 @@ ioapic_init(void)
 }
 
 /**
+ * Creates an ioapic_info structure for a newly encountered I/O APIC.
+ */
+struct ioapic_info *
+ioapic_info_store(unsigned int phys_id, paddr_t phys_addr)
+{
+	if (ioapic_num >= MAX_IO_APICS) {
+		printk(KERN_ERR "Max # of I/O APICs (%u) exceeded (found %u).\n",
+			MAX_IO_APICS, ioapic_num);
+		panic("Recompile kernel with bigger MAX_IO_APICS.\n");
+	}
+
+	struct ioapic_info *info = &ioapic_info[ioapic_num];
+	ioapic_num++;
+
+	info->phys_id   = phys_id;
+	info->phys_addr = phys_addr;
+
+	return info;
+}
+
+/**
  * Looks up the ioapic_info structure for the specified IO APIC.
  */
 struct ioapic_info *

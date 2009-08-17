@@ -5,6 +5,35 @@
 #include <arch/types.h>
 #include <arch/mpspec.h>
 
+struct ioapic_src_info {
+	unsigned int		bus_id;
+	unsigned int		bus_irq;
+};
+
+struct ioapic_pin_info {
+	unsigned int		num_srcs;
+	struct ioapic_src_info	src_info[MAX_IO_APIC_SRCS];
+	unsigned int		delivery_mode;
+	unsigned int		polarity;
+	unsigned int		trigger;
+	unsigned int		os_assigned_vector;
+};
+
+struct ioapic_info {
+	unsigned int		phys_id;
+	paddr_t			phys_addr;
+	struct ioapic_pin_info	pin_info[MAX_IO_APIC_PINS];
+};
+
+extern unsigned int ioapic_num;
+extern struct ioapic_info ioapic_info[MAX_IO_APICS];
+
+extern void __init ioapic_map(void);
+extern void __init ioapic_init(void);
+extern struct ioapic_info *ioapic_info_store(unsigned int phys_id, paddr_t phys_addr);
+extern struct ioapic_info *ioapic_info_lookup(unsigned int phys_id);
+extern void ioapic_dump(void);
+
 /*
  * Intel IO-APIC support for SMP and UP systems.
  *
@@ -34,7 +63,7 @@ static inline void end_edge_ioapic_vector (unsigned int vector) { }
 
 #define IO_APIC_BASE(idx) \
 		((volatile int *)(__fix_to_virt(FIX_IO_APIC_BASE_0 + idx) \
-		+ (mp_ioapics[idx].mpc_apicaddr & ~PAGE_MASK)))
+		+ (ioapic_info[idx].phys_addr & ~PAGE_MASK)))
 
 /*
  * The structure of the IO-APIC:
@@ -77,12 +106,6 @@ union IO_APIC_reg_03 {
 			__reserved_1	: 31;
 	} __attribute__ ((packed)) bits;
 };
-
-/*
- * # of IO-APICs and # of IRQ routing registers
- */
-extern int nr_ioapics;
-extern int nr_ioapic_registers[MAX_IO_APICS];
 
 enum ioapic_trigger_modes {
 	ioapic_edge_sensitive  = 0,
@@ -129,9 +152,6 @@ struct IO_APIC_route_entry {
 /*
  * MP-BIOS irq configuration table structures:
  */
-
-/* I/O APIC entries */
-extern struct mpc_config_ioapic mp_ioapics[MAX_IO_APICS];
 
 /* MP IRQ source entries */
 extern struct mpc_config_intsrc mp_irqs[MAX_IRQ_SOURCES];
@@ -192,33 +212,5 @@ extern int assign_irq_vector(int irq);
 void enable_NMI_through_LVT0 (void * dummy);
 
 extern spinlock_t i8259A_lock;
-
-struct ioapic_src_info {
-	unsigned int		bus_id;
-	unsigned int		bus_irq;
-};
-
-struct ioapic_pin_info {
-	unsigned int		num_srcs;
-	struct ioapic_src_info	src_info[MAX_IO_APIC_SRCS];
-	unsigned int		delivery_mode;
-	unsigned int		polarity;
-	unsigned int		trigger;
-	unsigned int		os_assigned_vector;
-};
-
-struct ioapic_info {
-	unsigned int		phys_id;
-	paddr_t			phys_addr;
-	struct ioapic_pin_info	pin_info[MAX_IO_APIC_PINS];
-};
-
-extern unsigned int ioapic_num;
-extern struct ioapic_info ioapic_info[MAX_IO_APICS];
-
-extern void __init ioapic_map(void);
-extern void __init ioapic_init(void);
-extern struct ioapic_info *ioapic_info_lookup(unsigned int phys_id);
-extern void ioapic_dump(void);
 
 #endif
