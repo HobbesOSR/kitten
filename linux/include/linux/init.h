@@ -12,4 +12,19 @@
 #define __devexitconst
 #define __devexit_p(x) (x)
 
+/* These avoid "defined but not used" warnings */
+#define fs_initcall(name)	int fs_initcall_##name(void) { return name(); }
+#define subsys_initcall(name)	int subsys_initcall_##name(void) { return name(); }
+#define arch_initcall(name)	int arch_initcall_##name(void) { return name(); }
+#define core_initcall(name)	int core_initcall_##name(void) { return name(); }        
+#define postcore_initcall(name)	int postcore_initcall_##name(void) { return name(); }
+#define device_initcall(name)	int device_initcall_##name(void) { return name(); }
+#define late_initcall(name)	int late_initcall_##name(void) { return name(); }
+#define early_param(str,name)	int early_param_##name(void) { return name(""); }
+
+/* Linux has compile-time checks for non-init code referencing init code, we don't */
+#define __ref
+#define __refdata
+#define __refconst
+
 #endif

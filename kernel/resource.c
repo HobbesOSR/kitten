@@ -288,6 +288,24 @@ int adjust_resource(struct resource *res, unsigned long start, unsigned long siz
 }
 
 /**
+ * resource_alignment - calculate resource's alignment
+ * @res: resource pointer
+ *
+ * Returns alignment on success, 0 (invalid alignment) on failure.
+ */
+unsigned long resource_alignment(struct resource *res)
+{
+	switch (res->flags & (IORESOURCE_SIZEALIGN | IORESOURCE_STARTALIGN)) {
+	case IORESOURCE_SIZEALIGN:
+		return resource_size(res);
+	case IORESOURCE_STARTALIGN:
+		return res->start;
+	default:
+		return 0;
+	}
+}
+
+/**
  * __request_region - create a new busy resource region
  * @parent: parent resource descriptor
  * @start: resource start address

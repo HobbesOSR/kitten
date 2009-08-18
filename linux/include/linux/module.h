@@ -10,6 +10,9 @@
 #include <lwk/driver.h>
 #include <lwk/stat.h>
 
+#include <linux/notifier.h>
+#include <linux/mutex.h>
+
 #define THIS_MODULE	((void*) __FILE__)
 
 #define MODULE_AUTHOR(author)
@@ -32,5 +35,10 @@
 
 #define module_init(init_func) DRIVER_INIT("LINUX", (init_func))
 #define module_exit(exit_func) DRIVER_EXIT((exit_func))
+
+struct module;
+
+static inline int try_module_get(struct module *module) { return 1; }
+static inline void module_put(struct module *module) { }
 
 #endif

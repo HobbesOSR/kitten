@@ -108,6 +108,11 @@ extern int allocate_resource(struct resource *root, struct resource *new,
 			     void *alignf_data);
 extern int adjust_resource(struct resource *res, unsigned long start,
 		           unsigned long size);
+extern unsigned long resource_alignment(struct resource *res);
+static inline unsigned long resource_size(struct resource *res)
+{
+	return res->end - res->start + 1;
+}
 
 /* Linux compatibility cruft */
 extern struct resource * __request_region(struct resource *parent,

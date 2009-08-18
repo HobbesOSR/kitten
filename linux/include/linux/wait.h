@@ -16,8 +16,15 @@
 
 #define DEFINE_WAIT(name)		DECLARE_WAITQ_ENTRY((name), current)
 
-#define init_waitqueue_head(x)		waitq_init((x))
-#define wake_up(x)			waitq_wakeup((x))
-#define wake_up_interruptible(x)	waitq_wakeup((x))
+#define init_waitqueue_head		waitq_init
+#define wake_up				waitq_wakeup
+#define wake_up_interruptible		waitq_wakeup
+#define wake_up_all			waitq_wakeup
+
+#define __add_wait_queue		waitq_add_entry_locked
+#define __remove_wait_queue		waitq_remove_entry_locked
+
+#define add_wait_queue			waitq_add_entry
+#define remove_wait_queue		waitq_remove_entry
 
 #endif

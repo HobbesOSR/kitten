@@ -2,6 +2,7 @@ Unmodified Linux Headers
 ========================
 pci.h
 pci_64.h
+pci-direct.h
 
 Slightly Modified Linux Headers
 ===============================
@@ -9,6 +10,9 @@ Slightly Modified Linux Headers
 Extensively Modified Linux Headers
 ==================================
 scatterlist.h	LWK specific implementation
+topology.h	Mostly to asm-generic/topology.h, instead of providing x86_64 specific implementation.
+pat.h		LWK specific implementation
+acpi.h		LWK specific implementation
 
 LWK-specific Linux Compatibility Headers
 ========================================
@@ -16,6 +20,11 @@ errno.h		Maps directly to LWK version of same name
 atomic.h	Maps directly to LWK version of same name
 uaccess.h	Maps directly to LWK version of same name
 device.h	Empty stub, no arch-specific device data on LWK
-io.h		Maps directly to LWK version of same name
+io.h		Maps to LWK version of same name, adds a few Linux only things
 page.h		Includes asm-generic/page.h
 scatterlist.h	Maps to linux/scatterlist.h, no arch-specific scatterlist header needed in LWK environment
+dma.h		Empty
+processor.h	Maps to LWK arch/processor.h and arch/cpuinfo.h
+io_apic.h	Maps to LWK version of same name, does some impedance matching
+smp.h		Maps directly to LWK version of same name
+segment.h	Empty

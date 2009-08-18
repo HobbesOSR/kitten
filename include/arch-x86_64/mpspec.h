@@ -176,7 +176,6 @@ extern int smp_found_config;
 extern void find_mp_config(void);
 extern void get_mp_config(void);
 extern unsigned char apic_version [MAX_APICS];
-extern int mpc_default_type;
 extern unsigned long mp_lapic_addr;
 extern int pic_mode;
 

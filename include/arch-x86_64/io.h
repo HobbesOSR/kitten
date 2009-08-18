@@ -265,7 +265,7 @@ void memset_io(volatile void __iomem *a, int b, size_t c);
  *	Returns 1 on a match.
  */
  
-static inline int check_signature(void __iomem *io_addr,
+static inline int check_signature(const volatile void __iomem *io_addr,
 	const unsigned char *signature, int length)
 {
 	int retval = 0;

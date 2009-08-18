@@ -2,6 +2,7 @@ Unmodified Linux Headers
 ========================
 pci.h
 pci-dma-compat.h
+topology.h
 
 Slightly Modified Linux Headers
 ===============================

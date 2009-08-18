@@ -114,4 +114,13 @@ kcalloc(size_t n, size_t size, gfp_t flags);
 extern void
 kfree(const void * mem);
 
+/**
+ * kmalloc_track_caller is a special version of kmalloc that records the
+ * calling function of the routine calling it for slab leak tracking instead
+ * of just the calling function (confusing, eh?).
+ *
+ * LWK doesn't do slab leak tracking so it falls back to normal kmalloc().
+ */
+#define kmalloc_track_caller(size, flags) kmalloc(size, flags)
+
 #endif

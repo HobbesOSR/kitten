@@ -2,6 +2,7 @@
 #define _LINUX_SCHED_H
 
 #include <lwk/sched.h>
+#include <asm/processor.h>
 
 #define wake_up_process(p)      sched_wakeup_task((p), TASK_ALL)
 

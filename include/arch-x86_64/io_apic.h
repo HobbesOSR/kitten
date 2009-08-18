@@ -149,16 +149,6 @@ struct IO_APIC_route_entry {
 		dest		:  8;
 } __attribute__ ((packed));
 
-/*
- * MP-BIOS irq configuration table structures:
- */
-
-/* MP IRQ source entries */
-extern struct mpc_config_intsrc mp_irqs[MAX_IRQ_SOURCES];
-
-/* non-0 if default (table-less) MP configuration */
-extern int mpc_default_type;
-
 static inline unsigned int io_apic_read(unsigned int apic, unsigned int reg)
 {
 	*IO_APIC_BASE(apic) = reg;
@@ -188,29 +178,5 @@ static inline void io_apic_sync(unsigned int apic)
 {
 	(void) *(IO_APIC_BASE(apic)+4);
 }
-
-/* 1 if "noapic" boot option passed */
-extern int skip_ioapic_setup;
-
-/*
- * If we use the IO-APIC for IRQ routing, disable automatic
- * assignment of PCI IRQ's.
- */
-#define io_apic_assign_pci_irqs (mp_irq_entries && !skip_ioapic_setup && io_apic_irqs)
-
-#ifdef CONFIG_ACPI
-extern int io_apic_get_version (int ioapic);
-extern int io_apic_get_redir_entries (int ioapic);
-extern int io_apic_set_pci_routing (int ioapic, int pin, int irq, int, int);
-extern int timer_uses_ioapic_pin_0;
-#endif
-
-extern int sis_apic_bug; /* dummy */ 
-
-extern int assign_irq_vector(int irq);
-
-void enable_NMI_through_LVT0 (void * dummy);
-
-extern spinlock_t i8259A_lock;
 
 #endif

@@ -1,0 +1,1 @@
+#include <arch/smp.h>

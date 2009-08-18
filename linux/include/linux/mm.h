@@ -10,11 +10,25 @@
 
 struct page { };
 
+struct vm_operations_struct {
+	void (*open)(struct vm_area_struct *area);
+	void (*close)(struct vm_area_struct *area);
+
+	/* called by access_process_vm when get_user_pages() fails, typically
+	 * for use by special VMAs that can switch between memory and hardware */
+	int (*access)(struct vm_area_struct *vma, unsigned long addr, void *buf, int len, int write);
+};
+
 struct vm_area_struct {
 	unsigned long vm_start;         /* Our start address within vm_mm. */
 	unsigned long vm_end;           /* The first byte after our end address
                                            within vm_mm. */
 	pgprot_t vm_page_prot;          /* Access permissions of this VMA. */
+
+	unsigned long vm_pgoff;		/* Offset (within vm_file) in PAGE_SIZE
+					   units, *not* PAGE_CACHE_SIZE */
+
+	struct vm_operations_struct *vm_ops;
 };
 
 extern void
@@ -40,5 +54,8 @@ extern int
 get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
                unsigned long start, int len, int write, int force,
                struct page **pages, struct vm_area_struct **vmas);
+
+int generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
+                        void *buf, int len, int write);
 
 #endif

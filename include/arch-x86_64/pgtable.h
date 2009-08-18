@@ -172,6 +172,12 @@ static inline pte_t ptep_get_and_clear_full(struct mm_struct *mm, unsigned long 
 
 #define _PAGE_CHG_MASK	(PTE_MASK | _PAGE_ACCESSED | _PAGE_DIRTY)
 
+#define _PAGE_CACHE_MASK	(_PAGE_PCD | _PAGE_PWT)
+#define _PAGE_CACHE_WB		(0)
+#define _PAGE_CACHE_WC		(_PAGE_PWT)
+#define _PAGE_CACHE_UC_MINUS	(_PAGE_PCD)
+#define _PAGE_CACHE_UC		(_PAGE_PCD | _PAGE_PWT)
+
 #define PAGE_NONE	__pgprot(_PAGE_PROTNONE | _PAGE_ACCESSED)
 #define PAGE_SHARED	__pgprot(_PAGE_PRESENT | _PAGE_RW | _PAGE_USER | _PAGE_ACCESSED | _PAGE_NX)
 #define PAGE_SHARED_EXEC __pgprot(_PAGE_PRESENT | _PAGE_RW | _PAGE_USER | _PAGE_ACCESSED)

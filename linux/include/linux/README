@@ -9,6 +9,7 @@ kdev_t.h
 kref.h
 device.h
 kobject.h
+kobj_map.h
 sysfs.h
 klist.h
 workqueue.h
@@ -20,10 +21,19 @@ pci.h
 pci_ids.h
 mod_devicetable.h
 dmapool.h
+pci-aspm.h
+pm.h
+pm_wakeup.h
+numa.h
+capability.h
+dmi.h
+io.h
 
 Slightly Modified Linux Headers
 ===============================
 idr.h		Modified to remove RCU usage
+mempolicy.h	Commented out a few header includes
+nodemask.h	Commented out linux/threads.h include
 
 Extensively Modified Linux Headers
 ==================================
@@ -35,7 +45,9 @@ slab.h		LWK-specific implementation of slab.h
 sched.h		Maps directly to LWK version of same name and does a impedance matching.
 scatterlist.h	LWK specific implementation
 byteorder.h	Maps directly to LWK version of same name and adds some things from Linux not in the LWK header
-hardirq.h	LWK-specific implementation
+hardirq.h	LWK-specific implementation, includes LWK interrupt.h
+irq.h		LWK-specific implementation
+notifier.h	LWK-specific implementation
 
 LWK-specific Linux Compatibility Headers
 ========================================
@@ -46,11 +58,9 @@ stddef.h	Maps directly to LWK version of same name
 kernel.h	Catch-all header for misc. things
 types.h		Maps to LWK version of same name, adds a few Linux only things
 list.h		Maps directly to LWK version of same name
-rwsem.h		Maps directly to LWK version of same name
 semaphore.h	Maps directly to LWK version of same name
 ioport.h	Maps to lwk/resource.h, adds a few Linux only structures
 errno.h		Maps directly to LWK version of same name
-pm.h		Defines stubs, LWK doesn't have device power management
 lockdep.h	Defines stubs, LWK doesn't have lock dependency tracking
 pm_wakeup.h	Empty
 debugobjects.h	Empty
@@ -69,3 +79,14 @@ log2.h		Maps directly to LWK version of same name
 moduleparam.h	Maps to linux/module.h
 delay.h		Maps directly to LWK version of same name
 bitmap.h	Maps directly to LWK version of same name
+rwsem.h		Maps to LWK semaphore interface
+proc_fs.h	Empty
+cpumask.h	Maps directly to LWK version of same name
+topology.h	Maps to /asm/topology.h
+acpi.h		Empty
+kallsyms.h	Maps directly to LWK version of same name
+cache.h		Maps directly to LWK version of same name
+smp.h		Maps directly to LWK version of same name
+bootmem.h	Empty
+genhd.h		Empty
+memory.h	Empty
