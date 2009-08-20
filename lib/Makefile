@@ -16,3 +16,4 @@ lib-y := \
 	mutex.o \
 	semaphore.o \
 	sscanf.o \
+	cmdline.o \
