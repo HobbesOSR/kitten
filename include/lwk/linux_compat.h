@@ -30,11 +30,6 @@
 #define WARN(level,fmt, ...) \
 	printk(KERN_WARNING "(WARNING) %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__ )
 
-/* The lwk always zeros memory */
-#define kzalloc( size, unused) kmem_alloc(size)
-#define kmalloc( size, unused) kmem_alloc(size)
-#define kfree( ptr ) kmem_free(ptr)
-
 /* We only support stack dumps if the kernel is compiled with it */
 extern void kstack_trace( void * context );
 #define dump_stack() kstack_trace(0)
