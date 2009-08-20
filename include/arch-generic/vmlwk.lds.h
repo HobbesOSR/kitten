@@ -43,6 +43,12 @@
 		VMLWK_SYMBOL(__start_pci_fixups_resume) = .;		\
 		*(.pci_fixup_resume)					\
 		VMLWK_SYMBOL(__end_pci_fixups_resume) = .;		\
+		VMLWK_SYMBOL(__start_pci_fixups_resume_early) = .;	\
+		*(.pci_fixup_resume_early)				\
+		VMLWK_SYMBOL(__end_pci_fixups_resume_early) = .;	\
+		VMLWK_SYMBOL(__start_pci_fixups_suspend) = .;		\
+		*(.pci_fixup_suspend)					\
+		VMLWK_SYMBOL(__end_pci_fixups_suspend) = .;		\
 	}								\
 									\
 	/* RapidIO route ops */						\
