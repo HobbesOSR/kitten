@@ -386,7 +386,7 @@ static inline void __mwait(unsigned long eax, unsigned long ecx)
 	ti->task;					\
 })
 
-#define cache_line_size() (boot_cpu_data.x86_cache_alignment)
+#define cache_line_size() (boot_cpu_data.arch.x86_cache_alignment)
 
 extern unsigned long boot_option_idle_override;
 /* Boot loader type from the setup header */
