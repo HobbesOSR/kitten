@@ -39,12 +39,5 @@ extern unsigned long loops_per_jiffy;
 #endif
 
 void calibrate_delay(void);
-void msleep(unsigned int msecs);
-unsigned long msleep_interruptible(unsigned int msecs);
-
-static inline void ssleep(unsigned int seconds)
-{
-	msleep(seconds * 1000);
-}
 
 #endif /* defined(_LWK_DELAY_H) */
