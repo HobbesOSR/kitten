@@ -24,6 +24,7 @@ obj-y := \
 	kfs.o \
 	interrupt.o \
 	semaphore.o \
+	random.o \
 
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o

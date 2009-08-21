@@ -21,7 +21,6 @@
 #include <arch/bug.h>
 
 extern const char lwk_banner[];
-extern struct utsname linux_utsname;
 
 #define INT_MAX         ((int)(~0U>>1))
 #define INT_MIN         (-INT_MAX - 1)

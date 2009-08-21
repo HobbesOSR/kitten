@@ -22,6 +22,7 @@
 #include <lwk/driver.h>
 #include <lwk/kfs.h>
 #include <lwk/pci/pci.h>
+#include <lwk/random.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -113,6 +114,11 @@ start_kernel()
 
 	/* Start the kernel filesystems */
 	kfs_init();
+
+	/*
+	 * Initialize the random number generator.
+	 */
+	rand_init();
 
 	/*
 	 * Bring up any network devices.

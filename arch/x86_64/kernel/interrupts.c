@@ -10,6 +10,7 @@
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <lwk/timer.h>
+#include <lwk/random.h>
 #include <arch/desc.h>
 #include <arch/extable.h>
 #include <arch/idt_vectors.h>
@@ -293,6 +294,9 @@ do_interrupt(struct pt_regs *regs, unsigned int vector)
 
 	if (vector >= FIRST_EXTERNAL_VECTOR)
 		lapic_ack_interrupt();
+
+	/* Add some entropy to the random number generator */
+	rand_add_interrupt_randomness(vector);
 }
 
 

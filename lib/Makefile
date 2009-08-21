@@ -17,3 +17,4 @@ lib-y := \
 	semaphore.o \
 	sscanf.o \
 	cmdline.o \
+	sha1.o \

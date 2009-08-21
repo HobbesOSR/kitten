@@ -12,4 +12,12 @@ struct utsname {
 	char domainname[65];
 };
 
+extern struct utsname linux_utsname;
+
+static inline struct utsname *
+utsname(void)
+{
+	return &linux_utsname;
+}
+
 #endif /* _LWK_UTSNAME_H */
