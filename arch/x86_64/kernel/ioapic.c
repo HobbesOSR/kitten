@@ -333,6 +333,46 @@ ioapic_info_lookup(unsigned int phys_id)
 }
 
 /**
+ * Determines the vector the OS assigned to a PCI device.
+ */
+int
+ioapic_pcidev_vector(int bus, int slot, int pin)
+{
+	int i, j, k;
+	struct ioapic_info *ioapic;
+	struct ioapic_pin_info *pin_info;
+	struct ioapic_src_info *src_info;
+
+	for (i = 0; i < ioapic_num; i++) {
+		ioapic = &ioapic_info[i];
+		for (j = 0; j < MAX_IO_APIC_PINS; j++) {
+			pin_info = &ioapic->pin_info[j];
+			for (k = 0; k < pin_info->num_srcs; k++) {
+				src_info = &pin_info->src_info[k];
+
+				if (bus != src_info->bus_id)
+					continue;
+
+				/* The src bus_irq encodes the src slot */
+				if (slot != ((src_info->bus_irq >> 2) & 0x1f))
+					continue;
+
+				/* The src bus_irq encodes the src pin */
+				if (pin != (src_info->bus_irq & 0x3))
+					continue;
+
+				return (int)pin_info->os_assigned_vector;
+			}
+		}
+	}
+
+	printk(KERN_ERR "Failed to find vector for PCI device (%d.%d pin=%d)\n",
+			bus, slot, pin);
+
+	return -1;
+}
+
+/**
  * Dumps the current state of all IO APICs in the system.
  */
 void __init
