@@ -824,12 +824,14 @@ ifneq ($(KBUILD_SRC),)
 	fi;
 	$(Q)if [ ! -d include2 ]; then mkdir -p include2; fi;
 	$(Q)ln -fsn $(srctree)/include/arch-$(ARCH) include2/arch
+	$(Q)if [ ! -d linux/include2 ]; then mkdir -p linux/include2; fi;
+	$(Q)ln -fsn $(srctree)/linux/include/asm-$(ARCH) linux/include2/asm
 endif
 
 # prepare2 creates a makefile if using a separate output directory
 prepare2: prepare3 outputmakefile
 
-prepare1: prepare2 include/lwk/version.h include/arch \
+prepare1: prepare2 include/lwk/version.h include/arch linux/include/asm \
                    include/config/MARKER
 ifneq ($(KBUILD_MODULES),)
 	$(Q)mkdir -p $(MODVERDIR)
@@ -867,6 +869,22 @@ include/arch: FORCE
 			mkdir -p include;                               \
 		fi;                                                     \
 		ln -fsn arch-$(ARCH) $@;                              \
+	fi
+
+linux/include/asm: FORCE
+	$(Q)set -e; asmlink=`readlink linux/include/asm | cut -d '-' -f 2`;   \
+	if [ -L linux/include/asm ]; then                                     \
+		if [ "$$asmlink" != "$(ARCH)" ]; then                \
+			echo "ERROR: the symlink $@ points to asm-$$asmlink but asm-$(ARCH) was expected"; \
+			echo "       set ARCH or save .config and run 'make mrproper' to fix it";             \
+			exit 1;                                         \
+		fi;                                                     \
+	else                                                            \
+		echo '  SYMLINK $@ -> linux/include/asm-$(ARCH)';          \
+		if [ ! -d linux/include ]; then                               \
+			mkdir -p linux/include;                               \
+		fi;                                                     \
+		ln -fsn asm-$(ARCH) $@;                              \
 	fi
 
 # 	Split autoconf.h into include/lwk/config/*
@@ -933,7 +951,7 @@ CLEAN_FILES +=	vmlwk System.map vmlwk.bin vmlwk.asm \
 
 # Directories & files removed with 'make mrproper'
 MRPROPER_DIRS  += include/config include2
-MRPROPER_FILES += .config .config.old include/arch .version .old_version \
+MRPROPER_FILES += .config .config.old include/arch linux/include/asm .version .old_version \
                   include/lwk/autoconf.h include/lwk/version.h \
 		  .kernelrelease Module.symvers tags TAGS cscope*
 
@@ -1184,6 +1202,12 @@ define all-sources
 	            -name '*.[chS]' -print; \
 	  done ; \
 	  find $(__srctree)include/arch-generic $(RCS_FIND_IGNORE) \
+	       -name '*.[chS]' -print )
+	  for ARCH in $(ALLINCLUDE_ARCHS) ; do \
+	       find $(__srctree)linux/include/asm-$${ARCH} $(RCS_FIND_IGNORE) \
+	            -name '*.[chS]' -print; \
+	  done ; \
+	  find $(__srctree)linux/include/asm-generic $(RCS_FIND_IGNORE) \
 	       -name '*.[chS]' -print )
 endef
 
