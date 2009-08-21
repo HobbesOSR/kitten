@@ -101,7 +101,7 @@
  * There are three exported interfaces; the first is one designed to
  * be used from within the kernel:
  *
- * 	void rand_get_random_bytes(void *buf, int nbytes);
+ * 	void rand_get_bytes(void *buf, int nbytes);
  *
  * This interface will return the requested number of random bytes,
  * and place it in the requested buffer.
@@ -125,9 +125,9 @@
  * The current exported interfaces for gathering environmental noise
  * from the devices are:
  *
- * 	void rand_add_interrupt_randomness(int irq);
+ * 	void rand_add_entropy(int value);
  *
- * rand_add_interrupt_randomness() uses the inter-interrupt timing as random
+ * rand_add_entropy() uses the inter-interrupt timing as random
  * inputs to the entropy pool.  Note that not all interrupts are good
  * sources of randomness!  For example, the timer interrupts is not a
  * good choice, because the periodicity of the interrupts is too
@@ -524,7 +524,7 @@ struct timer_rand_state {
 	unsigned dont_count_entropy:1;
 };
 
-static struct timer_rand_state irq_timer_state;
+static struct timer_rand_state timer_state;
 
 /*
  * This function adds entropy to the entropy "pool" by using timing
@@ -592,10 +592,10 @@ static void add_timer_randomness(struct timer_rand_state *state, unsigned num)
 	}
 }
 
-void rand_add_interrupt_randomness(int irq)
+void rand_add_entropy(int value)
 {
-	DEBUG_ENT("irq event %d\n", irq);
-	add_timer_randomness(&irq_timer_state, 0x100 + irq);
+	DEBUG_ENT("rand_add_entropy, value=%d\n", value);
+	add_timer_randomness(&timer_state, 0x100 + value);
 }
 
 #define EXTRACT_SIZE 10
@@ -758,7 +758,7 @@ static ssize_t extract_entropy(struct entropy_store *r, void *buf,
  * number of good random numbers, suitable for seeding TCP sequence
  * numbers, etc.
  */
-void rand_get_random_bytes(void *buf, int nbytes)
+void rand_get_bytes(void *buf, int nbytes)
 {
 	extract_entropy(&nonblocking_pool, buf, nbytes, 0, 0);
 }
@@ -805,7 +805,7 @@ void rand_init(void)
  */
 void generate_random_uuid(unsigned char uuid_out[16])
 {
-	rand_get_random_bytes(uuid_out, 16);
+	rand_get_bytes(uuid_out, 16);
 	/* Set UUID version to 4 --- truely random generation */
 	uuid_out[6] = (uuid_out[6] & 0x0F) | 0x40;
 	/* Set the UUID variant to DCE */
