@@ -1,1 +1,1 @@
-obj-y += pci/
+obj-y += kernel/ pci/ lib/

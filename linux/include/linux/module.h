@@ -12,6 +12,7 @@
 
 #include <linux/notifier.h>
 #include <linux/mutex.h>
+#include <linux/gfp.h>
 
 #define THIS_MODULE	((void*) __FILE__)
 

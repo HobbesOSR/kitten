@@ -5,6 +5,7 @@
 #include <linux/ktime.h>
 #include <linux/stddef.h>
 #include <linux/debugobjects.h>
+#include <lwk/timer.h>
 
 struct tvec_base;
 
@@ -16,6 +17,9 @@ struct timer_list {
 	unsigned long data;
 
 	struct tvec_base *base;
+
+	struct timer lwk_timer;  /* LWK timer structure */
+
 #ifdef CONFIG_TIMER_STATS
 	void *start_site;
 	char start_comm[16];
@@ -181,9 +185,21 @@ extern void run_local_timers(void);
 struct hrtimer;
 extern enum hrtimer_restart it_real_fn(struct hrtimer *);
 
-unsigned long __round_jiffies(unsigned long j, int cpu);
 unsigned long __round_jiffies_relative(unsigned long j, int cpu);
-unsigned long round_jiffies(unsigned long j);
 unsigned long round_jiffies_relative(unsigned long j);
+
+
+/**
+ * This is supposed to round the input jiffies value to a multiple
+ * of one second.  Linux does a whole bunch of stuff to add some
+ * skew for each CPU and what not.  The LWK doesn't bother and
+ * assumes the caller passed in something fairly close to being
+ * a multiple of a second.
+ */
+static inline unsigned long
+round_jiffies(unsigned long j)
+{
+	return j;
+}
 
 #endif

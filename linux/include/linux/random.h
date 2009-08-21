@@ -1,7 +1,12 @@
-#ifndef __LINUX_RANDOM_H
-#define __LINUX_RANDOM_H
+#ifndef _LINUX_RANDOM_H
+#define _LINUX_RANDOM_H
 
-extern void
-get_random_bytes(void *buf, int nbytes);
+#include <lwk/random.h>
+
+static inline void
+get_random_bytes(void *buf, int num_bytes)
+{
+	rand_get_bytes(buf, num_bytes);
+}
 
 #endif

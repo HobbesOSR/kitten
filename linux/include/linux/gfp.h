@@ -108,14 +108,11 @@ struct vm_area_struct;
 
 struct page;
 
-extern unsigned long
-get_zeroed_page(gfp_t gfp_mask);
+extern struct page *
+alloc_pages(gfp_t gfp_mask, unsigned int order);
 
-extern unsigned long
-__get_free_pages(gfp_t gfp_mask, unsigned int order);
-
-extern unsigned long
-__get_free_page(gfp_t gfp_mask);
+extern struct page *
+alloc_page(gfp_t gfp_mask);
 
 extern void
 __free_pages(struct page *page, unsigned int order);
@@ -123,165 +120,22 @@ __free_pages(struct page *page, unsigned int order);
 extern void
 __free_page(struct page *page);
 
+extern unsigned long
+get_zeroed_pages(gfp_t gfp_mask, unsigned int order);
+
+extern unsigned long
+get_zeroed_page(gfp_t gfp_mask);
+
 extern void
 free_pages(unsigned long addr, unsigned int order);
 
 extern void
 free_page(unsigned long addr);
 
-extern struct page *
-alloc_pages(gfp_t gfp_mask, unsigned int order);
+extern unsigned long
+__get_free_pages(gfp_t gfp_mask, unsigned int order);
 
-extern struct page *
-alloc_page(gfp_t gfp_mask);
-
-#if 0
-/* Convert GFP flags to their corresponding migrate type */
-static inline int allocflags_to_migratetype(gfp_t gfp_flags)
-{
-	WARN_ON((gfp_flags & GFP_MOVABLE_MASK) == GFP_MOVABLE_MASK);
-
-	if (unlikely(page_group_by_mobility_disabled))
-		return MIGRATE_UNMOVABLE;
-
-	/* Group based on mobility */
-	return (((gfp_flags & __GFP_MOVABLE) != 0) << 1) |
-		((gfp_flags & __GFP_RECLAIMABLE) != 0);
-}
-
-static inline enum zone_type gfp_zone(gfp_t flags)
-{
-#ifdef CONFIG_ZONE_DMA
-	if (flags & __GFP_DMA)
-		return ZONE_DMA;
-#endif
-#ifdef CONFIG_ZONE_DMA32
-	if (flags & __GFP_DMA32)
-		return ZONE_DMA32;
-#endif
-	if ((flags & (__GFP_HIGHMEM | __GFP_MOVABLE)) ==
-			(__GFP_HIGHMEM | __GFP_MOVABLE))
-		return ZONE_MOVABLE;
-#ifdef CONFIG_HIGHMEM
-	if (flags & __GFP_HIGHMEM)
-		return ZONE_HIGHMEM;
-#endif
-	return ZONE_NORMAL;
-}
-
-/*
- * There is only one page-allocator function, and two main namespaces to
- * it. The alloc_page*() variants return 'struct page *' and as such
- * can allocate highmem pages, the *get*page*() variants return
- * virtual kernel addresses to the allocated page(s).
- */
-
-static inline int gfp_zonelist(gfp_t flags)
-{
-	if (NUMA_BUILD && unlikely(flags & __GFP_THISNODE))
-		return 1;
-
-	return 0;
-}
-
-/*
- * We get the zone list from the current node and the gfp_mask.
- * This zone list contains a maximum of MAXNODES*MAX_NR_ZONES zones.
- * There are two zonelists per node, one for all zones with memory and
- * one containing just zones from the node the zonelist belongs to.
- *
- * For the normal case of non-DISCONTIGMEM systems the NODE_DATA() gets
- * optimized to &contig_page_data at compile-time.
- */
-static inline struct zonelist *node_zonelist(int nid, gfp_t flags)
-{
-	return NODE_DATA(nid)->node_zonelists + gfp_zonelist(flags);
-}
-
-#ifndef HAVE_ARCH_FREE_PAGE
-static inline void arch_free_page(struct page *page, int order) { }
-#endif
-#ifndef HAVE_ARCH_ALLOC_PAGE
-static inline void arch_alloc_page(struct page *page, int order) { }
-#endif
-
-struct page *
-__alloc_pages_internal(gfp_t gfp_mask, unsigned int order,
-		       struct zonelist *zonelist, nodemask_t *nodemask);
-
-static inline struct page *
-__alloc_pages(gfp_t gfp_mask, unsigned int order,
-		struct zonelist *zonelist)
-{
-	return __alloc_pages_internal(gfp_mask, order, zonelist, NULL);
-}
-
-static inline struct page *
-__alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
-		struct zonelist *zonelist, nodemask_t *nodemask)
-{
-	return __alloc_pages_internal(gfp_mask, order, zonelist, nodemask);
-}
-
-
-static inline struct page *alloc_pages_node(int nid, gfp_t gfp_mask,
-						unsigned int order)
-{
-	if (unlikely(order >= MAX_ORDER))
-		return NULL;
-
-	/* Unknown node is current node */
-	if (nid < 0)
-		nid = numa_node_id();
-
-	return __alloc_pages(gfp_mask, order, node_zonelist(nid, gfp_mask));
-}
-
-#ifdef CONFIG_NUMA
-extern struct page *alloc_pages_current(gfp_t gfp_mask, unsigned order);
-
-static inline struct page *
-alloc_pages(gfp_t gfp_mask, unsigned int order)
-{
-	if (unlikely(order >= MAX_ORDER))
-		return NULL;
-
-	return alloc_pages_current(gfp_mask, order);
-}
-extern struct page *alloc_page_vma(gfp_t gfp_mask,
-			struct vm_area_struct *vma, unsigned long addr);
-#else
-#define alloc_pages(gfp_mask, order) \
-		alloc_pages_node(numa_node_id(), gfp_mask, order)
-#define alloc_page_vma(gfp_mask, vma, addr) alloc_pages(gfp_mask, 0)
-#endif
-#define alloc_page(gfp_mask) alloc_pages(gfp_mask, 0)
-
-extern unsigned long __get_free_pages(gfp_t gfp_mask, unsigned int order);
-extern unsigned long get_zeroed_page(gfp_t gfp_mask);
-
-void *alloc_pages_exact(size_t size, gfp_t gfp_mask);
-void free_pages_exact(void *virt, size_t size);
-
-#define __get_free_page(gfp_mask) \
-		__get_free_pages((gfp_mask),0)
-
-#define __get_dma_pages(gfp_mask, order) \
-		__get_free_pages((gfp_mask) | GFP_DMA,(order))
-
-extern void __free_pages(struct page *page, unsigned int order);
-extern void free_pages(unsigned long addr, unsigned int order);
-extern void free_hot_page(struct page *page);
-extern void free_cold_page(struct page *page);
-
-#define __free_page(page) __free_pages((page), 0)
-#define free_page(addr) free_pages((addr),0)
-
-void page_alloc_init(void);
-void drain_zone_pages(struct zone *zone, struct per_cpu_pages *pcp);
-void drain_all_pages(void);
-void drain_local_pages(void *dummy);
-
-#endif
+extern unsigned long
+__get_free_page(gfp_t gfp_mask);
 
 #endif /* __LINUX_GFP_H */

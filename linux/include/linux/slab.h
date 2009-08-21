@@ -19,6 +19,16 @@
 #include <linux/types.h>
 
 /**
+ * kmem_cache structure, holds state needed for kmem_cache_alloc().
+ */
+struct kmem_cache {
+	size_t size;		/* size of objects allocated from the cache */
+	size_t align;		/* alignment of objects allocated from the cache */
+	size_t flags;		/* flags to use when allocating objects from the cache */
+	void (*ctor)(void *);	/* new object constructor */
+};
+
+/**
  * Flags to pass to kmem_cache_create().
  */
 #define SLAB_HWCACHE_ALIGN	0x00002000UL	/* Align objs on cache lines */
@@ -112,7 +122,7 @@ kcalloc(size_t n, size_t size, gfp_t flags);
  * @mem: address of the memory to free.
  */
 extern void
-kfree(const void * mem);
+kfree(const void *mem);
 
 /**
  * kmalloc_track_caller is a special version of kmalloc that records the

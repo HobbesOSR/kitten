@@ -4,11 +4,15 @@
 #include <arch/io_apic.h>
 
 /*
- * Kitten always uses the I/O APIC for interrupt routing, so disable
+ * LWK always uses the I/O APIC for interrupt routing, so disable
  * automatic assignment of PCI IRQ's.
  */
 #define io_apic_assign_pci_irqs 1
 
-extern int IO_APIC_get_PCI_irq_vector(int bus, int slot, int pin);
+static inline int
+IO_APIC_get_PCI_irq_vector(int bus, int slot, int pin)
+{
+	return ioapic_pcidev_vector(bus, slot, pin);
+}
 
 #endif

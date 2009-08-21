@@ -1323,6 +1323,7 @@ void device_destroy(struct class *class, dev_t devt)
 }
 EXPORT_SYMBOL_GPL(device_destroy);
 
+#ifndef __LWK__
 /**
  * device_rename - renames a device
  * @dev: the pointer to the struct device to be renamed
@@ -1394,6 +1395,7 @@ out:
 	return error;
 }
 EXPORT_SYMBOL_GPL(device_rename);
+#endif
 
 static int device_move_class_links(struct device *dev,
 				   struct device *old_parent,

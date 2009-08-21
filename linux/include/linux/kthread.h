@@ -27,11 +27,16 @@ struct task_struct *kthread_create(int (*threadfn)(void *data),
 	__k;								   \
 })
 
-void kthread_bind(struct task_struct *k, unsigned int cpu);
-int kthread_stop(struct task_struct *k);
-int kthread_should_stop(void);
+static inline int
+kthread_stop(struct task_struct *k)
+{
+	panic("In kthread_stop()... needs to be implemented.");
+}
 
-int kthreadd(void *unused);
-extern struct task_struct *kthreadd_task;
+static inline int
+kthread_should_stop(void)
+{
+	panic("In kthread_should_stop()... needs to be implemented.");
+}
 
 #endif /* _LINUX_KTHREAD_H */

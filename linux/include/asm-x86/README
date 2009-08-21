@@ -20,7 +20,7 @@ errno.h		Maps directly to LWK version of same name
 atomic.h	Maps directly to LWK version of same name
 uaccess.h	Maps directly to LWK version of same name
 device.h	Empty stub, no arch-specific device data on LWK
-io.h		Maps to LWK version of same name, adds a few Linux only things
+io.h		Maps directly to LWK version of same name
 page.h		Includes asm-generic/page.h
 scatterlist.h	Maps to linux/scatterlist.h, no arch-specific scatterlist header needed in LWK environment
 dma.h		Empty

@@ -3,7 +3,10 @@
 
 #include <lwk/interrupt.h>
 
-extern void
-synchronize_irq(unsigned int irq);
+static inline void
+synchronize_irq(unsigned int irq)
+{
+	irq_synchronize(irq);
+}
 
 #endif

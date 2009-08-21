@@ -6,9 +6,16 @@
 #include <arch/pgtable.h>
 
 /* to align the pointer to the (next) page boundary */
-#define PAGE_ALIGN(addr) ALIGN(addr, PAGE_SIZE)
+#define PAGE_ALIGN(addr)	ALIGN(addr, PAGE_SIZE)
 
-struct page { };
+/* finds the offset of a buffer in the page it starts in */
+#define offset_in_page(p)	((unsigned long)(p) & ~PAGE_MASK)
+
+struct page {
+	void *virtual;
+	int order;
+	int user;
+};
 
 struct vm_operations_struct {
 	void (*open)(struct vm_area_struct *area);
@@ -55,7 +62,8 @@ get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
                unsigned long start, int len, int write, int force,
                struct page **pages, struct vm_area_struct **vmas);
 
-int generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
-                        void *buf, int len, int write);
+extern int
+generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
+                    void *buf, int len, int write);
 
 #endif

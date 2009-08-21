@@ -532,7 +532,15 @@ kernel_cap_t cap_set_effective(const kernel_cap_t pE_new);
  */
 #define has_capability(t, cap) (security_capable((t), (cap)) == 0)
 
-extern int capable(int cap);
+static inline int
+capable(int cap)
+{
+	if (current->uid == 0)
+		return 1;
+	else if (cap == CAP_IPC_LOCK)
+		return 1;
+	return 0;
+}
 
 #endif /* __KERNEL__ */
 

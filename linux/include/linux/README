@@ -15,7 +15,6 @@ klist.h
 workqueue.h
 timer.h
 jhash.h
-kthread.h
 pci_regs.h
 pci.h
 pci_ids.h
@@ -40,7 +39,6 @@ Extensively Modified Linux Headers
 dma-mapping.h	LWK-specific implementation of dma-mapping API
 mm.h		LWK-specific implementation of mem management subsystem
 gfp.h		LWK-specific implementation of get free pages API
-random.h	LWK-specific implementation of random.h
 slab.h		LWK-specific implementation of slab.h
 sched.h		Maps directly to LWK version of same name and does a impedance matching.
 scatterlist.h	LWK specific implementation
@@ -48,6 +46,7 @@ byteorder.h	Maps directly to LWK version of same name and adds some things from 
 hardirq.h	LWK-specific implementation, includes LWK interrupt.h
 irq.h		LWK-specific implementation
 notifier.h	LWK-specific implementation
+kthread.h	LWK-specific implementation
 
 LWK-specific Linux Compatibility Headers
 ========================================
@@ -77,7 +76,7 @@ sched.h		Maps directly to LWK version of same name
 stat.h		Maps directly to LWK version of same name
 log2.h		Maps directly to LWK version of same name
 moduleparam.h	Maps to linux/module.h
-delay.h		Maps directly to LWK version of same name
+delay.h		Maps to LWK version of same name, adds busy-wait msleep() implementation
 bitmap.h	Maps directly to LWK version of same name
 rwsem.h		Maps to LWK semaphore interface
 proc_fs.h	Empty
@@ -90,3 +89,5 @@ smp.h		Maps directly to LWK version of same name
 bootmem.h	Empty
 genhd.h		Empty
 memory.h	Empty
+random.h	Maps to LWK version of same name, does some impedence matching
+pfn.h		Maps directly to LWK version of same name

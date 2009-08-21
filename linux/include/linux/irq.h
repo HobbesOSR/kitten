@@ -9,7 +9,17 @@
  * Thanks. --rmk
  */
 
-/* Checks whether the interrupt can be requested by request_irq(): */
-extern int can_request_irq(unsigned int irq, unsigned long irqflags);
+/*
+ * Checks whether the interrupt can be requested by request_irq().
+ * 
+ * LWK Note: This appears to only be used by the PCI code to see if an IRQ
+ *           can be shared.  We'd prefer to not have shared IRQs so always
+ *           return false -- may need to revisit if this causes problems.
+ */
+static inline int
+can_request_irq(unsigned int irq, unsigned long irqflags)
+{
+	return 0;
+}
 
 #endif /* _LINUX_IRQ_H */
