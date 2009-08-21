@@ -31,3 +31,4 @@
 #define __attribute_pure__		__attribute__((pure))
 #define __attribute_const__		__attribute__((__const__))
 #define __weak                          __attribute__((weak))
+#define __noreturn			__attribute__((noreturn))

@@ -33,7 +33,7 @@ extern const char lwk_banner[];
 
 #define STACK_MAGIC     0xdeadbeef
 
-void panic(const char * fmt, ...);
+extern void panic(const char * fmt, ...) __noreturn;
 
 extern unsigned long simple_strtoul(const char *,char **,unsigned int);
 extern long simple_strtol(const char *,char **,unsigned int);

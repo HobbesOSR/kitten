@@ -67,7 +67,7 @@ extern char lwk_command_line[COMMAND_LINE_SIZE];
 /* used by init/main.c */
 extern void setup_arch(void);
 
-extern void start_kernel(void) __noreturn;
+extern void start_kernel(void);
 
 extern int create_init_task(void);
 extern paddr_t init_elf_image;

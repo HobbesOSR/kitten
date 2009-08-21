@@ -87,7 +87,7 @@ find_command_line(void)
  *
  * \note The order of operations is usually important.  Be careful!
  */
-void __init __noreturn
+void __init
 x86_64_start_kernel(char * real_mode_data)
 {
 	int i;

@@ -4,7 +4,6 @@
 #ifndef __ASSEMBLY__
 
 #ifdef __CHECKER__
-# define __noreturn	__attribute__((noreturn))
 # define __user		__attribute__((noderef, address_space(1)))
 # define __kernel	/* default address space */
 # define __safe		__attribute__((safe))
@@ -20,7 +19,6 @@
 extern void __chk_user_ptr(void __user *);
 extern void __chk_io_ptr(void __iomem *);
 #else
-# define __noreturn
 # define __user
 # define __kernel
 # define __safe
