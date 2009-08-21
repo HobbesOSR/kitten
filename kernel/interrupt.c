@@ -18,8 +18,12 @@
 #include <arch/desc.h>
 #include <arch/proto.h>
 
-struct irq_list
-{
+struct irq_desc {
+	spinlock_t		lock;
+	struct list_head	handlers;
+};
+
+struct handler_desc {
 	struct list_head	link;
 	irq_handler_t		handler;
 	unsigned long		irqflags;
@@ -27,40 +31,37 @@ struct irq_list
 	void *			dev_id;
 };
 
-static rwlock_t irq_lock = RW_LOCK_UNLOCKED;
-static struct list_head irqs[ NUM_IRQS ];
+static struct irq_desc irqs[NUM_IRQS];
 
 static void
-chain_irq(
+irq_dispatch(
 	struct pt_regs *	regs,
-	unsigned int		vector
+	unsigned int		irq
 )
 {
-	read_lock_irq( &irq_lock );
+	struct irq_desc *irq_desc = &irqs[irq];
+	struct handler_desc *handler_desc;
+	irqreturn_t status = IRQ_NONE;
 
-	int handled = 0;
-	struct irq_list * handler;
-	list_for_each_entry( handler, &irqs[vector], link )
-	{
-		irqreturn_t rc = handler->handler( vector, handler->dev_id );
-		if( rc == IRQ_HANDLED )
-		{
-			handled = 1;
+	spin_lock(&irq_desc->lock);
+
+	list_for_each_entry(handler_desc, &irq_desc->handlers, link) {
+		status = handler_desc->handler(irq, handler_desc->dev_id);
+		if (status == IRQ_HANDLED)
 			break;
-		}
 	}
 
-	if( !handled )
-		printk( KERN_WARNING
+	spin_unlock(&irq_desc->lock);
+
+	if (status != IRQ_HANDLED) {
+		printk(KERN_WARNING
 			"%s: Unhandled interrupt %d (%x)\n",
 			__func__,
-			vector,
-			vector
+			irq,
+			irq
 		);
-
-	read_unlock( &irq_lock );
+	}
 }
-
 
 int
 irq_request(
@@ -71,32 +72,33 @@ irq_request(
 	void  *			dev_id
 )
 {
-	if( irq >= NUM_IRQS )
+	struct irq_desc *irq_desc = &irqs[irq];
+	struct handler_desc *handler_desc;
+	unsigned long irqstate;
+
+	if (irq >= NUM_IRQS)
 		return -1;
 
-	set_idtvec_handler( irq, chain_irq );
+	set_idtvec_handler(irq, irq_dispatch);
 
-	struct irq_list * entry = kmem_alloc( sizeof(*entry) );
-	if( !entry )
+	handler_desc = kmem_alloc(sizeof(struct handler_desc));
+	if (!handler_desc)
 		return -1;
 
-	*entry = (typeof(*entry)){
-		.link		= LIST_HEAD_INIT( entry->link ),
+	*handler_desc = (typeof(*handler_desc)){
+		.link		= LIST_HEAD_INIT(handler_desc->link),
 		.handler	= handler,
 		.irqflags	= irqflags,
 		.devname	= devname,
 		.dev_id		= dev_id,
 	};
 
-	write_lock( &irq_lock );
-	list_add_tail( &entry->link, &irqs[irq] );
-	write_unlock( &irq_lock );
-
-	printk( "%s: %s: vector %d\n", __func__, devname, irq );
+	spin_lock_irqsave(&irq_desc->lock, irqstate);
+	list_add_tail(&handler_desc->link, &irq_desc->handlers);
+	spin_unlock_irqrestore(&irq_desc->lock, irqstate);
 
 	return 0;
 }
-
 
 void
 irq_free(
@@ -104,29 +106,35 @@ irq_free(
 	void *			dev_id
 )
 {
-	if( irq >= NUM_IRQS )
+	struct irq_desc *irq_desc = &irqs[irq];
+	struct handler_desc *handler_desc;
+	unsigned long irqstate;
+
+	if (irq >= NUM_IRQS)
 		return;
 
-	write_lock( &irq_lock );
+	spin_lock_irqsave(&irq_desc->lock, irqstate);
 
-	struct irq_list * handler;
-	list_for_each_entry( handler, &irqs[ irq ], link )
-	{
-		if( handler->dev_id != dev_id )
+	list_for_each_entry(handler_desc, &irq_desc->handlers, link) {
+		if (handler_desc->dev_id != dev_id)
 			continue;
-		list_del( &handler->link );
-		kmem_free( handler );
+		list_del(&handler_desc->link);
+		kmem_free(handler_desc);
 		break;
 	}
 
-	write_unlock( &irq_lock );
+	spin_unlock_irqrestore(&irq_desc->lock, irqstate);
 }
 
-
 void __init
-irq_init( void )
+irq_init(void)
 {
+	struct irq_desc *irq_desc;
 	int i;
-	for( i=0 ; i<NUM_IRQS ; i++ )
-		list_head_init( &irqs[i] );
+
+	for (i = 0; i < NUM_IRQS; i++) {
+		irq_desc = &irqs[i];
+		spin_lock_init(&irq_desc->lock);
+		list_head_init(&irq_desc->handlers);
+	}
 }
