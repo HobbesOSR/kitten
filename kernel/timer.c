@@ -57,19 +57,24 @@ timer_add(struct timer *timer)
 }
 
 
-void
+int
 timer_del(struct timer *timer)
 {
 	unsigned long irqstate;
+	int not_expired = 0;
 
 	struct timer_queue *timerq = &per_cpu(timer_queue, timer->cpu);
 	spin_lock_irqsave(&timerq->lock, irqstate);
 
 	/* Remove the timer, if it hasn't already expired */
-	if (!list_empty(&timer->link))
+	if (!list_empty(&timer->link)) {
 		list_del(&timer->link);
+		not_expired = 1;
+	}
 
 	spin_unlock_irqrestore(&timerq->lock, irqstate);
+
+	return not_expired;
 }
 
 

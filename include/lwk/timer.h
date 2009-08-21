@@ -42,9 +42,11 @@ timer_add(struct timer *timer);
 
 /** Cancel a pending timer.
  *
+ * \returns 1 if the timer was still pending, 0 if it fired.
+ *
  * \note If the timer has already been run, this is a nop.
  */
-extern void
+extern int
 timer_del(struct timer *timer);
 
 /** Sleep the current thread for a while.
