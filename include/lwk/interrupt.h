@@ -4,10 +4,18 @@
 #include <arch/interrupt.h>
 
 /**
- * Each architecture must define the number of IRQs supported.
  * The range of valid IRQs is assumed to be [0, NUM_IRQS).
  */
-#define NUM_IRQS	ARCH_NUM_IRQS
+#define NUM_IRQS ARCH_NUM_IRQS
+
+/**
+ * Returns true if the caller is in interrupt context, false otherwise.
+ */
+static inline bool
+in_interrupt(void)
+{
+	return arch_in_interrupt();
+}
 
 /**
  * IRQ handler return type.
@@ -52,6 +60,5 @@ irq_free(
 
 extern void
 irq_init( void );
-
 
 #endif

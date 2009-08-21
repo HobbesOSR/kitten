@@ -7,7 +7,7 @@
 #define ARCH_NUM_IRQS	NUM_IDT_ENTRIES
 
 static inline bool
-in_interrupt(void)
+arch_in_interrupt(void)
 {
 	return (read_pda(irqcount) >= 0);
 }
