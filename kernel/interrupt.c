@@ -27,9 +27,8 @@ struct irq_list
 	void *			dev_id;
 };
 
-#define MAX_IRQ	256
 static rwlock_t irq_lock = RW_LOCK_UNLOCKED;
-static struct list_head irqs[ MAX_IRQ ];
+static struct list_head irqs[ NUM_IRQS ];
 
 static void
 chain_irq(
@@ -72,7 +71,7 @@ irq_request(
 	void  *			dev_id
 )
 {
-	if( irq > MAX_IRQ )
+	if( irq >= NUM_IRQS )
 		return -1;
 
 	set_idtvec_handler( irq, chain_irq );
@@ -105,7 +104,7 @@ irq_free(
 	void *			dev_id
 )
 {
-	if( irq > MAX_IRQ )
+	if( irq >= NUM_IRQS )
 		return;
 
 	write_lock( &irq_lock );
@@ -128,6 +127,6 @@ void __init
 irq_init( void )
 {
 	int i;
-	for( i=0 ; i<MAX_IRQ ; i++ )
+	for( i=0 ; i<NUM_IRQS ; i++ )
 		list_head_init( &irqs[i] );
 }

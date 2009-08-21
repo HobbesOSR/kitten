@@ -4,6 +4,12 @@
 #include <arch/interrupt.h>
 
 /**
+ * Each architecture must define the number of IRQs supported.
+ * The range of valid IRQs is assumed to be [0, NUM_IRQS).
+ */
+#define NUM_IRQS	ARCH_NUM_IRQS
+
+/**
  * IRQ handler return type.
  *
  *    IRQ_NONE means we didn't handle the interrupt.
