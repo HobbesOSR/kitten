@@ -126,6 +126,18 @@ irq_free(
 	spin_unlock_irqrestore(&irq_desc->lock, irqstate);
 }
 
+void
+irq_synchronize(
+	unsigned int		irq
+)
+{
+	struct irq_desc *irq_desc = &irqs[irq];
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&irq_desc->lock, irqstate);
+	spin_unlock_irqrestore(&irq_desc->lock, irqstate);
+}
+
 void __init
 irq_init(void)
 {

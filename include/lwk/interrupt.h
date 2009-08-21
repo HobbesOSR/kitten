@@ -57,6 +57,18 @@ irq_free(
 	void *			dev_id
 );
 
+/**
+ * Synchronizes an IRQ.
+ *
+ * This synchronizes the specified IRQ with other CPUs, ensuring
+ * that any inprogress handlers at the time of entry have exited.
+ * Note this is a one time synchronization and does not prevent the
+ * IRQ from being handled in the future... that's up to the caller.
+ */
+extern void
+irq_synchronize(
+	unsigned int		irq
+);
 
 extern void
 irq_init( void );
