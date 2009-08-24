@@ -2,12 +2,19 @@ menu "Linux Compatibility Layer"
 
 config LINUX
 	bool "Include Linux compatibility layer"
-	default y
+	default "y"
 	help
 	  The Linux compatibility layer includes various Linux headers and
 	  core code needed to support a (small) subset of Linux device drivers
 	  in the LWK.  The list of available Linux drivers will be displayed
 	  when this option is enabled.
+
+config SYSFS
+	bool
+	default "y"
+	help
+	  Enable the Linux sysfs compatability wrappers.
+	  Always on!
 
 source "linux/drivers/pci/Kconfig"
 source "linux/drivers/infiniband/Kconfig"
