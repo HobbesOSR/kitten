@@ -1,4 +1,4 @@
-obj-y += \
+obj-$(CONFIG_LINUX) += \
 	lib/ \
 	drivers/ \
 	arch/ \

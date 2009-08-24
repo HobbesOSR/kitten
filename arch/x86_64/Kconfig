@@ -142,18 +142,8 @@ config SMP
 	bool
 	default "y"
 
-config PCI
-	bool
-	default "y"
-
-config PCI_DOMAINS
-	bool
-	default "y"
-
 source "net/Kconfig"
 source "drivers/Kconfig"
 source "arch/x86_64/boot/Kconfig"
 source "arch/x86_64/Kconfig.debug"
-
-# TODO: move this someplace else
 source "linux/Kconfig"
