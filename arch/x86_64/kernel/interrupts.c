@@ -10,10 +10,10 @@
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <lwk/timer.h>
+#include <lwk/show.h>
 #include <arch/desc.h>
 #include <arch/extable.h>
 #include <arch/idt_vectors.h>
-#include <arch/show.h>
 #include <arch/xcall.h>
 #include <arch/i387.h>
 #include <arch/io.h>

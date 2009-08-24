@@ -15,7 +15,6 @@ struct bug_frame {
 	unsigned short line;
 } __attribute__((packed));
 
-#define HAVE_ARCH_BUG
 /* We turn the bug frame into valid instructions to not confuse
    the disassembler. Thanks to Jan Beulich & Suresh Siddha
    for nice instruction selection.

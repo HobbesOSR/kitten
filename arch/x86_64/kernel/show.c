@@ -5,34 +5,14 @@
 #include <lwk/kallsyms.h>
 #include <arch/msr.h>
 
-/**
- * Prints a nicely formatted address to the console.
- * This attempts to look up the symbolic name of the address.
- */
-void
-printk_address(unsigned long address)
-{
-	unsigned long offset = 0, symsize;
-	const char *symname;
-	char namebuf[128];
-
-	symname = kallsyms_lookup(address, &symsize, &offset, namebuf);
-	if (!symname) {
-		printk(" [<%016lx>]\n", address);
-		return;
-	}
-	printk(" [<%016lx>] %s+0x%lx/0x%lx\n",
-		address, symname, offset, symsize);
-}
-
 
 /**
- * Print a stack trace of the context.
+ * Prints a kernel stack trace to the console.
+ * If the base pointer passed in is zero the base pointer of the current
+ * task used.
  */
-void
-kstack_trace(
-	void *			rbp_v
-)
+static void
+__arch_show_kstack(kaddr_t rbp)
 {
 #ifndef CONFIG_FRAME_POINTER
 	printk( "Unable to generate stack trace "
@@ -40,18 +20,31 @@ kstack_trace(
 	return;
 #endif
 
-	uint64_t * rbp = rbp_v;
-	if( rbp == 0 )
-		asm( "mov %%rbp, %0" : "=r"(rbp) );
+	if (rbp == 0)
+		asm("mov %%rbp, %0" : "=r" (rbp));
 
 	int max_depth = 16;
-	printk( "Stack trace from RBP %p\n", rbp );
+	printk(KERN_DEBUG "  Stack trace from RBP %016lx\n", rbp);
 
-	while( rbp && max_depth-- )
-	{
-		printk_address( rbp[1] );
-		rbp = (uint64_t*) *rbp;
+	while ((rbp >= PAGE_OFFSET) && max_depth--) {
+		kaddr_t sym_addr = ((kaddr_t *)rbp)[1];
+		char sym_name[KSYM_SYMBOL_LEN];
+
+		kallsyms_sprint_symbol(sym_name, sym_addr);
+		printk(KERN_DEBUG "    [<%016lx>] %s\n", sym_addr, sym_name);
+
+		rbp = *((kaddr_t *)rbp);
 	}
+}
+
+
+/**
+ * Prints a kernel stack trace of the current task to the console.
+ */
+void
+arch_show_kstack(void)
+{
+	__arch_show_kstack(0);
 }
 
 
@@ -62,7 +55,7 @@ kstack_trace(
  *       the CPU's registers.
  */
 void
-show_registers(struct pt_regs * regs)
+arch_show_registers(struct pt_regs * regs)
 {
 	unsigned long cr0 = 0L, cr2 = 0L, cr3 = 0L, cr4 = 0L, fs, gs, shadowgs;
 	unsigned int fsindex, gsindex;
@@ -112,6 +105,5 @@ show_registers(struct pt_regs * regs)
 	printk("CR2: %016lx CR3: %016lx CR4: %016lx\n", cr2, cr3, cr4);
 
 	if (!user_fault)
-		kstack_trace( (void *) regs->rbp );
+		__arch_show_kstack(regs->rbp);
 }
-

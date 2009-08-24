@@ -133,7 +133,10 @@ static unsigned int get_symbol_offset(unsigned long pos)
 /**
  *  Lookup the address for this symbol. Returns 0 if not found.
  */
-unsigned long kallsyms_lookup_name(const char *name)
+unsigned long
+kallsyms_lookup_name(
+	const char *		name
+)
 {
 	char namebuf[KSYM_NAME_LEN+1];
 	unsigned long i;
@@ -149,12 +152,15 @@ unsigned long kallsyms_lookup_name(const char *name)
 }
 
 /**
- * Lookup the symbol name corresponding to a kernel address
+ * Lookup the symbol name corresponding to a kernel address.
  */
-const char *kallsyms_lookup(unsigned long addr,
-			    unsigned long *symbolsize,
-			    unsigned long *offset,
-			    char *namebuf)
+const char *
+kallsyms_lookup(
+	kaddr_t			addr,
+	unsigned long *		symbolsize,
+	unsigned long *		offset,
+	char *			namebuf
+)
 {
 	unsigned long i, low, high, mid;
 
@@ -215,3 +221,22 @@ const char *kallsyms_lookup(unsigned long addr,
 	return NULL;
 }
 
+/**
+ * Look up a kernel symbol and return it in a text buffer.
+ */
+int
+kallsyms_sprint_symbol(
+	char *		buffer,
+	kaddr_t		addr
+)
+{
+	const char *name;
+	unsigned long offset, size;
+	char namebuf[KSYM_NAME_LEN];
+
+	name = kallsyms_lookup(addr, &size, &offset, namebuf);
+	if (!name)
+		return sprintf(buffer, "0x%lx", addr);
+
+	return sprintf(buffer, "%s+%#lx/%#lx", name, offset, size);
+}

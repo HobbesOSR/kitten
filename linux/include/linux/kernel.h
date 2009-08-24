@@ -2,6 +2,7 @@
 #define __LINUX_KERNEL_H
 
 #include <lwk/kernel.h>
+#include <lwk/show.h>
 #include <linux/stat.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
@@ -29,5 +30,16 @@ extern char *kvasprintf(gfp_t gfp, const char *fmt, va_list args);
  * @n: the number we're accessing
  */
 #define lower_32_bits(n) ((u32)(n))
+
+#ifdef DEBUG
+/* If you are writing a driver, please use dev_dbg instead */
+#define pr_debug(fmt, arg...) \
+	printk(KERN_DEBUG fmt, ##arg)
+#else
+#define pr_debug(fmt, arg...) \
+	({ if (0) printk(KERN_DEBUG fmt, ##arg); 0; })
+#endif
+
+#define dump_stack() show_kstack()
 
 #endif

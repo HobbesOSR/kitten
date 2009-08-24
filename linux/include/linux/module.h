@@ -6,7 +6,6 @@
 #ifndef __LINUX_MODULE_H
 #define __LINUX_MODULE_H
 
-#include <lwk/linux_compat.h>
 #include <lwk/driver.h>
 #include <lwk/stat.h>
 
@@ -15,6 +14,12 @@
 #include <linux/gfp.h>
 
 #define THIS_MODULE	((void*) __FILE__)
+
+#define EXPORT_SYMBOL(sym)
+#define EXPORT_SYMBOL_GPL(sym)
+#define EXPORT_SYMBOL_GPL_FUTURE(sym)
+#define EXPORT_PER_CPU_SYMBOL(var) EXPORT_SYMBOL(per_cpu__##var)
+#define EXPORT_PER_CPU_SYMBOL_GPL(var) EXPORT_SYMBOL_GPL(per_cpu__##var)
 
 #define MODULE_AUTHOR(author)
 #define MODULE_DESCRIPTION(desc)

@@ -1,12 +1,13 @@
 #include <lwk/kernel.h>
 #include <lwk/show.h>
 
+
 /**
  * Prints the contents of memory in hex to the console.
  * The region printed starts at vaddr and extends n unsigned longs.
  */
 void
-show_memory(unsigned long vaddr, size_t n)
+show_memory(vaddr_t vaddr, size_t n)
 {
 	int i;
 
@@ -20,3 +21,23 @@ show_memory(unsigned long vaddr, size_t n)
 	}
 }
 
+
+/**
+ * Prints the contents of the passed in register context to the console.
+ */
+void
+show_registers(struct pt_regs *regs)
+{
+	arch_show_registers(regs);
+}
+
+
+/**
+ * Prints the current kernel stack trace to the console.
+ */
+void
+show_kstack(void)
+{
+	printk(KERN_DEBUG "Kernel Stack Trace:\n");
+	arch_show_kstack();
+}
