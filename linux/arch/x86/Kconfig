@@ -1,0 +1,20 @@
+menu "Linux Compatibility Layer"
+
+source "linux/Kconfig"
+
+config PCI
+        bool
+        depends on LINUX
+        default y
+        help
+          Include support for PCI devices.
+
+# x86-64 doesn't support PCI BIOS access from long mode so always go direct.
+config PCI_DIRECT
+        def_bool y
+        depends on PCI
+
+source "linux/drivers/pci/Kconfig"
+source "linux/drivers/infiniband/Kconfig"
+
+endmenu
