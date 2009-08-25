@@ -200,11 +200,13 @@ kfs_mkdirent(
 	size_t			priv_len
 )
 {
+#if 0
 	printk( "%s: Creating '%s' (parent %s)\n",
 		__func__,
 		name,
 		parent ? parent->name : "NONE"
 	);
+#endif
 
 	struct kfs_file * file = 0;
 	int new_entry = 0;
@@ -338,13 +340,6 @@ kfs_lookup(
 }
 
 
-
-
-// For testing /sys/dummy
-static char dummy_string[] = "Thank you for playing";
-static int dummy_int = 9999999;
-
-
 struct kfs_file *
 kfs_create(
 	const char *		full_filename,
@@ -363,7 +358,9 @@ kfs_create(
 
 	filename++;
 
+#if 0
 	printk( "%s: Creating '%s' (%s)\n", __func__, full_filename, filename );
+#endif
 
 	struct kfs_file * dir = kfs_lookup( kfs_root, full_filename, 0777 );
 
@@ -559,45 +556,6 @@ kfs_init( void )
 		0,
 		0
 	);
-
-	//kfs_mkdir( "/sys", 0777 );
-	//kfs_mkdir( "/sys/dummy", 0777 );
-
-	kfs_create(
-		"/sys/kernel/dummy/string",
-		&kfs_string_fops,
-		0777,
-		dummy_string,
-		sizeof( dummy_string )
-	);
-
-	kfs_create(
-		"/sys/kernel/dummy/int",
-		&kfs_int_fops,
-		0777,
-		&dummy_int,
-		0 // dec
-	);
-
-	kfs_create(
-		"/sys/kernel/dummy/hex",
-		&kfs_int_fops,
-		0777,
-		&dummy_int,
-		1 // hex
-	);
-
-	kfs_create(
-		"/sys/kernel/dummy/bin",
-		&kfs_string_fops,
-		0777,
-		&dummy_int,
-		sizeof(dummy_int)
-	);
-
-	// Test lookup
-	struct kfs_file * test = kfs_lookup( kfs_root, "/sys/kernel/dummy/string", 0 );
-	printk( "%s: file %p: %s\n", __func__, test, test ? test->name : "!!!" );
 
 	// Assign some system calls
 	syscall_register( __NR_open, (syscall_ptr_t) sys_open );
