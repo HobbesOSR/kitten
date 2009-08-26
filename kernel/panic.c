@@ -1,5 +1,6 @@
 #include <lwk/kernel.h>
 #include <lwk/kallsyms.h>
+#include <lwk/show.h>
 #include <lwk/kgdb.h>
 
 /**
@@ -13,7 +14,8 @@ void panic(const char * fmt, ...)
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
-	printk(KERN_EMERG "Kernel panic: %s\n",buf);
+	printk(KERN_EMERG "Kernel panic: %s\n", buf);
+	show_kstack();
 
 #ifdef CONFIG_KGDB
         printk("Invoking KGDB from panic()...\n");
