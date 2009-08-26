@@ -597,6 +597,14 @@ static void __devinit quirk_amd_ioapic(struct pci_dev *dev)
 }
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_AMD,	PCI_DEVICE_ID_AMD_VIPER_7410,	quirk_amd_ioapic);
 
+#ifndef CONFIG_X86_32
+/**
+ * This apparently only matters for 32-bit machines,
+ * so just stub it out for anything but X86_32.
+ */
+int sis_apic_bug = 0;
+#endif
+
 static void __init quirk_ioapic_rmw(struct pci_dev *dev)
 {
 	if (dev->devfn == 0 && dev->bus->number == 0)
