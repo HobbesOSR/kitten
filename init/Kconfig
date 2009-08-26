@@ -21,13 +21,6 @@ config LOCALVERSION_AUTO
 	help
 	  Build SCM tag into version string.  Always turned on.
 
-config SYSFS
-	bool
-	default "y"
-	help
-	  Enable the Linux sysfs compatability wrappers.
-	  Always on!
-
 config PCI_DEVICE_DB
 	bool
 	default "n"
