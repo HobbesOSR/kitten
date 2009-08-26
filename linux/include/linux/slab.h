@@ -26,6 +26,7 @@ struct kmem_cache {
 	size_t align;		/* alignment of objects allocated from the cache */
 	size_t flags;		/* flags to use when allocating objects from the cache */
 	void (*ctor)(void *);	/* new object constructor */
+	char name[16];		/* name of the cache, useful for debugging */
 };
 
 /**

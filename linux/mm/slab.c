@@ -15,6 +15,7 @@ kmem_cache_create(const char *name, size_t size, size_t align,
 	cachep->align = align;
 	cachep->flags = flags;
 	cachep->ctor  = ctor;
+	strlcpy(cachep->name, name, sizeof(cachep->name));
 
 	return cachep;
 }
