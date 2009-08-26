@@ -104,7 +104,9 @@ timer_sleep_until(uint64_t when)
 	/* Go to sleep */
 	schedule();
 
-	/* Return the time remaining */
+	timer_del(&timer);
+
+	/* Return the time remaining, if any */
 	uint64_t now = get_time();
 	return (when > now) ? (when - now) : 0;
 }
