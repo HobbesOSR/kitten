@@ -7,30 +7,6 @@
 
 
 int
-sysfs_create_bin_file(void)
-{
-	printk( "***** %s: not implemented\n", __func__ );
-	return -1;
-}
-int
-sysfs_create_file(void)
-{
-	printk( "***** %s: not implemented\n", __func__ );
-	return -1;
-}
-int
-sysfs_create_group(void)
-{
-	printk( "***** %s: not implemented\n", __func__ );
-	return -1;
-}
-int
-sysfs_create_link(void)
-{
-	printk( "***** %s: not implemented\n", __func__ );
-	return -1;
-}
-int
 sysfs_move_dir(void)
 {
 	printk( "***** %s: not implemented\n", __func__ );
