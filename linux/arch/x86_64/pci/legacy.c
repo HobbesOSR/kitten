@@ -38,14 +38,13 @@ static void __devinit pcibios_fixup_peer_bridges(void)
 static int __init pci_legacy_init(void)
 {
 	if (!raw_pci_ops) {
-		printk("PCI: System does not support PCI\n");
+		printk(KERN_INFO "PCI: System does not support PCI\n");
 		return 0;
 	}
 
 	if (pcibios_scanned++)
 		return 0;
 
-	printk("PCI: Probing PCI hardware\n");
 	pci_root_bus = pcibios_scan_root(0);
 	if (pci_root_bus)
 		pci_bus_add_devices(pci_root_bus);
