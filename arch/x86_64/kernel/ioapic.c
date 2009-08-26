@@ -353,11 +353,11 @@ ioapic_pcidev_vector(int bus, int slot, int pin)
 				if (bus != src_info->bus_id)
 					continue;
 
-				/* The src bus_irq encodes the src slot */
+				/* The src bus_irq encodes the src bus slot */
 				if (slot != ((src_info->bus_irq >> 2) & 0x1f))
 					continue;
 
-				/* The src bus_irq encodes the src pin */
+				/* The src bus_irq encodes the src bus pin */
 				if (pin != (src_info->bus_irq & 0x3))
 					continue;
 
@@ -365,9 +365,6 @@ ioapic_pcidev_vector(int bus, int slot, int pin)
 			}
 		}
 	}
-
-	printk(KERN_ERR "Failed to find vector for PCI device (%d.%d pin=%d)\n",
-			bus, slot, pin);
 
 	return -1;
 }
