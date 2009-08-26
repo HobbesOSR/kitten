@@ -17,4 +17,7 @@ config PCI_DIRECT
 source "linux/drivers/pci/Kconfig"
 source "linux/drivers/infiniband/Kconfig"
 
+config X86_IO_APIC
+	def_bool y
+
 endmenu
