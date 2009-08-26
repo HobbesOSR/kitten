@@ -3,6 +3,7 @@
 
 #include <lwk/kernel.h>
 #include <lwk/show.h>
+#include <lwk/smp.h>
 #include <linux/stat.h>
 #include <linux/slab.h>
 #include <linux/sched.h>

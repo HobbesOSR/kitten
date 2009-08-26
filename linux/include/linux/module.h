@@ -39,7 +39,7 @@
 #define module_param_array_named(name,array,type,nump,perm) \
 	DRIVER_PARAM_ARRAY_NAMED(name,array,type,nump)
 
-#define module_init(init_func) DRIVER_INIT("LINUX", (init_func))
+#define module_init(init_func) DRIVER_INIT("linux", (init_func))
 #define module_exit(exit_func) DRIVER_EXIT((exit_func))
 
 struct module;
