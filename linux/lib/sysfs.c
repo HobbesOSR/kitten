@@ -52,7 +52,7 @@ sysfs_create_file(
 	BUG_ON(!kobj || !kobj->sd || !attr);
 
 	/* TODO: Actually implement this! */
-	printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
+	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
 
 	return 0;
 }
@@ -74,7 +74,7 @@ sysfs_create_link(
 	BUG_ON(!name);
 
 	/* TODO: Actually implement this! */
-	printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
+	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
 
 	return 0;
 }
@@ -94,7 +94,7 @@ sysfs_create_bin_file(
 	BUG_ON(!kobj || !kobj->sd || !attr);
 
 	/* TODO: Actually implement this! */
-	printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
+	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
 
 	return 0;
 }
@@ -119,7 +119,7 @@ sysfs_create_group(
 	BUG_ON(!kobj || !kobj->sd);
 
 	/* TODO: Actually implement this! */
-	printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
+	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
 
 	return 0;
 }
