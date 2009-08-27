@@ -39,7 +39,7 @@ main(int argc, char *argv[], char *envp[])
 
 	pmem_api_test();
 	aspace_api_test();
-	//fd_test();
+	fd_test();
 	task_api_test();
 	hypervisor_api_test();
 	socket_api_test();
