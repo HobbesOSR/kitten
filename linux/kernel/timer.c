@@ -26,8 +26,13 @@ __mod_timer(
 
 	not_expired = timer_del(&timer->lwk_timer);
 
-	timer->expires           = expires;
-	timer->lwk_timer.expires = expires;
+	timer->expires = expires;
+
+	timer->lwk_timer.cpu      = this_cpu;
+	timer->lwk_timer.expires  = (uint64_t)timer->expires;
+	timer->lwk_timer.data     = (uintptr_t)timer->data;
+	timer->lwk_timer.function = timer->function;
+
 	timer_add(&timer->lwk_timer);
 
 	return not_expired;
