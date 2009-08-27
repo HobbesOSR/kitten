@@ -1,6 +1,6 @@
 config LINUX
 	bool "Include Linux compatibility layer"
-	default "y"
+	default "n"
 	help
 	  The Linux compatibility layer includes various Linux headers and
 	  core code needed to support a (small) subset of Linux device drivers
@@ -9,6 +9,7 @@ config LINUX
 
 config SYSFS
 	bool
+	depends on LINUX
 	default "y"
 	help
 	  Enable the Linux sysfs compatability wrappers.

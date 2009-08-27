@@ -23,6 +23,7 @@
 #include <lwk/kfs.h>
 #include <lwk/pci/pci.h>
 #include <lwk/random.h>
+#include <lwk/linux_compat.h>
 
 /**
  * Pristine copy of the LWK boot command line.
@@ -160,14 +161,14 @@ start_kernel()
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
 
-	/*
-	 * Initialize the PCI subsystem.
-	 */
-	init_pci();
-
 #ifdef CONFIG_KGDB
         kgdb_initial_breakpoint();
 #endif
+
+	/*
+	 * Bring up the Linux compatibility layer, if enabled.
+	 */
+	linux_init();
 
 	/*
 	 * Start up user-space...
