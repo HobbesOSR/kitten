@@ -36,7 +36,7 @@ static bool bootmem_destoyed = false;
  * kernel memory pool. The remainder of system memory is left untouched by
  * the kernel and is available for use by applications.
  */
-static unsigned long kmem_size = (1024 * 1024 * 8);  /* default is first 8 MB */
+static unsigned long kmem_size = (1024 * 1024 * 16);  /* default is first 16 MB */
 param(kmem_size, ulong);
 
 
