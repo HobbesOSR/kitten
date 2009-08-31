@@ -387,6 +387,30 @@ kthread_trampoline(
 	task_exit(status);
 }
 
+static inline struct task_struct *
+__kthread_create_on_cpu(
+	id_t		cpu_id, 
+	int		(*entry_point)(void *arg),
+	void *		arg,
+	const char *    name
+)
+{
+	id_t id;
+
+	start_state_t state = {
+		.aspace_id	= KERNEL_ASPACE_ID,
+		.entry_point	= (vaddr_t) kthread_trampoline,
+		.arg[0]		= (uintptr_t) entry_point,
+		.arg[1]		= (uintptr_t) arg,
+		.cpu_id		= cpu_id,
+	};
+
+	if (task_create(ANY_ID, name, &state, &id) != 0)
+		return NULL;
+
+	return task_lookup(id);
+}
+
 struct task_struct *
 kthread_create(
 	int		(*entry_point)(void *arg),
@@ -397,23 +421,31 @@ kthread_create(
 {
 	char name[16];
 	va_list ap;
-	id_t id;
 
 	va_start(ap, fmt);
 	vsnprintf(name, sizeof(name)-1, fmt, ap);
 	name[sizeof(name)-1] = '\0';
 	va_end(ap);
 
-	start_state_t state = {
-		.aspace_id	= KERNEL_ASPACE_ID,
-		.entry_point	= (vaddr_t) kthread_trampoline,
-		.arg[0]		= (uintptr_t) entry_point,
-		.arg[1]		= (uintptr_t) arg,
-		.cpu_id		= this_cpu,
-	};
+	return __kthread_create_on_cpu(this_cpu, entry_point, arg, name);
+}
 
-	if (task_create(ANY_ID, name, &state, &id) != 0)
-		return NULL;
+struct task_struct *
+kthread_create_on_cpu(
+	id_t		cpu_id, 
+	int		(*entry_point)(void *arg),
+	void *		arg,
+	const char *	fmt,
+	...
+)
+{
+	char name[16];
+	va_list ap;
 
-	return task_lookup(id);
+	va_start(ap, fmt);
+	vsnprintf(name, sizeof(name)-1, fmt, ap);
+	name[sizeof(name)-1] = '\0';
+	va_end(ap);
+
+	return __kthread_create_on_cpu(cpu_id, entry_point, arg, name);
 }

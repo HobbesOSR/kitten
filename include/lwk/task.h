@@ -296,5 +296,19 @@ kthread_create(
 	...
 );
 
+/** Convenience function for creating a kernel thread on a specific CPU.
+ *
+ * \returns The task ID of the new kernel thread.
+ */
+extern struct task_struct *
+kthread_create_on_cpu(
+	id_t		cpu_id, 
+	int		(*entry_point)(void *arg),
+	void *		arg,
+	const char *	fmt,
+	...
+);
+
 #endif
 #endif
+
