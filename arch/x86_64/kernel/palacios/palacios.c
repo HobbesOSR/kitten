@@ -46,6 +46,7 @@ static struct v3_ctrl_ops v3_ops = {};
  * Global guest state... only one guest is supported currently.
  */
 static struct guest_info * g_vm_guest = NULL;
+static id_t guest_cpu_map[NR_CPUS];
 static struct guest_info * irq_to_guest_map[NUM_IDT_ENTRIES];
 static paddr_t guest_iso_start;
 static size_t guest_iso_size;
@@ -220,6 +221,30 @@ palacios_paddr_to_vaddr(
 }
 
 /**
+ * Interrupts the physical CPU corresponding to the specified logical guest cpu.
+ *
+ * NOTE: 
+ * This is dependent on the implementation of xcall_reschedule().  Currently
+ * xcall_reschedule does not explicitly call schedule() on the destination CPU,
+ * but instead relies on the return to user space to handle it. Because
+ * palacios is a kernel thread schedule will not be called, which is correct.
+ * If it ever changes to induce side effects, we'll need to figure something
+ * else out...
+ */
+static void
+palacios_interrupt_cpu(
+	struct guest_info *	vm, 
+	int			logical_cpu
+)
+{
+	id_t guest_cpu = guest_cpu_map[logical_cpu];
+
+	if (guest_cpu != current->cpu_id) {
+		xcall_reschedule(guest_cpu);
+	}
+}
+
+/**
  * Dispatches an interrupt to Palacios for handling.
  */
 static void
@@ -363,6 +388,7 @@ struct v3_os_hooks palacios_os_hooks = {
 	.free			= palacios_free,
 	.vaddr_to_paddr		= palacios_vaddr_to_paddr,
 	.paddr_to_vaddr		= palacios_paddr_to_vaddr,
+	.interrupt_cpu          = palacios_interrupt_cpu,
 	.hook_interrupt		= palacios_hook_interrupt,
 	.ack_irq		= palacios_ack_interrupt,
 	.get_cpu_khz		= palacios_get_cpu_khz,
