@@ -356,9 +356,7 @@ palacios_mutex_unlock(
  * Structure used by the Palacios hypervisor to interface with the host kernel.
  */
 struct v3_os_hooks palacios_os_hooks = {
-	.print_debug		= palacios_print,
-	.print_info		= palacios_print,
-	.print_trace		= palacios_print,
+	.print			= palacios_print,
 	.allocate_pages		= palacios_allocate_pages,
 	.free_page		= palacios_free_page,
 	.malloc			= palacios_alloc,
