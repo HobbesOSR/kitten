@@ -122,21 +122,6 @@ start_kernel()
 	rand_init();
 
 	/*
-	 * Bring up any network devices.
-	 */
-	netdev_init();
-
-	/*
-	 * And any modules that need to be started.
-	 */
-	driver_init_by_name( "module", "*" );
-
-	/*
-	 * Bring up any late init devices.
-	 */
-	driver_init_by_name( "late", "*" );
-
-	/*
 	 * Boot all of the other CPUs in the system, one at a time.
 	 */
 	printk(KERN_INFO "Number of CPUs detected: %d\n", num_cpus());
@@ -166,6 +151,26 @@ start_kernel()
 #endif
 
 	/*
+	 * Enable external interrupts.
+	 */
+	local_irq_enable();
+
+	/*
+	 * Bring up any network devices.
+	 */
+	netdev_init();
+
+	/*
+	 * And any modules that need to be started.
+	 */
+	driver_init_by_name( "module", "*" );
+
+	/*
+	 * Bring up any late init devices.
+	 */
+	driver_init_by_name( "late", "*" );
+
+	/*
 	 * Bring up the Linux compatibility layer, if enabled.
 	 */
 	linux_init();
@@ -173,7 +178,6 @@ start_kernel()
 	/*
 	 * Start up user-space...
 	 */
-	local_irq_enable();
 	printk(KERN_INFO "Loading initial user-level task (init_task)...\n");
 	if ((status = create_init_task()) != 0)
 		panic("Failed to create init_task (status=%d).", status);

@@ -29,8 +29,10 @@
 #include <arch/proto.h>
 #include "palacios.h"
 #include <lwk/signal.h>
+#include <lwk/xcall.h>
 #include <lwk/interrupt.h>
 #include <lwk/sched.h>
+#include <lwk/cpuinfo.h>
 #include <arch/io.h>
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
@@ -46,7 +48,7 @@ static struct v3_ctrl_ops v3_ops = {};
  * Global guest state... only one guest is supported currently.
  */
 static struct guest_info * g_vm_guest = NULL;
-static id_t guest_cpu_map[NR_CPUS];
+static id_t palacios_cpu_map[NR_CPUS];
 static struct guest_info * irq_to_guest_map[NUM_IDT_ENTRIES];
 static paddr_t guest_iso_start;
 static size_t guest_iso_size;
@@ -221,6 +223,45 @@ palacios_paddr_to_vaddr(
 }
 
 /**
+ * Runs a function on the specified CPU.
+ */
+static void 
+palacios_xcall(
+	int			logical_cpu, 
+	void			(*fn)(void *arg),
+	void *			arg
+)
+{
+	id_t guest_cpu = palacios_cpu_map[logical_cpu];
+	cpumask_t cpu_mask;
+
+	cpus_clear(cpu_mask);
+	cpu_set(guest_cpu, cpu_mask);
+
+	printk(KERN_DEBUG
+		"Palacios making xcall to cpu %d from cpu %d.\n",
+		guest_cpu, current->cpu_id);
+
+	xcall_function(cpu_mask, fn, arg, 1);
+}
+
+/**
+ * Starts a kernel thread on the specified CPU.
+ */
+static void 
+palacios_start_thread_on_cpu(
+	int			logical_cpu, 
+	int			(*fn)(void * arg), 
+	void *			arg, 
+	char *			thread_name
+)
+{
+	id_t guest_cpu = palacios_cpu_map[logical_cpu];
+
+	kthread_create_on_cpu(guest_cpu, fn, arg, thread_name);
+}
+
+/**
  * Interrupts the physical CPU corresponding to the specified logical guest cpu.
  *
  * NOTE: 
@@ -237,7 +278,7 @@ palacios_interrupt_cpu(
 	int			logical_cpu
 )
 {
-	id_t guest_cpu = guest_cpu_map[logical_cpu];
+	id_t guest_cpu = palacios_cpu_map[logical_cpu];
 
 	if (guest_cpu != current->cpu_id) {
 		xcall_reschedule(guest_cpu);
@@ -388,7 +429,6 @@ struct v3_os_hooks palacios_os_hooks = {
 	.free			= palacios_free,
 	.vaddr_to_paddr		= palacios_vaddr_to_paddr,
 	.paddr_to_vaddr		= palacios_paddr_to_vaddr,
-	.interrupt_cpu          = palacios_interrupt_cpu,
 	.hook_interrupt		= palacios_hook_interrupt,
 	.ack_irq		= palacios_ack_interrupt,
 	.get_cpu_khz		= palacios_get_cpu_khz,
@@ -398,6 +438,9 @@ struct v3_os_hooks palacios_os_hooks = {
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 
 	.mutex_unlock		= palacios_mutex_unlock,
+	.interrupt_cpu		= palacios_interrupt_cpu,
+	.call_on_cpu		= palacios_xcall,
+	.start_thread_on_cpu	= palacios_start_thread_on_cpu,
 };
 
 /**
@@ -409,6 +452,8 @@ palacios_run_guest(void *arg)
 	struct v3_vm_config vm_config = {
 		.mem_size		= (128 * 1024 * 1024),
 		.enable_pci		= 1,
+		
+		.guest_cpu              = 0,
 		
  		.pri_disk_type          = CDROM,
  		.pri_disk_con           = RAM,
@@ -456,7 +501,7 @@ sys_v3_start_guest(
 	guest_iso_start = iso_start;
 	guest_iso_size  = iso_size;
 
-	kthread_create(palacios_run_guest, NULL, "guest_os");
+	kthread_create_on_cpu(0, palacios_run_guest, NULL, "guest_os");
 
 	return 0;
 }
@@ -491,9 +536,17 @@ palacios_keyboard_interrupt(
 static int
 palacios_init(void)
 {
+	int i;
+
 	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
 
-	Init_V3(&palacios_os_hooks, &v3_ops);
+	memset(palacios_cpu_map, 0, sizeof(palacios_cpu_map));
+
+	for (i = 0; i < NR_CPUS; i++) {
+		palacios_cpu_map[i] = i;
+	}
+
+	Init_V3(&palacios_os_hooks, &v3_ops, cpus_weight(cpu_online_map));
 
 	irq_request(
 		IRQ1_VECTOR,

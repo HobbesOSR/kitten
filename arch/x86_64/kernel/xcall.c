@@ -48,8 +48,6 @@ arch_xcall_function(
 	unsigned int num_cpus;
 	unsigned int cpu;
 
-	BUG_ON(irqs_disabled());
-
 	/* Count how many CPUs are being targeted */
 	num_cpus = cpus_weight(cpu_mask);
 	if (!num_cpus)
