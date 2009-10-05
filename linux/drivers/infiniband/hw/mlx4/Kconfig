@@ -1,8 +1,17 @@
-config MLX4_INFINIBAND
-	tristate "Mellanox ConnectX HCA support"
+config INFINIBAND_MLX4
+	bool "Mellanox ConnectX HCA support"
+	default y
 	select MLX4_CORE
 	---help---
 	  This driver provides low-level InfiniBand support for
 	  Mellanox ConnectX PCI Express host channel adapters (HCAs).
-	  This is required to use InfiniBand protocols such as
-	  IP-over-IB or SRP with these devices.
+
+config MLX4_CORE
+	bool
+	depends on MLX4_INFINIBAND
+	default y
+
+config MLX4_DEBUG
+	bool
+	depends on MLX4_CORE
+	default y

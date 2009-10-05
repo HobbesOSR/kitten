@@ -42,5 +42,6 @@ config INFINIBAND_ADDR_TRANS
 	default y
 
 source "linux/drivers/infiniband/hw/mthca/Kconfig"
+source "linux/drivers/infiniband/hw/mlx4/Kconfig"
 
 endif # INFINIBAND
