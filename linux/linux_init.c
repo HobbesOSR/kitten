@@ -1,4 +1,5 @@
 #include <linux/kernel.h>
+#include <linux/radix-tree.h>
 
 extern void init_workqueues(void);
 extern void run_workqueues(void);
@@ -27,6 +28,7 @@ linux_kthread(void *arg)
 void
 linux_init(void)
 {
+	radix_tree_init();
 	init_workqueues();
 	driver_init();
 	early_param_pci_setup();
