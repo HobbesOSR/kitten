@@ -419,7 +419,7 @@ kthread_create(
 	...
 )
 {
-	char name[16];
+	char name[32];
 	va_list ap;
 
 	va_start(ap, fmt);
@@ -439,7 +439,7 @@ kthread_create_on_cpu(
 	...
 )
 {
-	char name[16];
+	char name[32];
 	va_list ap;
 
 	va_start(ap, fmt);
