@@ -66,33 +66,12 @@ void mlx4_en_fill_qp_context(struct mlx4_en_priv *priv, int size, int stride,
 
 int mlx4_en_map_buffer(struct mlx4_buf *buf)
 {
-	struct page **pages;
-	int i;
-
-	if (BITS_PER_LONG == 64 || buf->nbufs == 1)
-		return 0;
-	
-	pages = kmalloc(sizeof *pages * buf->nbufs, GFP_KERNEL);
-	if (!pages)
-		return -ENOMEM;
-
-	for (i = 0; i < buf->nbufs; ++i)
-		pages[i] = virt_to_page(buf->page_list[i].buf);
-
-	buf->direct.buf = vmap(pages, buf->nbufs, VM_MAP, PAGE_KERNEL);
-	kfree(pages);
-	if (!buf->direct.buf)
-		return -ENOMEM;
-
 	return 0;
 }
 
 void mlx4_en_unmap_buffer(struct mlx4_buf *buf)
 {
-	if (BITS_PER_LONG == 64 || buf->nbufs == 1)
-		return;
-
-	vunmap(buf->direct.buf);
+	return;
 }
 
 void mlx4_en_sqp_event(struct mlx4_qp *qp, enum mlx4_event event)

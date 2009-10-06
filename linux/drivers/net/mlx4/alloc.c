@@ -114,87 +114,32 @@ int mlx4_buf_alloc(struct mlx4_dev *dev, int size, int max_direct,
 {
 	dma_addr_t t;
 
-	if (size <= max_direct) {
-		buf->nbufs        = 1;
-		buf->npages       = 1;
-		buf->page_shift   = get_order(size) + PAGE_SHIFT;
-		buf->direct.buf   = dma_alloc_coherent(&dev->pdev->dev,
+	buf->nbufs        = 1;
+	buf->npages       = 1;
+	buf->page_shift   = get_order(size) + PAGE_SHIFT;
+	buf->direct.buf   = dma_alloc_coherent(&dev->pdev->dev,
 						       size, &t, GFP_KERNEL);
-		if (!buf->direct.buf)
-			return -ENOMEM;
+	if (!buf->direct.buf)
+		return -ENOMEM;
 
-		buf->direct.map = t;
+	buf->direct.map = t;
 
-		while (t & ((1 << buf->page_shift) - 1)) {
-			--buf->page_shift;
-			buf->npages *= 2;
-		}
-
-		memset(buf->direct.buf, 0, size);
-	} else {
-		int i;
-
-		buf->nbufs       = (size + PAGE_SIZE - 1) / PAGE_SIZE;
-		buf->npages      = buf->nbufs;
-		buf->page_shift  = PAGE_SHIFT;
-		buf->page_list   = kzalloc(buf->nbufs * sizeof *buf->page_list,
-					   GFP_KERNEL);
-		if (!buf->page_list)
-			return -ENOMEM;
-
-		for (i = 0; i < buf->nbufs; ++i) {
-			buf->page_list[i].buf =
-				dma_alloc_coherent(&dev->pdev->dev, PAGE_SIZE,
-						   &t, GFP_KERNEL);
-			if (!buf->page_list[i].buf)
-				goto err_free;
-
-			buf->page_list[i].map = t;
-
-			memset(buf->page_list[i].buf, 0, PAGE_SIZE);
-		}
-
-		if (BITS_PER_LONG == 64) {
-			struct page **pages;
-			pages = kmalloc(sizeof *pages * buf->nbufs, GFP_KERNEL);
-			if (!pages)
-				goto err_free;
-			for (i = 0; i < buf->nbufs; ++i)
-				pages[i] = virt_to_page(buf->page_list[i].buf);
-			buf->direct.buf = vmap(pages, buf->nbufs, VM_MAP, PAGE_KERNEL);
-			kfree(pages);
-			if (!buf->direct.buf)
-				goto err_free;
-		}
+	while (t & ((1 << buf->page_shift) - 1)) {
+		--buf->page_shift;
+		buf->npages *= 2;
 	}
+
+	memset(buf->direct.buf, 0, size);
 
 	return 0;
 
-err_free:
-	mlx4_buf_free(dev, size, buf);
-
-	return -ENOMEM;
 }
 EXPORT_SYMBOL_GPL(mlx4_buf_alloc);
 
 void mlx4_buf_free(struct mlx4_dev *dev, int size, struct mlx4_buf *buf)
 {
-	int i;
-
-	if (buf->nbufs == 1)
-		dma_free_coherent(&dev->pdev->dev, size, buf->direct.buf,
-				  buf->direct.map);
-	else {
-		if (BITS_PER_LONG == 64)
-			vunmap(buf->direct.buf);
-
-		for (i = 0; i < buf->nbufs; ++i)
-			if (buf->page_list[i].buf)
-				dma_free_coherent(&dev->pdev->dev, PAGE_SIZE,
-						  buf->page_list[i].buf,
-						  buf->page_list[i].map);
-		kfree(buf->page_list);
-	}
+	dma_free_coherent(&dev->pdev->dev, size, buf->direct.buf,
+			  buf->direct.map);
 }
 EXPORT_SYMBOL_GPL(mlx4_buf_free);
 
