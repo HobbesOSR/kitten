@@ -33,6 +33,7 @@ Slightly Modified Linux Headers
 idr.h		Modified to remove RCU usage
 mempolicy.h	Commented out a few header includes
 nodemask.h	Commented out linux/threads.h include
+radix-tree.h	Remove preempt specific code
 
 Extensively Modified Linux Headers
 ==================================
@@ -91,3 +92,4 @@ genhd.h		Empty
 memory.h	Empty
 random.h	Maps to LWK version of same name, does some impedence matching
 pfn.h		Maps directly to LWK version of same name
+vmalloc.h	Empty

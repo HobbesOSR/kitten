@@ -43,4 +43,6 @@ extern char *kvasprintf(gfp_t gfp, const char *fmt, va_list args);
 
 #define dump_stack() show_kstack()
 
+#define roundup round_up
+
 #endif
