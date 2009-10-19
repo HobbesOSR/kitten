@@ -29,4 +29,3 @@ obj-y := \
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
 obj-y += linux_syscalls/
-obj-y += pci/

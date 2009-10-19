@@ -21,7 +21,6 @@
 #include <lwk/kgdb.h>
 #include <lwk/driver.h>
 #include <lwk/kfs.h>
-#include <lwk/pci/pci.h>
 #include <lwk/random.h>
 #include <lwk/linux_compat.h>
 

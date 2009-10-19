@@ -10,5 +10,3 @@ obj-$(CONFIG_KGDB) += kgdb.o
 obj-$(CONFIG_CRAY_XT) += rca/
 
 obj-$(CONFIG_PALACIOS) += palacios/
-
-obj-y += pci/
