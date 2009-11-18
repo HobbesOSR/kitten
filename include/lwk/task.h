@@ -93,11 +93,7 @@ extern int task_create(id_t id_request, const char *name,
                        const start_state_t *start_state, id_t *id);
 extern int task_exit(int status);
 
-/** Yield the CPU from a user task.
- *
- * \note To yield a kernel thread, call schedule() instead.
- * This is effectively a NOP.
- */
+/** Yield the CPU. */
 extern int task_yield(void);
 
 /** Returns the CPU that the task is currently executing on. */
