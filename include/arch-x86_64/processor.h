@@ -222,18 +222,6 @@ struct thread_struct {
 #define INIT_MMAP \
 { &init_mm, 0, 0, NULL, PAGE_SHARED, VM_READ | VM_WRITE | VM_EXEC, 1, NULL, NULL }
 
-#define start_thread(regs,new_rip,new_rsp) do { \
-	asm volatile("movl %0,%%fs; movl %0,%%es; movl %0,%%ds": :"r" (0));	 \
-	load_gs_index(0);							\
-	(regs)->rip = (new_rip);						 \
-	(regs)->rsp = (new_rsp);						 \
-	write_pda(oldrsp, (new_rsp));						 \
-	(regs)->cs = __USER_CS;							 \
-	(regs)->ss = __USER_DS;							 \
-	(regs)->eflags = 0x200;							 \
-	set_fs(USER_DS);							 \
-} while(0) 
-
 #define get_debugreg(var, register)				\
 		__asm__("movq %%db" #register ", %0"		\
 			:"=r" (var))
