@@ -44,10 +44,13 @@ main(int argc, char *argv[], char *envp[])
 		if (!cpu_isset(cpu, cpumask))
 			continue;
 
-		start_state[rank].cpu_id  = cpu;
-		start_state[rank].uid     = 1; /* anything but 0(=root) */
-		start_state[rank].gid     = 1;
-		start_state[rank].cpumask = NULL;
+		start_state[rank].task_id  = TASK_MIN_ID + rank;
+		start_state[rank].cpu_id   = cpu;
+		start_state[rank].user_id  = 1; /* anything but 0(=root) */
+		start_state[rank].group_id = 1;
+		start_state[rank].cpumask  = cpumask;
+
+		sprintf(start_state[rank].task_name, "RANK%d", rank);
 
 		status =
 		elf_load(
@@ -97,17 +100,7 @@ main(int argc, char *argv[], char *envp[])
 	/* Create a task for each rank */
 	printf("Creating tasks...\n");
 	for (rank = 0; rank < num_ranks; rank++) {
-		char task_name[32];
-		sprintf(task_name, "RANK%d", rank);
-
-		status =
-		task_create(
-			TASK_MIN_ID + rank,
-			task_name,
-			&start_state[rank],
-			NULL
-		);
-
+		status = task_create(&start_state[rank], NULL);
 		if (status) {
 			printf("task_create failed, status=%d\n", status);
 			exit(-1);

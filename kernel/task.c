@@ -133,19 +133,17 @@ free_id(
 
 struct task_struct *
 __task_create(
-	id_t			id_request,
-	const char *		name,
 	const start_state_t *	start_state,
 	const struct pt_regs *	parent_regs
 )
 {
-	id_t id;
+	id_t task_id;
 	union task_union *task_union;
 	struct task_struct *tsk;
 	unsigned long irqstate;
 
-	id = alloc_id(id_request, start_state);
-	if (id == ERROR_ID)
+	task_id = alloc_id(start_state->task_id, start_state);
+	if (task_id == ERROR_ID)
 		goto fail_id_alloc;
 
 	task_union = kmem_get_pages(TASK_ORDER);
@@ -158,22 +156,18 @@ __task_create(
 	 * initialized.
 	 */
 	tsk		= &task_union->task_info;
-	tsk->id		= id;
+	tsk->id		= task_id;
 	tsk->aspace	= aspace_acquire(start_state->aspace_id);
 	tsk->state	= TASK_RUNNING;
-	tsk->uid	= start_state->uid;
-	tsk->gid	= start_state->gid;
+	tsk->uid	= start_state->user_id;
+	tsk->gid	= start_state->group_id;
 	tsk->cpu_id	= start_state->cpu_id;
-	tsk->cpumask	= current->cpumask;
+	tsk->cpumask	= cpumask_user2kernel(&start_state->cpumask);
+
+	strlcpy(tsk->name, start_state->task_name, sizeof(tsk->name));
 
 	hlist_node_init(&tsk->ht_link);
 	list_head_init(&tsk->sched_link);
-
-	if (name)
-		strlcpy(tsk->name, name, sizeof(tsk->name));
-
-	if (start_state->cpumask)
-		cpumask_user2kernel(start_state->cpumask, &tsk->cpumask);
 
 	/* Error checks */
 	if (!tsk->aspace)
@@ -216,39 +210,35 @@ fail_cpumask:
 fail_aspace:
 	kmem_free_pages(task_union, TASK_ORDER);
 fail_task_alloc:
-	free_id(id);
+	free_id(task_id);
 fail_id_alloc:
 	return NULL;
 }
 
 int
-task_create(id_t id_request, const char *name,
-            const start_state_t *start_state, id_t *id)
+task_create(const start_state_t *start_state, id_t *task_id)
 {
 	struct task_struct *tsk;
 
 	/* Create and initialize a new task */
-	tsk = __task_create(id_request, name, start_state, NULL);
+	tsk = __task_create(start_state, NULL);
 	if (!tsk)
 		return -EINVAL;
 
 	/* Add the new task to the target CPU's run queue */
 	sched_add_task(tsk);
 
-	if (id)
-		*id = tsk->id;
+	if (task_id)
+		*task_id = tsk->id;
 	return 0;
 }
 
 int
-sys_task_create(id_t id_request, const char __user *name,
-                const start_state_t __user *start_state, id_t __user *id)
+sys_task_create(const start_state_t __user *start_state, id_t __user *task_id)
 {
 	int status;
 	start_state_t _start_state;
-	user_cpumask_t _cpumask;
-	char _name[16];
-	id_t _id;
+	id_t _task_id;
 
 	if (current->uid != 0)
 		return -EPERM;
@@ -259,20 +249,10 @@ sys_task_create(id_t id_request, const char __user *name,
 	if (_start_state.aspace_id == KERNEL_ASPACE_ID)
 		return -EINVAL;
 
-	if (_start_state.cpumask) {
-		if (copy_from_user(&_cpumask, _start_state.cpumask, sizeof(_cpumask)))
-			return -EFAULT;
-		_start_state.cpumask = &_cpumask;
-	}
-
-	if (name && (strncpy_from_user(_name, name, sizeof(_name)) < 0))
-		return -EFAULT;
-	_name[sizeof(_name) - 1] = '\0';
-
-	if ((status = task_create(id_request, _name, &_start_state, &_id)) != 0)
+	if ((status = task_create(&_start_state, &_task_id)) != 0)
 		return status;
 
-	if (id && copy_to_user(id, &_id, sizeof(*id)))
+	if (task_id && copy_to_user(task_id, &_task_id, sizeof(_task_id)))
 		return -EFAULT;
 
 	return 0;
@@ -334,7 +314,7 @@ sys_task_get_cpu(id_t __user *cpu_id)
 int
 task_get_cpumask(user_cpumask_t *cpumask)
 {
-	cpumask_kernel2user(&current->cpumask, cpumask);
+	*cpumask = cpumask_kernel2user(&current->cpumask);
 	return 0;
 }
 
@@ -392,9 +372,10 @@ __kthread_create_on_cpu(
 	const char *    name
 )
 {
-	id_t id;
+	id_t task_id;
 
 	start_state_t state = {
+		.task_id	= ANY_ID,
 		.aspace_id	= KERNEL_ASPACE_ID,
 		.entry_point	= (vaddr_t) kthread_trampoline,
 		.arg[0]		= (uintptr_t) entry_point,
@@ -402,10 +383,12 @@ __kthread_create_on_cpu(
 		.cpu_id		= cpu_id,
 	};
 
-	if (task_create(ANY_ID, name, &state, &id) != 0)
+	strlcpy(state.task_name, name, sizeof(state.task_name));
+
+	if (task_create(&state, &task_id) != 0)
 		return NULL;
 
-	return task_lookup(id);
+	return task_lookup(task_id);
 }
 
 struct task_struct *

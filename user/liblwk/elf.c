@@ -830,7 +830,7 @@ elf_load(
 		stack_start,                /* Where it is in target aspace */
 		stack_extent,
 		argv, envp,
-		start_state->uid, start_state->gid,
+		start_state->user_id, start_state->group_id,
 		hwcap,
 		&stack_ptr
 	);

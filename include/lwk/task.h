@@ -65,19 +65,26 @@ typedef unsigned int taskstate_t;
 typedef unsigned long event_t;
 //@}
 
+/** Maximum length of a task's name. */
+#define TASK_NAME_LEN			32
+
 /**
  * Initial conditions to use for new task.
  */
 typedef struct {
-	uid_t                  uid;
-	uid_t                  gid;
-	id_t                   aspace_id;
-	vaddr_t                stack_ptr;   //!< Ignored for kernel tasks
-	vaddr_t                entry_point; //!< Ignored for clone() syscall
-	uintptr_t              arg[4];      //!< Args to pass to entry_point()
-	uint32_t		flags;		//!< Flags to clone
-	id_t                   cpu_id;
-	const user_cpumask_t * cpumask;
+	id_t			task_id;
+	char			task_name[TASK_NAME_LEN];
+
+	id_t			user_id;
+	id_t			group_id;
+	id_t			aspace_id;
+
+	id_t			cpu_id;
+	user_cpumask_t		cpumask;
+
+	vaddr_t			stack_ptr;	/* Ignored for kernel tasks */
+	vaddr_t			entry_point;	/* Ignored for clone() syscall */
+	uintptr_t		arg[4];		/* Args to pass to entry_point() */
 } start_state_t;
 
 
@@ -89,8 +96,7 @@ typedef struct {
  * @{
  */
 extern int task_get_myid(id_t *id);
-extern int task_create(id_t id_request, const char *name,
-                       const start_state_t *start_state, id_t *id);
+extern int task_create(const start_state_t *start_state, id_t *task_id);
 extern int task_exit(int status);
 
 /** Yield the CPU. */
@@ -260,9 +266,8 @@ arch_task_create(
  * @{
  */
 extern int sys_task_get_myid(id_t __user *id);
-extern int sys_task_create(id_t id_request, const char __user *name,
-                           const start_state_t __user *start_state,
-                           id_t __user *id);
+extern int sys_task_create(const start_state_t __user *start_state,
+                           id_t __user *task_id);
 extern int sys_task_exit(int status);
 extern int sys_task_yield(void);
 extern int sys_task_get_cpu(id_t __user *cpu_id);
@@ -271,8 +276,6 @@ extern int sys_task_get_cpumask(user_cpumask_t __user *cpumask);
 
 extern struct task_struct *
 __task_create(
-	id_t			id,
-	const char *		name,
 	const start_state_t *	start_state,
 	const struct pt_regs *	parent_regs
 );

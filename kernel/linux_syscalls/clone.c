@@ -50,33 +50,27 @@ sys_clone(
 	}
 
 	/* Pick a CPU to spawn the new task on */
-	id_t cpu = current->next_cpu;
+	id_t cpu_id = current->next_cpu;
 	current->next_cpu = next_cpu(current->next_cpu, current->cpumask);
 	if (current->next_cpu == NR_CPUS)
 		current->next_cpu = first_cpu(current->cpumask);
 
-	/* Name the new task */
-	char name[sizeof(current->name)];
-	snprintf(name, sizeof(name), "%s_thread",
-	         strlen(current->name) ? current->name : "");
-	name[sizeof(name)-1] = '\0';
-
 	start_state_t start_state = {
-		.uid		= current->uid,
-		.gid		= current->gid,
+		.task_id	= ANY_ID,
+		.user_id	= current->uid,
+		.group_id	= current->gid,
 		.aspace_id	= current->aspace->id,
+		.cpu_id		= cpu_id,
+		.cpumask	= cpumask_kernel2user(&current->cpumask),
 		.stack_ptr	= new_stack_ptr,
 		.entry_point	= 0,    /* set automagically for clone() */
-		.cpu_id		= cpu,
-		.cpumask	= NULL, /* use parent's */
 	};
 
-	struct task_struct *task = __task_create(
-		ANY_ID,
-		name,
-		&start_state,
-		parent_regs
-	);
+	/* Name the new task something semi-sensible */
+	snprintf(start_state.task_name, sizeof(start_state.task_name),
+		 "%s_thread", strlen(current->name) ? current->name : "noname");
+
+	struct task_struct *task = __task_create(&start_state, parent_regs);
 	if (!task)
 		return -EINVAL;
 

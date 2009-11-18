@@ -140,17 +140,26 @@ typedef struct {
 typedef struct { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
 extern cpumask_t _unused_cpumask_arg_;
 
-static inline void
-cpumask_kernel2user(const cpumask_t *kernel, user_cpumask_t *user)
+static inline user_cpumask_t
+cpumask_kernel2user(const cpumask_t *kernel)
 {
-	memset(user, 0, sizeof(user_cpumask_t));
-	memcpy(user, kernel, sizeof(*kernel));
+	user_cpumask_t user;
+
+	memset(&user, 0, sizeof(user));
+	memcpy(&user, kernel, min(sizeof(cpumask_t), sizeof(user_cpumask_t)));
+
+	return user;
 }
 
-static inline void
-cpumask_user2kernel(const user_cpumask_t *user, cpumask_t *kernel)
+static inline cpumask_t
+cpumask_user2kernel(const user_cpumask_t *user)
 {
-	memcpy(kernel, user, sizeof(*kernel));
+	cpumask_t kernel;
+
+	memset(&kernel, 0, sizeof(kernel));
+	memcpy(&kernel, user, min(sizeof(cpumask_t), sizeof(user_cpumask_t)));
+
+	return kernel;
 }
 
 #define cpu_set(cpu, dst) __cpu_set((cpu), &(dst))
@@ -290,6 +299,18 @@ int __next_cpu(int n, const cpumask_t *srcp);
 	} else {							\
 		cpus_clear(m);						\
 		cpu_set((cpu), m);					\
+	}								\
+	m;								\
+})
+
+#define user_cpumask_of_cpu(cpu)					\
+({									\
+	user_cpumask_t m;						\
+	if (sizeof(m) == sizeof(unsigned long)) {			\
+		m.bits[0] = 1UL<<(cpu);					\
+	} else {							\
+		memset(&m, 0, sizeof(m));				\
+		set_bit(cpu, &m.bits);					\
 	}								\
 	m;								\
 })

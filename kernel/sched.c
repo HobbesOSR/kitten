@@ -57,23 +57,20 @@ sched_subsys_init(void)
  	 	 * other work to do, it runs the idle task. 
  	 	 */
 		start_state_t start_state = {
-			.uid         = 0,
-			.gid         = 0,
+			.task_id     = IDLE_TASK_ID,
+			.task_name   = "idle_task",
+			.user_id     = 0,
+			.group_id    = 0,
 			.aspace_id   = KERNEL_ASPACE_ID,
 			.entry_point = (vaddr_t) idle_task_loop,
 			.stack_ptr   = 0, /* will be set automatically */
 			.cpu_id      = cpu_id,
-			.cpumask     = NULL,
+			.cpumask     = user_cpumask_of_cpu(cpu_id),
 		};
 
-		struct task_struct *idle_task = __task_create(
-			IDLE_TASK_ID,
-			"idle_task",
-			&start_state,
-			NULL
-		);
+		struct task_struct *idle_task = __task_create(&start_state, NULL);
 		if (!idle_task)
-			panic("Failed to create idle_task.");
+			panic("Failed to create idle_task for CPU %u.", cpu_id);
 
 		runq->idle_task = idle_task;
 	}

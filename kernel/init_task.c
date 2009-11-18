@@ -55,24 +55,25 @@ int
 create_init_task(void)
 {
 	int status;
-	start_state_t start_state;
+	start_state_t start_state = {
+		.task_id	= INIT_TASK_ID,
+		.task_name	= "init_task",
+		.user_id	= 0,
+		.group_id	= 0,
+		.cpu_id		= this_cpu,
+		.cpumask	= cpumask_kernel2user(&cpu_online_map),
+	};
 
 	if (!init_elf_image) {
 		printk("No init_elf_image found.\n");
 		return -EINVAL;
 	}
 	
-	/* Initialize the start_state fields that we know up-front */
-	start_state.uid     = 0;
-	start_state.gid     = 0;
-	start_state.cpu_id  = this_cpu;
-	start_state.cpumask = NULL;
-
 	/* This initializes start_state aspace_id, entry_point, and stack_ptr */
 	status =
 	elf_load(
 		__va(init_elf_image),
-		"init_task",
+		start_state.task_name,
 		INIT_ASPACE_ID,
 		PAGE_SIZE,
 		init_heap_size,
@@ -95,15 +96,15 @@ create_init_task(void)
 		return status;
 	}
 
-	id_t id;
-	int rc = task_create(INIT_TASK_ID, "init_task", &start_state, &id);
+	id_t task_id;
+	int rc = task_create(&start_state, &task_id);
 	if( rc != 0 )
 		return rc;
 
 	/* Assign stdout and stderr */
-	struct task_struct * new_task = task_lookup( id );
+	struct task_struct * new_task = task_lookup( task_id );
 	if( !new_task )
-		panic( "Unable to retrieve init task id %lu?", id  );
+		panic( "Unable to retrieve init task id %lu?", task_id  );
 
 	struct kfs_file * console = kfs_lookup( kfs_root, "/dev/console", 0 );
 	if( !console )
