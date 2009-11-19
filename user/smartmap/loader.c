@@ -44,7 +44,7 @@ main(int argc, char *argv[], char *envp[])
 		if (!cpu_isset(cpu, cpumask))
 			continue;
 
-		start_state[rank].task_id  = TASK_MIN_ID + rank;
+		start_state[rank].task_id  = UTASK_MIN_ID + rank;
 		start_state[rank].cpu_id   = cpu;
 		start_state[rank].user_id  = 1; /* anything but 0(=root) */
 		start_state[rank].group_id = 1;

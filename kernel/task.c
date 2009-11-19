@@ -8,42 +8,20 @@
 #include <arch/uaccess.h>
 
 /**
- * ID space used to allocate user-space task IDs.
- */
-static struct idspace *user_idspace;
-
-/**
- * ID space used to allocate kernel-space task IDs.
- */
-static struct idspace *kernel_idspace;
-
-/**
  * Hash table used to lookup task structures by ID.
  */
 static struct htable *htable;
+static DEFINE_SPINLOCK(htable_lock);
 
 /**
- * Lock for serializing access to the hash table.
+ * Where to start looking for ANY_ID kernel tasks and user tasks, respectively.
  */
-static DEFINE_SPINLOCK(htable_lock);
+static id_t ktask_next_id = KTASK_MIN_ID;
+static id_t utask_next_id = UTASK_MIN_ID;
 
 int __init
 task_subsys_init(void)
 {
-	user_idspace = idspace_create(
-				TASK_MIN_ID,
-				TASK_MAX_ID
-	);
-	if (!user_idspace)
-		panic("Failed to create ID space for user tasks.");
-
-	kernel_idspace = idspace_create(
-				KERNEL_TASK_MIN_ID,
-				KERNEL_TASK_MAX_ID
-	);
-	if (!kernel_idspace)
-		panic("Failed to create ID space for kernel tasks.");
-
 	htable = htable_create(
 			7,  /* 2^7 bins in the hash table */
 			offsetof(struct task_struct, id),
@@ -80,55 +58,63 @@ sys_task_get_myid(id_t __user *id)
 }
 
 static bool
-is_user_id(id_t id)
+ktask_id_ok(id_t id)
 {
-	return (id >= TASK_MIN_ID) && (id <= TASK_MAX_ID);
+	return (id >= KTASK_MIN_ID) && (id <= KTASK_MAX_ID);
 }
 
+
 static bool
-is_kernel_id(id_t id)
+utask_id_ok(id_t id)
 {
-	return (id >= KERNEL_TASK_MIN_ID) && (id <= KERNEL_TASK_MAX_ID);
+	return (id >= UTASK_MIN_ID) && (id <= UTASK_MAX_ID);
 }
 
 static id_t
-alloc_id(
-	id_t			id_request,
-	const start_state_t *	start_state
-)
+next_id_inc(id_t *next_id)
 {
-	bool is_kernel_task = (start_state->aspace_id == KERNEL_ASPACE_ID);
-	id_t id;
+	if      (*next_id == KTASK_MAX_ID) *next_id = KTASK_MIN_ID;
+	else if (*next_id == UTASK_MAX_ID) *next_id = UTASK_MIN_ID;
+	else                               *next_id += 1;
 
-	if (id_request != ANY_ID) {
-		if (is_kernel_task && !is_kernel_id(id_request))
-			return ERROR_ID;
-		if (!is_kernel_task && !is_user_id(id_request))
+	return *next_id;
+}
+
+static id_t
+id_alloc_any(bool is_ktask)
+{
+	id_t *next_id = is_ktask ? &ktask_next_id : &utask_next_id;
+	id_t stop_id = *next_id;
+	id_t task_id;
+
+	while (htable_lookup(htable, next_id) != NULL) {
+		if (next_id_inc(next_id) == stop_id)
 			return ERROR_ID;
 	}
 
-	id = idspace_alloc_id(
-			is_kernel_task ? kernel_idspace : user_idspace,
-			id_request
-	);
+	task_id = *next_id;
+	next_id_inc(next_id);
 
-	/* The idle task is a special case...
- 	 * There is one idle task per CPU, all with the same ID */
-	if ((id == ERROR_ID) && (id_request == IDLE_TASK_ID) && is_kernel_task)
-		id = IDLE_TASK_ID;
-
-	return id;
+	return task_id;
 }
 
-static void
-free_id(
-	id_t			id
-)
+static id_t
+id_alloc_specific(id_t task_id, bool is_ktask)
 {
-	idspace_free_id(
-		is_kernel_id(id) ? kernel_idspace : user_idspace,
-		id
-	);
+	if (is_ktask && (ktask_id_ok(task_id) == false))
+		return ERROR_ID;
+	if (!is_ktask && (utask_id_ok(task_id) == false))
+		return ERROR_ID;
+
+	/* The idle task is a special case...
+  	 * There is one idle task per CPU, each with the same task ID */
+	if (is_ktask && (task_id == IDLE_TASK_ID))
+		return task_id;
+
+	if (htable_lookup(htable, &task_id) != NULL)
+		return ERROR_ID;
+
+	return task_id;
 }
 
 struct task_struct *
@@ -141,8 +127,14 @@ __task_create(
 	union task_union *task_union;
 	struct task_struct *tsk;
 	unsigned long irqstate;
+	bool is_ktask = (start_state->aspace_id == KERNEL_ASPACE_ID);
 
-	task_id = alloc_id(start_state->task_id, start_state);
+	spin_lock_irqsave(&htable_lock, irqstate);
+
+	task_id = (start_state->task_id == ANY_ID)
+			? id_alloc_any(is_ktask)
+			: id_alloc_specific(start_state->task_id, is_ktask);
+
 	if (task_id == ERROR_ID)
 		goto fail_id_alloc;
 
@@ -193,14 +185,13 @@ __task_create(
 		goto fail_arch;
 
 	/* Add new task to a hash table, for quick lookups by ID */
-	spin_lock_irqsave(&htable_lock, irqstate);
 	htable_add(htable, tsk);
-	spin_unlock_irqrestore(&htable_lock, irqstate);
 
 	/* Setup aliases needed for Linux compatibility layer */
 	tsk->comm = tsk->name;
 	tsk->mm   = tsk->aspace;
 
+	spin_unlock_irqrestore(&htable_lock, irqstate);
 	return tsk;  /* Success! */
 
 fail_arch:
@@ -210,8 +201,8 @@ fail_cpumask:
 fail_aspace:
 	kmem_free_pages(task_union, TASK_ORDER);
 fail_task_alloc:
-	free_id(task_id);
 fail_id_alloc:
+	spin_unlock_irqrestore(&htable_lock, irqstate);
 	return NULL;
 }
 

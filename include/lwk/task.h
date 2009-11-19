@@ -13,21 +13,21 @@
 
 /** \group User-space task IDs
  * Valid user-space task IDs are in interval
- * [TASK_MIN_ID, TASK_MAX_ID].
+ * [UTASK_MIN_ID, UTASK_MAX_ID].
  *
  * \note This interval must not overlap with the kernel-space
- *       ID interval [KERNEL_TASK_MIN_ID, KERNEL_TASK_MAX_ID].
+ *       ID interval [KTASK_MIN_ID, KTASK_MAX_ID].
  * @{
  */
 #define TASK_ID_USER_BIT               15  /* support 2^15 user-space tasks */
-#define TASK_MIN_ID                    (1 << TASK_ID_USER_BIT)
-#define TASK_MAX_ID                    TASK_MIN_ID + (1 << TASK_ID_USER_BIT) - 1
+#define UTASK_MIN_ID                   (1 << TASK_ID_USER_BIT)
+#define UTASK_MAX_ID                   UTASK_MIN_ID + (1 << TASK_ID_USER_BIT) - 1
 
 /**
  * ID of the init_task, the first user-level task.
  * Put it at the top of the user-space ID interval to keep it out of the way.
  */
-#define INIT_TASK_ID                   TASK_MAX_ID
+#define INIT_TASK_ID                   UTASK_MAX_ID
 //@}
 
 /** \group Task states
@@ -199,19 +199,19 @@ extern struct aspace bootstrap_aspace;
 
 /** \group Kernel-space task IDs
  * Valid kernel-space task IDs are in interval
- * [KERNEL_TASK_MIN_ID, KERNEL_TASK_MAX_ID].
+ * [KTASK_MIN_ID, KTASK_MAX_ID].
  *
  * \note This interval must not overlap with the user-space
- *       ID interval [TASK_MIN_ID, TASK_MAX_ID].
+ *       ID interval [UTASK_MIN_ID, UTASK_MAX_ID].
  * @{
  */
-#define KERNEL_TASK_MIN_ID   0
-#define KERNEL_TASK_MAX_ID   (1 << TASK_ID_USER_BIT) - 1
+#define KTASK_MIN_ID         0
+#define KTASK_MAX_ID         (1 << TASK_ID_USER_BIT) - 1
 
 /**
  * ID of the idle task.
  */
-#define IDLE_TASK_ID         KERNEL_TASK_MIN_ID
+#define IDLE_TASK_ID         KTASK_MIN_ID
 //@}
 
 /**
