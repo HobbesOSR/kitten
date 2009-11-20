@@ -5,7 +5,6 @@
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <lwk/smp.h>
-#include <arch/uaccess.h>
 
 /**
  * Hash table used to lookup task structures by ID.
@@ -39,21 +38,6 @@ int
 task_get_myid(id_t *id)
 {
 	*id = current->id;
-	return 0;
-}
-
-int
-sys_task_get_myid(id_t __user *id)
-{
-	int status;
-	id_t _id;
-
-	if ((status = task_get_myid(&_id)) != 0)
-		return status;
-
-	if (id && copy_to_user(id, &_id, sizeof(*id)))
-		return -EFAULT;
-
 	return 0;
 }
 
@@ -225,31 +209,6 @@ task_create(const start_state_t *start_state, id_t *task_id)
 }
 
 int
-sys_task_create(const start_state_t __user *start_state, id_t __user *task_id)
-{
-	int status;
-	start_state_t _start_state;
-	id_t _task_id;
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if (copy_from_user(&_start_state, start_state, sizeof(_start_state)))
-		return -EFAULT;
-
-	if (_start_state.aspace_id == KERNEL_ASPACE_ID)
-		return -EINVAL;
-
-	if ((status = task_create(&_start_state, &_task_id)) != 0)
-		return status;
-
-	if (task_id && copy_to_user(task_id, &_task_id, sizeof(_task_id)))
-		return -EFAULT;
-
-	return 0;
-}
-
-int
 task_exit(int status)
 {
 	/* Mark the task as exited...
@@ -262,25 +221,6 @@ task_exit(int status)
 }
 
 int
-sys_task_exit(int status)
-{
-	return task_exit(status);
-}
-
-int
-task_yield(void)
-{
-	schedule();
-	return 0;
-}
-
-int
-sys_task_yield(void)
-{
-	return task_yield();
-}
-
-int
 task_get_cpu(id_t *cpu_id)
 {
 	*cpu_id = current->cpu_id;
@@ -288,39 +228,9 @@ task_get_cpu(id_t *cpu_id)
 }
 
 int
-sys_task_get_cpu(id_t __user *cpu_id)
-{
-	int status;
-	id_t _cpu_id;
-
-	if ((status = task_get_cpu(&_cpu_id)) != 0)
-		return status;
-
-	if (cpu_id && copy_to_user(cpu_id, &_cpu_id, sizeof(*cpu_id)))
-		return -EFAULT;
-
-	return 0;
-}
-
-int
 task_get_cpumask(user_cpumask_t *cpumask)
 {
 	*cpumask = cpumask_kernel2user(&current->cpumask);
-	return 0;
-}
-
-int
-sys_task_get_cpumask(user_cpumask_t __user *cpumask)
-{
-	int status;
-	user_cpumask_t _cpumask;
-
-	if ((status = task_get_cpumask(&_cpumask)) != 0)
-		return status;
-
-	if (cpumask && copy_to_user(cpumask, &_cpumask, sizeof(*cpumask)))
-		return -EFAULT;
-
 	return 0;
 }
 

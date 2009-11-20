@@ -3,6 +3,7 @@
  */
 #include <lwk/kernel.h>
 #include <lwk/spinlock.h>
+#include <lwk/smp.h>
 #include <lwk/percpu.h>
 #include <lwk/aspace.h>
 #include <lwk/sched.h>

@@ -1,7 +1,6 @@
 #ifndef _LWK_CACHE_H
 #define _LWK_CACHE_H
 
-#include <lwk/kernel.h>
 #include <arch/cache.h>
 
 #ifndef L1_CACHE_ALIGN

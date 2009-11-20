@@ -11,7 +11,6 @@
 #include <lwk/cpuinfo.h>
 #include <lwk/pmem.h>
 #include <lwk/tlbflush.h>
-#include <arch/uaccess.h>
 
 /**
  * ID space used to allocate address space IDs.
@@ -163,13 +162,6 @@ lookup_and_lock_two(id_t a, id_t b,
 	return 0;
 }
 
-static bool
-id_ok(id_t id)
-{
-	return ((id >= ASPACE_MIN_ID) && (id <= ASPACE_MAX_ID));
-}
-
-
 /**
  * Initialize the address space subsystem.
  *
@@ -216,21 +208,6 @@ int
 aspace_get_myid(id_t *id)
 {
 	*id = current->aspace->id;
-	return 0;
-}
-
-int
-sys_aspace_get_myid(id_t __user *id)
-{
-	int status;
-	id_t _id;
-
-	if ((status = aspace_get_myid(&_id)) != 0)
-		return status;
-
-	if (id && copy_to_user(id, &_id, sizeof(_id)))
-		return -EFAULT;
-
 	return 0;
 }
 
@@ -306,32 +283,6 @@ error1:
 }
 
 int
-sys_aspace_create(id_t id_request, const char __user *name, id_t __user *id)
-{
-	int status;
-	char _name[16];
-	id_t _id;
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if ((id_request != ANY_ID) && !id_ok(id_request))
-		return -EINVAL;
-
-	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)
-		return -EFAULT;
-	_name[sizeof(_name) - 1] = '\0';
-
-	if ((status = aspace_create(id_request, _name, &_id)) != 0)
-		return status;
-
-	if (id && copy_to_user(id, &_id, sizeof(_id)))
-		return -EFAULT;
-
-	return 0;
-}
-
-int
 aspace_destroy(id_t id)
 {
 	struct aspace *aspace;
@@ -383,16 +334,6 @@ aspace_destroy(id_t id)
 	idspace_free_id(idspace, aspace->id);
 	kmem_free(aspace);
 	return 0;
-}
-
-int
-sys_aspace_destroy(id_t id)
-{
-	if (current->uid != 0)
-		return -EPERM;
-	if (!id_ok(id))
-		return -EINVAL;
-	return aspace_destroy(id);
 }
 
 /**
@@ -471,29 +412,6 @@ aspace_find_hole(id_t id,
 	return status;
 }
 
-int
-sys_aspace_find_hole(id_t id,
-                     vaddr_t start_hint, size_t extent, size_t alignment,
-                     vaddr_t __user *start)
-{
-	vaddr_t _start;
-	int status;
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if (!id_ok(id))
-		return -EINVAL;
-
-	status = aspace_find_hole(id, start_hint, extent, alignment, &_start);
-	if (status)
-		return status;
-	
-	if (start && copy_to_user(start, &_start, sizeof(_start)))
-		return -EFAULT;
-
-	return 0;
-}
 
 int
 __aspace_add_region(struct aspace *aspace,
@@ -606,28 +524,6 @@ aspace_add_region(id_t id,
 }
 
 int
-sys_aspace_add_region(id_t id,
-                      vaddr_t start, size_t extent,
-                      vmflags_t flags, vmpagesize_t pagesz,
-                      const char __user *name)
-{
-	char _name[16];
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if (!id_ok(id))
-		return -EINVAL;
-
-	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)
-		return -EFAULT;
-	_name[sizeof(_name) - 1] = '\0';
-
-	return aspace_add_region(id, start, extent, flags, pagesz, _name);
-}
-
-
-int
 __aspace_del_region(struct aspace *aspace, vaddr_t start, size_t extent)
 {
 	int status;
@@ -673,19 +569,8 @@ aspace_del_region(id_t id, vaddr_t start, size_t extent)
 }
 
 int
-sys_aspace_del_region(id_t id, vaddr_t start, size_t extent)
-{
-	if (current->uid != 0)
-		return -EPERM;
-	if (!id_ok(id))
-		return -EINVAL;
-	return aspace_del_region(id, start, extent);
-}
-
-static int
-map_pmem(struct aspace *aspace,
-         paddr_t pmem, vaddr_t start, size_t extent,
-         bool umem_only)
+__aspace_map_pmem(struct aspace *aspace,
+                  paddr_t pmem, vaddr_t start, size_t extent)
 {
 	int status;
 	struct region *rgn;
@@ -693,16 +578,9 @@ map_pmem(struct aspace *aspace,
 	if (!aspace)
 		return -EINVAL;
 
-	if (umem_only &&
-	    !pmem_is_type(PMEM_TYPE_UMEM, pmem, extent) &&
-	    !pmem_is_type(PMEM_TYPE_INIT_TASK, pmem, extent))
-	{
-		printk(KERN_WARNING
-		       "User-space tried to map non-UMEM "
-		       "(pmem=0x%lx, extent=0x%lx).\n",
-		       pmem, extent);
+	if ((get_cpu_var(umem_only) == true) &&
+	    (pmem_is_type(PMEM_TYPE_UMEM, pmem, extent) == false))
 		return -EPERM;
-	}
 
 	while (extent) {
 		/* Find region covering the address */
@@ -753,10 +631,8 @@ map_pmem(struct aspace *aspace,
 	return 0;
 }
 
-static int
-map_pmem_locked(id_t id,
-                paddr_t pmem, vaddr_t start, size_t extent,
-                bool umem_only)
+int
+aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
 {
 	int status;
 	struct aspace *aspace;
@@ -764,33 +640,10 @@ map_pmem_locked(id_t id,
 
 	local_irq_save(irqstate);
 	aspace = lookup_and_lock(id);
-	status = map_pmem(aspace, pmem, start, extent, umem_only);
+	status = __aspace_map_pmem(aspace, pmem, start, extent);
 	if (aspace) spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
 	return status;
-}
-
-int
-__aspace_map_pmem(struct aspace *aspace,
-                  paddr_t pmem, vaddr_t start, size_t extent)
-{
-	return map_pmem(aspace, pmem, start, extent, false);
-}
-
-int
-aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
-{
-	return map_pmem_locked(id, pmem, start, extent, false);
-}
-
-int
-sys_aspace_map_pmem(id_t id, paddr_t pmem, vaddr_t start, size_t extent)
-{
-	if (current->uid != 0)
-		return -EPERM;
-	if (!id_ok(id))
-		return -EINVAL;
-	return map_pmem_locked(id, pmem, start, extent, true);
 }
 
 int
@@ -860,16 +713,6 @@ aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
 }
 
 int
-sys_aspace_unmap_pmem(id_t id, vaddr_t start, size_t extent)
-{
-	if (current->uid != 0)
-		return -EPERM;
-	if (!id_ok(id))
-		return -EINVAL;
-	return aspace_unmap_pmem(id, start, extent);
-}
-
-int
 __aspace_smartmap(struct aspace *src, struct aspace *dst,
                   vaddr_t start, size_t extent)
 {
@@ -934,16 +777,6 @@ aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
 }
 
 int
-sys_aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
-{
-	if (current->uid != 0)
-		return -EPERM;
-	if (!id_ok(src) || !id_ok(dst))
-		return -EINVAL;
-	return aspace_smartmap(src, dst, start, extent);
-}
-
-int
 __aspace_unsmartmap(struct aspace *src, struct aspace *dst)
 {
 	struct region *rgn;
@@ -988,16 +821,6 @@ aspace_unsmartmap(id_t src, id_t dst)
 }
 
 int
-sys_aspace_unsmartmap(id_t src, id_t dst)
-{
-	if (current->uid != 0)
-		return -EPERM;
-	if (!id_ok(src) || !id_ok(dst))
-		return -EINVAL;
-	return aspace_unsmartmap(src, dst);
-}
-
-int
 __aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 {
 	if (!aspace)
@@ -1022,21 +845,6 @@ aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t *paddr)
 	local_irq_restore(irqstate);
 
 	return status;
-}
-
-int
-sys_aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t __user *paddr)
-{
-	int status;
-	paddr_t _paddr;
-
-	if ((status = aspace_virt_to_phys(id, vaddr, &_paddr)) != 0)
-		return status;
-
-	if (paddr && copy_to_user(paddr, &_paddr, sizeof(_paddr)))
-		return -EFAULT;
-
-	return 0;
 }
 
 int
@@ -1070,10 +878,4 @@ aspace_dump2console(id_t id)
 	spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
 	return 0;
-}
-
-int
-sys_aspace_dump2console(id_t id)
-{
-	return aspace_dump2console(id);
 }

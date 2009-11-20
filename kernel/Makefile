@@ -28,4 +28,5 @@ obj-y := \
 
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
+obj-y += lwk_syscalls/
 obj-y += linux_syscalls/

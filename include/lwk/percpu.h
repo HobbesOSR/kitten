@@ -1,6 +1,6 @@
 #ifndef _LWK_PERCPU_H
 #define _LWK_PERCPU_H
-#include <lwk/smp.h>
+#include <lwk/cpu.h>
 #include <lwk/string.h>
 #include <arch/percpu.h>
 
@@ -33,7 +33,5 @@ extern void free_percpu(const void *);
 
 /* Simple wrapper for the common case: zeros memory. */
 #define alloc_percpu(type)	((type *)(__alloc_percpu(sizeof(type))))
-
-extern void setup_per_cpu_areas(void);
 
 #endif /* _LWK_PERCPU_H */

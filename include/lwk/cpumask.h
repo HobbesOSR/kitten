@@ -129,7 +129,7 @@ typedef struct {
 
 #ifdef __KERNEL__
 
-#include <lwk/kernel.h>
+#include <lwk/macros.h>
 #include <lwk/bitmap.h>
 #include <lwk/cpu.h>
 

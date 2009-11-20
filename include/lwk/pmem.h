@@ -3,6 +3,8 @@
 #ifndef _LWK_PMEM_H
 #define _LWK_PMEM_H
 
+#include <lwk/types.h>
+
 /**
  * Physical memory types.
  */

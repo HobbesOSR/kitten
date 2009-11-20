@@ -1,8 +1,9 @@
 #include <lwk/kernel.h>
-#include <lwk/task.h>
+#include <lwk/sched.h>
 
 int
 sys_sched_yield(void)
 {
-	return task_yield();
+	schedule();
+	return 0;
 }

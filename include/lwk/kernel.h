@@ -17,6 +17,7 @@
 #include <lwk/utsname.h>
 #include <lwk/print.h>
 #include <lwk/log2.h>
+#include <lwk/percpu.h>
 #include <arch/byteorder.h>
 #include <arch/bug.h>
 
@@ -47,5 +48,7 @@ extern int sscanf(const char *, const char *, ...)
 	__attribute__ ((format (scanf, 2, 3)));
 extern int vsscanf(const char *, const char *, va_list)
 	__attribute__ ((format (scanf, 2, 0)));
+
+DECLARE_PER_CPU(bool, umem_only);
 
 #endif

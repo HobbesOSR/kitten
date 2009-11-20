@@ -99,9 +99,6 @@ extern int task_get_myid(id_t *id);
 extern int task_create(const start_state_t *start_state, id_t *task_id);
 extern int task_exit(int status);
 
-/** Yield the CPU. */
-extern int task_yield(void);
-
 /** Returns the CPU that the task is currently executing on. */
 extern int task_get_cpu(id_t *cpu_id);
 
@@ -269,7 +266,6 @@ extern int sys_task_get_myid(id_t __user *id);
 extern int sys_task_create(const start_state_t __user *start_state,
                            id_t __user *task_id);
 extern int sys_task_exit(int status);
-extern int sys_task_yield(void);
 extern int sys_task_get_cpu(id_t __user *cpu_id);
 extern int sys_task_get_cpumask(user_cpumask_t __user *cpumask);
 //@}

@@ -230,22 +230,8 @@ pmem_add(const struct pmem_region *rgn)
 	return status;
 }
 
-int
-sys_pmem_add(const struct pmem_region __user *rgn)
-{
-	struct pmem_region _rgn;
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if (copy_from_user(&_rgn, rgn, sizeof(_rgn)))
-		return -EINVAL;
-
-	return pmem_add(&_rgn);
-}
-
 static int
-__pmem_update(const struct pmem_region *update, bool umem_only)
+__pmem_update(const struct pmem_region *update)
 {
 	struct pmem_list_entry *entry, *head, *tail;
 	struct pmem_region overlap;
@@ -260,8 +246,7 @@ __pmem_update(const struct pmem_region *update, bool umem_only)
 		if (!calc_overlap(update, &entry->rgn, &overlap))
 			continue;
 
-		/* Jail user-space to PMEM_TYPE_UMEM regions */
-		if (umem_only) {
+		if (get_cpu_var(umem_only) == true) {
 			if (!entry->rgn.type_is_set
 			     || (entry->rgn.type != PMEM_TYPE_UMEM))
 				return -EPERM;
@@ -299,37 +284,17 @@ __pmem_update(const struct pmem_region *update, bool umem_only)
 	return 0;
 }
 
-static int
-_pmem_update(const struct pmem_region *update, bool umem_only)
+int
+pmem_update(const struct pmem_region *update)
 {
 	int status;
 	unsigned long irqstate;
 
 	spin_lock_irqsave(&pmem_list_lock, irqstate);
-	status = __pmem_update(update, umem_only);
+	status = __pmem_update(update);
 	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
 
 	return status;
-}
-
-int
-pmem_update(const struct pmem_region *update)
-{
-	return _pmem_update(update, false);
-}
-
-int
-sys_pmem_update(const struct pmem_region __user *update)
-{
-	struct pmem_region _update;
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if (copy_from_user(&_update, update, sizeof(_update)))
-		return -EINVAL;
-
-	return _pmem_update(&_update, true);
 }
 
 static int
@@ -370,28 +335,6 @@ pmem_query(const struct pmem_region *query, struct pmem_region *result)
 	return status;
 }
 
-int
-sys_pmem_query(const struct pmem_region __user *query,
-               struct pmem_region __user *result)
-{
-	struct pmem_region _query, _result;
-	int status;
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if (copy_from_user(&_query, query, sizeof(_query)))
-		return -EINVAL;
-
-	if ((status = pmem_query(&_query, &_result)) != 0)
-		return status;
-
-	if (result && copy_to_user(result, &_result, sizeof(*result)))
-		return -EINVAL;
-
-	return 0;
-}
-
 static int
 __pmem_alloc(size_t size, size_t alignment,
              const struct pmem_region *constraint,
@@ -426,7 +369,7 @@ __pmem_alloc(size_t size, size_t alignment,
 			candidate.end = candidate.start + size;
 			candidate.allocated_is_set = true;
 			candidate.allocated = true;
-			status = __pmem_update(&candidate, false);
+			status = __pmem_update(&candidate);
 			BUG_ON(status);
 			zero_pmem(&candidate);
 			if (result)
@@ -454,27 +397,4 @@ pmem_alloc(size_t size, size_t alignment,
 	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
 
 	return status;
-}
-
-int
-sys_pmem_alloc(size_t size, size_t alignment,
-               const struct pmem_region __user *constraint,
-               struct pmem_region __user *result)
-{
-	struct pmem_region _constraint, _result;
-	int status;
-
-	if (current->uid != 0)
-		return -EPERM;
-
-	if (copy_from_user(&_constraint, constraint, sizeof(_constraint)))
-		return -EINVAL;
-
-	if ((status = pmem_alloc(size, alignment, &_constraint, &_result)) != 0)
-		return status;
-
-	if (result && copy_to_user(result, &_result, sizeof(*result)))
-		return -EINVAL;
-
-	return 0;
 }

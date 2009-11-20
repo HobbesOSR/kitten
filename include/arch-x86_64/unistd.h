@@ -660,21 +660,21 @@ __SYSCALL(__NR_aspace_del_region, sys_aspace_del_region)
 __SYSCALL(__NR_aspace_map_pmem, sys_aspace_map_pmem)
 #define __NR_aspace_unmap_pmem	297
 __SYSCALL(__NR_aspace_unmap_pmem, sys_aspace_unmap_pmem)
-#define __NR_aspace_smartmap	298
+#define __NR_aspace_virt_to_phys 298
+__SYSCALL(__NR_aspace_virt_to_phys, sys_aspace_virt_to_phys)
+#define __NR_aspace_smartmap	299
 __SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
-#define __NR_aspace_unsmartmap	299
+#define __NR_aspace_unsmartmap	300
 __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
-#define __NR_aspace_dump2console 300
+#define __NR_aspace_dump2console 301
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
 
-#define __NR_task_get_myid      301
+#define __NR_task_get_myid      302
 __SYSCALL(__NR_task_get_myid, sys_task_get_myid)
-#define __NR_task_create        302
+#define __NR_task_create        303
 __SYSCALL(__NR_task_create, sys_task_create)
-#define __NR_task_exit          303
+#define __NR_task_exit          304
 __SYSCALL(__NR_task_exit, sys_task_exit)
-#define __NR_task_yield         304
-__SYSCALL(__NR_task_yield, sys_task_yield)
 #define __NR_task_get_cpu       305
 __SYSCALL(__NR_task_get_cpu, sys_task_get_cpu)
 #define __NR_task_get_cpumask   306
@@ -683,10 +683,7 @@ __SYSCALL(__NR_task_get_cpumask, sys_task_get_cpumask)
 #define __NR_elf_hwcap          307
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
 
-#define __NR_aspace_virt_to_phys 308
-__SYSCALL(__NR_aspace_virt_to_phys, sys_aspace_virt_to_phys)
-
-#define __NR_v3_start_guest	309
+#define __NR_v3_start_guest	308
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
 
 #endif

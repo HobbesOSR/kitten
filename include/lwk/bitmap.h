@@ -6,7 +6,6 @@
 #include <lwk/types.h>
 #include <lwk/bitops.h>
 #include <lwk/string.h>
-#include <lwk/kernel.h>
 
 /*
  * bitmaps provide bit arrays that consume one or more unsigned

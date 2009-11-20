@@ -24,6 +24,7 @@
 #include <lwk/random.h>
 #include <lwk/linux_compat.h>
 
+
 /**
  * Pristine copy of the LWK boot command line.
  *
@@ -31,6 +32,16 @@
  * address space.
  */
 char lwk_command_line[COMMAND_LINE_SIZE];
+
+
+/**
+ * Per-CPU flag used to limit memory accesses to only user memory.
+ *
+ * Certain system calls set this to true before calling downstream functions
+ * to limit the downstream functions to only accessing user memory. It must
+ * be reset to false before returning.
+ */
+DEFINE_PER_CPU(bool, umem_only);
 
 
 /**

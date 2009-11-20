@@ -6,7 +6,6 @@
  *		Alan Cox. <alan@redhat.com>
  */
 
-#include <lwk/kernel.h>
 #include <lwk/compiler.h>
 #include <arch/smp.h>
 
