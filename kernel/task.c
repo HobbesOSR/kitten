@@ -268,11 +268,14 @@ __kthread_create_on_cpu(
 
 	start_state_t state = {
 		.task_id	= ANY_ID,
+		.user_id	= 0,
+		.group_id	= 0,
 		.aspace_id	= KERNEL_ASPACE_ID,
+		.cpu_id		= cpu_id,
+		.cpumask	= user_cpumask_of_cpu(cpu_id),
 		.entry_point	= (vaddr_t) kthread_trampoline,
 		.arg[0]		= (uintptr_t) entry_point,
 		.arg[1]		= (uintptr_t) arg,
-		.cpu_id		= cpu_id,
 	};
 
 	strlcpy(state.task_name, name, sizeof(state.task_name));
