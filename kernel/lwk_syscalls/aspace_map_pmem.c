@@ -14,7 +14,7 @@ sys_aspace_map_pmem(
 	if (current->uid != 0)
 		return -EPERM;
 
-	if (id == KERNEL_ASPACE_ID)
+	if ((id < UASPACE_MIN_ID) || (id > UASPACE_MAX_ID))
 		return -EINVAL;
 
 	/* Only allow user-space to map user memory */

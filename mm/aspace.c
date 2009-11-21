@@ -5,7 +5,6 @@
 #include <lwk/spinlock.h>
 #include <lwk/string.h>
 #include <lwk/aspace.h>
-#include <lwk/idspace.h>
 #include <lwk/htable.h>
 #include <lwk/log2.h>
 #include <lwk/cpuinfo.h>
@@ -13,19 +12,15 @@
 #include <lwk/tlbflush.h>
 
 /**
- * ID space used to allocate address space IDs.
- */
-static struct idspace *idspace;
-
-/**
  * Hash table used to lookup address space structures by ID.
  */
 static struct htable *htable;
+static DEFINE_SPINLOCK(htable_lock);
 
 /**
- * Lock for serializing access to the hash table.
+ * Where to start looking for ANY_ID create address space requests.
  */
-static DEFINE_SPINLOCK(htable_lock);
+static id_t aspace_next_id = UASPACE_MIN_ID;
 
 /**
  * Memory region structure. A memory region represents a contiguous region 
@@ -173,14 +168,6 @@ aspace_subsys_init(void)
 {
 	int status;
 
-	/* Create an ID space for allocating address space IDs */
-	idspace = idspace_create(
-			ASPACE_MIN_ID,
-			ASPACE_MAX_ID
-	);
-	if (!idspace)
-		panic("Failed to create aspace ID space.");
-
 	/* Create a hash table that will be used for quick ID->aspace lookups */
 	htable = htable_create(
 			7,  /* 2^7 bins in the hash table */
@@ -211,25 +198,66 @@ aspace_get_myid(id_t *id)
 	return 0;
 }
 
+static id_t
+id_inc(id_t id)
+{
+	if (++id > UASPACE_MAX_ID)
+		id = UASPACE_MIN_ID;
+	return id;
+}
+
+static id_t
+id_alloc_any(void)
+{
+	id_t id;
+	id_t stop_id = aspace_next_id;
+
+	while (htable_lookup(htable, &aspace_next_id) != NULL) {
+		aspace_next_id = id_inc(aspace_next_id);
+		if (aspace_next_id == stop_id)
+			return ERROR_ID;
+	}
+
+	id = aspace_next_id;
+	aspace_next_id = id_inc(aspace_next_id);
+
+	return id;
+}
+
+static id_t
+id_alloc_specific(id_t id)
+{
+	if (htable_lookup(htable, &id) != NULL)
+		return ERROR_ID;
+
+	return id;
+}
+
 int
 aspace_create(id_t id_request, const char *name, id_t *id)
 {
 	int status, i;
 	id_t new_id;
 	struct aspace *aspace;
-	unsigned long flags;
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&htable_lock, irqstate);
 
 	if (id_request == KERNEL_ASPACE_ID) {
 		new_id = KERNEL_ASPACE_ID;
 	} else {
-		new_id = idspace_alloc_id(idspace, id_request);
-		if (new_id == ERROR_ID)
-			return -ENOENT;
+		new_id = (id_request == ANY_ID)
+				? id_alloc_any()
+				: id_alloc_specific(id_request);
+		if (new_id == ERROR_ID) {
+			status = -EEXIST;
+			goto fail_id_alloc;
+		}
 	}
 
 	if ((aspace = kmem_alloc(sizeof(*aspace))) == NULL) {
-		idspace_free_id(idspace, new_id);
-		return -ENOMEM;
+		status = -ENOMEM;
+		goto fail_aspace_alloc;
 	}
 
 	/*
@@ -255,7 +283,7 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 		"kernel"
 	);
 	if (status)
-		goto error1;
+		goto fail_add_region;
 
 	/* Initialize futex queues, used to hold addr space private futexes */
 	for (i = 0; i < ARRAY_SIZE(aspace->futex_queues); i++)
@@ -263,22 +291,23 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 
 	/* Do architecture-specific initialization */
 	if ((status = arch_aspace_create(aspace)) != 0)
-		goto error2;
+		goto fail_arch;
 
 	/* Add new address space to a hash table, for quick lookups by ID */
-	spin_lock_irqsave(&htable_lock, flags);
 	htable_add(htable, aspace);
-	spin_unlock_irqrestore(&htable_lock, flags);
 
 	if (id)
-		*id = new_id;
+		*id = aspace->id;
+
+	spin_unlock_irqrestore(&htable_lock, irqstate);
 	return 0;
 
-error2:
-	BUG_ON(__aspace_del_region(aspace,PAGE_OFFSET,ULONG_MAX-PAGE_OFFSET+1));
-error1:
-	idspace_free_id(idspace, aspace->id);
+fail_arch:
+fail_add_region:
 	kmem_free(aspace);
+fail_aspace_alloc:
+fail_id_alloc:
+	spin_unlock_irqrestore(&htable_lock, irqstate);
 	return status;
 }
 
@@ -331,7 +360,6 @@ aspace_destroy(id_t id)
 		kmem_free(rgn);
 	}
 	arch_aspace_destroy(aspace);
-	idspace_free_id(idspace, aspace->id);
 	kmem_free(aspace);
 	return 0;
 }

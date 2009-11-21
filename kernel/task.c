@@ -44,14 +44,7 @@ task_get_myid(id_t *id)
 static bool
 ktask_id_ok(id_t id)
 {
-	return (id >= KTASK_MIN_ID) && (id <= KTASK_MAX_ID);
-}
-
-
-static bool
-utask_id_ok(id_t id)
-{
-	return (id >= UTASK_MIN_ID) && (id <= UTASK_MAX_ID);
+	return ((id >= KTASK_MIN_ID) && (id <= KTASK_MAX_ID));
 }
 
 static id_t
@@ -86,8 +79,6 @@ static id_t
 id_alloc_specific(id_t task_id, bool is_ktask)
 {
 	if (is_ktask && (ktask_id_ok(task_id) == false))
-		return ERROR_ID;
-	if (!is_ktask && (utask_id_ok(task_id) == false))
 		return ERROR_ID;
 
 	/* The idle task is a special case...

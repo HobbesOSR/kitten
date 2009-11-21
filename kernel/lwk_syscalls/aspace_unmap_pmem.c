@@ -10,7 +10,7 @@ sys_aspace_unmap_pmem(
 	if (current->uid != 0)
 		return -EPERM;
 
-	if (id == KERNEL_ASPACE_ID)
+	if ((id < UASPACE_MIN_ID) || (id > UASPACE_MAX_ID))
 		return -EINVAL;
 
 	return aspace_unmap_pmem(id, start, extent);

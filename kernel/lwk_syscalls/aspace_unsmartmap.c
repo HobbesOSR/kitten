@@ -9,7 +9,10 @@ sys_aspace_unsmartmap(
 	if (current->uid != 0)
 		return -EPERM;
 
-	if ((src == KERNEL_ASPACE_ID) || (dst == KERNEL_ASPACE_ID))
+	if ((src < UASPACE_MIN_ID) || (src > UASPACE_MAX_ID))
+		return -EINVAL;
+
+	if ((dst < UASPACE_MIN_ID) || (dst > UASPACE_MAX_ID))
 		return -EINVAL;
 
 	return aspace_unsmartmap(src, dst);

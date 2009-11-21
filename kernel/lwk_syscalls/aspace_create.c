@@ -15,7 +15,8 @@ sys_aspace_create(
 	if (current->uid != 0)
 		return -EPERM;
 
-	if (id == KERNEL_ASPACE_ID)
+	if ((id_request != ANY_ID) &&
+	    ((id_request < UASPACE_MIN_ID) || (id_request > UASPACE_MAX_ID)))
 		return -EINVAL;
 
 	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)

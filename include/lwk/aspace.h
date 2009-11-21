@@ -15,20 +15,20 @@
 
 /** \name User-space address space IDs
  * Valid user-space address space IDs are in interval
- * [ASPACE_MIN_ID, ASPACE_MAX_ID].
+ * [UASPACE_MIN_ID, UASPACE_MAX_ID].
  *
  * \note This interval must not include KERNEL_ASPACE_ID.
  * @{
  */
 #define ASPACE_ID_USER_BIT      15  /* support 2^15 user-space aspaces */
-#define ASPACE_MIN_ID           (1 << ASPACE_ID_USER_BIT)
-#define ASPACE_MAX_ID           ASPACE_MIN_ID + (1 << ASPACE_ID_USER_BIT) - 1
+#define UASPACE_MIN_ID          (1 << ASPACE_ID_USER_BIT)
+#define UASPACE_MAX_ID          UASPACE_MIN_ID + (1 << ASPACE_ID_USER_BIT) - 1
 
 /**
  * ID of the address space used by the init_task, the first user-level task.
  * Put it at the top of the user-space ID interval to keep it out of the way.
  */
-#define INIT_ASPACE_ID          ASPACE_MAX_ID
+#define INIT_ASPACE_ID          UASPACE_MAX_ID
 //@}
 
 /** \name Virtual memory flags.

@@ -16,7 +16,7 @@ sys_aspace_add_region(
 	if (current->uid != 0)
 		return -EPERM;
 
-	if (id == KERNEL_ASPACE_ID)
+	if ((id < UASPACE_MIN_ID) || (id > UASPACE_MAX_ID))
 		return -EINVAL;
 
 	if (strncpy_from_user(_name, name, sizeof(_name)) < 0)

@@ -56,7 +56,7 @@ main(int argc, char *argv[], char *envp[])
 		elf_load(
 			(void *)elf_image,
 			"smartmap_app",
-			ASPACE_MIN_ID + rank,
+			UASPACE_MIN_ID + rank,
 			PAGE_SIZE,
 			(1024 * 1024 * 16),  /* heap_size  = 16 MB */
 			(1024 * 256),        /* stack_size = 256 KB */
