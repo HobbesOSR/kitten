@@ -437,7 +437,6 @@ scripts: scripts_basic include/config/MARKER
 scripts_basic: include/lwk/autoconf.h
 
 # Objects we will link into vmlwk / subdirs we need to visit
-init-y		:= init/
 drivers-y	:= drivers/
 net-y		:= net/
 libs-y		:= lib/
@@ -569,7 +568,7 @@ libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/libv3vee.a
 #   ^
 #   |
 #   +-< $(vmlwk-init)
-#   |   +--< init/version.o + more
+#   |   +--< kernel/version.o + more
 #   |
 #   +--< $(vmlwk-main)
 #   |    +--< driver/built-in.o + more
@@ -608,7 +607,7 @@ quiet_cmd_vmlwk_version = GEN     .version
 	  mv .version .old_version;			\
 	  expr 0$$(cat .old_version) + 1 >.version;	\
 	fi;						\
-	$(MAKE) $(build)=init
+	$(MAKE) $(build)=kernel
 
 # Generate System.map
 quiet_cmd_sysmap = SYSMAP 

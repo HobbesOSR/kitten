@@ -10,7 +10,7 @@ config X86
 	bool
 	default y
 
-source "init/Kconfig"
+source "kernel/Kconfig"
 
 menu "Target Configuration"
 
