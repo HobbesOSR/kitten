@@ -51,7 +51,7 @@ CFLAGS += $(cflags-y)
 
 AFLAGS += -m64 $(call as-option,-Wa$(comma)--divide)
 
-head-y := arch/x86_64/kernel/head.o arch/x86_64/kernel/head64.o arch/x86_64/kernel/init_task.o
+head-y := arch/x86_64/kernel/head.o arch/x86_64/kernel/head64.o arch/x86_64/kernel/bootstrap.o
 
 libs-y += arch/x86_64/lib/
 core-y += arch/x86_64/kernel/	\

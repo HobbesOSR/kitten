@@ -1,5 +1,5 @@
 #include <lwk/task.h>
-#include <lwk/init_task.h>
+#include <lwk/bootstrap.h>
 #include <lwk/percpu.h>
 #include <lwk/aspace.h>
 #include <arch/processor.h>
@@ -36,4 +36,3 @@ union task_union bootstrap_task_union
  */
 DEFINE_PER_CPU(struct tss_struct, tss)
 ____cacheline_internodealigned_in_smp = BOOTSTRAP_TSS;
-

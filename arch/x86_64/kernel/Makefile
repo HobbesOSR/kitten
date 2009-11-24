@@ -1,4 +1,4 @@
-extra-y		:= head.o head64.o init_task.o vmlwk.lds
+extra-y		:= head.o head64.o bootstrap.o vmlwk.lds
 EXTRA_FLAGS	:= -traditional
 obj-y		:= setup.o e820.o cpuinfo.o resource.o \
 		   mpparse.o entry.o show.o syscall.o i387.o cpu.o \

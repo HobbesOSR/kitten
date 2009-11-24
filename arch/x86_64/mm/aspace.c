@@ -3,7 +3,7 @@
 #include <lwk/kernel.h>
 #include <lwk/aspace.h>
 #include <lwk/task.h>
-#include <lwk/init_task.h>
+#include <lwk/bootstrap.h>
 #include <arch/page.h>      /* TODO: remove */
 #include <arch/pgtable.h>   /* TODO: remove */
 #include <arch/page_table.h>

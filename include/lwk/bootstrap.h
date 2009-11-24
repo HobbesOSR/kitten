@@ -1,13 +1,13 @@
-#ifndef _LWK_INIT_TASK_H
-#define _LWK_INIT_TASK_H
+#ifndef _LWK_BOOTSTRAP_H
+#define _LWK_BOOTSTRAP_H
 
 /**
- * Initializes architecture-independent fields in the initial address space.
+ * Initializes architecture-independent fields in the bootstrap address space.
  */
 #define BOOTSTRAP_ASPACE(name)
 
 /**
- * Initializes architecture-independent fields in the initial task structure.
+ * Initializes architecture-independent fields in the bootstrap task structure.
  */
 #define BOOTSTRAP_TASK(task_info) \
 	.id		=	0,					\
