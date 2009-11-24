@@ -532,8 +532,8 @@ export MODLIB
 
 
 ifeq ($(KBUILD_EXTMOD),)
-#core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
-core-y		+= kernel/ mm/ modules/
+#core-y		+= kernel/ fs/ ipc/ security/ crypto/ block/
+core-y		+= kernel/ modules/
 
 vmlwk-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
@@ -572,7 +572,7 @@ libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/libv3vee.a
 #   |   +--< init/version.o + more
 #   |
 #   +--< $(vmlwk-main)
-#   |    +--< driver/built-in.o mm/built-in.o + more
+#   |    +--< driver/built-in.o + more
 #   |
 #   +-< kallsyms.o (see description in CONFIG_KALLSYMS section)
 #
