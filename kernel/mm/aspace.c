@@ -607,7 +607,8 @@ __aspace_map_pmem(struct aspace *aspace,
 		return -EINVAL;
 
 	if ((get_cpu_var(umem_only) == true) &&
-	    (pmem_is_type(PMEM_TYPE_UMEM, pmem, extent) == false))
+	    (pmem_is_type(PMEM_TYPE_UMEM, pmem, extent) == false) &&
+	    (pmem_is_type(PMEM_TYPE_INIT_TASK, pmem, extent) == false))
 		return -EPERM;
 
 	while (extent) {
