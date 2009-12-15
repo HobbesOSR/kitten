@@ -18,6 +18,7 @@
  */
 
 #include <lwk/kernel.h>
+#include <lwk/smp.h>
 #include <lwk/pmem.h>
 #include <lwk/string.h>
 #include <lwk/cpuinfo.h>
@@ -40,15 +41,9 @@
 
 
 /**
- * Palacios management and control function pointers.
- */
-static struct v3_ctrl_ops v3_ops = {};
-
-/**
  * Global guest state... only one guest is supported currently.
  */
 static struct guest_info * g_vm_guest = NULL;
-static id_t palacios_cpu_map[NR_CPUS];
 static struct guest_info * irq_to_guest_map[NUM_IDT_ENTRIES];
 static paddr_t guest_iso_start;
 static size_t guest_iso_size;
@@ -227,20 +222,19 @@ palacios_paddr_to_vaddr(
  */
 static void 
 palacios_xcall(
-	int			logical_cpu, 
+	int			cpu_id, 
 	void			(*fn)(void *arg),
 	void *			arg
 )
 {
-	id_t guest_cpu = palacios_cpu_map[logical_cpu];
 	cpumask_t cpu_mask;
 
 	cpus_clear(cpu_mask);
-	cpu_set(guest_cpu, cpu_mask);
+	cpu_set(cpu_id, cpu_mask);
 
 	printk(KERN_DEBUG
 		"Palacios making xcall to cpu %d from cpu %d.\n",
-		guest_cpu, current->cpu_id);
+		cpu_id, current->cpu_id);
 
 	xcall_function(cpu_mask, fn, arg, 1);
 }
@@ -250,15 +244,22 @@ palacios_xcall(
  */
 static void 
 palacios_start_thread_on_cpu(
-	int			logical_cpu, 
+	int			cpu_id, 
 	int			(*fn)(void * arg), 
 	void *			arg, 
 	char *			thread_name
 )
 {
-	id_t guest_cpu = palacios_cpu_map[logical_cpu];
+	kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
+}
 
-	kthread_create_on_cpu(guest_cpu, fn, arg, thread_name);
+/**
+ * Returns the CPU ID that the caller is running on.
+ */
+static unsigned int 
+palacios_get_cpu(void) 
+{
+	return this_cpu;
 }
 
 /**
@@ -275,14 +276,11 @@ palacios_start_thread_on_cpu(
 static void
 palacios_interrupt_cpu(
 	struct guest_info *	vm, 
-	int			logical_cpu
+	int			cpu_id
 )
 {
-	id_t guest_cpu = palacios_cpu_map[logical_cpu];
-
-	if (guest_cpu != current->cpu_id) {
-		xcall_reschedule(guest_cpu);
-	}
+	if (cpu_id != current->cpu_id)
+		xcall_reschedule(cpu_id);
 }
 
 /**
@@ -438,6 +436,7 @@ struct v3_os_hooks palacios_os_hooks = {
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 
 	.mutex_unlock		= palacios_mutex_unlock,
+	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,
 	.start_thread_on_cpu	= palacios_start_thread_on_cpu,
@@ -449,39 +448,17 @@ struct v3_os_hooks palacios_os_hooks = {
 static int
 palacios_run_guest(void *arg)
 {
-	struct v3_vm_config vm_config = {
-		.mem_size		= (128 * 1024 * 1024),
-		.enable_pci		= 1,
-		
-		.guest_cpu              = 0,
-		
- 		.pri_disk_type          = CDROM,
- 		.pri_disk_con           = RAM,
- 		.pri_disk_info.ram.data_ptr = (void *) __va(guest_iso_start), 
-		.pri_disk_info.ram.size = guest_iso_size,
+	struct guest_info * vm_info = v3_create_vm((void *) __va(guest_iso_start));
+	
+	if (!vm_info) {
+		printk(KERN_ERR "Could not create guest context\n");
+		return -1;
+	}
 
-		/*
- 		.pri_disk_type          = CDROM,
- 		.pri_disk_con           = NETWORK,
-		.pri_disk_info.net.ip_str = "172.22.0.1",
-		.pri_disk_info.net.port = 9502,
-		.pri_disk_info.net.disk_name = "ubuntu-cd",
-
-		.sec_disk_type          = HARDDRIVE,
-		.sec_disk_con           = NETWORK,
-		.sec_disk_info.net.ip_str = "172.22.0.1",
-		.sec_disk_info.net.port = 9502,
-		.sec_disk_info.net.disk_name = "ubuntu-hdd"
-		*/
-        };
-
-	struct guest_info * vm_info = v3_ops.allocate_guest();
-
-	v3_ops.init_guest(vm_info, &vm_config);
 	g_vm_guest = vm_info;
 
 	printk(KERN_INFO "Starting Guest OS...\n");
-	v3_ops.start_guest(vm_info);
+	v3_start_vm(vm_info, 0);
 
 	return 0;
 }
@@ -536,17 +513,11 @@ palacios_keyboard_interrupt(
 static int
 palacios_init(void)
 {
-	int i;
 
 	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
 
-	memset(palacios_cpu_map, 0, sizeof(palacios_cpu_map));
 
-	for (i = 0; i < NR_CPUS; i++) {
-		palacios_cpu_map[i] = i;
-	}
-
-	Init_V3(&palacios_os_hooks, &v3_ops, cpus_weight(cpu_online_map));
+	Init_V3(&palacios_os_hooks, cpus_weight(cpu_online_map));
 
 	irq_request(
 		IRQ1_VECTOR,
@@ -562,4 +533,3 @@ palacios_init(void)
 }
 
 DRIVER_INIT( "module", palacios_init );
-
