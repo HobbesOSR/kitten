@@ -37,6 +37,7 @@
 #include <arch/io.h>
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
+#include <arch/io_apic.h>
 
 
 
@@ -322,6 +323,15 @@ palacios_hook_interrupt(
 	       __func__, vector, vm);
 
 	irq_to_guest_map[vector] = vm;
+
+	/*
+	 * NOTE: Normally PCI devices are supposed to be level sensitive,
+	 *       but we need them to be edge sensitive so that they are
+	 *       properly latched by Palacios.  Leaving them as level
+	 *       sensitive would lead to an interrupt storm.
+	 */
+	ioapic_set_trigger_for_vector(vector, ioapic_edge_sensitive);
+
 	set_idtvec_handler(vector, palacios_dispatch_interrupt);
 
 	return 0;

@@ -33,6 +33,9 @@ extern void __init ioapic_init(void);
 extern struct ioapic_info *ioapic_info_store(unsigned int phys_id, paddr_t phys_addr);
 extern struct ioapic_info *ioapic_info_lookup(unsigned int phys_id);
 extern int ioapic_pcidev_vector(int bus, int slot, int pin);
+extern int ioapic_mask_vector(unsigned int vector);
+extern int ioapic_unmask_vector(unsigned int vector);
+extern int ioapic_set_trigger_for_vector(unsigned int vector, unsigned int trigger);
 extern void ioapic_dump(void);
 
 /*

@@ -29,6 +29,26 @@ unsigned int ioapic_num;
 struct ioapic_info ioapic_info[MAX_IO_APICS];
 
 /**
+ * Keeps track of the next IDT vector to assign to an IO APIC pin.
+ */
+static unsigned int vector = IRQ0_VECTOR;
+
+/**
+ * Structure used to store information about an IDT vector.
+ */
+struct vector_info {
+	bool         valid;
+	unsigned int ioapic_index;
+	unsigned int pin;
+};
+
+/**
+ * Information about each IDT vector that the OS has assigned/associated
+ * with an IO APIC pin.
+ */
+static struct vector_info vector_info[NUM_IDT_ENTRIES];
+
+/**
  * Resource entries for the IO APIC memory mapping.
  */
 static struct resource *ioapic_resources;
@@ -170,11 +190,6 @@ ioapic_get_num_pins(unsigned int ioapic_index)
 }
 
 /**
- * This keeps track of the next vector to assign to an IO APIC pin.
- */
-static unsigned int vector = IRQ0_VECTOR;
-
-/**
  * Initializes the primary IO APIC (the one connected to the ISA IRQs).
  */
 static void __init
@@ -214,7 +229,11 @@ ioapic_init_pins(
 		if ((vector - IRQ0_VECTOR) <= pin) {
 			vector = IRQ0_VECTOR + pin;
 		}
-		pin_info->os_assigned_vector = vector++;
+		pin_info->os_assigned_vector     = vector;
+		vector_info[vector].valid        = true;
+		vector_info[vector].ioapic_index = ioapic_index;
+		vector_info[vector].pin          = pin;
+		++vector;
 
 		/* Program the pin */
 		cfg = ioapic_read_pin(ioapic_index, pin);
@@ -333,7 +352,7 @@ ioapic_info_lookup(unsigned int phys_id)
 }
 
 /**
- * Determines the vector the OS assigned to a PCI device.
+ * Determines the IDT vector the OS assigned to a PCI device.
  */
 int
 ioapic_pcidev_vector(int bus, int slot, int pin)
@@ -367,6 +386,80 @@ ioapic_pcidev_vector(int bus, int slot, int pin)
 	}
 
 	return -1;
+}
+
+/**
+ * Masks (disables) the IO APIC pin associated with the specified IDT vector.
+ */
+int
+ioapic_mask_vector(unsigned int vector)
+{
+	struct vector_info *vi;
+
+	if (vector >= NUM_IDT_ENTRIES)
+		return -EINVAL;
+
+	vi = &vector_info[vector];
+
+	if (vi->valid == false)
+		return -ENOENT;
+
+	ioapic_mask_pin(vi->ioapic_index, vi->pin);
+
+	return 0;
+}
+
+/**
+ * Unmasks the IO APIC pin associated with the specified IDT vector.
+ */
+int
+ioapic_unmask_vector(unsigned int vector)
+{
+	struct vector_info *vi;
+
+	if (vector >= NUM_IDT_ENTRIES)
+		return -EINVAL;
+
+	vi = &vector_info[vector];
+
+	if (vi->valid == false)
+		return -ENOENT;
+
+	ioapic_unmask_pin(vi->ioapic_index, vi->pin);
+
+	return 0;
+}
+
+/**
+ * Sets the trigger mode of the IO APIC pin associated with the specified IDT vector.
+ */
+int
+ioapic_set_trigger_for_vector(unsigned int vector, unsigned int trigger)
+{
+	struct vector_info *vi;
+	struct IO_APIC_route_entry cfg;
+
+	if (vector >= NUM_IDT_ENTRIES)
+		return -EINVAL;
+
+	if ((trigger != ioapic_edge_sensitive) && (trigger != ioapic_level_sensitive))
+		return -EINVAL;
+
+	vi = &vector_info[vector];
+
+	if (vi->valid == false)
+		return -ENOENT;
+
+	ioapic_mask_pin(vi->ioapic_index, vi->pin);
+
+	cfg = ioapic_read_pin(vi->ioapic_index, vi->pin);
+	cfg.trigger = trigger;
+
+	ioapic_write_pin(vi->ioapic_index, vi->pin, cfg);
+
+	ioapic_unmask_pin(vi->ioapic_index, vi->pin);
+
+	return 0;
 }
 
 /**
@@ -420,4 +513,3 @@ ioapic_dump(void)
 		}
 	}
 }
-
