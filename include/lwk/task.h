@@ -115,6 +115,7 @@ extern int task_get_cpumask(user_cpumask_t *cpumask);
 #include <lwk/seqlock.h>
 #include <lwk/signal.h>
 #include <lwk/idspace.h>
+#include <lwk/rlimit.h>
 #include <arch/atomic.h>
 #include <arch/page.h>
 #include <arch/processor.h>
@@ -129,6 +130,9 @@ extern int task_get_cpumask(user_cpumask_t *cpumask);
 
 //@}
 
+struct signal_struct {
+	struct rlimit rlim[RLIM_NLIMITS];
+};
 
 /**
  * Signal handler structure.
@@ -160,6 +164,7 @@ struct task_struct {
 	gid_t                   gid;             /* group ID */
 
 	struct aspace *         aspace;          /* Address space task is in */
+	struct signal_struct *  signal;
 	struct sighand_struct * sighand;         /* signal handler info */
 
 	cpumask_t               cpumask;         /* CPUs this task may migrate

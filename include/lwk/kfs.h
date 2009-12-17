@@ -7,6 +7,25 @@
 #include <lwk/list.h>
 #include <lwk/task.h>
 
+/* fcntl.h */
+#ifndef O_NONBLOCK
+#define O_NONBLOCK      00004000
+#endif
+
+extern int get_unused_fd(void);
+extern void put_unused_fd(unsigned int fd);
+extern struct kfs_file *fget(unsigned int fd);
+extern void fput(struct kfs_file *);
+extern void fd_install(unsigned int fd, struct kfs_file *file);
+
+struct poll_table_struct;
+
+struct inode
+{
+	dev_t                   i_rdev;
+	struct cdev             *i_cdev;
+};
+struct vm_area_struct;
 
 struct kfs_fops
 {
@@ -16,14 +35,16 @@ struct kfs_fops
 		unsigned		create_mode
 	);
 
-	int (*open)(
+/*	int (*open)(
 		struct kfs_file *
 	);
+*/
+	int (*open) (struct inode *, struct kfs_file *);
 
 	int (*close)(
 		struct kfs_file *
 	);
-
+/*
 	ssize_t (*read)(
 		struct kfs_file *,
 		uaddr_t,
@@ -35,12 +56,21 @@ struct kfs_fops
 		uaddr_t,
 		size_t
 	);
-
+*/
+	ssize_t (*write) (struct kfs_file *, const char __user *, size_t, loff_t *);
+	ssize_t (*read) (struct kfs_file *, char __user *, size_t, loff_t *);
+	long (*unlocked_ioctl) (struct kfs_file *, unsigned int, unsigned long);
+	long (*compat_ioctl) (struct kfs_file *, unsigned int, unsigned long);
+	int (*fasync) (int, struct kfs_file *, int);
+	int (*mmap) (struct kfs_file *, struct vm_area_struct *);
 	int (*ioctl)(
 		struct kfs_file *,
 		int request,
 		uaddr_t
 	);
+	struct module *owner;
+	unsigned int (*poll) (struct kfs_file *, struct poll_table_struct *);
+	int (*release) (struct inode *, struct kfs_file *);
 };
 
 /** Do nothing file operations */
@@ -60,6 +90,10 @@ struct kfs_file
 	void *			priv;
 	size_t			priv_len;
 	unsigned		refs;
+	/* for IB support */
+	void *                  private_data;
+	unsigned int            f_flags;
+
 };
 
 

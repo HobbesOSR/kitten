@@ -92,7 +92,7 @@ dma_mapping_error(struct device *dev, dma_addr_t dma_addr);
 extern int
 dma_get_cache_alignment(void);
 
-struct dma_attrs { };
+struct dma_attrs;
 
 #define dma_map_single_attrs(dev, cpu_addr, size, dir, attrs) \
 	dma_map_single(dev, cpu_addr, size, dir)

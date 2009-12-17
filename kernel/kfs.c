@@ -76,8 +76,9 @@ struct kfs_file * kfs_root;
 static ssize_t
 kfs_default_read(
 	struct kfs_file *	dir,
-	uaddr_t			buf,
-	size_t			len
+	char *		buf,
+	size_t			len,
+	loff_t *                off
 )
 {
 	size_t offset = 0;
@@ -108,8 +109,9 @@ done:
 static ssize_t
 kfs_default_write(
 	struct kfs_file *	file,
-	uaddr_t			buf,
-	size_t			len
+	const char *			buf,
+	size_t			len,
+	loff_t * 		off
 )
 {
 	return -1;
@@ -138,8 +140,9 @@ struct kfs_fops kfs_default_fops =
 static ssize_t
 kfs_int_read(
 	struct kfs_file *	file,
-	uaddr_t			u_buf,
-	size_t			len
+	char *			u_buf,
+	size_t			len,
+	loff_t * 		off
 )
 {
 	char buf[ len > 32 ? 32 : len ];
@@ -169,8 +172,9 @@ struct kfs_fops kfs_int_fops =
 static ssize_t
 kfs_string_read(
 	struct kfs_file *	file,
-	uaddr_t			u_buf,
-	size_t			len
+	char *			u_buf,
+	size_t			len,
+	loff_t *		off
 )
 {
 	if( len > file->priv_len )
@@ -393,6 +397,41 @@ kfs_mkdir(
 	);
 }
 
+int get_unused_fd(void) 
+{
+	int fd;
+	for( fd=0 ; fd<MAX_FILES ; fd++ )
+	{
+		if( !current->files[fd] )
+			break;
+	}
+
+	if( fd == MAX_FILES )
+		return -EMFILE;
+	return fd;
+}
+
+void put_unused_fd(unsigned int fd)
+{
+	current->files[fd] = NULL;
+}
+
+struct kfs_file *fget(unsigned int fd)
+{
+	return current->files[fd];
+}
+
+void fput(struct kfs_file *file)
+{
+	/* sync an release everything tied to the file */
+}
+
+void fd_install(unsigned int fd, struct kfs_file *file)
+{
+        current->files[fd] = file;
+}
+
+
 
 /** Open system call
  *
@@ -421,19 +460,10 @@ sys_open(
 	if( !file )
 		return -ENOENT;
 
-	// Find the first free fd
-	int fd;
-	for( fd=0 ; fd<MAX_FILES ; fd++ )
-	{
-		if( !current->files[fd] )
-			break;
-	}
-
-	if( fd == MAX_FILES )
-		return -EMFILE;
+	int fd = get_unused_fd();
 
 	if( file->fops->open
-	&&  file->fops->open( file ) < 0 )
+	&&  file->fops->open( NULL, file ) < 0 )
 		return -EACCES;
 
 	current->files[fd] = file;
@@ -456,7 +486,7 @@ sys_write(
 		return -EBADF;
 
 	if( file->fops->write )
-		return file->fops->write( file, buf, len );
+		return file->fops->write( file, (const char __user *)buf, len , (loff_t *) NULL );
 
 	printk( KERN_WARNING "%s: fd %d has no write operation\n", __func__, fd );
 	return -EBADF;
@@ -475,7 +505,7 @@ sys_read(
 		return -EBADF;
 
 	if( file->fops->read )
-		return file->fops->read( file, buf, len );
+		return file->fops->read( file, (char *)buf, len, NULL );
 
 	printk( KERN_WARNING "%s: fd %d has no read operation\n", __func__, fd );
 	return -EBADF;

@@ -11,6 +11,9 @@
 /* finds the offset of a buffer in the page it starts in */
 #define offset_in_page(p)	((unsigned long)(p) & ~PAGE_MASK)
 
+#define mm_struct aspace
+extern void mmput(struct mm_struct *);
+
 struct page {
 	void *virtual;
 	int order;
