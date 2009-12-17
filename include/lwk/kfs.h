@@ -24,6 +24,7 @@ struct inode
 {
 	dev_t                   i_rdev;
 	struct cdev             *i_cdev;
+	struct list_head        i_devices;
 };
 struct vm_area_struct;
 

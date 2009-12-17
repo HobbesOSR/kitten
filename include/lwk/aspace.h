@@ -120,11 +120,11 @@ aspace_map_region_anywhere(
 
 #ifdef __KERNEL__
 
+#include <lwk/semaphore.h>
 #include <lwk/spinlock.h>
 #include <lwk/list.h>
 #include <lwk/init.h>
 #include <arch/aspace.h>
-
 /**
  * Address space structure.
  *
@@ -180,7 +180,10 @@ struct aspace {
 	 * as anonymous mmap() calls are made. The kernel takes care to prevent
 	 * mmap_brk from extending into the UNIX data segment (see brk above).
 	 */
-	vaddr_t            mmap_brk;
+	vaddr_t             mmap_brk;
+	/* For IB support*/
+	struct semaphore mmap_sem;
+	unsigned long locked_vm;
 	// @}
 
 	/**

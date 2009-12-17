@@ -4,6 +4,7 @@
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/sched.h>
+#include <linux/capability.h>
 #include <asm/uaccess.h>
 
 /**
@@ -23,3 +24,53 @@ void *kmemdup(const void *src, size_t len, gfp_t gfp)
 	return p;
 }
 EXPORT_SYMBOL(kmemdup);
+
+int can_do_mlock(void)
+{
+        if (capable(CAP_IPC_LOCK))
+                return 1;
+        if (current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur != 0)
+                return 1;
+        return 0;
+}
+
+struct mm_struct *get_task_mm(struct task_struct *task)
+{
+        struct mm_struct *mm;
+
+        //task_lock(task);
+        mm = task->mm;
+        if (mm) {
+        /* needs kitten implementation 
+        if (task->flags & PF_KTHREAD)
+                        mm = NULL;
+                else
+                        atomic_inc(&mm->mm_users);
+        }
+	*/
+	}
+	//task_unlock(task);
+        return mm;
+}
+void mmput(struct mm_struct *mm)
+{
+ /* Drop mmap !?*/
+}
+
+/* page-writeback.c */
+int set_page_dirty(struct page *page)
+{
+	/* Has kitten dirty pages method ?*/
+	return 0;
+}
+
+int set_page_dirty_lock(struct page *page)
+{
+        int ret;
+
+        //lock_page_nosync(page);
+        ret = set_page_dirty(page);
+        //unlock_page(page);
+        return ret;
+}
+

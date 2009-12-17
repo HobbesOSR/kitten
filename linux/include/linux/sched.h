@@ -18,6 +18,7 @@ cond_resched(void)
 }
 
 /* Grab a reference to a task's mm, if it is not already going away */
+#define mm_struct aspace
 extern struct mm_struct *get_task_mm(struct task_struct *task);
 
 #endif

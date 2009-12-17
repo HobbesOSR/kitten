@@ -8,6 +8,8 @@
 
 #include <linux/kdev_t.h>
 
+#define CHRDEV_MAJOR_HASH_SIZE     255
+
 /* file is open for reading */
 #define FMODE_READ              ((__force fmode_t)1)
 /* file is open for writing */

@@ -9,7 +9,6 @@
 #ifndef __LINUX_SEMAPHORE_H
 #define __LINUX_SEMAPHORE_H
 
-#include <lwk/linux_compat.h>
 #include <lwk/list.h>
 #include <lwk/spinlock.h>
 
@@ -19,6 +18,8 @@ struct semaphore {
 	unsigned int		count;
 	struct list_head	wait_list;
 };
+
+#include <lwk/linux_compat.h>
 
 #define __SEMAPHORE_INITIALIZER(name, n)				\
 {									\

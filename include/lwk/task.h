@@ -188,7 +188,7 @@ struct task_struct {
 
 	/* Stuff needed for the Linux compatibility layer */
 	char *			comm;            /* The task's name */
-	void *			mm;              /* Address space task is in */
+	struct aspace *		mm;              /* Address space task is in */
 };
 
 union task_union {
