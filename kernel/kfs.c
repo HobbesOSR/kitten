@@ -162,7 +162,7 @@ kfs_int_read(
 }
 
 
-struct kfs_fops kfs_int_fops = 
+struct kfs_fops kfs_int_fops =
 {
 	.read		= kfs_int_read,
 	.close		= kfs_default_close,
@@ -187,7 +187,7 @@ kfs_string_read(
 }
 
 
-struct kfs_fops kfs_string_fops = 
+struct kfs_fops kfs_string_fops =
 {
 	.read		= kfs_string_read,
 	.close		= kfs_default_close,
@@ -244,6 +244,7 @@ kfs_mkdirent(
 	file->priv_len	= priv_len;
 	file->mode	= mode;
 	file->refs	= 0;
+	file->inode	= NULL;
 
 	if( name )
 	{
@@ -325,7 +326,7 @@ kfs_lookup(
 		if( !child )
 			child = kfs_mkdirent(
 				root,
-				dirname, 
+				dirname,
 				&kfs_default_fops,
 				create_mode,
 				0,
@@ -397,7 +398,7 @@ kfs_mkdir(
 	);
 }
 
-int get_unused_fd(void) 
+int get_unused_fd(void)
 {
 	int fd;
 	for( fd=0 ; fd<MAX_FILES ; fd++ )
@@ -428,7 +429,7 @@ void fput(struct kfs_file *file)
 
 void fd_install(unsigned int fd, struct kfs_file *file)
 {
-        current->files[fd] = file;
+	current->files[fd] = file;
 }
 
 
@@ -450,7 +451,7 @@ sys_open(
 
 	if(1)
 	printk( "%s: Openning '%s' flags %x mode %x\n",
-		__func__, 
+		__func__,
 		pathname,
 		flags,
 		mode
@@ -463,7 +464,7 @@ sys_open(
 	int fd = get_unused_fd();
 
 	if( file->fops->open
-	&&  file->fops->open( NULL, file ) < 0 )
+	&&  file->fops->open( file->inode , file ) < 0 )
 		return -EACCES;
 
 	current->files[fd] = file;

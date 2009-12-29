@@ -81,6 +81,17 @@ dev_zero_fops = {
 	.write		= dev_null_rw, // do not acccept any writes
 };
 
+#include <linux/kdev_t.h>
+extern struct kfs_fops def_chr_fops;
+
+void create_dev(char * path, int major, int minor) {
+	struct kfs_file * file;
+        //printk("mknod: %s - %d:%d\n", path, major, minor);
+
+        file = kfs_create( path, &def_chr_fops, 0777, 0, 0 );
+        file->inode = kmem_alloc( sizeof(struct inode) );
+        file->inode->i_rdev = MKDEV(major, minor);
+}
 
 int
 devfs_init(void)

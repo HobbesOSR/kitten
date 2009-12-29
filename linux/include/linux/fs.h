@@ -31,10 +31,10 @@
 #define FMODE_WRITE_IOCTL       ((__force fmode_t)256)
 
 #define fops_get(fops) \
-        (((fops) && try_module_get((fops)->owner) ? (fops) : NULL))
+	(((fops) && try_module_get((fops)->owner) ? (fops) : NULL))
 #define fops_put(fops) \
-        do { if (fops) module_put((fops)->owner); } while(0)
- 
+	do { if (fops) module_put((fops)->owner); } while(0)
+
 struct vfsmount;
 
 struct super_block {
@@ -45,6 +45,7 @@ struct file_system_type {
 	int (*get_sb) (struct file_system_type *, int,
 		const char *, void *, struct vfsmount *);
 	void (*kill_sb) (struct super_block *);
+	struct file_system_type * next;
 };
 
 struct super_operations {
@@ -64,10 +65,10 @@ extern int register_chrdev_region(dev_t, unsigned, const char *);
 extern void unregister_chrdev_region(dev_t, unsigned);
 
 struct fasync_struct {
-        int     magic;
-        int     fa_fd;
-        struct  fasync_struct   *fa_next; /* singly linked list */
-        struct  file            *fa_file;
+	int     magic;
+	int     fa_fd;
+	struct  fasync_struct   *fa_next; /* singly linked list */
+	struct  file            *fa_file;
 };
 
 /* SMP safe fasync helpers: */
@@ -79,9 +80,8 @@ extern void __kill_fasync(struct fasync_struct *, int, int);
 
 static inline unsigned iminor(const struct inode *inode)
 {
-        return MINOR(inode->i_rdev);
+	return MINOR(inode->i_rdev);
 }
 
 
 #endif /* _LINUX_FS_H */
-

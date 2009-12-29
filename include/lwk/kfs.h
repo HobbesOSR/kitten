@@ -94,7 +94,7 @@ struct kfs_file
 	/* for IB support */
 	void *                  private_data;
 	unsigned int            f_flags;
-
+	struct inode *          inode;
 };
 
 

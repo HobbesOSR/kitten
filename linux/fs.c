@@ -65,6 +65,17 @@ struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
 static struct file_system_type *file_systems;
 static DEFINE_RWLOCK(file_systems_lock);
 
+
+static struct file_system_type **find_filesystem(const char *name, unsigned len)
+{
+	struct file_system_type **p;
+	for (p=&file_systems; *p; p=&(*p)->next)
+		if (strlen((*p)->name) == len &&
+		    strncmp((*p)->name, name, len) == 0)
+			break;
+	return p;
+}
+
 /**
  *	register_filesystem - register a new filesystem
  *	@fs: the file system structure
@@ -84,11 +95,11 @@ int register_filesystem(struct file_system_type * fs)
 	struct file_system_type ** p;
 
 	BUG_ON(strchr(fs->name, '.'));
-//	if (fs->next)
-//		return -EBUSY;
+	if (fs->next)
+		return -EBUSY;
 //	INIT_LIST_HEAD(&fs->fs_supers);
-//	write_lock(&file_systems_lock);
-//	p = find_filesystem(fs->name, strlen(fs->name));
+	write_lock(&file_systems_lock);
+	p = find_filesystem(fs->name, strlen(fs->name));
 	if (*p)
 		res = -EBUSY;
 	else
@@ -119,12 +130,12 @@ int unregister_filesystem(struct file_system_type * fs)
 	tmp = &file_systems;
 	while (*tmp) {
 		if (fs == *tmp) {
-//			*tmp = fs->next;
-//			fs->next = NULL;
+			*tmp = fs->next;
+			fs->next = NULL;
 			write_unlock(&file_systems_lock);
 			return 0;
 		}
-//		tmp = &(*tmp)->next;
+		tmp = &(*tmp)->next;
 	}
 	write_unlock(&file_systems_lock);
 	return -EINVAL;

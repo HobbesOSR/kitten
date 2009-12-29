@@ -9,7 +9,7 @@ struct kfs_file *sysfs_root;
 
 /**
  * sysfs_create_dir - create a directory for an object.
- * @kobj:    object we're creating directory for. 
+ * @kobj:    object we're creating directory for.
  */
 int
 sysfs_create_dir(
@@ -25,6 +25,7 @@ sysfs_create_dir(
 	else
 		parent = sysfs_root;
 
+	//printk(KERN_WARNING "%s creating dir %s/%s\n", __FUNCTION__,parent->name,kobject_name(kobj));
 	kobj->sd = kfs_mkdirent(
 		parent,
 		kobject_name(kobj),
@@ -36,6 +37,55 @@ sysfs_create_dir(
 
 	return (kobj->sd == NULL);
 }
+
+
+struct sysfs_buffer {
+	struct sysfs_ops        * ops;
+	struct kobject          * kobj;
+	struct attribute        * attr;
+};
+
+static ssize_t
+sysfs_read_file(struct kfs_file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char buffer[1024];
+	char *bufp = (char *) &buffer;
+	struct sysfs_buffer * sbuffer = file->private_data;
+	struct sysfs_ops * ops = sbuffer->ops;
+	struct kobject * kobj = sbuffer->kobj;
+	struct attribute * attr = sbuffer->attr;
+	loff_t pos = 0; // = *ppos;
+	size_t ret;
+
+	count = ops->show(kobj, attr, bufp);
+	if (pos < 0)
+		return -EINVAL;
+	if (!count)
+		return 0;
+	ret = copy_to_user(buf, bufp + pos, count);
+	if (ret == count)
+		return -EFAULT;
+	count -= ret;
+	//*ppos = pos + count;
+	return count;
+}
+
+static int sysfs_open_file(struct inode *inode, struct kfs_file *file)
+{
+
+	if (file->private_data != NULL)
+		return 0;
+	else
+		return -ENODEV;
+
+
+}
+
+
+const struct kfs_fops sysfs_file_operations = {
+	.read = sysfs_read_file,
+	.open = sysfs_open_file,
+};
 
 
 /**
@@ -51,7 +101,32 @@ sysfs_create_file(
 {
 	BUG_ON(!kobj || !kobj->sd || !attr);
 
+
+	struct sysfs_buffer *buffer;
+	struct kfs_file *file;
+
 	/* TODO: Actually implement this! */
+	//printk(KERN_WARNING "%s creating %s %s\n", __FUNCTION__,kobject_name(kobj), attr->name);
+	file = kfs_mkdirent(
+		kobj->sd,
+		attr->name,
+		&sysfs_file_operations,
+		attr->mode, // should be 0444 as we don't support writes..
+		NULL,
+		0
+	);
+
+	buffer = kzalloc(sizeof(struct sysfs_buffer), GFP_KERNEL);
+	buffer->kobj = kobj;
+	if (buffer->kobj->ktype && buffer->kobj->ktype->sysfs_ops) {
+		buffer->ops = buffer->kobj->ktype->sysfs_ops;
+	} else {
+		WARN(1, KERN_ERR "missing sysfs attribute operations for "
+			"kobject: %s\n", kobject_name(kobj));
+        }
+
+	buffer->attr = (struct attribute *) attr;
+	file->private_data = buffer;
 	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
 
 	return 0;
@@ -75,6 +150,8 @@ sysfs_create_link(
 
 	/* TODO: Actually implement this! */
 	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
+	//printk(KERN_WARNING "sysfs_create_link %s -> %s/%s\n", kobject_name(kobj),
+	//					kobject_name(target), name);
 
 	return 0;
 }

@@ -809,11 +809,21 @@ static struct kobject *device_to_dev_kobj(struct device *dev)
 	return kobj;
 }
 
+extern void create_dev(char * , int , int );
 static int device_create_sys_dev_entry(struct device *dev)
 {
 	struct kobject *kobj = device_to_dev_kobj(dev);
 	int error = 0;
 	char devt_str[15];
+	char devfs_path[256];
+
+        printk("mknod : sysfs %s | %s\n",kobject_name(dev->kobj.parent),
+		kobject_name(&dev->kobj) );
+
+	sprintf(devfs_path, "/dev/infiniband/%s", kobject_name(&dev->kobj) );
+	if (strcmp(kobject_name(kobj),"char") == 0) {	
+		create_dev(devfs_path, MAJOR(dev->devt), MINOR(dev->devt));
+	}
 
 	if (kobj) {
 		format_dev_t(devt_str, dev->devt);
