@@ -117,6 +117,7 @@ start_kernel()
  	 * Initialize the task scheduling subsystem.
  	 */
 	sched_subsys_init();
+	sched_add_task(current);  /* now safe to call schedule() */
 
 	/*
  	 * Initialize the task scheduling subsystem.
@@ -192,6 +193,7 @@ start_kernel()
 	if ((status = create_init_task()) != 0)
 		panic("Failed to create init_task (status=%d).", status);
 
+	current->state = TASK_EXIT_ZOMBIE;
 	schedule();  /* This should not return */
 	BUG();
 }

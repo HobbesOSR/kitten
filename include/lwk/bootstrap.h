@@ -12,6 +12,7 @@
 #define BOOTSTRAP_TASK(task_info) \
 	.id		=	0,					\
 	.name		=	"bootstrap",				\
+	.state		=	TASK_RUNNING,				\
 	.cpu_id		=	0,					\
 	.aspace		=	&bootstrap_aspace,			\
 	.sched_link	=	LIST_HEAD_INIT(task_info.sched_link),	\
