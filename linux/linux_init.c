@@ -18,9 +18,6 @@ extern void __init chrdev_init(void);
 int
 linux_kthread(void *arg)
 {
-	driver_init_by_name("linux", "*");
-	printk("Linux drivers initialized!\n");
-
 	while (1) {
 		/* TODO: should only wakeup when there is work to do */
 		run_workqueues();
@@ -43,6 +40,7 @@ linux_init(void)
 	late_initcall_pci_sysfs_init();
 	device_initcall_pci_init();
 	chrdev_init();
+	driver_init_by_name("linux", "*");
 
 	struct task_struct *tux = kthread_create(
 		linux_kthread,
