@@ -109,7 +109,7 @@ create_init_task(void)
 	/* TODO: should really do a kfs_open() once for each of the
 	   std fds ... and use appropriate flags and mode for each */
 	struct file * console;
-	if(kfs_open("/dev/console", 0, 0, &console ))
+	if(kfs_open_path("/dev/console", 0, 0, &console ))
 		panic( "Unable to open /dev/console?" );
 	new_task->files[ 0 ] = console;
 	new_task->files[ 1 ] = console;

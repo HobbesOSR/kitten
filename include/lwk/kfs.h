@@ -12,12 +12,6 @@
 #define O_NONBLOCK      00004000
 #endif
 
-extern int get_unused_fd(void);
-extern void put_unused_fd(unsigned int fd);
-extern struct file *fget(unsigned int fd);
-extern void fput(struct file *);
-extern void fd_install(unsigned int fd, struct file *file);
-
 struct poll_table_struct;
 
 struct inode
@@ -83,28 +77,6 @@ struct file
 	void *                  private_data;
 };
 
-
-extern struct inode *
-kfs_mkdirent(struct inode *parent,
-	     const char *name,
-	     const struct kfs_fops *fops,
-	     unsigned mode,
-	     void *priv,
-	     size_t priv_len);
-
-
-extern struct inode *
-kfs_create(const char *full_filename,
-	   const struct kfs_fops *fops,
-	   unsigned mode,
-	   void *priv,
-	   size_t priv_len);
-
-
-extern void
-kfs_destroy(struct inode *inode);
-
-
 static inline struct file *get_current_file(int fd)
 {
 	if( fd < 0 || fd > MAX_FILES )
@@ -112,15 +84,40 @@ static inline struct file *get_current_file(int fd)
 	return current->files[ fd ];
 }
 
-extern struct inode * kfs_root;
-
-extern struct inode *
-kfs_lookup(struct inode *root,
-	   const char *dirname,
-	   unsigned create_mode);
-extern int
-kfs_open(const char *pathname, int flags, mode_t mode, struct file **rv);
 extern void kfs_init(void);
+
+/* kfs inode manipulation */
+extern struct inode *kfs_mkdirent(struct inode *,
+				  const char *,
+				  const struct kfs_fops *,
+				  unsigned,
+				  void *,
+				  size_t);
+extern struct inode *kfs_create(const char *,
+				const struct kfs_fops *,
+				unsigned,
+				void *,
+				size_t);
+extern struct inode *kfs_lookup(struct inode *,
+				const char *,
+				unsigned);
+extern struct inode *kfs_mkdir(char *,
+			       unsigned);
+extern void kfs_destroy(struct inode *);
+
+/* kfs file manipulation */
+extern struct file *kfs_open(struct inode *, int flags, mode_t mode);
+extern void kfs_close(struct file *);
+extern int kfs_open_path(const char *pathname, int flags, mode_t mode,
+			 struct file **rv);
+/* generally useful file ops */
 extern int kfs_readdir(struct file *, uaddr_t, unsigned int);
 
-#endif
+/* current task file table manipulation */
+extern int get_unused_fd(void);
+extern void put_unused_fd(unsigned int fd);
+extern struct file *fget(unsigned int fd);
+extern void fput(struct file *);
+extern void fd_install(unsigned int fd, struct file *file);
+
+#endif /* _lwk_kfs_h_ */
