@@ -22,7 +22,7 @@ struct module;
 
 #ifdef __LWK__
 /** Remap the sysfs directory entry to a KFS file */
-#define sysfs_dirent kfs_file
+#define sysfs_dirent inode
 #endif
 
 /* FIXME

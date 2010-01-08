@@ -2,9 +2,8 @@
 #define _LINUX_FS_H
 
 #include <lwk/kfs.h>
-#define file            kfs_file
 #define file_operations kfs_fops
-#define f_op            fops
+#define f_op            inode->fops
 
 #include <linux/kdev_t.h>
 

@@ -458,7 +458,8 @@ int cdev_add(struct cdev *p, dev_t dev, unsigned count)
 {
 	p->dev = dev;
 	p->count = count;
-	return kobj_map(cdev_map, dev, count, NULL, exact_match, exact_lock, p);
+	return kobj_map(cdev_map, dev, count, NULL, exact_match, exact_lock,
+			p);
 }
 
 static void cdev_unmap(dev_t dev, unsigned count)

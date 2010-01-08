@@ -4,7 +4,7 @@
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
 
-struct kfs_file *sysfs_root;
+struct inode *sysfs_root;
 
 
 /**
@@ -30,14 +30,13 @@ sysfs_create_dir(
 		parent,
 		kobject_name(kobj),
 		&kfs_default_fops,
-		0777,
+		0777 | S_IFDIR,
 		NULL,
 		0
 	);
 
 	return (kobj->sd == NULL);
 }
-
 
 struct sysfs_buffer {
 	struct sysfs_ops        * ops;
@@ -46,11 +45,11 @@ struct sysfs_buffer {
 };
 
 static ssize_t
-sysfs_read_file(struct kfs_file *file, char __user *buf, size_t count, loff_t *ppos)
+sysfs_read_file(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
 	char buffer[1024];
 	char *bufp = (char *) &buffer;
-	struct sysfs_buffer * sbuffer = file->private_data;
+	struct sysfs_buffer * sbuffer = file->inode->priv;
 	struct sysfs_ops * ops = sbuffer->ops;
 	struct kobject * kobj = sbuffer->kobj;
 	struct attribute * attr = sbuffer->attr;
@@ -70,10 +69,9 @@ sysfs_read_file(struct kfs_file *file, char __user *buf, size_t count, loff_t *p
 	return count;
 }
 
-static int sysfs_open_file(struct inode *inode, struct kfs_file *file)
+static int sysfs_open_file(struct inode *inode, struct file *file)
 {
-
-	if (file->private_data != NULL)
+	if (file->inode->priv != NULL)
 		return 0;
 	else
 		return -ENODEV;
@@ -85,6 +83,7 @@ static int sysfs_open_file(struct inode *inode, struct kfs_file *file)
 const struct kfs_fops sysfs_file_operations = {
 	.read = sysfs_read_file,
 	.open = sysfs_open_file,
+	.readdir = kfs_readdir,
 };
 
 
@@ -103,20 +102,14 @@ sysfs_create_file(
 
 
 	struct sysfs_buffer *buffer;
-	struct kfs_file *file;
+	struct inode *inode;
 
 	/* TODO: Actually implement this! */
 	//printk(KERN_WARNING "%s creating %s %s\n", __FUNCTION__,kobject_name(kobj), attr->name);
-	file = kfs_mkdirent(
-		kobj->sd,
-		attr->name,
-		&sysfs_file_operations,
-		attr->mode, // should be 0444 as we don't support writes..
-		NULL,
-		0
-	);
 
 	buffer = kzalloc(sizeof(struct sysfs_buffer), GFP_KERNEL);
+	if(NULL == buffer)
+	  return -1;
 	buffer->kobj = kobj;
 	if (buffer->kobj->ktype && buffer->kobj->ktype->sysfs_ops) {
 		buffer->ops = buffer->kobj->ktype->sysfs_ops;
@@ -126,8 +119,19 @@ sysfs_create_file(
         }
 
 	buffer->attr = (struct attribute *) attr;
-	file->private_data = buffer;
-	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
+
+	inode = kfs_mkdirent(
+		kobj->sd,
+		attr->name,
+		&sysfs_file_operations,
+		attr->mode, // should be 0444 as we don't support writes..
+		buffer,
+		sizeof(struct sysfs_buffer)
+	);
+	if(NULL == inode) {
+	  kfree(buffer);
+	  return -1;
+	}
 
 	return 0;
 }
@@ -208,7 +212,7 @@ sysfs_init(void)
 	sysfs_root = kfs_create(
 		"/sys",
 		&kfs_default_fops,
-		0777,
+		0777 | S_IFDIR,
 		0,
 		0
 	);

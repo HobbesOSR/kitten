@@ -184,7 +184,7 @@ struct task_struct {
 	int                     exit_status;     /* Reason the task exited */
 
 	struct arch_task	arch;            /* arch specific task info */
-	struct kfs_file *	files[ MAX_FILES ];
+	struct file *	        files[ MAX_FILES ];
 
 	/* Stuff needed for the Linux compatibility layer */
 	char *			comm;            /* The task's name */
