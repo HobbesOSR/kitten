@@ -100,15 +100,15 @@ kfs_default_read(struct file * dir,
 )
 {
 	size_t offset = 0;
-	struct file * file;
+	struct inode * inode;
 	struct htable_iter iter = htable_iter( dir->inode->files );
-	while( (file = htable_next( &iter )) )
+	while( (inode = htable_next( &iter )) )
 	{
 		int rc = snprintf(
 			(char*)buf + offset,
 			len - offset,
 			"%s\n",
-			file->inode->name
+			inode->name
 		);
 
 		if( rc > len - offset )
@@ -702,6 +702,11 @@ sys_fcntl(int fd, int cmd, long arg)
 	case F_SETFL:
 		/* TODO: implement; currently we need at least O_NONBLOCK for
 		   IB verbs interface */
+		return 0;
+	case F_GETFD:
+	case F_SETFD:
+		/* TODO: implement; we do need a place for per-fd flags first,
+		   though */
 		return 0;
 	default:
 		return -EINVAL;
