@@ -14,3 +14,11 @@ config SYSFS
 	help
 	  Enable the Linux sysfs compatability wrappers.
 	  Always on!
+
+config SYSFS_DEPRECATED
+	bool
+        depends on LINUX
+        default "y"
+        help
+          Enable the Linux sysfs depricated mode.
+          Always on!
