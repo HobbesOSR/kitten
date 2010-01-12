@@ -613,6 +613,13 @@ static struct kobject *get_device_parent(struct device *dev,
 			return kobj;
 
 		/* or create a new class-directory at the parent device */
+		if (dev->class && (!parent || parent->class != dev->class)) {
+			printk("Using class fix from depricated_sysfs %s %p\n", 
+				kobject_name(&dev->class->p->class_subsys.kobj),
+				&dev->class->p->class_subsys.kobj);
+			return &dev->class->p->class_subsys.kobj;
+		}
+
 		k = kobject_create();
 		if (!k)
 			return NULL;
