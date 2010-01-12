@@ -287,11 +287,22 @@ struct kfs_fops kfs_string_fops =
 	.close		= kfs_default_close,
 };
 
+static struct file *
+kfs_alloc_file(void)
+{
+	struct inode *file = kmem_alloc(sizeof(struct file));
+	memset(file, 0x00, sizeof(struct file));
+
+	return file;
+}
+
 static struct inode *
 kfs_create_inode(void)
 {
 	struct inode *inode = kmem_alloc(sizeof(struct inode));
+	memset(inode, 0x00, sizeof(struct inode));
 	atomic_set(&inode->refs, 0);
+
 	return inode;
 }
 
@@ -314,9 +325,13 @@ kfs_mkdirent(struct inode *          parent,
 	struct inode * inode = NULL;
 	int new_entry = 0;
 
-	if(parent && !S_ISDIR(parent->mode)) {
-		printk(KERN_WARNING "%s is not a directory.\n", name);
-		return NULL;
+	if(parent) {
+		if(parent->link_target)
+			parent = parent->link_target;
+		if(!S_ISDIR(parent->mode)) {
+			printk(KERN_WARNING "%s is not a directory.\n", name);
+			return NULL;
+		}
 	}
 
 	// Try a lookup in the parent first, then allocate a new file
@@ -387,6 +402,10 @@ kfs_lookup(struct inode *       root,
 
 	while(1)
 	{
+		/* resolve possible link */
+		if( root->link_target )
+			root = root->link_target;
+
 		// Trim any leading / characters
 		while( *dirname && *dirname == '/' )
 			dirname++;
@@ -525,13 +544,60 @@ fd_install(unsigned int fd, struct file *file)
 struct file *
 kfs_open(struct inode *inode, int flags, mode_t mode)
 {
-	/* TODO: mode and flags ... */
-	struct file *file = kmem_alloc(sizeof(struct file));
+	struct file = kfs_alloc_file();
 	if(NULL == file)
+
 		return NULL;
+	/* TODO: mode and flags ... */
 	file->inode = inode;
 	atomic_inc(&inode->refs);
+
 	return file;
+}
+
+static void
+get_full_path(struct inode *inode, char *buf)
+{
+  if(inode->parent)
+    get_full_path(inode->parent, buf);
+  strcat(buf, inode->name);
+  strcat(buf, "/");
+}
+
+struct inode *
+kfs_link(struct inode *target, struct inode *parent, const char *name)
+{
+	struct inode *link;
+	char p1[2048], p2[2048];
+
+	*p1 = 0;
+	get_full_path(parent, p1);
+	*p2 = 0;
+	get_full_path(target, p2);
+	printk("linking %s%s -> %s\n", p1, name, p2);
+
+	if(NULL != htable_lookup( parent->files, name )) {
+	  printk(KERN_WARNING "link exists.\n");
+	  return NULL;
+	}
+
+	link = kfs_create_inode();
+	if(NULL == link)
+		return NULL;
+
+	strncpy(link->name, name, sizeof(link->name));
+	link->name[sizeof(link->name) - 1] = '\0';
+
+	link->mode = 0666 | S_IFLNK;
+	if(S_ISDIR(target->mode))
+		link->mode |= 0111 | S_IFDIR;
+
+	link->link_target = target;
+
+	link->parent = parent;
+	htable_add(parent->files, link);
+	
+	return link;
 }
 
 void
@@ -755,6 +821,28 @@ sys_fstat(int fd, uaddr_t buf)
 	struct file * const file = get_current_file( fd );
 	if( !file )
 		return -EBADF;
+
+       /*
+        * WARNING: This is a HACK needed for console I/O to work.
+        * TODO: Fix this!
+        */
+       if (fd == 1) {
+               struct stat tmp;
+               tmp.st_dev     = 11;
+               tmp.st_ino     = 9;
+               tmp.st_mode    = 0x2190;
+               tmp.st_nlink   = 1;
+               tmp.st_uid     = 0;
+               tmp.st_gid     = 0;
+               tmp.st_rdev    = 34823;
+               tmp.st_size    = 0;
+               tmp.st_blksize = 1024;
+               tmp.st_blocks  = 0;
+               tmp.st_atime   = 1204772189;
+               tmp.st_mtime   = 1204772189;
+               tmp.st_ctime   = 1204769465;
+               return copy_to_user((void *)buf, &tmp, sizeof(tmp)) ? -EFAULT : 0;
+       }
 
 	if(file->inode)
 		return kfs_stat(file->inode, buf);

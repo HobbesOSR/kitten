@@ -18,6 +18,7 @@ struct inode
 {
 	struct htable *		files;
 	struct hlist_node	ht_link;
+
 	struct inode *          parent;
 	char			name[ 128 ];
 	const struct kfs_fops *	fops;
@@ -31,6 +32,8 @@ struct inode
 	dev_t                   i_rdev;
 	struct cdev             *i_cdev;
 	struct list_head        i_devices;
+
+	struct inode *link_target;
 };
 struct vm_area_struct;
 
@@ -104,8 +107,10 @@ extern struct inode *kfs_lookup(struct inode *,
 extern struct inode *kfs_mkdir(char *,
 			       unsigned);
 extern void kfs_destroy(struct inode *);
+extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 
 /* kfs file manipulation */
+extern struct file *kfs_alloc_file(void);
 extern struct file *kfs_open(struct inode *, int flags, mode_t mode);
 extern void kfs_close(struct file *);
 extern int kfs_open_path(const char *pathname, int flags, mode_t mode,
