@@ -124,7 +124,7 @@ sysfs_create_file(
 		kobj->sd,
 		attr->name,
 		&sysfs_file_operations,
-		attr->mode, // should be 0444 as we don't support writes..
+		attr->mode & ~S_IFMT, // should be 0444 as we don't support writes..
 		buffer,
 		sizeof(struct sysfs_buffer)
 	);
@@ -132,6 +132,9 @@ sysfs_create_file(
 	  kfree(buffer);
 	  return -1;
 	}
+	/* TODO: silently forgetting this inode is not cool; we will have
+	   to destroy it, eventually (or will we do this recursively by
+	   destroyxing the parent inode?) ... */
 
 	return 0;
 }
@@ -152,12 +155,7 @@ sysfs_create_link(
 {
 	BUG_ON(!name);
 
-	/* TODO: Actually implement this! */
-	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
-	//printk(KERN_WARNING "sysfs_create_link %s -> %s/%s\n", kobject_name(kobj),
-	//					kobject_name(target), name);
-
-	return 0;
+	return (NULL == kfs_link(target->sd, kobj->sd, name));
 }
 
 

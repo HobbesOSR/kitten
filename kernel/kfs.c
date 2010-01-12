@@ -287,10 +287,10 @@ struct kfs_fops kfs_string_fops =
 	.close		= kfs_default_close,
 };
 
-static struct file *
+struct file *
 kfs_alloc_file(void)
 {
-	struct inode *file = kmem_alloc(sizeof(struct file));
+	struct file *file = kmem_alloc(sizeof(struct file));
 	memset(file, 0x00, sizeof(struct file));
 
 	return file;
@@ -544,10 +544,10 @@ fd_install(unsigned int fd, struct file *file)
 struct file *
 kfs_open(struct inode *inode, int flags, mode_t mode)
 {
-	struct file = kfs_alloc_file();
+	struct file *file = kfs_alloc_file();
 	if(NULL == file)
-
 		return NULL;
+
 	/* TODO: mode and flags ... */
 	file->inode = inode;
 	atomic_inc(&inode->refs);
@@ -568,6 +568,8 @@ struct inode *
 kfs_link(struct inode *target, struct inode *parent, const char *name)
 {
 	struct inode *link;
+
+#if 0
 	char p1[2048], p2[2048];
 
 	*p1 = 0;
@@ -575,6 +577,7 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 	*p2 = 0;
 	get_full_path(target, p2);
 	printk("linking %s%s -> %s\n", p1, name, p2);
+#endif
 
 	if(NULL != htable_lookup( parent->files, name )) {
 	  printk(KERN_WARNING "link exists.\n");
