@@ -314,6 +314,6 @@ setup_arch(void)
 
 	ioapic_init();
 
-	lapic_set_timer_freq(SCHED_HZ);
+	lapic_set_timer_freq(sched_hz);
 }
 

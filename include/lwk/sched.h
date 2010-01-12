@@ -11,12 +11,7 @@
 #include <lwk/task.h>
 #include <lwk/init.h>
 
-/**
- * User-level tasks are preemptively scheduled SCHED_HZ times per second.
- * Kernel threads are not preemptively scheduled and must call schedule()
- * themselves.
- */
-#define SCHED_HZ 10
+extern unsigned int sched_hz;
 
 extern int __init sched_subsys_init(void);
 extern void sched_add_task(struct task_struct *task);

@@ -10,6 +10,16 @@
 #include <lwk/xcall.h>
 #include <lwk/timer.h>
 
+
+/**
+ * User-level tasks are preemptively scheduled sched_hz times per second.
+ * Kernel threads are not preemptively scheduled and must call schedule()
+ * themselves.
+ */
+unsigned int sched_hz = 10;  /* default to 10 Hz */
+param(sched_hz, uint);
+
+
 /**
  * Process run queue.
  *
