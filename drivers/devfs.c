@@ -10,8 +10,9 @@
 static ssize_t
 console_write(
 	struct file *	file,
-	uaddr_t		buf,
-	size_t		len
+	const char *	buf,
+	size_t		len,
+	loff_t *	off
 )
 {
 	char			kbuf[ 512 ];
@@ -43,10 +44,22 @@ console_fops = {
 
 /** Do nothing */
 static ssize_t
-dev_null_rw(
+dev_null_r(
 	struct file *	file,
-	uaddr_t		buf,
-	size_t		len
+	char *  buf,
+	size_t		len,
+	loff_t *	off
+)
+{
+	return 0;
+}
+
+static ssize_t
+dev_null_w(
+	struct file *	file,
+	const char *  buf,
+	size_t		len,
+	loff_t *	off
 )
 {
 	return 0;
@@ -55,8 +68,8 @@ dev_null_rw(
 
 static struct kfs_fops
 dev_null_fops = {
-	.read		= dev_null_rw,
-	.write		= dev_null_rw,
+	.read		= dev_null_r,
+	.write		= dev_null_w,
 };
 
 
@@ -66,8 +79,10 @@ dev_null_fops = {
 static ssize_t
 dev_zero_read(
 	struct file *	file,
-	uaddr_t		buf,
-	size_t		len
+	char *		buf,
+	size_t		len,
+	loff_t *	off
+
 )
 {
 	memset( (void*) buf, 0, len );
@@ -78,7 +93,7 @@ dev_zero_read(
 static struct kfs_fops
 dev_zero_fops = {
 	.read		= dev_zero_read,
-	.write		= dev_null_rw, // do not acccept any writes
+	.write		= dev_null_w, // do not acccept any writes
 };
 
 #include <linux/kdev_t.h>
@@ -86,10 +101,10 @@ extern struct kfs_fops def_chr_fops;
 
 void create_dev(char * path, int major, int minor) {
 	struct inode * inode;
-        //printk("mknod: %s - %d:%d\n", path, major, minor);
+	//printk("mknod: %s - %d:%d\n", path, major, minor);
 
-        inode = kfs_create( path, &def_chr_fops, 0777, 0, 0 );
-        inode->i_rdev = MKDEV(major, minor);
+	inode = kfs_create( path, &def_chr_fops, 0777, 0, 0 );
+	inode->i_rdev = MKDEV(major, minor);
 }
 
 int
