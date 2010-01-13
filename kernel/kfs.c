@@ -10,6 +10,7 @@
 #include <lwk/task.h>
 #include <lwk/unistd.h>
 #include <lwk/kfs.h>
+#include <lwk/dev.h>
 #include <lwk/stat.h>
 
 #include <arch/uaccess.h>
@@ -83,6 +84,7 @@ kfs_stat(struct inode *inode, uaddr_t buf)
 
 	memset(&rv, 0x00, sizeof(struct stat));
 	rv.st_mode = inode->mode;
+	rv.st_rdev = inode->i_rdev;
 	/* TODO: plenty of stuff to report back via stat, but we just
 	   don't need it atm ... */
 	
@@ -824,28 +826,6 @@ sys_fstat(int fd, uaddr_t buf)
 	struct file * const file = get_current_file( fd );
 	if( !file )
 		return -EBADF;
-
-       /*
-        * WARNING: This is a HACK needed for console I/O to work.
-        * TODO: Fix this!
-        */
-       if (fd == 1) {
-               struct stat tmp;
-               tmp.st_dev     = 11;
-               tmp.st_ino     = 9;
-               tmp.st_mode    = 0x2190;
-               tmp.st_nlink   = 1;
-               tmp.st_uid     = 0;
-               tmp.st_gid     = 0;
-               tmp.st_rdev    = 34823;
-               tmp.st_size    = 0;
-               tmp.st_blksize = 1024;
-               tmp.st_blocks  = 0;
-               tmp.st_atime   = 1204772189;
-               tmp.st_mtime   = 1204772189;
-               tmp.st_ctime   = 1204769465;
-               return copy_to_user((void *)buf, &tmp, sizeof(tmp)) ? -EFAULT : 0;
-       }
 
 	if(file->inode)
 		return kfs_stat(file->inode, buf);

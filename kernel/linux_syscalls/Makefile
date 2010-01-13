@@ -3,7 +3,6 @@ obj-y := \
 	brk.o \
 	getuid.o \
 	getgid.o \
-	fstat.o \
 	mmap.o \
 	gettimeofday.o \
 	settimeofday.o \

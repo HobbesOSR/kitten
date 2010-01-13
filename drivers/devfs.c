@@ -3,6 +3,8 @@
  */
 #include <lwk/kfs.h>
 #include <lwk/driver.h>
+#include <lwk/dev.h>
+#include <lwk/stat.h>
 #include <arch/uaccess.h>
 
 
@@ -96,8 +98,9 @@ dev_zero_fops = {
 	.write		= dev_null_w, // do not acccept any writes
 };
 
-#include <linux/kdev_t.h>
+
 extern struct kfs_fops def_chr_fops;
+
 
 void create_dev(char * path, int major, int minor) {
 	struct inode * inode;
@@ -110,9 +113,23 @@ void create_dev(char * path, int major, int minor) {
 int
 devfs_init(void)
 {
-	kfs_create( "/dev/console", &console_fops, 0666, 0, 0 );
-	kfs_create( "/dev/null", &dev_null_fops, 0666, 0, 0 );
-	kfs_create( "/dev/zero", &dev_zero_fops, 0666, 0, 0 );
+	struct inode *inode;
+
+	inode = kfs_create("/dev/console", &console_fops, S_IFCHR|0666, NULL, 0);
+	if (!inode)
+		panic("Failed to create /dev/console.");
+
+	/* Glibc depends on /dev/console being major 136 */
+	inode->i_rdev = MKDEV(136, 0);
+
+	inode = kfs_create("/dev/null", &dev_null_fops, S_IFCHR|0666, NULL, 0);
+	if (!inode)
+		panic("Failed to create /dev/null.");
+
+	inode = kfs_create("/dev/zero", &dev_zero_fops, S_IFCHR|0666, NULL, 0);
+	if (!inode)
+		panic("Failed to create /dev/zero.");
+
 	return 0;
 }
 
