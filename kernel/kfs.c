@@ -87,7 +87,7 @@ kfs_stat(struct inode *inode, uaddr_t buf)
 	rv.st_rdev = inode->i_rdev;
 	/* TODO: plenty of stuff to report back via stat, but we just
 	   don't need it atm ... */
-	
+
 	if(copy_to_user((void *)buf, &rv, sizeof(struct stat)))
 	  return -EFAULT;
 
@@ -153,7 +153,7 @@ kfs_fill_dirent(uaddr_t buf, unsigned int count,
 				   + namelen + 2, sizeof(long));
 	if(count < len)
 		return -EINVAL;
-	
+
 	de = (struct dirent *)buf;
 	if(__put_user(offset, &de->d_off))
 		return -EFAULT;
@@ -224,7 +224,7 @@ kfs_readdir(struct file * filp, uaddr_t buf, unsigned int count)
  out:
 	if(rv < 0 && (rv != -EINVAL || res == 0))
 		return rv;
-        return res;
+	return res;
 }
 
 struct kfs_fops kfs_default_fops =
@@ -298,6 +298,14 @@ kfs_alloc_file(void)
 	return file;
 }
 
+int kfs_init_file(struct file * file,unsigned int mode,
+		const struct kfs_fops *fop)
+{
+	file->f_mode = mode;
+	file->f_op = fop;
+	return 0;
+}
+
 static struct inode *
 kfs_create_inode(void)
 {
@@ -341,7 +349,7 @@ kfs_mkdirent(struct inode *          parent,
 		inode = htable_lookup( parent->files, name );
 	if( !inode ) {
 		inode = kfs_create_inode();
-		
+
 		if (!inode)
 			return NULL;
 		new_entry = 1;
@@ -551,6 +559,7 @@ kfs_open(struct inode *inode, int flags, mode_t mode)
 		return NULL;
 
 	/* TODO: mode and flags ... */
+	kfs_init_file(file, mode, inode->fops);
 	file->inode = inode;
 	atomic_inc(&inode->refs);
 
@@ -601,7 +610,7 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 
 	link->parent = parent;
 	htable_add(parent->files, link);
-	
+
 	return link;
 }
 
@@ -623,8 +632,8 @@ kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
 	if(NULL == file)
 		return -ENOMEM;
 
-	if( inode->fops->open
-	    &&  inode->fops->open( file->inode , file ) < 0 ) {
+	if( file->f_op->open
+	    &&  file->f_op->open( file->inode , file ) < 0 ) {
 		kfs_close(file);
 		return -EACCES;
 	}
@@ -674,13 +683,13 @@ sys_write(int     fd,
 	if( !file )
 		return -EBADF;
 
-	if( file->inode->fops->write )
-		return file->inode->fops->write( file,
+	if( file->f_op->write )
+		return file->f_op->write( file,
 						 (const char __user *)buf,
 						 len , (loff_t *) NULL );
 
-	printk( KERN_WARNING "%s: fd %d has no write operation\n",
-		__func__, fd );
+	printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
+		__func__, fd, file->inode->name);
 	return -EBADF;
 }
 
@@ -693,8 +702,8 @@ sys_read(int     fd,
 	if( !file )
 		return -EBADF;
 
-	if( file->inode->fops->read )
-		return file->inode->fops->read( file, (char *)buf, len, NULL );
+	if( file->f_op->read )
+		return file->f_op->read( file, (char *)buf, len, NULL );
 
 	printk( KERN_WARNING "%s: fd %d has no read operation\n",
 		__func__, fd );
@@ -711,8 +720,8 @@ sys_close(int fd)
 	if( !file )
 		return -EBADF;
 
-	if( file->inode->fops->close )
-		rv = file->inode->fops->close( file );
+	if( file->f_op->close )
+		rv = file->f_op->close( file );
 
 	if(rv == 0) {
 		kfs_close(file);
@@ -751,14 +760,14 @@ sys_ioctl(int fd,
 	if( !file )
 		return -EBADF;
 
-	if( file->inode->fops->ioctl )
-		return file->inode->fops->ioctl( file, request, arg );
+	if( file->f_op->ioctl )
+		return file->f_op->ioctl( file, request, arg );
 
 	return -ENOTTY;
 }
 
-static int 
-sys_fcntl(int fd, int cmd, long arg) 
+static int
+sys_fcntl(int fd, int cmd, long arg)
 {
 	struct file * const file = get_current_file( fd );
 
@@ -798,7 +807,7 @@ sys_getdents(unsigned int fd, uaddr_t dirp, unsigned int count)
 	if(!S_ISDIR(file->inode->mode))
 		return -ENOTDIR;
 
-	res = file->inode->fops->readdir(file, dirp, count);
+	res = file->f_op->readdir(file, dirp, count);
 
 	return res;
 }

@@ -3,7 +3,6 @@
 
 #include <lwk/kfs.h>
 #define file_operations kfs_fops
-#define f_op            inode->fops
 
 #include <linux/kdev_t.h>
 

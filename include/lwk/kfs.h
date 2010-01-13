@@ -76,6 +76,8 @@ struct file
 {
 	struct inode *          inode;
 	loff_t                  pos;
+        const struct kfs_fops * f_op;
+        unsigned int            f_mode;
 	unsigned int            f_flags;
 	void *                  private_data;
 };
@@ -111,6 +113,8 @@ extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 
 /* kfs file manipulation */
 extern struct file *kfs_alloc_file(void);
+extern int kfs_init_file(struct file *,unsigned int mode,
+		const struct kfs_fops *fop);
 extern struct file *kfs_open(struct inode *, int flags, mode_t mode);
 extern void kfs_close(struct file *);
 extern int kfs_open_path(const char *pathname, int flags, mode_t mode,

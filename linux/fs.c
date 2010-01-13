@@ -2,7 +2,8 @@
 #include <linux/kobject.h>
 #include <linux/kobj_map.h>
 #include <linux/cdev.h>
-
+#include <linux/mount.h>
+#include <linux/string.h>
 /* fs/fcntl.c */
 
 int fasync_helper(int fd, struct file * filp, int on, struct fasync_struct **fapp)
@@ -31,13 +32,13 @@ void kill_fasync(struct fasync_struct **fp, int sig, int band)
 struct file *alloc_file(struct vfsmount *mnt, struct dentry *dentry,
 		fmode_t mode, const struct file_operations *fop)
 {
-	struct file *file = NULL;
+	struct file *file;
 
-//        file = get_empty_filp();
+	file = get_empty_filp();
 	if (!file)
 		return NULL;
 
-//        init_file(file, mnt, dentry, mode, fop);
+	kfs_init_file(file, mode, fop);
 	return file;
 }
 
@@ -46,6 +47,15 @@ int get_sb_pseudo(struct file_system_type *fs_type, char *name,
 	const struct super_operations *ops, unsigned long magic,
 	struct vfsmount *mnt)
 {
+	struct inode *root;
+	struct dentry *dentry;
+
+	root =  kmem_alloc(sizeof(struct inode));
+	dentry =  kmem_alloc(sizeof(struct dentry));
+	root->mode = S_IFDIR | S_IRUSR | S_IWUSR;
+	dentry->d_inode = root;
+	atomic_set(&dentry->d_count, 1);
+	mnt->mnt_root = dentry;
 	return 0;
 }
 
@@ -57,7 +67,15 @@ void kill_litter_super(struct super_block *sb)
 
 struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
 {
-	return NULL;
+	struct vfsmount *mnt;
+	int error;
+	mnt = kmem_alloc(sizeof(struct vfsmount));
+	mnt->mnt_devname = kstrdup(type->name, GFP_KERNEL);
+	/* get_sb sets  mnt->mnt_root; */
+	error = type->get_sb(type, (1<<22), type->name, NULL, mnt);
+	/* if (error)
+	   remove allocated space, return Error */
+	return mnt;
 }
 
 /* fs/filesystem.c */

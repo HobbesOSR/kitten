@@ -21,30 +21,29 @@
  */
 
 struct dentry {
-        atomic_t d_count;
-        unsigned int d_flags;           /* protected by d_lock */
-        spinlock_t d_lock;              /* per dentry lock */
-        int d_mounted;
-        struct list_head d_lru;         /* LRU list */
-        struct list_head d_subdirs;     /* our children */
-        struct list_head d_alias;       /* inode alias list */
-        unsigned long d_time;           /* used by d_revalidate */
+	atomic_t d_count;
+	unsigned int d_flags;           /* protected by d_lock */
+	spinlock_t d_lock;              /* per dentry lock */
+	int d_mounted;
+	struct list_head d_lru;         /* LRU list */
+	struct list_head d_subdirs;     /* our children */
+	struct list_head d_alias;       /* inode alias list */
+	unsigned long d_time;           /* used by d_revalidate */
+	struct inode *d_inode;
 };
 
 
 static inline struct dentry *dget(struct dentry *dentry)
 {
-        if (dentry) {
-                BUG_ON(!atomic_read(&dentry->d_count));
-                atomic_inc(&dentry->d_count);
-        }
-        return dentry;
+	if (dentry) {
+		BUG_ON(!atomic_read(&dentry->d_count));
+		atomic_inc(&dentry->d_count);
+	}
+	return dentry;
 }
 
 struct vfsmount;
-extern int init_file(struct file *, struct vfsmount *mnt,
-		struct dentry *dentry, fmode_t mode,
-		const struct file_operations *fop);
+#define get_empty_filp kfs_alloc_file
 extern struct file *alloc_file(struct vfsmount *, struct dentry *dentry,
 		fmode_t mode, const struct file_operations *fop);
 

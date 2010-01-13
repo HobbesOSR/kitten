@@ -130,7 +130,7 @@ __task_create(
 	tsk->gid	= start_state->group_id;
 	tsk->cpu_id	= start_state->cpu_id;
 	tsk->cpumask	= cpumask_user2kernel(&start_state->cpumask);
-
+	tsk->signal	= kmem_alloc(sizeof(struct signal_struct));
 	strlcpy(tsk->name, start_state->task_name, sizeof(tsk->name));
 
 	hlist_node_init(&tsk->ht_link);

@@ -269,9 +269,9 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	spin_lock_init(&aspace->lock);
 	list_head_init(&aspace->region_list);
 	hlist_node_init(&aspace->ht_link);
+	sema_init(&aspace->mmap_sem, 1);
 	if (name)
 		strlcpy(aspace->name, name, sizeof(aspace->name));
-
 	/* Create a region for the kernel portion of the address space */
 	status =
 	__aspace_add_region(
