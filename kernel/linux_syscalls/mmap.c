@@ -15,27 +15,26 @@ sys_mmap(
 )
 {
 	struct aspace *as = current->aspace;
-	unsigned long mmap_brk;
 	struct file *file;
 	struct vm_area_struct vma;
+	unsigned long mmap_brk;
 	int rv;
 
 	if (len != round_up(len, PAGE_SIZE))
 		return -EINVAL;
 
-	/* we do not support private mapping due to copy-on-write semantics */
-#if 0
-	/* TODO: we should not support them. however, if we enable this -EINVAL
-	   return, console gets messed up. */
-	   if(flags & MAP_PRIVATE)
+	/* we only support anonymous private mapping; file-backed
+	   private mapping has copy-on-write semantics, which we don't
+	   want due to complete lack of any pagefaulting resolution */
+
+	if((flags & MAP_PRIVATE) && !(flags & MAP_ANONYMOUS))
 		return -EINVAL;
-#endif /* 0/1 */
 
 	/* anonymous mappings (not backed by a file) are handled specially */
 	if(flags & MAP_ANONYMOUS) {
-		/* anonymous mmap()ed memory is put at the top of the heap
-		   region, and grows from high to low addresses, i.e. down
-		   towards the current heap end. */
+		/* anonymous mmap()ed memory is put at the top of the
+		   heap region, and grows from high to low addresses,
+		   i.e. down towards the current heap end. */
 		spin_lock(&as->lock);
 		mmap_brk = round_down(as->mmap_brk - len, PAGE_SIZE);
 
@@ -47,14 +46,13 @@ sys_mmap(
 
 		as->mmap_brk = mmap_brk;
 		spin_unlock(&as->lock);
-		
+
 		return mmap_brk;
 	}
 
 	/* file-backed mappings */
 
-	/* TODO: add a million checks and special cases here that we'll simply
-	   ignore now */
+	/* TODO: add a million checks here that we'll simply ignore now */
 
 	file = get_current_file(fd);
 	if(NULL == file)
@@ -73,8 +71,10 @@ sys_mmap(
 	if ((rv = __aspace_add_region(as, addr, len,
 				      VM_READ|VM_WRITE|VM_USER,
 				      PAGE_SIZE, "mmap"))) {
-		/* assuming there is no race between find_hole and add_region,
-		   as we're holding the as->lock ... */
+		/* assuming there is no race between find_hole and
+		   add_region, as we're holding the as->lock, this
+		   failure can't be due to someone adding our region
+		   in between */
 		spin_unlock(&as->lock);
 		return -ENOMEM;
 	}

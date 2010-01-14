@@ -617,7 +617,8 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 void
 kfs_close(struct file *file)
 {
-	atomic_dec(&file->inode->refs);
+	if (file->inode)
+		atomic_dec(&file->inode->refs);
 	kmem_free(file);
 }
 

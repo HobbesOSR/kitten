@@ -83,7 +83,7 @@ do {                                                                  \
 		                      TASK_INTERRUPTIBLE);            \
 		if (condition)                                        \
 			break;                                        \
-		if (0 /* TODO: !signal_pending(current) */) {         \
+		if (1 /* TODO: !signal_pending(current) */) {         \
 			schedule();                                   \
 			continue;                                     \
 		}                                                     \

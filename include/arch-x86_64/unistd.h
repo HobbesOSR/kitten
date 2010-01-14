@@ -35,7 +35,7 @@ __SYSCALL(__NR_mmap, sys_mmap)
 #define __NR_mprotect                           10
 __SYSCALL(__NR_mprotect, sys_mprotect)
 #define __NR_munmap                             11
-__SYSCALL(__NR_munmap, syscall_not_implemented)
+__SYSCALL(__NR_munmap, sys_munmap)
 #define __NR_brk                                12
 __SYSCALL(__NR_brk, sys_brk)
 #define __NR_rt_sigaction                       13

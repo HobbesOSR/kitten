@@ -4,6 +4,7 @@ obj-y := \
 	getuid.o \
 	getgid.o \
 	mmap.o \
+	munmap.o \
 	gettimeofday.o \
 	settimeofday.o \
 	nanosleep.o \
