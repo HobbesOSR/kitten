@@ -44,8 +44,8 @@
 /**
  * Global guest state... only one guest is supported currently.
  */
-static struct guest_info * g_vm_guest = NULL;
-static struct guest_info * irq_to_guest_map[NUM_IDT_ENTRIES];
+static struct v3_vm_info * g_vm_guest = NULL;
+static struct v3_vm_info * irq_to_guest_map[NUM_IDT_ENTRIES];
 static paddr_t guest_iso_start;
 static size_t guest_iso_size;
 
@@ -276,7 +276,7 @@ palacios_get_cpu(void)
  */
 static void
 palacios_interrupt_cpu(
-	struct guest_info *	vm, 
+	struct v3_vm_info*	vm, 
 	int			cpu_id
 )
 {
@@ -307,7 +307,7 @@ palacios_dispatch_interrupt(
  */
 static int
 palacios_hook_interrupt(
-	struct guest_info *	vm,
+	struct v3_vm_info *	vm,
 	unsigned int		vector
 )
 {
@@ -458,7 +458,7 @@ struct v3_os_hooks palacios_os_hooks = {
 static int
 palacios_run_guest(void *arg)
 {
-	struct guest_info * vm_info = v3_create_vm((void *) __va(guest_iso_start));
+	struct v3_vm_info * vm_info = v3_create_vm((void *) __va(guest_iso_start));
 	
 	if (!vm_info) {
 		printk(KERN_ERR "Could not create guest context\n");
