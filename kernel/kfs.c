@@ -761,6 +761,9 @@ sys_ioctl(int fd,
 	if( !file )
 		return -EBADF;
 
+	if( file->f_op->unlocked_ioctl )
+		return file->f_op->unlocked_ioctl( file, request, arg );
+
 	if( file->f_op->ioctl )
 		return file->f_op->ioctl( file, request, arg );
 
