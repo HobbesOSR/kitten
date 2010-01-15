@@ -116,7 +116,7 @@ sysfs_create_file(
 	} else {
 		WARN(1, KERN_ERR "missing sysfs attribute operations for "
 			"kobject: %s\n", kobject_name(kobj));
-        }
+	}
 
 	buffer->attr = (struct attribute *) attr;
 
@@ -197,10 +197,66 @@ sysfs_create_group(
 {
 	BUG_ON(!kobj || !kobj->sd);
 
-	/* TODO: Actually implement this! */
-	//printk(KERN_WARNING "%s needs to be implemented.\n", __FUNCTION__);
+	struct inode *dir_sd;
+	int error = 0, i;
+	struct attribute *const* attr;
 
-	return 0;
+	struct sysfs_buffer *buffer;
+	struct inode *inode;
+
+	if (grp->name) {
+		dir_sd = kfs_mkdirent(
+			kobj->sd,
+			grp->name,
+			&kfs_default_fops,
+			0777 | S_IFDIR,
+			NULL,
+			0
+			);
+		if (error)
+			return error;
+	} else
+		dir_sd = kobj->sd;
+
+	for (i = 0, attr = grp->attrs; *attr && !error; i++, attr++) {
+		mode_t mode = 0;
+		if (grp->is_visible) {
+			mode = grp->is_visible(kobj, *attr, i);
+			if (!mode)
+				continue;
+		}
+
+		buffer = kzalloc(sizeof(struct sysfs_buffer), GFP_KERNEL);
+		if(NULL == buffer) {
+			error = -1;
+			break;
+		}
+		buffer->kobj = kobj;
+		if (buffer->kobj->ktype && buffer->kobj->ktype->sysfs_ops) {
+			buffer->ops = buffer->kobj->ktype->sysfs_ops;
+		} else {
+			WARN(1,KERN_ERR "missing sysfs attribute operations for"
+				"kobject: %s\n", kobject_name(kobj));
+		}
+		buffer->attr = (struct attribute *) (*attr);
+
+		inode = kfs_mkdirent(
+			dir_sd,
+			(*attr)->name,
+			&sysfs_file_operations,
+			((*attr)->mode | mode) & ~S_IFMT,
+			buffer,
+			sizeof(struct sysfs_buffer)
+			);
+		if(NULL == inode) {
+			kfree(buffer);
+			error =  -1;
+			break;
+		}
+		error = 0;
+	}
+
+	return error;
 }
 
 
