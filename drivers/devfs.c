@@ -99,6 +99,7 @@ dev_zero_fops = {
 };
 
 
+#ifdef CONFIG_LINUX
 extern struct kfs_fops def_chr_fops;
 
 
@@ -109,6 +110,7 @@ void create_dev(char * path, int major, int minor) {
 	inode = kfs_create( path, &def_chr_fops, 0777, 0, 0 );
 	inode->i_rdev = MKDEV(major, minor);
 }
+#endif
 
 int
 devfs_init(void)
