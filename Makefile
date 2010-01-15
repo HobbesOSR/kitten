@@ -555,7 +555,7 @@ libs-y		:= $(libs-y1) $(libs-y2)
 linux-y		:= $(patsubst %/, %/built-in.o, $(linux-y))
 
 # Link the LWK with the Palacios virtual machine monitor
-libs-$(CONFIG_PALACIOS) += $(CONFIG_PALACIOS_PATH)/libv3vee.a 
+libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
 
 # Build vmlwk
 # ---------------------------------------------------------------------------
