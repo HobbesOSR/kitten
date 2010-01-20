@@ -7,11 +7,8 @@ init_timer(
 	struct timer_list *		timer
 )
 {
-	list_head_init(&timer->lwk_timer.link);
-	timer->lwk_timer.cpu      = this_cpu;
-	timer->lwk_timer.expires  = (uint64_t)timer->expires;
-	timer->lwk_timer.data     = (uintptr_t)timer->data;
-	timer->lwk_timer.function = timer->function;
+	list_head_init(&timer->link);
+	timer->cpu      = this_cpu;
 }
 
 int
@@ -24,16 +21,14 @@ __mod_timer(
 
 	BUG_ON(!timer->function);
 
-	not_expired = timer_del(&timer->lwk_timer);
+	not_expired = timer_del(timer);
 
 	timer->expires = expires;
 
-	timer->lwk_timer.cpu      = this_cpu;
-	timer->lwk_timer.expires  = (uint64_t)timer->expires;
-	timer->lwk_timer.data     = (uintptr_t)timer->data;
-	timer->lwk_timer.function = timer->function;
+	timer->cpu      = this_cpu;
+	timer->expires  = expires;
 
-	timer_add(&timer->lwk_timer);
+	timer_add(timer);
 
 	return not_expired;
 }
@@ -52,5 +47,5 @@ del_timer_sync(
 	struct timer_list *		timer
 )
 {
-	return timer_del(&timer->lwk_timer);
+	return timer_del(timer);
 }

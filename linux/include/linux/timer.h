@@ -9,32 +9,13 @@
 
 struct tvec_base;
 
-struct timer_list {
-	struct list_head entry;
-	unsigned long expires;
-
-	void (*function)(unsigned long);
-	unsigned long data;
-
-	struct tvec_base *base;
-
-	struct timer lwk_timer;  /* LWK timer structure */
-
-#ifdef CONFIG_TIMER_STATS
-	void *start_site;
-	char start_comm[16];
-	int start_pid;
-#endif
-};
-
-extern struct tvec_base boot_tvec_bases;
+#define timer_list timer
 
 #define TIMER_INITIALIZER(_function, _expires, _data) {		\
-		.entry = { .prev = TIMER_ENTRY_STATIC },	\
+		.link = LIST_HEAD_INIT(.link),			\
 		.function = (_function),			\
 		.expires = (_expires),				\
 		.data = (_data),				\
-		.base = &boot_tvec_bases,			\
 	}
 
 #define DEFINE_TIMER(_name, _function, _expires, _data)		\
@@ -85,7 +66,7 @@ static inline void setup_timer_on_stack(struct timer_list *timer,
  */
 static inline int timer_pending(const struct timer_list * timer)
 {
-	return timer->entry.next != NULL;
+	return !list_empty(&timer->link);
 }
 
 extern void add_timer_on(struct timer_list *timer, int cpu);
