@@ -8,6 +8,7 @@
 #include <lwk/list.h>
 #include <lwk/spinlock.h>
 
+#define signal_pending(tsk) 0
 /*
  * Real Time signals may be queued.
  */
