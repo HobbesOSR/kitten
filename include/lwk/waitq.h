@@ -5,14 +5,23 @@
 #include <lwk/list.h>
 #include <lwk/task.h>
 
+struct waitq_entry;
+
+typedef int (*waitq_func_t)(struct waitq_entry *wait, unsigned mode,
+							int flags, void *key);
+int default_wake_function(struct waitq_entry *wait, unsigned mode, int flags,
+                          void *key);
+
+
 typedef struct waitq {
 	spinlock_t           lock;
 	struct list_head     waitq;
 } waitq_t;
 
 typedef struct waitq_entry {
-	struct task_struct * task;
 	struct list_head     link;
+	void *private;
+	waitq_func_t func;
 } waitq_entry_t;
 
 #define DECLARE_WAITQ(name)                             \
@@ -24,9 +33,10 @@ typedef struct waitq_entry {
 	}
 
 #define DECLARE_WAITQ_ENTRY(name, tsk)                  \
-	waitq_entry_t name = {                          \
-	    .task  = tsk,                               \
-	    .link  = { &(name).link, &(name).link }     \
+	waitq_entry_t name = {								\
+	    .private  = tsk,								\
+		.func = default_wake_function,					\
+	    .link  = { &(name).link, &(name).link }			\
 	}
 
 extern void waitq_init(waitq_t *waitq);
@@ -35,7 +45,7 @@ extern bool waitq_active(waitq_t *waitq);
 extern void waitq_add_entry(waitq_t *waitq, waitq_entry_t *entry);
 extern void waitq_add_entry_locked(waitq_t *waitq, waitq_entry_t *entry);
 extern void waitq_prepare_to_wait(waitq_t *waitq, waitq_entry_t *entry,
-                                  taskstate_t state);
+				  taskstate_t state);
 extern void waitq_finish_wait(waitq_t *waitq, waitq_entry_t *entry);
 extern void waitq_wakeup(waitq_t *waitq);
 extern int waitq_wake_nr(waitq_t *waitq, int nr);
@@ -48,7 +58,7 @@ do {                                                                  \
 	DECLARE_WAITQ_ENTRY(__entry, current);                        \
 	for (;;) {                                                    \
 		waitq_prepare_to_wait(&waitq, &__entry,               \
-		                      TASK_UNINTERRUPTIBLE);          \
+				      TASK_UNINTERRUPTIBLE);          \
 		if (condition)                                        \
 			break;                                        \
 		schedule();                                           \
@@ -80,7 +90,7 @@ do {                                                                  \
 	DECLARE_WAITQ_ENTRY(__entry, current);                        \
 	for (;;) {                                                    \
 		waitq_prepare_to_wait(&waitq, &__entry,               \
-		                      TASK_INTERRUPTIBLE);            \
+				      TASK_INTERRUPTIBLE);            \
 		if (condition)                                        \
 			break;                                        \
 		if (1 /* TODO: !signal_pending(current) */) {         \

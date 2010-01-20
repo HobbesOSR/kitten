@@ -2,6 +2,13 @@
 #include <lwk/waitq.h>
 #include <lwk/sched.h>
 
+int
+default_wake_function(waitq_entry_t *entry, unsigned mode,
+					  int flags, void *key)
+{
+	return sched_wakeup_task(entry->private, TASK_NORMAL);
+}
+
 void
 waitq_init(waitq_t *waitq)
 {
@@ -12,7 +19,8 @@ waitq_init(waitq_t *waitq)
 void
 waitq_init_entry(waitq_entry_t *entry, struct task_struct *task)
 {
-	entry->task = task;
+	entry->private = task;
+	entry->func = default_wake_function;
 	list_head_init(&entry->link);
 }
 
@@ -67,7 +75,6 @@ waitq_remove_entry_locked(waitq_t *waitq, waitq_entry_t *entry)
 }
 
 
-
 void
 waitq_prepare_to_wait(waitq_t *waitq, waitq_entry_t *entry, taskstate_t state)
 {
@@ -76,14 +83,14 @@ waitq_prepare_to_wait(waitq_t *waitq, waitq_entry_t *entry, taskstate_t state)
 	spin_lock_irqsave(&waitq->lock, irqstate);
 	if (list_empty(&entry->link))
 		list_add(&entry->link, &waitq->waitq);
-	set_task_state(entry->task, state);
+	set_current_state(state);
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
 
 void
 waitq_finish_wait(waitq_t *waitq, waitq_entry_t *entry)
 {
-	set_task_state(entry->task, TASK_RUNNING);
+	__set_current_state(TASK_RUNNING);
 	waitq_remove_entry(waitq, entry);
 }
 
@@ -97,7 +104,7 @@ waitq_wakeup(waitq_t *waitq)
 	spin_lock_irqsave(&waitq->lock, irqstate);
 	list_for_each(tmp, &waitq->waitq) {
 		entry  = list_entry(tmp, waitq_entry_t, link);
-		sched_wakeup_task(entry->task, TASK_NORMAL);
+		entry->func(entry, 0, 0, NULL);
 	}
 	spin_unlock_irqrestore(&waitq->lock, irqstate);
 }
@@ -128,9 +135,8 @@ waitq_wake_nr_locked( waitq_t * waitq, int nr )
 	list_for_each_entry(entry, &waitq->waitq, link) {
 		if( ++count > nr )
 			break;
-		sched_wakeup_task(entry->task, TASK_NORMAL);
+		entry->func(entry, 0, 0, NULL);
 	}
 
 	return count - 1;
 }
-
