@@ -237,8 +237,8 @@ schedule_new_task_tail(void)
 	                            * the new task */
 }
 
-uint64_t
-schedule_timeout(uint64_t timeout)
+ktime_t
+schedule_timeout(ktime_t timeout)
 {
 	/* Special case, sleep forever */
 	if (timeout == MAX_SCHEDULE_TIMEOUT) {
@@ -247,10 +247,10 @@ schedule_timeout(uint64_t timeout)
 	}
 
 	/* Figure out when to wake up, being careful about overflow */
-	uint64_t now  = get_time();
-	uint64_t when = now + timeout;
+	ktime_t now  = get_time();
+	ktime_t when = now + timeout;
 	if (when < now)
-		now = UINT64_MAX;
+		when = TIME_T_MAX;
 
 	return timer_sleep_until(when);
 }

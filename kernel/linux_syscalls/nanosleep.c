@@ -12,7 +12,7 @@ sys_nanosleep(const struct timespec __user *req, struct timespec __user *rem)
 	if (copy_from_user(&_req, req, sizeof(_req)))
 		return -EFAULT;
 
-	if (!timespec_is_valid(&_req))
+	if (!timespec_valid(&_req))
 		return -EINVAL;
 
 	uint64_t when = get_time() + timespec_to_ns(_req);

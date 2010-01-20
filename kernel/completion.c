@@ -49,7 +49,7 @@ void complete_all(struct completion *x)
 }
 
 static inline long
-do_wait_for_common(struct completion *x, long timeout, int state)
+do_wait_for_common(struct completion *x, ktime_t timeout, int state)
 {
 	if (!x->done) {
 		DECLARE_WAITQ_ENTRY(wait,current);
@@ -77,7 +77,7 @@ do_wait_for_common(struct completion *x, long timeout, int state)
 }
 
 static long
-wait_for_common(struct completion *x, long timeout, int state)
+wait_for_common(struct completion *x, ktime_t timeout, int state)
 {
 	spin_lock_irq(&x->wait.lock);
 	timeout = do_wait_for_common(x, timeout, state);

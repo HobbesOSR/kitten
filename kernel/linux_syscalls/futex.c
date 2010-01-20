@@ -483,7 +483,7 @@ sys_futex(
 	if (utime && (op == FUTEX_WAIT)) {
 		if (copy_from_user(&_utime, utime, sizeof(_utime)) != 0)
 			return -EFAULT;
-		if (!timespec_is_valid(&_utime))
+		if (!timespec_valid(&_utime))
 			return -EINVAL;
 		timeout = timespec_to_ns(_utime);
 	}

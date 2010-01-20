@@ -15,7 +15,7 @@ sys_gettimeofday(
 		uint64_t now = get_time(); /* nanoseconds */
 
 		_tv.tv_sec  = now / NSEC_PER_SEC;
-		_tv.tv_usec = (now % NSEC_PER_SEC) / USEC_PER_NSEC;
+		_tv.tv_usec = (now % NSEC_PER_SEC) / NSEC_PER_USEC;
 
 		if (copy_to_user(tv, &_tv, sizeof(_tv)))
 			return -EFAULT;
