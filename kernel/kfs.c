@@ -12,8 +12,11 @@
 #include <lwk/kfs.h>
 #include <lwk/dev.h>
 #include <lwk/stat.h>
-#include <lwk/poll.h>
 #include <lwk/aspace.h>
+
+#ifdef CONFIG_LINUX
+#  include <lwk/poll.h>
+#endif /* CONFIG_LINUX */
 
 #include <arch/uaccess.h>
 #include <arch/vsyscall.h>
@@ -855,6 +858,7 @@ sys_fstat(int fd, uaddr_t buf)
 	return 0;
 }
 
+#ifdef CONFIG_LINUX
 struct pollfd {
 	int   fd;         /* file descriptor */
 	short events;     /* requested events */
@@ -880,8 +884,6 @@ typedef unsigned long int nfds_t;
 			sizeof(struct pollfd))
 #define POLL_TABLE_FULL(table) \
 	((unsigned long)((table)->entry+1) > PAGE_SIZE + (unsigned long)(table))
-
-
 
 static struct poll_table_entry *poll_get_entry(struct poll_wqueues *p)
 {
@@ -1150,7 +1152,6 @@ static int do_poll(unsigned int nfds,  struct poll_list *list,
 }
 
 
-
 static int
 sys_poll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
@@ -1220,6 +1221,8 @@ out_fds:
 
 	return err;
 }
+#endif /* CONFIG_LINUX */
+
 
 void
 kfs_init( void )
@@ -1242,7 +1245,9 @@ kfs_init( void )
 	syscall_register( __NR_getdents, (syscall_ptr_t) sys_getdents );
 	syscall_register( __NR_stat, (syscall_ptr_t) sys_stat );
 	syscall_register( __NR_fstat, (syscall_ptr_t) sys_fstat );
+#ifdef CONFIG_LINUX
 	syscall_register( __NR_poll, (syscall_ptr_t) sys_poll );
+#endif /* CONFIG_LINUX */
 
 	syscall_register( __NR_fork, (syscall_ptr_t) sys_fork );
 
