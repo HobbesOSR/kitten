@@ -14,14 +14,20 @@ extern int late_initcall_pci_sysfs_init(void);
 extern int device_initcall_pci_init(void);
 extern void __init chrdev_init(void);
 
+static struct semaphore linux_sem = __SEMAPHORE_INITIALIZER(linux_sem, 0);
+
+void
+linux_wakeup(void)
+{
+	up(&linux_sem);
+}
 
 int
 linux_kthread(void *arg)
 {
 	while (1) {
-		/* TODO: should only wakeup when there is work to do */
+		down(&linux_sem);
 		run_workqueues();
-		schedule();
 	}
 }
 

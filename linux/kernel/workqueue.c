@@ -1,3 +1,5 @@
+#include <lwk/linux_compat.h>
+
 #include <linux/kernel.h>
 #include <linux/workqueue.h>
 #include <linux/spinlock.h>
@@ -59,6 +61,9 @@ __queue_work(struct workqueue_struct *wq, struct work_struct *work)
     spin_lock_irqsave(&wq->lock, flags);
     insert_work(wq, work, 1);
     spin_unlock_irqrestore(&wq->lock, flags);
+
+	/* wake up linux worker thread */
+	linux_wakeup();
 }
 
 int
