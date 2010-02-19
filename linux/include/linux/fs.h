@@ -2,6 +2,7 @@
 #define _LINUX_FS_H
 
 #include <lwk/kfs.h>
+#include <linux/err.h>
 #define file_operations kfs_fops
 
 #include <linux/kdev_t.h>
@@ -59,8 +60,13 @@ extern int unregister_filesystem(struct file_system_type *);
 extern struct vfsmount *kern_mount_data(struct file_system_type *, void *data);
 #define kern_mount(type) kern_mount_data(type, NULL)
 
+
 extern int register_chrdev_region(dev_t, unsigned, const char *);
 extern void unregister_chrdev_region(dev_t, unsigned);
+extern int register_chrdev(unsigned int, const char *,
+               const struct file_operations *);
+extern void unregister_chrdev(unsigned int, const char *);
+
 
 struct fasync_struct {
 	int     magic;
