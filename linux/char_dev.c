@@ -215,6 +215,65 @@ int alloc_chrdev_region(dev_t *dev, unsigned baseminor, unsigned count,
 }
 
 /**
+ * register_chrdev() - Register a major number for character devices.
+ * @major: major device number or 0 for dynamic allocation
+ * @name: name of this range of devices
+ * @fops: file operations associated with this devices
+ *
+ * If @major == 0 this functions will dynamically allocate a major and return
+ * its number.
+ *
+ * If @major > 0 this function will attempt to reserve a device with the given
+ * major number and will return zero on success.
+ *
+ * Returns a -ve errno on failure.
+ *
+ * The name of this device has nothing to do with the name of the device in
+ * /dev. It only helps to keep track of the different owners of devices. If
+ * your module name has only one type of devices it's ok to use e.g. the name
+ * of the module here.
+ *
+ * This function registers a range of 256 minor numbers. The first minor number
+ * is 0.
+ */
+int register_chrdev(unsigned int major, const char *name,
+            const struct file_operations *fops)
+{
+    struct char_device_struct *cd;
+    struct cdev *cdev;
+    char *s;
+    int err = -ENOMEM;
+
+    cd = __register_chrdev_region(major, 0, 256, name);
+    if (IS_ERR(cd))
+        return PTR_ERR(cd);
+
+    cdev = cdev_alloc();
+    if (!cdev)
+        goto out2;
+
+    cdev->owner = fops->owner;
+    cdev->ops = fops;
+    kobject_set_name(&cdev->kobj, "%s", name);
+    for (s = strchr(kobject_name(&cdev->kobj),'/'); s; s = strchr(s, '/'))
+        *s = '!';
+
+    err = cdev_add(cdev, MKDEV(cd->major, 0), 256);
+    if (err)
+        goto out;
+
+    cd->cdev = cdev;
+
+    return major ? 0 : cd->major;
+out:
+    kobject_put(&cdev->kobj);
+out2:
+    kfree(__unregister_chrdev_region(cd->major, 0, 256));
+    return err;
+}
+
+
+/**
  * __register_chrdev() - create and register a cdev occupying a range of minors
  * @major: major device number or 0 for dynamic allocation
  * @baseminor: first of the requested range of minor numbers
@@ -289,6 +348,15 @@ void unregister_chrdev_region(dev_t from, unsigned count)
 			next = to;
 		kfree(__unregister_chrdev_region(MAJOR(n), MINOR(n), next - n));
 	}
+}
+
+void unregister_chrdev(unsigned int major, const char *name)
+{
+    struct char_device_struct *cd;
+    cd = __unregister_chrdev_region(major, 0, 256);
+    if (cd && cd->cdev)
+        cdev_del(cd->cdev);
+    kfree(cd);
 }
 
 /**
