@@ -8,11 +8,13 @@ extern int early_param_pci_setup(void);
 extern int postcore_initcall_pcibus_class_init(void);
 extern int postcore_initcall_pci_driver_init(void);
 extern int arch_initcall_pci_arch_init(void);
+extern int subsys_initcall_misc_init(void);
 extern int subsys_initcall_pci_subsys_init(void);
 extern int fs_initcall_pcibios_assign_resources(void);
 extern int late_initcall_pci_sysfs_init(void);
 extern int device_initcall_pci_init(void);
 extern void __init chrdev_init(void);
+extern void network_init(void);
 
 
 int
@@ -35,12 +37,14 @@ linux_init(void)
 	postcore_initcall_pcibus_class_init();
 	postcore_initcall_pci_driver_init();
 	arch_initcall_pci_arch_init();
+	chrdev_init();
 	subsys_initcall_pci_subsys_init();
+    subsys_initcall_misc_init();
 	fs_initcall_pcibios_assign_resources();
 	late_initcall_pci_sysfs_init();
 	device_initcall_pci_init();
-	chrdev_init();
 	driver_init_by_name("linux", "*");
+    network_init();
 
 	struct task_struct *tux = kthread_create(
 		linux_kthread,
