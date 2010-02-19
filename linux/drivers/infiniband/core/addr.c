@@ -385,7 +385,7 @@ static int addr_init(void)
 	return 0;
 }
 
-static void addr_cleanup(void)
+static void __exit addr_cleanup(void)
 {
 	unregister_netevent_notifier(&nb);
 	destroy_workqueue(addr_wq);
