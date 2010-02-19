@@ -2939,7 +2939,7 @@ err:
 	return ret;
 }
 
-static void cma_cleanup(void)
+static __exit void cma_cleanup(void)
 {
 	ib_unregister_client(&cma_client);
 	unregister_netdevice_notifier(&cma_nb);
