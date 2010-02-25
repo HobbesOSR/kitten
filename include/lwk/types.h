@@ -16,6 +16,7 @@
 
 #ifndef __KERNEL_STRICT_NAMES
 
+#ifdef __KERNEL__
 typedef __u32 __kernel_dev_t;
 
 typedef __kernel_fd_set		fd_set;
@@ -31,9 +32,12 @@ typedef __kernel_suseconds_t	suseconds_t;
 typedef __kernel_timer_t	timer_t;
 typedef __kernel_clockid_t	clockid_t;
 typedef __kernel_mqd_t		mqd_t;
+#endif
 typedef __kernel_uid_t		uid_t;
 typedef __kernel_gid_t		gid_t;
+#ifdef __KERNEL__
 typedef __kernel_loff_t		loff_t;
+#endif
 
 /*
  * The following typedefs are also protected by individual ifdefs for
@@ -160,7 +164,6 @@ typedef __u64 __bitwise __be64;
 
 #ifdef __KERNEL__
 typedef unsigned __bitwise__ gfp_t;
-#endif
 
 struct ustat {
 	__kernel_daddr_t	f_tfree;
@@ -168,5 +171,6 @@ struct ustat {
 	char			f_fname[6];
 	char			f_fpack[6];
 };
+#endif
 
 #endif /* _LWK_TYPES_H */
