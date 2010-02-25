@@ -44,7 +44,6 @@ linux_init(void)
 	late_initcall_pci_sysfs_init();
 	device_initcall_pci_init();
 	driver_init_by_name("linux", "*");
-    network_init();
 
 	struct task_struct *tux = kthread_create(
 		linux_kthread,
