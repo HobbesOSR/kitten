@@ -21,6 +21,15 @@
 #include <arch/byteorder.h>
 #include <arch/bug.h>
 
+#include <lwk/print.h>
+#define _KDBG(fmt, args...) \
+print("%s:%s():%i: " fmt, __FILE__,__FUNCTION__, __LINE__, ## args)
+
+extern int __flag;
+#define __KDBG(fmt, args...) if ( current->id != 0  )\
+print("%s:%s()%i: " fmt, __FILE__,__FUNCTION__, __LINE__, ## args)
+
+
 extern const char lwk_banner[];
 
 #define INT_MAX         ((int)(~0U>>1))
