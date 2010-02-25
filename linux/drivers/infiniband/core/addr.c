@@ -377,6 +377,8 @@ static struct notifier_block nb = {
 
 static int addr_init(void)
 {
+	work.timer.link.next = &work.timer.link; 
+	work.timer.link.prev = &work.timer.link; 
 	addr_wq = create_singlethread_workqueue("ib_addr");
 	if (!addr_wq)
 		return -ENOMEM;
