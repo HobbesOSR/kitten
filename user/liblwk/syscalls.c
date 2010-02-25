@@ -196,6 +196,12 @@ SYSCALL2(task_create, const start_state_t *, id_t *);
 SYSCALL1(task_exit, int);
 SYSCALL1(task_get_cpu, id_t *);
 SYSCALL1(task_get_cpumask, user_cpumask_t *);
+SYSCALL1(task_is_zombie, id_t);
+SYSCALL1(task_destroy, id_t);
+SYSCALL2(task_kill, id_t, int);
+
+SYSCALL1(lwk_arp, struct lwk_arpreq * );
+SYSCALL1(lwk_ifconfig, struct lwk_ifreq * );
 
 /**
  * ELF related system calls.
