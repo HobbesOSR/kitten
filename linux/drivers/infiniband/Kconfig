@@ -37,8 +37,8 @@ config INFINIBAND_USER_MEM
 	default y
 
 config INFINIBAND_ADDR_TRANS
-	bool
-	depends on INET
+    tristate "InfiniBand address translation"	
+	depends on INFINIBAND  
 	default y
 
 source "linux/drivers/infiniband/hw/mthca/Kconfig"
