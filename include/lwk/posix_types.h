@@ -33,9 +33,11 @@
 #undef __FDMASK
 #define	__FDMASK(d)	(1UL << ((d) % __NFDBITS))
 
+#ifdef __KERNEL__
 typedef struct {
 	unsigned long fds_bits [__FDSET_LONGS];
 } __kernel_fd_set;
+#endif
 
 /* Type of a signal handler.  */
 typedef void (*__kernel_sighandler_t)(int);
