@@ -39,7 +39,7 @@ linux_init(void)
 	arch_initcall_pci_arch_init();
 	chrdev_init();
 	subsys_initcall_pci_subsys_init();
-    subsys_initcall_misc_init();
+	subsys_initcall_misc_init();
 	fs_initcall_pcibios_assign_resources();
 	late_initcall_pci_sysfs_init();
 	device_initcall_pci_init();
