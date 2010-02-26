@@ -11,6 +11,14 @@ init_timer(
 	timer->cpu      = this_cpu;
 }
 
+void
+init_timer_deferrable(
+	struct timer_list *timer
+	)
+{
+	init_timer(timer);
+}
+
 int
 __mod_timer(
 	struct timer_list *		timer,

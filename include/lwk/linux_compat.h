@@ -5,6 +5,7 @@
 
 #ifdef CONFIG_LINUX
 extern void linux_init(void);
+extern void linux_wakeup(void);
 #else
 static inline void linux_init(void) {}
 #endif
