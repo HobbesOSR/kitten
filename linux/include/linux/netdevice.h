@@ -25,7 +25,8 @@ struct net_device {
 
 static inline void dev_put(struct net_device *dev)
 {
-	LINUX_DBG(TRUE,"\n");
+	// this is called after ip_dev_find which doesn't allocate a structure
+	LINUX_DBG(FALSE,"\n");
 }
 
 static inline int register_netdevice_notifier(struct notifier_block *nb)

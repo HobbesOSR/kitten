@@ -15,10 +15,6 @@ struct in_device {
 	struct arp_table*	arp_table;
 };
 
-static inline  struct net_device *ip_dev_find(struct net *net, __be32 addr)
-{
-    LINUX_DBG(FALSE,"addr=%#x\n",be32_to_cpu(addr));
-    return NULL;
-}
+extern struct net_device *ip_dev_find(struct net *net, __be32 addr);
 
 #endif

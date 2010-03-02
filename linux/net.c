@@ -183,6 +183,17 @@ void ip_rt_put(struct rtable * rt)
 	kmem_free( rt );
 }
 
+
+struct net_device *ip_dev_find(struct net *net, __be32 addr)
+{
+	LINUX_DBG(FALSE,"addr=%#x\n",be32_to_cpu(addr));
+	if ( _ib0_in_device && _ib0_in_device->ifa_address == addr ) {	
+		LINUX_DBG(FALSE,"local\n");
+		return _ib0_in_device->dev; 
+	}
+    	return NULL;
+}
+
 int neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 {
 	LINUX_DBG(TRUE,"\n");
