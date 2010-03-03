@@ -2330,7 +2330,7 @@ ssize_t ib_uverbs_destroy_srq(struct ib_uverbs_file *file,
 
 static struct inode *xrc_file2inode(struct file *f)
 {
-	return f->f_dentry->d_inode;
+	return f->inode;
 }
 
 struct xrcd_table_entry {
