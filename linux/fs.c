@@ -160,3 +160,10 @@ int unregister_filesystem(struct file_system_type * fs)
 }
 
 EXPORT_SYMBOL(unregister_filesystem);
+
+struct inode *igrab(struct inode *inode) {
+        return inode;
+}
+void iput(struct inode *inode) {
+
+}
