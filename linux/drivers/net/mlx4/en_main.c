@@ -230,10 +230,24 @@ err_free_res:
 	return NULL;
 }
 
+enum mlx4_query_reply mlx4_en_query(void *endev_ptr, void *int_dev)
+{
+	struct mlx4_en_dev *mdev = endev_ptr;
+	struct net_device *netdev = int_dev;
+	int p;
+	
+	for (p = 1; p <= MLX4_MAX_PORTS; ++p)
+		if (mdev->pndev[p] == netdev)
+			return p;
+
+	return MLX4_QUERY_NOT_MINE;
+}
+
 static struct mlx4_interface mlx4_en_interface = {
 	.add	= mlx4_en_add,
 	.remove	= mlx4_en_remove,
-	.event	= mlx4_en_event
+	.event	= mlx4_en_event,
+	.query  = mlx4_en_query
 };
 
 static int __init mlx4_en_init(void)

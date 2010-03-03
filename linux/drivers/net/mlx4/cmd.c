@@ -106,6 +106,7 @@ struct mlx4_cmd_context {
 	int			next;
 	u64			out_param;
 	u16			token;
+	u8			fw_status;
 };
 
 static int mlx4_status_to_errno(u8 status)
@@ -212,6 +213,7 @@ static int mlx4_cmd_poll(struct mlx4_dev *dev, u64 in_param, u64 *out_param,
 	void __iomem *hcr = priv->cmd.hcr;
 	int err = 0;
 	unsigned long end;
+	u32 stat;
 
 	down(&priv->cmd.poll_sem);
 
@@ -235,9 +237,10 @@ static int mlx4_cmd_poll(struct mlx4_dev *dev, u64 in_param, u64 *out_param,
 					  __raw_readl(hcr + HCR_OUT_PARAM_OFFSET)) << 32 |
 			(u64) be32_to_cpu((__force __be32)
 					  __raw_readl(hcr + HCR_OUT_PARAM_OFFSET + 4));
-
-	err = mlx4_status_to_errno(be32_to_cpu((__force __be32)
-					       __raw_readl(hcr + HCR_STATUS_OFFSET)) >> 24);
+	stat = be32_to_cpu((__force __be32) __raw_readl(hcr + HCR_STATUS_OFFSET)) >> 24;
+	err = mlx4_status_to_errno(stat);
+	if (err)
+		mlx4_err(dev, "command 0x%x failed: fw status = 0x%x\n", op, stat);
 
 out:
 	up(&priv->cmd.poll_sem);
@@ -254,6 +257,7 @@ void mlx4_cmd_event(struct mlx4_dev *dev, u16 token, u8 status, u64 out_param)
 	if (token != context->token)
 		return;
 
+	context->fw_status = status;
 	context->result    = mlx4_status_to_errno(status);
 	context->out_param = out_param;
 
@@ -282,14 +286,18 @@ static int mlx4_cmd_wait(struct mlx4_dev *dev, u64 in_param, u64 *out_param,
 	mlx4_cmd_post(dev, in_param, out_param ? *out_param : 0,
 		      in_modifier, op_modifier, op, context->token, 1);
 
-	if (!wait_for_completion_timeout(&context->done, msecs_to_jiffies(timeout))) {
-		err = -EBUSY;
-		goto out;
-	}
+	if (!wait_for_completion_timeout(&context->done, msecs_to_jiffies(timeout)))
+		if (!context->done.done) {
+			err = -EBUSY;
+			goto out;
+		}
 
 	err = context->result;
-	if (err)
+	if (err) {
+		mlx4_err(dev, "command 0x%x failed: fw status = 0x%x\n",
+			 op, context->fw_status);
 		goto out;
+	}
 
 	if (out_is_imm)
 		*out_param = context->out_param;

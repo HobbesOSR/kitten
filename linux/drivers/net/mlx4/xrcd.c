@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006, 2007 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2005 Mellanox Technologies. All rights reserved.
+ * Copyright (c) 2007 Mellanox Technologies. All rights reserved.
  *
  * This software is available to you under a choice of one of two
  * licenses.  You may choose to be licensed under the terms of the GNU
@@ -34,76 +34,37 @@
 #include <linux/init.h>
 #include <linux/errno.h>
 
-#include <asm/page.h>
-
 #include "mlx4.h"
-#include "icm.h"
 
-int mlx4_pd_alloc(struct mlx4_dev *dev, u32 *pdn)
+int mlx4_xrcd_alloc(struct mlx4_dev *dev, u32 *xrcdn)
 {
 	struct mlx4_priv *priv = mlx4_priv(dev);
 
-	*pdn = mlx4_bitmap_alloc(&priv->pd_bitmap);
-	if (*pdn == -1)
+	*xrcdn = mlx4_bitmap_alloc(&priv->xrcd_bitmap);
+	if (*xrcdn == -1)
 		return -ENOMEM;
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mlx4_pd_alloc);
+EXPORT_SYMBOL_GPL(mlx4_xrcd_alloc);
 
-void mlx4_pd_free(struct mlx4_dev *dev, u32 pdn)
+void mlx4_xrcd_free(struct mlx4_dev *dev, u32 xrcdn)
 {
-	mlx4_bitmap_free(&mlx4_priv(dev)->pd_bitmap, pdn);
+	mlx4_bitmap_free(&mlx4_priv(dev)->xrcd_bitmap, xrcdn);
 }
-EXPORT_SYMBOL_GPL(mlx4_pd_free);
+EXPORT_SYMBOL_GPL(mlx4_xrcd_free);
 
-int mlx4_init_pd_table(struct mlx4_dev *dev)
+int __devinit mlx4_init_xrcd_table(struct mlx4_dev *dev)
 {
 	struct mlx4_priv *priv = mlx4_priv(dev);
 
-	return mlx4_bitmap_init(&priv->pd_bitmap, dev->caps.num_pds,
-				(1 << 24) - 1, dev->caps.reserved_pds, 0);
+	return mlx4_bitmap_init(&priv->xrcd_bitmap, (1 << 16),
+				(1 << 16) - 1, dev->caps.reserved_xrcds + 1, 0);
 }
 
-void mlx4_cleanup_pd_table(struct mlx4_dev *dev)
+void mlx4_cleanup_xrcd_table(struct mlx4_dev *dev)
 {
-	mlx4_bitmap_cleanup(&mlx4_priv(dev)->pd_bitmap);
+	mlx4_bitmap_cleanup(&mlx4_priv(dev)->xrcd_bitmap);
 }
 
 
-int mlx4_uar_alloc(struct mlx4_dev *dev, struct mlx4_uar *uar)
-{
-	uar->index = mlx4_bitmap_alloc(&mlx4_priv(dev)->uar_table.bitmap);
-	if (uar->index == -1)
-		return -ENOMEM;
-
-	uar->pfn = (pci_resource_start(dev->pdev, 2) >> PAGE_SHIFT) + uar->index;
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(mlx4_uar_alloc);
-
-void mlx4_uar_free(struct mlx4_dev *dev, struct mlx4_uar *uar)
-{
-	mlx4_bitmap_free(&mlx4_priv(dev)->uar_table.bitmap, uar->index);
-}
-EXPORT_SYMBOL_GPL(mlx4_uar_free);
-
-int mlx4_init_uar_table(struct mlx4_dev *dev)
-{
-	if (dev->caps.num_uars <= 128) {
-		mlx4_err(dev, "Only %d UAR pages (need more than 128)\n",
-			 dev->caps.num_uars);
-		mlx4_err(dev, "Increase firmware log2_uar_bar_megabytes?\n");
-		return -ENODEV;
-	}
-
-	return mlx4_bitmap_init(&mlx4_priv(dev)->uar_table.bitmap,
-				dev->caps.num_uars, dev->caps.num_uars - 1,
-				max(128, dev->caps.reserved_uars), 0);
-}
-
-void mlx4_cleanup_uar_table(struct mlx4_dev *dev)
-{
-	mlx4_bitmap_cleanup(&mlx4_priv(dev)->uar_table.bitmap);
-}

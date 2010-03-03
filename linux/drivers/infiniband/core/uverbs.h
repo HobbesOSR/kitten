@@ -133,6 +133,11 @@ struct ib_ucq_object {
 	u32			async_events_reported;
 };
 
+struct ib_uxrcd_object {
+	struct ib_uobject	uobject;
+	struct list_head	xrc_reg_qp_list;
+};
+
 extern spinlock_t ib_uverbs_idr_lock;
 extern struct idr ib_uverbs_pd_idr;
 extern struct idr ib_uverbs_mr_idr;
@@ -141,6 +146,7 @@ extern struct idr ib_uverbs_ah_idr;
 extern struct idr ib_uverbs_cq_idr;
 extern struct idr ib_uverbs_qp_idr;
 extern struct idr ib_uverbs_srq_idr;
+extern struct idr ib_uverbs_xrc_domain_idr;
 
 void idr_remove_uobj(struct idr *idp, struct ib_uobject *uobj);
 
@@ -160,6 +166,12 @@ void ib_uverbs_qp_event_handler(struct ib_event *event, void *context_ptr);
 void ib_uverbs_srq_event_handler(struct ib_event *event, void *context_ptr);
 void ib_uverbs_event_handler(struct ib_event_handler *handler,
 			     struct ib_event *event);
+void ib_uverbs_xrc_rcv_qp_event_handler(struct ib_event *event,
+					void *context_ptr);
+void ib_uverbs_dealloc_xrcd(struct ib_device *ib_dev,
+			    struct ib_xrcd *xrcd);
+int ib_uverbs_cleanup_xrc_rcv_qp(struct ib_uverbs_file *file,
+				 struct ib_xrcd *xrcd, u32 qp_num);
 
 #define IB_UVERBS_DECLARE_CMD(name)					\
 	ssize_t ib_uverbs_##name(struct ib_uverbs_file *file,		\
@@ -194,5 +206,14 @@ IB_UVERBS_DECLARE_CMD(create_srq);
 IB_UVERBS_DECLARE_CMD(modify_srq);
 IB_UVERBS_DECLARE_CMD(query_srq);
 IB_UVERBS_DECLARE_CMD(destroy_srq);
+IB_UVERBS_DECLARE_CMD(create_xrc_srq);
+IB_UVERBS_DECLARE_CMD(open_xrc_domain);
+IB_UVERBS_DECLARE_CMD(close_xrc_domain);
+IB_UVERBS_DECLARE_CMD(create_xrc_rcv_qp);
+IB_UVERBS_DECLARE_CMD(modify_xrc_rcv_qp);
+IB_UVERBS_DECLARE_CMD(query_xrc_rcv_qp);
+IB_UVERBS_DECLARE_CMD(reg_xrc_rcv_qp);
+IB_UVERBS_DECLARE_CMD(unreg_xrc_rcv_qp);
+
 
 #endif /* UVERBS_H */

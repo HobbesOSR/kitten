@@ -41,20 +41,20 @@
 struct mlx4_srq_context {
 	__be32			state_logsize_srqn;
 	u8			logstride;
-	u8			reserved1[3];
-	u8			pg_offset;
-	u8			reserved2[3];
-	u32			reserved3;
+	u8			reserved1;
+	__be16			xrc_domain;
+	__be32			pg_offset_cqn;
+	u32			reserved2;
 	u8			log_page_size;
-	u8			reserved4[2];
+	u8			reserved3[2];
 	u8			mtt_base_addr_h;
 	__be32			mtt_base_addr_l;
 	__be32			pd;
 	__be16			limit_watermark;
 	__be16			wqe_cnt;
-	u16			reserved5;
+	u16			reserved4;
 	__be16			wqe_counter;
-	u32			reserved6;
+	u32			reserved5;
 	__be64			db_rec_addr;
 };
 
@@ -65,7 +65,8 @@ void mlx4_srq_event(struct mlx4_dev *dev, u32 srqn, int event_type)
 
 	spin_lock(&srq_table->lock);
 
-	srq = radix_tree_lookup(&srq_table->tree, srqn & (dev->caps.num_srqs - 1));
+	srq = radix_tree_lookup(&dev->srq_table_tree,
+				srqn & (dev->caps.num_srqs - 1));
 	if (srq)
 		atomic_inc(&srq->refcount);
 
@@ -110,8 +111,8 @@ static int mlx4_QUERY_SRQ(struct mlx4_dev *dev, struct mlx4_cmd_mailbox *mailbox
 			    MLX4_CMD_TIME_CLASS_A);
 }
 
-int mlx4_srq_alloc(struct mlx4_dev *dev, u32 pdn, struct mlx4_mtt *mtt,
-		   u64 db_rec, struct mlx4_srq *srq)
+int mlx4_srq_alloc(struct mlx4_dev *dev, u32 pdn, u32 cqn, u16 xrcd,
+		   struct mlx4_mtt *mtt, u64 db_rec, struct mlx4_srq *srq)
 {
 	struct mlx4_srq_table *srq_table = &mlx4_priv(dev)->srq_table;
 	struct mlx4_cmd_mailbox *mailbox;
@@ -132,7 +133,7 @@ int mlx4_srq_alloc(struct mlx4_dev *dev, u32 pdn, struct mlx4_mtt *mtt,
 		goto err_put;
 
 	spin_lock_irq(&srq_table->lock);
-	err = radix_tree_insert(&srq_table->tree, srq->srqn, srq);
+	err = radix_tree_insert(&dev->srq_table_tree, srq->srqn, srq);
 	spin_unlock_irq(&srq_table->lock);
 	if (err)
 		goto err_cmpt_put;
@@ -149,6 +150,8 @@ int mlx4_srq_alloc(struct mlx4_dev *dev, u32 pdn, struct mlx4_mtt *mtt,
 	srq_context->state_logsize_srqn = cpu_to_be32((ilog2(srq->max) << 24) |
 						      srq->srqn);
 	srq_context->logstride          = srq->wqe_shift - 4;
+	srq_context->xrc_domain		= cpu_to_be16(xrcd);
+	srq_context->pg_offset_cqn	= cpu_to_be32(cqn & 0xffffff);
 	srq_context->log_page_size      = mtt->page_shift - MLX4_ICM_PAGE_SHIFT;
 
 	mtt_addr = mlx4_mtt_addr(dev, mtt);
@@ -169,7 +172,7 @@ int mlx4_srq_alloc(struct mlx4_dev *dev, u32 pdn, struct mlx4_mtt *mtt,
 
 err_radix:
 	spin_lock_irq(&srq_table->lock);
-	radix_tree_delete(&srq_table->tree, srq->srqn);
+	radix_tree_delete(&dev->srq_table_tree, srq->srqn);
 	spin_unlock_irq(&srq_table->lock);
 
 err_cmpt_put:
@@ -185,18 +188,29 @@ err_out:
 }
 EXPORT_SYMBOL_GPL(mlx4_srq_alloc);
 
-void mlx4_srq_free(struct mlx4_dev *dev, struct mlx4_srq *srq)
+void mlx4_srq_invalidate(struct mlx4_dev *dev, struct mlx4_srq *srq)
 {
-	struct mlx4_srq_table *srq_table = &mlx4_priv(dev)->srq_table;
 	int err;
 
 	err = mlx4_HW2SW_SRQ(dev, NULL, srq->srqn);
 	if (err)
 		mlx4_warn(dev, "HW2SW_SRQ failed (%d) for SRQN %06x\n", err, srq->srqn);
+}
+EXPORT_SYMBOL_GPL(mlx4_srq_invalidate);
+
+void mlx4_srq_remove(struct mlx4_dev *dev, struct mlx4_srq *srq)
+{
+	struct mlx4_srq_table *srq_table = &mlx4_priv(dev)->srq_table;
 
 	spin_lock_irq(&srq_table->lock);
-	radix_tree_delete(&srq_table->tree, srq->srqn);
+	radix_tree_delete(&dev->srq_table_tree, srq->srqn);
 	spin_unlock_irq(&srq_table->lock);
+}
+EXPORT_SYMBOL_GPL(mlx4_srq_remove);
+
+void mlx4_srq_free(struct mlx4_dev *dev, struct mlx4_srq *srq)
+{
+	struct mlx4_srq_table *srq_table = &mlx4_priv(dev)->srq_table;
 
 	if (atomic_dec_and_test(&srq->refcount))
 		complete(&srq->free);
@@ -242,10 +256,10 @@ int mlx4_init_srq_table(struct mlx4_dev *dev)
 	int err;
 
 	spin_lock_init(&srq_table->lock);
-	INIT_RADIX_TREE(&srq_table->tree, GFP_ATOMIC);
+	INIT_RADIX_TREE(&dev->srq_table_tree, GFP_ATOMIC);
 
 	err = mlx4_bitmap_init(&srq_table->bitmap, dev->caps.num_srqs,
-			       dev->caps.num_srqs - 1, dev->caps.reserved_srqs);
+			       dev->caps.num_srqs - 1, dev->caps.reserved_srqs, 0);
 	if (err)
 		return err;
 
