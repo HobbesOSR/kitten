@@ -22,7 +22,9 @@
 #include <linux/kallsyms.h>
 #include <linux/semaphore.h>
 #include <linux/mutex.h>
-
+#ifdef CONFIG_IBIP
+#include <lwk/params.h>
+#endif
 #include "base.h"
 #include "power/power.h"
 
@@ -614,7 +616,7 @@ static struct kobject *get_device_parent(struct device *dev,
 
 		/* or create a new class-directory at the parent device */
 		if (dev->class && (!parent || parent->class != dev->class)) {
-			printk("Using class fix from depricated_sysfs %s %p\n", 
+			printk("Using class fix from depricated_sysfs %s %p\n",
 				kobject_name(&dev->class->p->class_subsys.kobj),
 				&dev->class->p->class_subsys.kobj);
 			return &dev->class->p->class_subsys.kobj;
@@ -824,11 +826,11 @@ static int device_create_sys_dev_entry(struct device *dev)
 	char devt_str[15];
 	char devfs_path[256];
 
-        printk("mknod : sysfs %s | %s\n",kobject_name(dev->kobj.parent),
+	printk("mknod : sysfs %s | %s\n",kobject_name(dev->kobj.parent),
 		kobject_name(&dev->kobj) );
 
 	sprintf(devfs_path, "/dev/infiniband/%s", kobject_name(&dev->kobj) );
-	if (strcmp(kobject_name(kobj),"char") == 0) {	
+	if (strcmp(kobject_name(kobj),"char") == 0) {
 		create_dev(devfs_path, MAJOR(dev->devt), MINOR(dev->devt));
 	}
 
@@ -866,6 +868,11 @@ static void device_remove_sys_dev_entry(struct device *dev)
  * if it returned an error! Always use put_device() to give up your
  * reference instead.
  */
+#ifdef CONFIG_IB_IP
+static char ibdev_ip_str[1024] = { 0 };
+param_string(ibdev_ip, ibdev_ip_str, sizeof(ibdev_ip_str));
+#endif
+
 int device_add(struct device *dev)
 {
 	struct device *parent = NULL;
@@ -886,6 +893,69 @@ int device_add(struct device *dev)
 
 	pr_debug("device: '%s': %s\n", dev->bus_id, __func__);
 
+#ifdef CONFIG_IB_IP
+	/* Adding the ability to set node_desc to IP */
+	struct ib_device_modify {
+		u64     sys_image_guid;
+		char    node_desc[64];
+	};
+	struct ibdev {
+		char name[32];
+		struct ib_device_modify desc;
+	};
+	struct ibdev ibdevs[8];
+
+	struct ib_device;
+	extern int ib_modify_device(struct ib_device *device,
+		     int device_modify_mask,
+		     struct ib_device_modify *device_modify);
+	int i = 0, n_ibdev = 0, ip = 0, j = 0;
+
+	while (ibdev_ip_str[i] != '\0') {
+		if (ibdev_ip_str[i] == '\'') {
+			i++;
+			continue;
+		}
+		if (ibdev_ip_str[i] == '=') {
+			ip = 1;
+			ibdevs[n_ibdev].name[j] = '\0';
+			j = 0;
+			i++;
+		}
+		if (ibdev_ip_str[i] == ',') {
+			ip = 0;
+			ibdevs[n_ibdev].desc.node_desc[j] = '\0';
+			j = 0;
+			n_ibdev++;
+			i++;
+		}
+		if (!ip)
+			ibdevs[n_ibdev].name[j++] = ibdev_ip_str[i++];
+		if (ip)
+			ibdevs[n_ibdev].desc.node_desc[j++] = ibdev_ip_str[i++];
+	}
+	ibdevs[n_ibdev].desc.node_desc[j] = '\0';
+
+	if (i!=0 && n_ibdev==0)
+		n_ibdev++;
+
+#if 0
+	for (i=0;i<n_ibdev; i++)
+		printk("device table %d : %s : %s\n", i, ibdevs[i].name,
+			ibdevs[i].desc.node_desc);
+#endif
+
+	if (dev->driver_data)
+		for (i=0;i<n_ibdev; i++)
+			if (!strcmp(dev->bus_id, ibdevs[i].name)) {
+				printk("device: '%s': %s\n", dev->bus_id,
+					ibdevs[i].desc.node_desc);
+				ib_modify_device(dev->driver_data,
+						(1 << 1), &(ibdevs[i].desc));
+				break;
+			}
+	/**  End  **/
+#endif
 	parent = get_device(dev->parent);
 	setup_parent(dev, parent);
 

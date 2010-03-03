@@ -41,6 +41,10 @@ config INFINIBAND_ADDR_TRANS
 	depends on INFINIBAND  
 	default y
 
+config IB_IP
+	bool "Infiniband IP description"
+	default y
+
 source "linux/drivers/infiniband/hw/mthca/Kconfig"
 source "linux/drivers/infiniband/hw/mlx4/Kconfig"
 
