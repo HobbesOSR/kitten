@@ -265,23 +265,30 @@ palacios_get_cpu(void)
 
 /**
  * Interrupts the physical CPU corresponding to the specified logical guest cpu.
+ * If (vector == 0) then it is just an interrupt with no effect, this merely kicks the 
+ * core out of the guest context
  *
  * NOTE: 
  * This is dependent on the implementation of xcall_reschedule().  Currently
  * xcall_reschedule does not explicitly call schedule() on the destination CPU,
  * but instead relies on the return to user space to handle it. Because
  * palacios is a kernel thread schedule will not be called, which is correct.
- * If it ever changes to induce side effects, we'll need to figure something
- * else out...
+ * We should have a default palacios IRQ that just handles the IPI and returns immediately
+ * with no side effects.
  */
 static void
 palacios_interrupt_cpu(
 	struct v3_vm_info*	vm, 
-	int			cpu_id
+	int			cpu_id,
+	int                     vector
 )
 {
-	if (cpu_id != current->cpu_id)
-		xcall_reschedule(cpu_id);
+	if (cpu_id != current->cpu_id) {
+		if (vector == 0) 
+			xcall_reschedule(cpu_id);
+		else 
+			lapic_send_ipi(cpu_id, vector);
+	}
 }
 
 /**
