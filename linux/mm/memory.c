@@ -111,7 +111,8 @@ remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 void *vmap(struct page **pages, unsigned int count,
                 unsigned long flags, pgprot_t prot)
 {
-	return NULL;
+	printk("vmap :  %lx %d\n",(unsigned long)pages[0], count);
+	return (page_to_virt(pages[0]));
 }
 void vunmap(const void *addr)
 {
