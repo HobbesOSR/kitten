@@ -27,69 +27,69 @@ EXPORT_SYMBOL(kmemdup);
 
 void *__krealloc(const void *p, size_t new_size, gfp_t flags)
 {
-        void *ret;
-        size_t ks = 0;
+	void *ret;
+	size_t ks = 0;
 
-        if (unlikely(!new_size))
-                return ZERO_SIZE_PTR;
+	if (unlikely(!new_size))
+		return ZERO_SIZE_PTR;
 
-        if (p)
-                ks = 0;//ksize(p);
+	if (p)
+		ks = 0;//ksize(p);
 
-        if (ks >= new_size)
-                return (void *)p;
+	if (ks >= new_size)
+		return (void *)p;
 
-        ret = kmalloc_track_caller(new_size, flags);
-        if (ret && p)
-                memcpy(ret, p, ks);
+	ret = kmalloc_track_caller(new_size, flags);
+	if (ret && p)
+		memcpy(ret, p, ks);
 
-        return ret;
+	return ret;
 }
 
 
 void *krealloc(const void *p, size_t new_size, gfp_t flags)
 {
-        void *ret;
+	void *ret;
 
-        if (unlikely(!new_size)) {
-                kfree(p);
-                return ZERO_SIZE_PTR;
-        }
+	if (unlikely(!new_size)) {
+		kfree(p);
+		return ZERO_SIZE_PTR;
+	}
 
-        ret = __krealloc(p, new_size, flags);
-        if (ret && p != ret)
-                kfree(p);
+	ret = __krealloc(p, new_size, flags);
+	if (ret && p != ret)
+		kfree(p);
 
-        return ret;
+	return ret;
 }
 
 
 int can_do_mlock(void)
 {
-        if (capable(CAP_IPC_LOCK))
-                return 1;
-        if (current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur != 0)
-                return 1;
-        return 0;
+	if (capable(CAP_IPC_LOCK))
+		return 1;
+	if (current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur != 0)
+		return 1;
+	return 0;
 }
 
 struct mm_struct *get_task_mm(struct task_struct *task)
 {
-        struct mm_struct *mm;
+	struct mm_struct *mm;
 
-        //task_lock(task);
-        mm = task->mm;
-        if (mm) {
-        /* needs kitten implementation 
-        if (task->flags & PF_KTHREAD)
-                        mm = NULL;
-                else
-                        atomic_inc(&mm->mm_users);
-        }
+	//task_lock(task);
+	mm = task->mm;
+	if (mm) {
+	/* needs kitten implementation
+	if (task->flags & PF_KTHREAD)
+			mm = NULL;
+		else
+			atomic_inc(&mm->mm_users);
+	}
 	*/
 	}
 	//task_unlock(task);
-        return mm;
+	return mm;
 }
 void mmput(struct mm_struct *mm)
 {
@@ -105,11 +105,10 @@ int set_page_dirty(struct page *page)
 
 int set_page_dirty_lock(struct page *page)
 {
-        int ret;
+	int ret;
 
-        //lock_page_nosync(page);
-        ret = set_page_dirty(page);
-        //unlock_page(page);
-        return ret;
+	//lock_page_nosync(page);
+	ret = set_page_dirty(page);
+	//unlock_page(page);
+	return ret;
 }
-

@@ -107,3 +107,13 @@ remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 		panic("In remap_pfn_range(): __aspace_map_pmem() failed (status=%d).", status);
 	return status;
 }
+
+void *vmap(struct page **pages, unsigned int count,
+                unsigned long flags, pgprot_t prot)
+{
+	return NULL;
+}
+void vunmap(const void *addr)
+{
+}
+

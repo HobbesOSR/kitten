@@ -458,7 +458,7 @@ extern cpumask_t cpu_online_map;
 extern cpumask_t cpu_present_map;
 
 #define num_online_cpus()	cpus_weight(cpu_online_map)
-#define num_possible_cpus()	cpus_weight(cpu_possible_map)
+#define num_possible_cpus()	cpus_weight(cpu_present_map) /* FIXME cpus_weight(cpu_possible_map) */
 #define num_present_cpus()	cpus_weight(cpu_present_map)
 #define cpu_online(cpu)		cpu_isset((cpu), cpu_online_map)
 #define cpu_possible(cpu)	cpu_isset((cpu), cpu_possible_map)

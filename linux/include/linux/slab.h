@@ -36,6 +36,8 @@ struct kmem_cache {
 #define SLAB_CACHE_DMA		0x00004000UL	/* Use GFP_DMA memory */
 #define SLAB_PANIC		0x00040000UL	/* Panic if kmem_cache_create() fails */
 
+#define ZERO_SIZE_PTR ((void *)16)
+
 /**
  * kmem_cache_create - Create a cache.
  * @name: A string which is used in /proc/slabinfo to identify this cache.
@@ -124,6 +126,9 @@ kcalloc(size_t n, size_t size, gfp_t flags);
  */
 extern void
 kfree(const void *mem);
+
+void * __must_check __krealloc(const void *, size_t, gfp_t);
+void * __must_check krealloc(const void *, size_t, gfp_t);
 
 /**
  * kmalloc_track_caller is a special version of kmalloc that records the

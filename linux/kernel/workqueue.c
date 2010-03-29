@@ -6,9 +6,9 @@
 #include <linux/smp.h>
 
 struct workqueue_struct {
-        spinlock_t		lock;
-        struct list_head	list;
-        const char		name[64];
+	spinlock_t		lock;
+	struct list_head	list;
+	const char		name[64];
 };
 
 static struct workqueue_struct *keventd_wq;
@@ -46,9 +46,9 @@ insert_work(struct workqueue_struct *wq, struct work_struct *work, int tail)
     set_wq_data(work, wq);
     //smp_wmb();
     if (tail)
-        list_add_tail(&work->entry, &wq->list);
+	list_add_tail(&work->entry, &wq->list);
     else
-        list_add(&work->entry, &wq->list);
+	list_add(&work->entry, &wq->list);
     //wake_up(&cwq->more_work);
 }
 
@@ -73,10 +73,10 @@ queue_work(struct workqueue_struct *wq, struct work_struct *work)
 
     //_KDBG("name=%s work=%p\n",wq->name,work);
     if (!test_and_set_bit(WORK_STRUCT_PENDING, work_data_bits(work))) {
-        BUG_ON(!list_empty(&work->entry));
-        __queue_work(wq, work);
-        put_cpu();
-        ret = 1;
+	BUG_ON(!list_empty(&work->entry));
+	__queue_work(wq, work);
+	put_cpu();
+	ret = 1;
     }
     return ret;
 }
@@ -102,27 +102,27 @@ schedule_work(struct work_struct *work)
 
 struct workqueue_struct *
 __create_workqueue_key(const char *name, int singlethread, int freezeable,
-                       struct lock_class_key *key, const char *lock_name)
+		       struct lock_class_key *key, const char *lock_name)
 {
     struct workqueue_struct *wq = kmem_alloc(sizeof(struct workqueue_struct ));
 
     //_KDBG("wq=%p name=%s\n",wq,name);
 
     INIT_LIST_HEAD(&wq->list);
-    spin_lock_init(&wq->lock); 
+    spin_lock_init(&wq->lock);
     strcpy( (char*) wq->name, name);
 
-    int i; 
+    int i;
     for ( i = 0; i < NUM_WQS; i++ ) {
-        if ( ! _wqs[i] ) {
-            _wqs[i] = wq;
-            break;
-        }
+	if ( ! _wqs[i] ) {
+	    _wqs[i] = wq;
+	    break;
+	}
     }
     if ( i == NUM_WQS ) {
-        printk("__create_workqueue() failed\n");while(1);
+	printk("__create_workqueue() failed\n");while(1);
     }
-    return wq; 
+    return wq;
 }
 
 void
@@ -131,13 +131,13 @@ destroy_workqueue(struct workqueue_struct *wq)
     int i;
     //_KDBG("wq=%p\n",wq);
     for ( i = 0; i < NUM_WQS; i++ ) {
-        if ( _wqs[i] == wq ) {
-            _wqs[i] = NULL;
-            break;
-        }
+	if ( _wqs[i] == wq ) {
+	    _wqs[i] = NULL;
+	    break;
+	}
     }
     if ( i == NUM_WQS ) {
-        printk("destroy_workqueue() failed\n");while(1);
+	printk("destroy_workqueue() failed\n");while(1);
     }
 }
 
@@ -153,7 +153,7 @@ delayed_work_timer_fn(unsigned long __data)
 
 int
 queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
-                      struct delayed_work *dwork, unsigned long delay)
+		      struct delayed_work *dwork, unsigned long delay)
 {
     int ret = 0;
     struct timer_list *timer = &dwork->timer;
@@ -161,31 +161,53 @@ queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
     //_KDBG("\n");
 
     if (!test_and_set_bit(WORK_STRUCT_PENDING, work_data_bits(work))) {
-        BUG_ON(timer_pending(timer));
-        BUG_ON(!list_empty(&work->entry));
+	BUG_ON(timer_pending(timer));
+	BUG_ON(!list_empty(&work->entry));
 
-        set_wq_data(work, wq );
+	set_wq_data(work, wq );
 
-        timer->expires = jiffies + delay;
-        timer->data = (unsigned long)dwork;
-        timer->function = delayed_work_timer_fn;
+	timer->expires = jiffies + delay;
+	timer->data = (unsigned long)dwork;
+	timer->function = delayed_work_timer_fn;
 
-        add_timer(timer);
-        ret = 1;
+	add_timer(timer);
+	ret = 1;
     }
     return ret;
 }
 
 int
 queue_delayed_work(struct workqueue_struct *wq,
-                   struct delayed_work *dwork, unsigned long delay)
+		   struct delayed_work *dwork, unsigned long delay)
 {
     //_KDBG("wq=%p work=%p name=%s delay=%ld\n", wq, dwork, wq->name, delay );
     if ( delay == 0 )
-        return queue_work( wq, &dwork->work );
+	return queue_work( wq, &dwork->work );
 
     return queue_delayed_work_on(-1, wq, dwork, delay);
 }
+
+static int __cancel_work_timer(struct work_struct *work,
+				struct timer_list* timer)
+{
+	int ret;
+
+	do {
+		ret = (timer && likely(del_timer(timer)));
+		//if (!ret)
+		//	ret = try_to_grab_pending(work);
+		//wait_on_work(work);
+	} while (unlikely(ret < 0));
+
+	work_clear_pending(work);
+	return ret;
+}
+
+int cancel_delayed_work_sync(struct delayed_work *dwork)
+{
+	return __cancel_work_timer(&dwork->work, &dwork->timer);
+}
+
 
 void
 init_workqueues(void)
@@ -193,56 +215,56 @@ init_workqueues(void)
     // create_workqueue sets a pointer in _wqs[] but we don't want
     // kevent_wq to be in _wqs[] so we zero _wqs[] after we create kevent_wq
     keventd_wq = create_workqueue("events");
-    int i; 
+    int i;
     for ( i = 0; i < NUM_WQS; i++ ) {
-        _wqs[i] = NULL;
+	_wqs[i] = NULL;
     }
 }
 
 void
 run_workqueues(void) {
-   
-    int i; 
+
+    int i;
 
     unsigned long flags;
 //    _KDBG("\n");
     for ( i = 0; i < NUM_WQS; i++ ) {
-        if ( _wqs[i] ) {
-            struct work_struct *work = NULL; 
-            spin_lock_irqsave(&_wqs[i]->lock,flags);
-            if ( ! list_empty( &_wqs[i]->list ) ) {
-                //_KDBG("wq=%p name=%s\n", _wqs[i], _wqs[i]->name);
-                work = 
+	if ( _wqs[i] ) {
+	    struct work_struct *work = NULL;
+	    spin_lock_irqsave(&_wqs[i]->lock,flags);
+	    if ( ! list_empty( &_wqs[i]->list ) ) {
+		//_KDBG("wq=%p name=%s\n", _wqs[i], _wqs[i]->name);
+		work =
 		    list_entry( _wqs[i]->list.next, struct work_struct, entry);
-	        list_del_init( _wqs[i]->list.next );
-            }
-            spin_unlock_irqrestore(&_wqs[i]->lock,flags);
-            if ( work ) {
-                work_clear_pending(work);
-#if 0 
-                _KDBG("wq=%p wq_name=%s work=%p func=%p\n",
+		list_del_init( _wqs[i]->list.next );
+	    }
+	    spin_unlock_irqrestore(&_wqs[i]->lock,flags);
+	    if ( work ) {
+		work_clear_pending(work);
+#if 0
+		_KDBG("wq=%p wq_name=%s work=%p func=%p\n",
 					_wqs[i],_wqs[i]->name,work,work->func);
 #endif
-                work->func((struct work_struct *)work); 
+		work->func((struct work_struct *)work);
     //            _KDBG("done\n");
-            }
-        }
+	    }
+	}
     }
     struct work_struct *work = NULL;
     spin_lock_irqsave(&keventd_wq->lock,flags);
     if ( ! list_empty( &keventd_wq->list ) ) {
-        //_KDBG("wq=%p name=%s\n", keventd_wq, keventd_wq->name);
-        work = list_entry( keventd_wq->list.next, struct work_struct, entry);
+	//_KDBG("wq=%p name=%s\n", keventd_wq, keventd_wq->name);
+	work = list_entry( keventd_wq->list.next, struct work_struct, entry);
 	list_del_init( keventd_wq->list.next );
     }
     spin_unlock_irqrestore(&keventd_wq->lock,flags);
     if ( work ) {
-        work_clear_pending(work);
-#if 0 
-        _KDBG("wq=%p wq_name=%s work=%p func=%p\n",
+	work_clear_pending(work);
+#if 0
+	_KDBG("wq=%p wq_name=%s work=%p func=%p\n",
 				keventd_wq,keventd_wq->name, work, work->func);
 #endif
-        work->func((struct work_struct *)work); 
+	work->func((struct work_struct *)work);
     //    _KDBG("done\n");
     }
 }

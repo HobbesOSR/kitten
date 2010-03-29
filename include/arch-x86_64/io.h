@@ -124,6 +124,7 @@ static inline void * phys_to_virt(unsigned long address)
  * Change "struct page" to physical address.
  */
 #define page_to_phys(page)    ((dma_addr_t)page_to_pfn(page) << PAGE_SHIFT)
+#define virt_to_page(addr)      (((unsigned long)(addr)-PAGE_OFFSET) >> PAGE_SHIFT)
 
 #include <arch-generic/iomap.h>
 

@@ -51,9 +51,22 @@ mod_timer(
 }
 
 int
+del_timer(
+        struct timer_list *             timer
+)
+{
+        return timer_del(timer);
+}
+
+int
 del_timer_sync(
 	struct timer_list *		timer
 )
 {
-	return timer_del(timer);
+	return del_timer(timer);
+}
+
+unsigned long round_jiffies_relative(unsigned long j)
+{
+	return round_jiffies(j);
 }
