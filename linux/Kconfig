@@ -7,6 +7,8 @@ config LINUX
 	  in the LWK.  The list of available Linux drivers will be displayed
 	  when this option is enabled.
 
+source "linux/ofed/Kconfig"
+
 config SYSFS
 	bool
 	depends on LINUX

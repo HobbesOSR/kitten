@@ -6,3 +6,5 @@ obj-$(CONFIG_LINUX) += \
 	arch/ \
 	mm/ \
 	kernel/ \
+
+obj-$(CONFIG_INFINIBAND) += ofed/
