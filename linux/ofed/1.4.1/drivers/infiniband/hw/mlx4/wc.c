@@ -33,7 +33,7 @@
 #include <linux/pci.h>
 #include "wc.h"
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_FIXME_64__)
 
 #define MLX4_PAT_MASK	(0xFFFFF8FF)
 #define MLX4_PAT_MOD	(0x00000100)
@@ -213,7 +213,7 @@ int mlx4_wc_enabled(void)
 	return wc_enabled;
 }
 
-#else	/* !(defined(__i386__) || defined(__x86_64__)) */
+#else	/* !(defined(__i386__) || defined(__x86_FIXME_64__)) */
 
 int mlx4_enable_wc(void){ return 0; }
 void mlx4_disable_wc(void){}
