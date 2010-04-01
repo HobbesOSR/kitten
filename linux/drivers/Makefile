@@ -1,3 +1,2 @@
-obj-y				+= base/ net/ char/
+obj-y				+= base/ char/
 obj-$(CONFIG_PCI)		+= pci/
-obj-$(CONFIG_INFINIBAND)	+= infiniband/
