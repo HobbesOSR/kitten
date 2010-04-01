@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2007 Cisco Systems.  All rights reserved.
+ * Copyright (c) 2006, 2007 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007 Mellanox Technologies. All rights reserved.
  *
  * This software is available to you under a choice of one of two
  * licenses.  You may choose to be licensed under the terms of the GNU
@@ -30,56 +31,40 @@
  * SOFTWARE.
  */
 
-#ifndef IB_UMEM_H
-#define IB_UMEM_H
+#include <linux/init.h>
+#include <linux/errno.h>
 
-#include <linux/list.h>
-#include <linux/scatterlist.h>
-#include <linux/workqueue.h>
-#include <linux/dma-attrs.h>
+#include "mlx4.h"
 
-struct ib_ucontext;
+int mlx4_xrcd_alloc(struct mlx4_dev *dev, u32 *xrcdn)
+{
+	struct mlx4_priv *priv = mlx4_priv(dev);
 
-struct ib_umem {
-	struct ib_ucontext     *context;
-	size_t			length;
-	int			offset;
-	int			page_size;
-	int                     writable;
-	int                     hugetlb;
-	struct list_head	chunk_list;
-	struct work_struct	work;
-	struct mm_struct       *mm;
-	unsigned long		diff;
-};
+	*xrcdn = mlx4_bitmap_alloc(&priv->xrcd_bitmap);
+	if (*xrcdn == -1)
+		return -ENOMEM;
 
-struct ib_umem_chunk {
-	struct list_head	list;
-	int                     nents;
-	int                     nmap;
-	struct dma_attrs	attrs;
-	struct scatterlist      page_list[0];
-};
-
-#ifdef CONFIG_INFINIBAND_USER_MEM
-
-struct ib_umem *ib_umem_get(struct ib_ucontext *context, unsigned long addr,
-			    size_t size, int access, int dmasync);
-void ib_umem_release(struct ib_umem *umem);
-int ib_umem_page_count(struct ib_umem *umem);
-
-#else /* CONFIG_INFINIBAND_USER_MEM */
-
-#include <linux/err.h>
-
-static inline struct ib_umem *ib_umem_get(struct ib_ucontext *context,
-					  unsigned long addr, size_t size,
-					  int access, int dmasync) {
-	return ERR_PTR(-EINVAL);
+	return 0;
 }
-static inline void ib_umem_release(struct ib_umem *umem) { }
-static inline int ib_umem_page_count(struct ib_umem *umem) { return 0; }
+EXPORT_SYMBOL_GPL(mlx4_xrcd_alloc);
 
-#endif /* CONFIG_INFINIBAND_USER_MEM */
+void mlx4_xrcd_free(struct mlx4_dev *dev, u32 xrcdn)
+{
+	mlx4_bitmap_free(&mlx4_priv(dev)->xrcd_bitmap, xrcdn);
+}
+EXPORT_SYMBOL_GPL(mlx4_xrcd_free);
 
-#endif /* IB_UMEM_H */
+int __devinit mlx4_init_xrcd_table(struct mlx4_dev *dev)
+{
+	struct mlx4_priv *priv = mlx4_priv(dev);
+
+	return mlx4_bitmap_init(&priv->xrcd_bitmap, (1 << 16),
+				(1 << 16) - 1, dev->caps.reserved_xrcds + 1, 0);
+}
+
+void mlx4_cleanup_xrcd_table(struct mlx4_dev *dev)
+{
+	mlx4_bitmap_cleanup(&mlx4_priv(dev)->xrcd_bitmap);
+}
+
+

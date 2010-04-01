@@ -377,6 +377,7 @@ int ib_init_ah_from_mcmember(struct ib_device *device, u8 port_num,
  */
 int ib_init_ah_from_path(struct ib_device *device, u8 port_num,
 			 struct ib_sa_path_rec *rec,
-			 struct ib_ah_attr *ah_attr);
+			 struct ib_ah_attr *ah_attr,
+			 int force_grh);
 
 #endif /* IB_SA_H */

@@ -56,6 +56,7 @@ enum {
 	MLX4_CMD_QUERY_HCA	 = 0xb,
 	MLX4_CMD_QUERY_PORT	 = 0x43,
 	MLX4_CMD_SENSE_PORT	 = 0x4d,
+	MLX4_CMD_HW_HEALTH_CHECK = 0x50,
 	MLX4_CMD_SET_PORT	 = 0xc,
 	MLX4_CMD_ACCESS_DDR	 = 0x2e,
 	MLX4_CMD_MAP_ICM	 = 0xffa,
@@ -121,6 +122,10 @@ enum {
 	/* debug commands */
 	MLX4_CMD_QUERY_DEBUG_MSG = 0x2a,
 	MLX4_CMD_SET_DEBUG_MSG	 = 0x2b,
+
+	/* statistics commands */
+	MLX4_CMD_QUERY_IF_STAT	 = 0X54,
+	MLX4_CMD_SET_IF_STAT	 = 0X55,
 };
 
 enum {
@@ -140,6 +145,7 @@ enum {
 	MLX4_SET_PORT_MAC_TABLE = 0x2,
 	MLX4_SET_PORT_VLAN_TABLE = 0x3,
 	MLX4_SET_PORT_PRIO_MAP  = 0x4,
+	MLX4_SET_PORT_GID_TABLE = 0x5,
 };
 
 struct mlx4_dev;

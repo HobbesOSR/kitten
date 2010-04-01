@@ -229,9 +229,9 @@ static void forward_trap(struct mlx4_ib_dev *dev, u8 port_num, struct ib_mad *ma
 	}
 }
 
-int mlx4_ib_process_mad(struct ib_device *ibdev, int mad_flags,	u8 port_num,
-			struct ib_wc *in_wc, struct ib_grh *in_grh,
-			struct ib_mad *in_mad, struct ib_mad *out_mad)
+static int ib_process_mad(struct ib_device *ibdev, int mad_flags, u8 port_num,
+                          struct ib_wc *in_wc, struct ib_grh *in_grh,
+                          struct ib_mad *in_mad, struct ib_mad *out_mad)
 {
 	u16 slid, prev_lid = 0;
 	int err;
@@ -299,6 +299,86 @@ int mlx4_ib_process_mad(struct ib_device *ibdev, int mad_flags,	u8 port_num,
 	return IB_MAD_RESULT_SUCCESS | IB_MAD_RESULT_REPLY;
 }
 
+static __be32 be64_to_be32(__be64 b64)
+{
+	return cpu_to_be32(be64_to_cpu(b64) & 0xffffffff);
+}
+
+static void edit_counters(struct mlx4_counters *cnt, void *data)
+{
+	*(__be32 *)(data + 40 + 24) = be64_to_be32(cnt->tx_bytes);
+	*(__be32 *)(data + 40 + 28) = be64_to_be32(cnt->rx_bytes);
+	*(__be32 *)(data + 40 + 32) = be64_to_be32(cnt->tx_frames);
+	*(__be32 *)(data + 40 + 36) = be64_to_be32(cnt->rx_frames);
+}
+
+static void edit_ext_counters(struct mlx4_counters_ext *cnt, void *data)
+{
+	*(__be32 *)(data + 40 + 24) = be64_to_be32(cnt->tx_uni_bytes);
+	*(__be32 *)(data + 40 + 28) = be64_to_be32(cnt->rx_uni_bytes);
+	*(__be32 *)(data + 40 + 32) = be64_to_be32(cnt->tx_uni_frames);
+	*(__be32 *)(data + 40 + 36) = be64_to_be32(cnt->rx_uni_frames);
+	*(__be32 *)(data + 40 + 8) = be64_to_be32(cnt->rx_err_frames);
+}
+
+static int rdmaoe_process_mad(struct ib_device *ibdev, int mad_flags, u8 port_num,
+                              struct ib_wc *in_wc, struct ib_grh *in_grh,
+                              struct ib_mad *in_mad, struct ib_mad *out_mad)
+{
+	struct mlx4_cmd_mailbox *mailbox;
+	struct mlx4_ib_dev *dev = to_mdev(ibdev);
+	int err;
+	u32 inmod = dev->counters[port_num - 1] & 0xffff;
+	int mode;
+
+        if (in_mad->mad_hdr.mgmt_class != IB_MGMT_CLASS_PERF_MGMT)
+		return -EINVAL;
+
+	mailbox = mlx4_alloc_cmd_mailbox(dev->dev);
+	if (IS_ERR(mailbox))
+		return IB_MAD_RESULT_FAILURE;
+
+	err = mlx4_cmd_box(dev->dev, 0, mailbox->dma, inmod, 0,
+			   MLX4_CMD_QUERY_IF_STAT, MLX4_CMD_TIME_CLASS_C);
+	if (err)
+		err = IB_MAD_RESULT_FAILURE;
+	else {
+		mode = be32_to_cpu(((struct mlx4_counters *)mailbox->buf)->counter_mode) & 0xf;
+		switch (mode) {
+		case 0:
+			edit_counters(mailbox->buf, out_mad->data);
+			err = IB_MAD_RESULT_SUCCESS | IB_MAD_RESULT_REPLY;
+			break;
+		case 1:
+			edit_ext_counters(mailbox->buf, out_mad->data);
+			err = IB_MAD_RESULT_SUCCESS | IB_MAD_RESULT_REPLY;
+			break;
+		default:
+			err = IB_MAD_RESULT_FAILURE;
+		}
+	}
+
+	mlx4_free_cmd_mailbox(dev->dev, mailbox);
+
+	return err;
+}
+
+int mlx4_ib_process_mad(struct ib_device *ibdev, int mad_flags,	u8 port_num,
+			struct ib_wc *in_wc, struct ib_grh *in_grh,
+			struct ib_mad *in_mad, struct ib_mad *out_mad)
+{
+	switch (rdma_port_link_layer(ibdev, port_num)) {
+	case IB_LINK_LAYER_INFINIBAND:
+		return ib_process_mad(ibdev, mad_flags, port_num, in_wc,
+				      in_grh, in_mad, out_mad);
+	case IB_LINK_LAYER_ETHERNET:
+		return rdmaoe_process_mad(ibdev, mad_flags, port_num, in_wc,
+					  in_grh, in_mad, out_mad);
+	default:
+		return -EINVAL;
+	}
+}
+
 static void send_handler(struct ib_mad_agent *agent,
 			 struct ib_mad_send_wc *mad_send_wc)
 {
@@ -310,19 +390,25 @@ int mlx4_ib_mad_init(struct mlx4_ib_dev *dev)
 	struct ib_mad_agent *agent;
 	int p, q;
 	int ret;
+	enum rdma_link_layer ll;
 
-	for (p = 0; p < dev->num_ports; ++p)
+	for (p = 0; p < dev->num_ports; ++p) {
+		ll = rdma_port_link_layer(&dev->ib_dev, p + 1);
 		for (q = 0; q <= 1; ++q) {
-			agent = ib_register_mad_agent(&dev->ib_dev, p + 1,
-						      q ? IB_QPT_GSI : IB_QPT_SMI,
-						      NULL, 0, send_handler,
-						      NULL, NULL);
-			if (IS_ERR(agent)) {
-				ret = PTR_ERR(agent);
-				goto err;
-			}
-			dev->send_agent[p][q] = agent;
+			if (ll == IB_LINK_LAYER_INFINIBAND) {
+				agent = ib_register_mad_agent(&dev->ib_dev, p + 1,
+							      q ? IB_QPT_GSI : IB_QPT_SMI,
+							      NULL, 0, send_handler,
+							      NULL, NULL);
+				if (IS_ERR(agent)) {
+					ret = PTR_ERR(agent);
+					goto err;
+				}
+				dev->send_agent[p][q] = agent;
+			} else
+				dev->send_agent[p][q] = NULL;
 		}
+	}
 
 	return 0;
 
@@ -343,8 +429,10 @@ void mlx4_ib_mad_cleanup(struct mlx4_ib_dev *dev)
 	for (p = 0; p < dev->num_ports; ++p) {
 		for (q = 0; q <= 1; ++q) {
 			agent = dev->send_agent[p][q];
-			dev->send_agent[p][q] = NULL;
-			ib_unregister_mad_agent(agent);
+			if (agent) {
+				dev->send_agent[p][q] = NULL;
+				ib_unregister_mad_agent(agent);
+			}
 		}
 
 		if (dev->sm_ah[p])

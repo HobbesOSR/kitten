@@ -80,7 +80,9 @@ enum {
 	/* Bad management packet (silently discarded): */
 	CMD_STAT_BAD_PKT	= 0x30,
 	/* More outstanding CQEs in CQ than new CQ size: */
-	CMD_STAT_BAD_SIZE	= 0x40
+	CMD_STAT_BAD_SIZE	= 0x40,
+	/* Multi Function device support required: */
+	CMD_STAT_MULTI_FUNC_REQ	= 0x50,
 };
 
 enum {
@@ -106,6 +108,7 @@ struct mlx4_cmd_context {
 	int			next;
 	u64			out_param;
 	u16			token;
+	u8			fw_status;
 };
 
 static int mlx4_status_to_errno(u8 status)
@@ -128,6 +131,7 @@ static int mlx4_status_to_errno(u8 status)
 		[CMD_STAT_LAM_NOT_PRE]	  = -EAGAIN,
 		[CMD_STAT_BAD_PKT]	  = -EINVAL,
 		[CMD_STAT_BAD_SIZE]	  = -ENOMEM,
+		[CMD_STAT_MULTI_FUNC_REQ] = -EACCES,
 	};
 
 	if (status >= ARRAY_SIZE(trans_table) ||
@@ -212,6 +216,7 @@ static int mlx4_cmd_poll(struct mlx4_dev *dev, u64 in_param, u64 *out_param,
 	void __iomem *hcr = priv->cmd.hcr;
 	int err = 0;
 	unsigned long end;
+	u32 stat;
 
 	down(&priv->cmd.poll_sem);
 
@@ -235,9 +240,10 @@ static int mlx4_cmd_poll(struct mlx4_dev *dev, u64 in_param, u64 *out_param,
 					  __raw_readl(hcr + HCR_OUT_PARAM_OFFSET)) << 32 |
 			(u64) be32_to_cpu((__force __be32)
 					  __raw_readl(hcr + HCR_OUT_PARAM_OFFSET + 4));
-
-	err = mlx4_status_to_errno(be32_to_cpu((__force __be32)
-					       __raw_readl(hcr + HCR_STATUS_OFFSET)) >> 24);
+	stat = be32_to_cpu((__force __be32) __raw_readl(hcr + HCR_STATUS_OFFSET)) >> 24;
+	err = mlx4_status_to_errno(stat);
+	if (err)
+		mlx4_err(dev, "command 0x%x failed: fw status = 0x%x\n", op, stat);
 
 out:
 	up(&priv->cmd.poll_sem);
@@ -254,6 +260,7 @@ void mlx4_cmd_event(struct mlx4_dev *dev, u16 token, u8 status, u64 out_param)
 	if (token != context->token)
 		return;
 
+	context->fw_status = status;
 	context->result    = mlx4_status_to_errno(status);
 	context->out_param = out_param;
 
@@ -288,8 +295,11 @@ static int mlx4_cmd_wait(struct mlx4_dev *dev, u64 in_param, u64 *out_param,
 	}
 
 	err = context->result;
-	if (err)
+	if (err) {
+		mlx4_err(dev, "command 0x%x failed: fw status = 0x%x\n",
+			 op, context->fw_status);
 		goto out;
+	}
 
 	if (out_is_imm)
 		*out_param = context->out_param;

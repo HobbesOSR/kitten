@@ -189,7 +189,7 @@ int mlx4_multicast_attach(struct mlx4_dev *dev, struct mlx4_qp *qp, u8 gid[16],
 		memcpy(mgm->gid, gid, 16);
 	}
 
-	members_count = be32_to_cpu(mgm->members_count);
+	members_count = be32_to_cpu(mgm->members_count) & 0xffffff;
 	if (members_count == MLX4_QP_PER_MGM) {
 		mlx4_err(dev, "MGM at index %x is full.\n", index);
 		err = -ENOMEM;
@@ -203,11 +203,8 @@ int mlx4_multicast_attach(struct mlx4_dev *dev, struct mlx4_qp *qp, u8 gid[16],
 			goto out;
 		}
 
-	if (block_mcast_loopback)
-		mgm->qp[members_count++] = cpu_to_be32((qp->qpn & MGM_QPN_MASK) |
-						       (1U << MGM_BLCK_LB_BIT));
-	else
-		mgm->qp[members_count++] = cpu_to_be32(qp->qpn & MGM_QPN_MASK);
+	mgm->qp[members_count++] = cpu_to_be32((qp->qpn & MGM_QPN_MASK) |
+					       (!!mlx4_blck_lb << MGM_BLCK_LB_BIT));
 
 	mgm->members_count       = cpu_to_be32(members_count);
 
@@ -272,7 +269,7 @@ int mlx4_multicast_detach(struct mlx4_dev *dev, struct mlx4_qp *qp, u8 gid[16])
 		goto out;
 	}
 
-	members_count = be32_to_cpu(mgm->members_count);
+	members_count = be32_to_cpu(mgm->members_count) & 0xffffff;
 	for (loc = -1, i = 0; i < members_count; ++i)
 		if ((be32_to_cpu(mgm->qp[i]) & MGM_QPN_MASK) == qp->qpn)
 			loc = i;

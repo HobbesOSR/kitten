@@ -33,6 +33,7 @@
 
 #include <linux/errno.h>
 #include <linux/string.h>
+#include <linux/if_ether.h>
 
 #include <rdma/ib_pack.h>
 
@@ -76,6 +77,40 @@ static const struct ib_field lrh_table[]  = {
 	  .size_bits    = 11 },
 	{ STRUCT_FIELD(lrh, source_lid),
 	  .offset_words = 1,
+	  .offset_bits  = 16,
+	  .size_bits    = 16 }
+};
+
+static const struct ib_field eth_table[]  = {
+	{ STRUCT_FIELD(eth, dmac_h),
+	  .offset_words = 0,
+	  .offset_bits  = 0,
+	  .size_bits    = 32 },
+	{ STRUCT_FIELD(eth, dmac_l),
+	  .offset_words = 1,
+	  .offset_bits  = 0,
+	  .size_bits    = 16 },
+	{ STRUCT_FIELD(eth, smac_h),
+	  .offset_words = 1,
+	  .offset_bits  = 16,
+	  .size_bits    = 16 },
+	{ STRUCT_FIELD(eth, smac_l),
+	  .offset_words = 2,
+	  .offset_bits  = 0,
+	  .size_bits    = 32 },
+	{ STRUCT_FIELD(eth, type),
+	  .offset_words = 3,
+	  .offset_bits  = 0,
+	  .size_bits    = 16 }
+};
+
+static const struct ib_field vlan_table[]  = {
+	{ STRUCT_FIELD(vlan, tag),
+	  .offset_words = 0,
+	  .offset_bits  = 0,
+	  .size_bits    = 16 },
+	{ STRUCT_FIELD(vlan, type),
+	  .offset_words = 0,
 	  .offset_bits  = 16,
 	  .size_bits    = 16 }
 };
@@ -180,56 +215,59 @@ static const struct ib_field deth_table[] = {
 /**
  * ib_ud_header_init - Initialize UD header structure
  * @payload_bytes:Length of packet payload
+ * @lrh_present: specify if LRH is present
+ * @eth_present: specify if Eth header is present
+ * @vlan_present: packet is tagged vlan
  * @grh_present:GRH flag (if non-zero, GRH will be included)
+ * @immediate_present: specify if immediate data is present
  * @header:Structure to initialize
- *
- * ib_ud_header_init() initializes the lrh.link_version, lrh.link_next_header,
- * lrh.packet_length, grh.ip_version, grh.payload_length,
- * grh.next_header, bth.opcode, bth.pad_count and
- * bth.transport_header_version fields of a &struct ib_ud_header given
- * the payload length and whether a GRH will be included.
  */
 void ib_ud_header_init(int     		    payload_bytes,
+		       int		    lrh_present,
+		       int		    eth_present,
+		       int		    vlan_present,
 		       int    		    grh_present,
+		       int		    immediate_present,
 		       struct ib_ud_header *header)
 {
-	int header_len;
 	u16 packet_length;
 
 	memset(header, 0, sizeof *header);
 
-	header_len =
-		IB_LRH_BYTES  +
-		IB_BTH_BYTES  +
-		IB_DETH_BYTES;
-	if (grh_present) {
-		header_len += IB_GRH_BYTES;
+	if (lrh_present) {
+		header->lrh.link_version     = 0;
+		header->lrh.link_next_header =
+			grh_present ? IB_LNH_IBA_GLOBAL : IB_LNH_IBA_LOCAL;
+		packet_length = IB_LRH_BYTES;
 	}
 
-	header->lrh.link_version     = 0;
-	header->lrh.link_next_header =
-		grh_present ? IB_LNH_IBA_GLOBAL : IB_LNH_IBA_LOCAL;
-	packet_length		     = (IB_LRH_BYTES     +
-					IB_BTH_BYTES     +
-					IB_DETH_BYTES    +
-					payload_bytes    +
-					4                + /* ICRC     */
-					3) / 4;            /* round up */
+	if (eth_present) {
+		if (vlan_present) {
+			header->eth.type = cpu_to_be16(ETH_P_8021Q);
+			packet_length += IB_VLAN_BYTES;
 
-	header->grh_present          = grh_present;
+		}
+		packet_length += IB_ETH_BYTES;
+	}
+
+	packet_length += IB_BTH_BYTES + IB_DETH_BYTES + payload_bytes +
+		4       + /* ICRC     */
+		3;        /* round up */
+	packet_length /= 4;
 	if (grh_present) {
-		packet_length		   += IB_GRH_BYTES / 4;
-		header->grh.ip_version      = 6;
-		header->grh.payload_length  =
-			cpu_to_be16((IB_BTH_BYTES     +
-				     IB_DETH_BYTES    +
-				     payload_bytes    +
-				     4                + /* ICRC     */
-				     3) & ~3);          /* round up */
+		packet_length += IB_GRH_BYTES / 4;
+		header->grh.ip_version = 6;
+		header->grh.payload_length =
+			cpu_to_be16((IB_BTH_BYTES  +
+				     IB_DETH_BYTES +
+				     payload_bytes +
+				     4             + /* ICRC     */
+				     3) & ~3);       /* round up */
 		header->grh.next_header     = 0x1b;
 	}
 
-	header->lrh.packet_length = cpu_to_be16(packet_length);
+	if (lrh_present)
+		header->lrh.packet_length = cpu_to_be16(packet_length);
 
 	if (header->immediate_present)
 		header->bth.opcode           = IB_OPCODE_UD_SEND_ONLY_WITH_IMMEDIATE;
@@ -237,8 +275,44 @@ void ib_ud_header_init(int     		    payload_bytes,
 		header->bth.opcode           = IB_OPCODE_UD_SEND_ONLY;
 	header->bth.pad_count                = (4 - payload_bytes) & 3;
 	header->bth.transport_header_version = 0;
+
+	header->lrh_present = lrh_present;
+	header->eth_present = eth_present;
+	header->vlan_present = vlan_present;
+	header->grh_present = grh_present;
+	header->immediate_present = immediate_present;
 }
 EXPORT_SYMBOL(ib_ud_header_init);
+
+/**
+ * ib_lrh_header_pack - Pack LRH header struct into wire format
+ * @lrh:unpacked LRH header struct
+ * @buf:Buffer to pack into
+ *
+ * ib_lrh_header_pack() packs the LRH header structure @lrh into
+ * wire format in the buffer @buf.
+ */
+int ib_lrh_header_pack(struct ib_unpacked_lrh *lrh, void *buf)
+{
+	ib_pack(lrh_table, ARRAY_SIZE(lrh_table), lrh, buf);
+	return 0;
+}
+EXPORT_SYMBOL(ib_lrh_header_pack);
+
+/**
+ * ib_lrh_header_unpack - Unpack LRH structure from wire format
+ * @lrh:unpacked LRH header struct
+ * @buf:Buffer to pack into
+ *
+ * ib_lrh_header_unpack() unpacks the LRH header structure from
+ * wire format (in buf) into @lrh.
+ */
+int ib_lrh_header_unpack(void *buf, struct ib_unpacked_lrh *lrh)
+{
+	ib_unpack(lrh_table, ARRAY_SIZE(lrh_table), buf, lrh);
+	return 0;
+}
+EXPORT_SYMBOL(ib_lrh_header_unpack);
 
 /**
  * ib_ud_header_pack - Pack UD header struct into wire format
@@ -253,9 +327,23 @@ int ib_ud_header_pack(struct ib_ud_header *header,
 {
 	int len = 0;
 
-	ib_pack(lrh_table, ARRAY_SIZE(lrh_table),
-		&header->lrh, buf);
-	len += IB_LRH_BYTES;
+	if (header->lrh_present) {
+		ib_pack(lrh_table, ARRAY_SIZE(lrh_table),
+			&header->lrh, buf + len);
+		len += IB_LRH_BYTES;
+	}
+	if (header->eth_present) {
+		ib_pack(eth_table, ARRAY_SIZE(eth_table),
+			&header->eth, buf + len);
+		len += IB_ETH_BYTES;
+	}
+
+
+	if (header->vlan_present) {
+		ib_pack(vlan_table, ARRAY_SIZE(vlan_table),
+			&header->vlan, buf + len);
+		len += IB_VLAN_BYTES;
+	}
 
 	if (header->grh_present) {
 		ib_pack(grh_table, ARRAY_SIZE(grh_table),

@@ -48,6 +48,8 @@
 struct ib_agent_port_private {
 	struct list_head port_list;
 	struct ib_mad_agent *agent[2];
+	struct ib_device    *device;
+	u8		     port_num;
 };
 
 static DEFINE_SPINLOCK(ib_agent_port_list_lock);
@@ -58,11 +60,10 @@ __ib_get_agent_port(struct ib_device *device, int port_num)
 {
 	struct ib_agent_port_private *entry;
 
-	list_for_each_entry(entry, &ib_agent_port_list, port_list) {
-		if (entry->agent[0]->device == device &&
-		    entry->agent[0]->port_num == port_num)
+	list_for_each_entry(entry, &ib_agent_port_list, port_list)
+		if (entry->device == device && entry->port_num == port_num)
 			return entry;
-	}
+
 	return NULL;
 }
 
@@ -155,14 +156,16 @@ int ib_agent_port_open(struct ib_device *device, int port_num)
 		goto error1;
 	}
 
-	/* Obtain send only MAD agent for SMI QP */
-	port_priv->agent[0] = ib_register_mad_agent(device, port_num,
-						    IB_QPT_SMI, NULL, 0,
-						    &agent_send_handler,
-						    NULL, NULL);
-	if (IS_ERR(port_priv->agent[0])) {
-		ret = PTR_ERR(port_priv->agent[0]);
-		goto error2;
+	if (rdma_port_link_layer(device, port_num) == IB_LINK_LAYER_INFINIBAND) {
+		/* Obtain send only MAD agent for SMI QP */
+		port_priv->agent[0] = ib_register_mad_agent(device, port_num,
+							    IB_QPT_SMI, NULL, 0,
+							    &agent_send_handler,
+							    NULL, NULL);
+		if (IS_ERR(port_priv->agent[0])) {
+			ret = PTR_ERR(port_priv->agent[0]);
+			goto error2;
+		}
 	}
 
 	/* Obtain send only MAD agent for GSI QP */
@@ -175,6 +178,9 @@ int ib_agent_port_open(struct ib_device *device, int port_num)
 		goto error3;
 	}
 
+	port_priv->device = device;
+	port_priv->port_num = port_num;
+
 	spin_lock_irqsave(&ib_agent_port_list_lock, flags);
 	list_add_tail(&port_priv->port_list, &ib_agent_port_list);
 	spin_unlock_irqrestore(&ib_agent_port_list_lock, flags);
@@ -182,7 +188,8 @@ int ib_agent_port_open(struct ib_device *device, int port_num)
 	return 0;
 
 error3:
-	ib_unregister_mad_agent(port_priv->agent[0]);
+	if (rdma_port_link_layer(device, port_num) == IB_LINK_LAYER_INFINIBAND)
+		ib_unregister_mad_agent(port_priv->agent[0]);
 error2:
 	kfree(port_priv);
 error1:
@@ -205,7 +212,9 @@ int ib_agent_port_close(struct ib_device *device, int port_num)
 	spin_unlock_irqrestore(&ib_agent_port_list_lock, flags);
 
 	ib_unregister_mad_agent(port_priv->agent[1]);
-	ib_unregister_mad_agent(port_priv->agent[0]);
+	if (rdma_port_link_layer(device, port_num) == IB_LINK_LAYER_INFINIBAND)
+		ib_unregister_mad_agent(port_priv->agent[0]);
+
 	kfree(port_priv);
 	return 0;
 }

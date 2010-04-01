@@ -247,7 +247,8 @@ void mthca_qp_event(struct mthca_dev *dev, u32 qpn,
 	spin_unlock(&dev->qp_table.lock);
 
 	if (!qp) {
-		mthca_warn(dev, "Async event for bogus QP %08x\n", qpn);
+		mthca_warn(dev, "Async event %d for bogus QP %08x\n",
+			  (int) event_type, qpn);
 		return;
 	}
 
@@ -1490,7 +1491,9 @@ static int build_mlx_header(struct mthca_dev *dev, struct mthca_sqp *sqp,
 	u16 pkey;
 
 	ib_ud_header_init(256, /* assume a MAD */
+			  1, 0, 0,
 			  mthca_ah_grh_present(to_mah(wr->wr.ud.ah)),
+			  0,
 			  &sqp->ud_header);
 
 	err = mthca_read_ah(dev, to_mah(wr->wr.ud.ah), &sqp->ud_header);
@@ -1753,7 +1756,7 @@ int mthca_tavor_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 			size += sizeof (struct mthca_data_seg) / 16;
 		}
 
-		qp->wrid[ind + qp->rq.max] = wr->wr_id;
+		qp->wrid[ind] = wr->wr_id;
 
 		if (wr->opcode >= ARRAY_SIZE(mthca_opcode)) {
 			mthca_err(dev, "opcode invalid\n");
@@ -1869,7 +1872,7 @@ int mthca_tavor_post_receive(struct ib_qp *ibqp, struct ib_recv_wr *wr,
 			size += sizeof (struct mthca_data_seg) / 16;
 		}
 
-		qp->wrid[ind] = wr->wr_id;
+		qp->wrid[ind + qp->sq.max] = wr->wr_id;
 
 		((struct mthca_next_seg *) prev_wqe)->ee_nds =
 			cpu_to_be32(MTHCA_NEXT_DBD | size);
@@ -2094,7 +2097,7 @@ int mthca_arbel_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 			size += sizeof (struct mthca_data_seg) / 16;
 		}
 
-		qp->wrid[ind + qp->rq.max] = wr->wr_id;
+		qp->wrid[ind] = wr->wr_id;
 
 		if (wr->opcode >= ARRAY_SIZE(mthca_opcode)) {
 			mthca_err(dev, "opcode invalid\n");
@@ -2207,7 +2210,7 @@ int mthca_arbel_post_receive(struct ib_qp *ibqp, struct ib_recv_wr *wr,
 		if (i < qp->rq.max_gs)
 			mthca_set_data_seg_inval(wqe);
 
-		qp->wrid[ind] = wr->wr_id;
+		qp->wrid[ind + qp->sq.max] = wr->wr_id;
 
 		++ind;
 		if (unlikely(ind >= qp->rq.max))

@@ -37,6 +37,10 @@
 
 #include "mlx4.h"
 
+int mlx4_ib_set_4k_mtu = 0;
+module_param_named(set_4k_mtu, mlx4_ib_set_4k_mtu, int, 0444);
+MODULE_PARM_DESC(set_4k_mtu, "attempt to set 4K MTU to all ConnectX ports");
+
 #define MLX4_MAC_VALID		(1ull << 63)
 #define MLX4_MAC_MASK		0xffffffffffffULL
 
@@ -182,6 +186,25 @@ static int mlx4_set_port_vlan_table(struct mlx4_dev *dev, u8 port,
 	return err;
 }
 
+int mlx4_find_cached_vlan(struct mlx4_dev *dev, u8 port, u16 vid, int *idx)
+{
+	struct mlx4_vlan_table *table = &mlx4_priv(dev)->port[port].vlan_table;
+	int i;
+
+	for (i = 0; i < MLX4_MAX_VLAN_NUM; ++i) {
+		if (table->refs[i] &&
+		    (vid == (MLX4_VLAN_MASK &
+			      be32_to_cpu(table->entries[i])))) {
+			/* Vlan already registered, increase refernce count */
+			*idx = i;
+			return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+EXPORT_SYMBOL_GPL(mlx4_find_cached_vlan);
+
 int mlx4_register_vlan(struct mlx4_dev *dev, u8 port, u16 vlan, int *index)
 {
 	struct mlx4_vlan_table *table = &mlx4_priv(dev)->port[port].vlan_table;
@@ -299,7 +322,7 @@ int mlx4_SET_PORT(struct mlx4_dev *dev, u8 port)
 	struct mlx4_cmd_mailbox *mailbox;
 	int err;
 
-	if (dev->caps.port_type[port] == MLX4_PORT_TYPE_ETH)
+	if (dev->caps.port_type[port] != MLX4_PORT_TYPE_IB)
 		return 0;
 
 	mailbox = mlx4_alloc_cmd_mailbox(dev);
@@ -307,6 +330,9 @@ int mlx4_SET_PORT(struct mlx4_dev *dev, u8 port)
 		return PTR_ERR(mailbox);
 
 	memset(mailbox->buf, 0, 256);
+
+	if (mlx4_ib_set_4k_mtu)
+		((__be32 *) mailbox->buf)[0] |= cpu_to_be32((1 << 22) | (1 << 21) | (5 << 12) | (2 << 4));
 
 	((__be32 *) mailbox->buf)[1] = dev->caps.ib_port_def_cap[port];
 	err = mlx4_cmd(dev, mailbox->dma, port, 0, MLX4_CMD_SET_PORT,

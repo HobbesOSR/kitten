@@ -264,8 +264,9 @@ EXPORT_SYMBOL_GPL(mlx4_qp_free);
 
 static int mlx4_CONF_SPECIAL_QP(struct mlx4_dev *dev, u32 base_qpn)
 {
-	return mlx4_cmd(dev, 0, base_qpn, 0, MLX4_CMD_CONF_SPECIAL_QP,
-			MLX4_CMD_TIME_CLASS_B);
+	return mlx4_cmd(dev, 0, base_qpn,
+			(dev->caps.flags & MLX4_DEV_CAP_FLAG_RAW_ETY) ? 4 : 0,
+			MLX4_CMD_CONF_SPECIAL_QP, MLX4_CMD_TIME_CLASS_B);
 }
 
 int mlx4_init_qp_table(struct mlx4_dev *dev)
@@ -281,6 +282,8 @@ int mlx4_init_qp_table(struct mlx4_dev *dev)
 	 * We reserve 2 extra QPs per port for the special QPs.  The
 	 * block of special QPs must be aligned to a multiple of 8, so
 	 * round up.
+	 * We also reserve the MSB of the 24-bit QP number to indicate
+	 * an XRC qp.
 	 */
 	dev->caps.sqp_start =
 		ALIGN(dev->caps.reserved_qps_cnt[MLX4_QP_REGION_FW], 8);
@@ -327,6 +330,19 @@ void mlx4_cleanup_qp_table(struct mlx4_dev *dev)
 	mlx4_CONF_SPECIAL_QP(dev, 0);
 	mlx4_bitmap_cleanup(&mlx4_priv(dev)->qp_table.bitmap);
 }
+
+int mlx4_qp_get_region(struct mlx4_dev *dev, enum mlx4_qp_region region,
+			int *base_qpn, int *cnt)
+{
+	if ((region < 0) || (region >= MLX4_NUM_QP_REGION))
+		return -EINVAL;
+
+	*base_qpn = dev->caps.reserved_qps_base[region];
+	*cnt = dev->caps.reserved_qps_cnt[region];
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mlx4_qp_get_region);
 
 int mlx4_qp_query(struct mlx4_dev *dev, struct mlx4_qp *qp,
 		  struct mlx4_qp_context *context)

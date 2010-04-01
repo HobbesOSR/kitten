@@ -48,8 +48,8 @@
 
 #define DRV_NAME	"mlx4_core"
 #define PFX		DRV_NAME ": "
-#define DRV_VERSION	"0.01"
-#define DRV_RELDATE	"May 1, 2007"
+#define DRV_VERSION	"1.0-ofed1.5.1"
+#define DRV_RELDATE	"April 4, 2008"
 
 enum {
 	MLX4_HCR_BASE		= 0x80680,
@@ -99,6 +99,8 @@ extern int mlx4_debug_level;
 #define mlx4_warn(mdev, format, arg...) \
 	dev_warn(&mdev->pdev->dev, format, ## arg)
 
+extern int mlx4_blck_lb;
+
 struct mlx4_bitmap {
 	u32			last;
 	u32			top;
@@ -137,6 +139,7 @@ struct mlx4_eq {
 	u16			irq;
 	u16			have_irq;
 	int			nent;
+	int			load;
 	struct mlx4_buf_list   *page_list;
 	struct mlx4_mtt		mtt;
 };
@@ -205,9 +208,7 @@ struct mlx4_eq_table {
 	void __iomem	      **uar_map;
 	u32			clr_mask;
 	struct mlx4_eq	       *eq;
-	u64			icm_virt;
-	struct page	       *icm_page;
-	dma_addr_t		icm_dma;
+	struct mlx4_icm_table	table;
 	struct mlx4_icm_table	cmpt_table;
 	int			have_irq;
 	u8			inta_pin;
@@ -216,7 +217,6 @@ struct mlx4_eq_table {
 struct mlx4_srq_table {
 	struct mlx4_bitmap	bitmap;
 	spinlock_t		lock;
-	struct radix_tree_root	tree;
 	struct mlx4_icm_table	table;
 	struct mlx4_icm_table	cmpt_table;
 };
@@ -282,7 +282,11 @@ struct mlx4_sense {
 	u8			do_sense_port[MLX4_MAX_PORTS + 1];
 	u8			sense_allowed[MLX4_MAX_PORTS + 1];
 	struct delayed_work	sense_poll;
+	struct workqueue_struct	*sense_wq;
+	u32			resched;
 };
+
+extern struct mutex drv_mutex;
 
 struct mlx4_priv {
 	struct mlx4_dev		dev;
@@ -298,6 +302,7 @@ struct mlx4_priv {
 	struct mlx4_cmd		cmd;
 
 	struct mlx4_bitmap	pd_bitmap;
+	struct mlx4_bitmap	xrcd_bitmap;
 	struct mlx4_uar_table	uar_table;
 	struct mlx4_mr_table	mr_table;
 	struct mlx4_cq_table	cq_table;
@@ -305,6 +310,7 @@ struct mlx4_priv {
 	struct mlx4_srq_table	srq_table;
 	struct mlx4_qp_table	qp_table;
 	struct mlx4_mcg_table	mcg_table;
+	struct mlx4_bitmap	counters_bitmap;
 
 	struct mlx4_catas_err	catas_err;
 
@@ -313,6 +319,9 @@ struct mlx4_priv {
 	struct mlx4_uar		driver_uar;
 	void __iomem	       *kar;
 	struct mlx4_port_info	port[MLX4_MAX_PORTS + 1];
+	struct device_attribute trigger_attr;
+	int                     trig;
+	int                     changed_ports;
 	struct mlx4_sense       sense;
 	struct mutex		port_mutex;
 };
@@ -340,6 +349,7 @@ int mlx4_alloc_eq_table(struct mlx4_dev *dev);
 void mlx4_free_eq_table(struct mlx4_dev *dev);
 
 int mlx4_init_pd_table(struct mlx4_dev *dev);
+int mlx4_init_xrcd_table(struct mlx4_dev *dev);
 int mlx4_init_uar_table(struct mlx4_dev *dev);
 int mlx4_init_mr_table(struct mlx4_dev *dev);
 int mlx4_init_eq_table(struct mlx4_dev *dev);
@@ -356,6 +366,7 @@ void mlx4_cleanup_cq_table(struct mlx4_dev *dev);
 void mlx4_cleanup_qp_table(struct mlx4_dev *dev);
 void mlx4_cleanup_srq_table(struct mlx4_dev *dev);
 void mlx4_cleanup_mcg_table(struct mlx4_dev *dev);
+void mlx4_cleanup_xrcd_table(struct mlx4_dev *dev);
 
 void mlx4_start_catas_poll(struct mlx4_dev *dev);
 void mlx4_stop_catas_poll(struct mlx4_dev *dev);
@@ -364,6 +375,7 @@ int mlx4_restart_one(struct pci_dev *pdev);
 int mlx4_register_device(struct mlx4_dev *dev);
 void mlx4_unregister_device(struct mlx4_dev *dev);
 void mlx4_dispatch_event(struct mlx4_dev *dev, enum mlx4_dev_event type, int port);
+void *mlx4_find_get_prot_dev(struct mlx4_dev *dev, enum mlx4_prot proto, int port);
 
 struct mlx4_dev_cap;
 struct mlx4_init_hca_param;
@@ -372,9 +384,6 @@ u64 mlx4_make_profile(struct mlx4_dev *dev,
 		      struct mlx4_profile *request,
 		      struct mlx4_dev_cap *dev_cap,
 		      struct mlx4_init_hca_param *init_hca);
-
-int mlx4_map_eq_icm(struct mlx4_dev *dev, u64 icm_virt);
-void mlx4_unmap_eq_icm(struct mlx4_dev *dev);
 
 int mlx4_cmd_init(struct mlx4_dev *dev);
 void mlx4_cmd_cleanup(struct mlx4_dev *dev);
@@ -396,7 +405,8 @@ void mlx4_do_sense_ports(struct mlx4_dev *dev,
 			 enum mlx4_port_type *defaults);
 void mlx4_start_sense(struct mlx4_dev *dev);
 void mlx4_stop_sense(struct mlx4_dev *dev);
-void mlx4_sense_init(struct mlx4_dev *dev);
+int mlx4_sense_init(struct mlx4_dev *dev);
+void mlx4_sense_cleanup(struct mlx4_dev *dev);
 int mlx4_check_port_params(struct mlx4_dev *dev,
 			   enum mlx4_port_type *port_type);
 int mlx4_change_port_types(struct mlx4_dev *dev,

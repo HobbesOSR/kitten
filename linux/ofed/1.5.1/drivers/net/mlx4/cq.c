@@ -80,7 +80,7 @@ void mlx4_cq_completion(struct mlx4_dev *dev, u32 cqn)
 	cq = radix_tree_lookup(&mlx4_priv(dev)->cq_table.tree,
 			       cqn & (dev->caps.num_cqs - 1));
 	if (!cq) {
-		mlx4_warn(dev, "Completion event for bogus CQ %08x\n", cqn);
+		mlx4_dbg(dev, "Completion event for bogus CQ %08x\n", cqn);
 		return;
 	}
 
@@ -187,6 +187,22 @@ int mlx4_cq_resize(struct mlx4_dev *dev, struct mlx4_cq *cq,
 }
 EXPORT_SYMBOL_GPL(mlx4_cq_resize);
 
+static int mlx4_find_least_loaded_vector(struct mlx4_priv *priv)
+{
+	int i;
+	int index = 0;
+	int min = priv->eq_table.eq[0].load;
+
+	for (i = 1; i < priv->dev.caps.num_comp_vectors; i++) {
+		if (priv->eq_table.eq[i].load < min) {
+			index = i;
+			min = priv->eq_table.eq[i].load;
+		}
+	}
+
+	return index;
+}
+
 int mlx4_cq_alloc(struct mlx4_dev *dev, int nent, struct mlx4_mtt *mtt,
 		  struct mlx4_uar *uar, u64 db_rec, struct mlx4_cq *cq,
 		  unsigned vector, int collapsed)
@@ -198,10 +214,11 @@ int mlx4_cq_alloc(struct mlx4_dev *dev, int nent, struct mlx4_mtt *mtt,
 	u64 mtt_addr;
 	int err;
 
-	if (vector >= dev->caps.num_comp_vectors)
-		return -EINVAL;
+	cq->vector = (vector == MLX4_LEAST_ATTACHED_VECTOR) ?
+		mlx4_find_least_loaded_vector(priv) : vector;
 
-	cq->vector = vector;
+	if (cq->vector >= dev->caps.num_comp_vectors)
+		return -EINVAL;
 
 	cq->cqn = mlx4_bitmap_alloc(&cq_table->bitmap);
 	if (cq->cqn == -1)
@@ -232,7 +249,7 @@ int mlx4_cq_alloc(struct mlx4_dev *dev, int nent, struct mlx4_mtt *mtt,
 
 	cq_context->flags	    = cpu_to_be32(!!collapsed << 18);
 	cq_context->logsize_usrpage = cpu_to_be32((ilog2(nent) << 24) | uar->index);
-	cq_context->comp_eqn	    = priv->eq_table.eq[vector].eqn;
+	cq_context->comp_eqn	    = priv->eq_table.eq[cq->vector].eqn;
 	cq_context->log_page_size   = mtt->page_shift - MLX4_ICM_PAGE_SHIFT;
 
 	mtt_addr = mlx4_mtt_addr(dev, mtt);
@@ -245,6 +262,7 @@ int mlx4_cq_alloc(struct mlx4_dev *dev, int nent, struct mlx4_mtt *mtt,
 	if (err)
 		goto err_radix;
 
+	priv->eq_table.eq[cq->vector].load++;
 	cq->cons_index = 0;
 	cq->arm_sn     = 1;
 	cq->uar        = uar;
@@ -282,6 +300,7 @@ void mlx4_cq_free(struct mlx4_dev *dev, struct mlx4_cq *cq)
 		mlx4_warn(dev, "HW2SW_CQ failed (%d) for CQN %06x\n", err, cq->cqn);
 
 	synchronize_irq(priv->eq_table.eq[cq->vector].irq);
+	priv->eq_table.eq[cq->vector].load--;
 
 	spin_lock_irq(&cq_table->lock);
 	radix_tree_delete(&cq_table->tree, cq->cqn);

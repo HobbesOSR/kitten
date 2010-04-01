@@ -561,11 +561,49 @@ static void ucma_copy_ib_route(struct rdma_ucm_query_route_resp *resp,
 	switch (route->num_paths) {
 	case 0:
 		dev_addr = &route->addr.dev_addr;
-		ib_addr_get_dgid(dev_addr,
-				 (union ib_gid *) &resp->ib_route[0].dgid);
-		ib_addr_get_sgid(dev_addr,
-				 (union ib_gid *) &resp->ib_route[0].sgid);
+		rdma_addr_get_dgid(dev_addr,
+				   (union ib_gid *) &resp->ib_route[0].dgid);
+		rdma_addr_get_sgid(dev_addr,
+				   (union ib_gid *) &resp->ib_route[0].sgid);
 		resp->ib_route[0].pkey = cpu_to_be16(ib_addr_get_pkey(dev_addr));
+		break;
+	case 2:
+		ib_copy_path_rec_to_user(&resp->ib_route[1],
+					 &route->path_rec[1]);
+		/* fall through */
+	case 1:
+		ib_copy_path_rec_to_user(&resp->ib_route[0],
+					 &route->path_rec[0]);
+		break;
+	default:
+		break;
+	}
+}
+
+static void ucma_copy_iboe_route(struct rdma_ucm_query_route_resp *resp,
+				   struct rdma_route *route)
+{
+	struct rdma_dev_addr *dev_addr;
+	struct net_device *dev;
+	u16 vid = 0;
+
+	resp->num_paths = route->num_paths;
+	switch (route->num_paths) {
+	case 0:
+		dev_addr = &route->addr.dev_addr;
+		dev = dev_get_by_index(&init_net, dev_addr->bound_dev_if);
+		if (dev) {
+#if defined(CONFIG_VLAN_8021Q) || defined(CONFIG_VLAN_8021Q_MODULE)
+			vid = vlan_dev_vlan_id(dev);
+#endif
+			dev_put(dev);
+		}
+
+		iboe_mac_vlan_to_ll((union ib_gid *) &resp->ib_route[0].dgid,
+				    dev_addr->dst_dev_addr, vid);
+		iboe_addr_get_sgid(dev_addr,
+				 (union ib_gid *) &resp->ib_route[0].sgid);
+		resp->ib_route[0].pkey = cpu_to_be16(0xffff);
 		break;
 	case 2:
 		ib_copy_path_rec_to_user(&resp->ib_route[1],
@@ -614,12 +652,17 @@ static ssize_t ucma_query_route(struct ucma_file *file,
 
 	resp.node_guid = (__force __u64) ctx->cm_id->device->node_guid;
 	resp.port_num = ctx->cm_id->port_num;
-	switch (rdma_node_get_transport(ctx->cm_id->device->node_type)) {
-	case RDMA_TRANSPORT_IB:
-		ucma_copy_ib_route(&resp, &ctx->cm_id->route);
-		break;
-	default:
-		break;
+	if (rdma_node_get_transport(ctx->cm_id->device->node_type) == RDMA_TRANSPORT_IB) {
+		switch (rdma_port_link_layer(ctx->cm_id->device, ctx->cm_id->port_num)) {
+		case IB_LINK_LAYER_INFINIBAND:
+			ucma_copy_ib_route(&resp, &ctx->cm_id->route);
+			break;
+		case IB_LINK_LAYER_ETHERNET:
+			ucma_copy_iboe_route(&resp, &ctx->cm_id->route);
+			break;
+		default:
+			break;
+		}
 	}
 
 out:

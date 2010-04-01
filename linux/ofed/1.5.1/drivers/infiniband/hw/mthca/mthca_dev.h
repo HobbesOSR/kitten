@@ -51,7 +51,7 @@
 
 #define DRV_NAME	"ib_mthca"
 #define PFX		DRV_NAME ": "
-#define DRV_VERSION	"1.0"
+#define DRV_VERSION	"1.0-ofed1.5.1"
 #define DRV_RELDATE	"April 4, 2008"
 
 enum {
@@ -159,6 +159,7 @@ struct mthca_limits {
 	int      reserved_eqs;
 	int      num_mpts;
 	int      num_mtt_segs;
+	int	 mtt_seg_size;
 	int      fmr_reserved_mtts;
 	int      reserved_mtts;
 	int      reserved_mrws;
@@ -356,6 +357,7 @@ struct mthca_dev {
 	struct ib_ah         *sm_ah[MTHCA_MAX_PORTS];
 	spinlock_t            sm_lock;
 	u8                    rate[MTHCA_MAX_PORTS];
+	int		      active;
 };
 
 #ifdef CONFIG_INFINIBAND_MTHCA_DEBUG

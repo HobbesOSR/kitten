@@ -53,10 +53,11 @@ int mlx4_en_create_cq(struct mlx4_en_priv *priv,
 	cq->size = entries;
 	if (mode == RX) {
 		cq->buf_size = cq->size * sizeof(struct mlx4_cqe);
-		cq->vector   = ring % mdev->dev->caps.num_comp_vectors;
+		cq->vector   = (ring + priv->port) %
+				mdev->dev->caps.num_comp_vectors;
 	} else {
 		cq->buf_size = sizeof(struct mlx4_cqe);
-		cq->vector   = 0;
+		cq->vector   = MLX4_LEAST_ATTACHED_VECTOR;
 	}
 
 	cq->ring = ring;
@@ -88,6 +89,9 @@ int mlx4_en_activate_cq(struct mlx4_en_priv *priv, struct mlx4_en_cq *cq)
 	*cq->mcq.set_ci_db = 0;
 	*cq->mcq.arm_db    = 0;
 	memset(cq->buf, 0, cq->buf_size);
+
+	if (!cq->is_tx)
+		cq->size = priv->rx_ring[cq->ring].actual_size;
 
 	err = mlx4_cq_alloc(mdev->dev, cq->size, &cq->wqres.mtt, &mdev->priv_uar,
 			    cq->wqres.db.dma, &cq->mcq, cq->vector, cq->is_tx);

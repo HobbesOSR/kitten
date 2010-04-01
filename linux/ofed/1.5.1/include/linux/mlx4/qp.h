@@ -74,6 +74,7 @@ enum {
 	MLX4_QP_ST_UC				= 0x1,
 	MLX4_QP_ST_RD				= 0x2,
 	MLX4_QP_ST_UD				= 0x3,
+	MLX4_QP_ST_XRC				= 0x6,
 	MLX4_QP_ST_MLX				= 0x7
 };
 
@@ -109,10 +110,11 @@ struct mlx4_qp_path {
 	__be32			tclass_flowlabel;
 	u8			rgid[16];
 	u8			sched_queue;
-	u8			snooper_flags;
+	u8			vlan_index;
 	u8			reserved3[2];
 	u8			counter_index;
-	u8			reserved4[7];
+	u8			reserved4;
+	u8			dmac[6];
 };
 
 struct mlx4_qp_context {
@@ -136,7 +138,7 @@ struct mlx4_qp_context {
 	__be32			ssn;
 	__be32			params2;
 	__be32			rnr_nextrecvpsn;
-	__be32			srcd;
+	__be32			xrcd;
 	__be32			cqn_recv;
 	__be64			db_rec_addr;
 	__be32			qkey;
@@ -151,7 +153,16 @@ struct mlx4_qp_context {
 	u8			reserved4[2];
 	u8			mtt_base_addr_h;
 	__be32			mtt_base_addr_l;
-	u32			reserved5[10];
+	u8			VE;
+	u8			reserved5;
+	__be16			VFT_id_prio;
+	u8			reserved6;
+	u8			exch_size;
+	__be16			exch_base;
+	u8			VFT_hop_cnt;
+	u8			my_fc_id_idx;
+	__be16			reserved7;
+	u32			reserved8[7];
 };
 
 /* Which firmware version adds support for NEC (NoErrorCompletion) bit */
@@ -165,6 +176,8 @@ enum {
 	MLX4_WQE_CTRL_IP_CSUM		= 1 << 4,
 	MLX4_WQE_CTRL_TCP_UDP_CSUM	= 1 << 5,
 	MLX4_WQE_CTRL_INS_VLAN		= 1 << 6,
+	MLX4_WQE_CTRL_STRONG_ORDER	= 1 << 7,
+	MLX4_WQE_CTRL_FORCE_LOOPBACK	= 1 << 0,
 };
 
 struct mlx4_wqe_ctrl_seg {
@@ -191,7 +204,8 @@ struct mlx4_wqe_ctrl_seg {
 
 enum {
 	MLX4_WQE_MLX_VL15	= 1 << 17,
-	MLX4_WQE_MLX_SLR	= 1 << 16
+	MLX4_WQE_MLX_SLR	= 1 << 16,
+	MLX4_WQE_MLX_ICRC	= 1 << 4
 };
 
 struct mlx4_wqe_mlx_seg {
@@ -218,7 +232,8 @@ struct mlx4_wqe_datagram_seg {
 	__be32			av[8];
 	__be32			dqpn;
 	__be32			qkey;
-	__be32			reservd[2];
+	__be16			vlan;
+	u8			mac[6];
 };
 
 struct mlx4_wqe_lso_seg {
@@ -284,6 +299,13 @@ struct mlx4_wqe_atomic_seg {
 	__be64			compare;
 };
 
+struct mlx4_wqe_mask_atomic_seg {
+	__be64			swap_add;
+	__be64			compare;
+	__be64			swap_add_mask;
+	__be64			compare_mask;
+};
+
 struct mlx4_wqe_data_seg {
 	__be32			byte_count;
 	__be32			lkey;
@@ -316,5 +338,7 @@ static inline struct mlx4_qp *__mlx4_qp_lookup(struct mlx4_dev *dev, u32 qpn)
 }
 
 void mlx4_qp_remove(struct mlx4_dev *dev, struct mlx4_qp *qp);
+int mlx4_qp_get_region(struct mlx4_dev *dev, enum mlx4_qp_region region,
+			int *base_qpn, int *cnt);
 
 #endif /* MLX4_QP_H */

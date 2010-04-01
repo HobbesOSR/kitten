@@ -46,6 +46,12 @@ MODULE_AUTHOR("Roland Dreier");
 MODULE_DESCRIPTION("core kernel InfiniBand API");
 MODULE_LICENSE("Dual BSD/GPL");
 
+#ifdef __ia64__
+/* workaround for a bug in hp chipset that would cause kernel
+   panic when dma resources are exhaused */
+int dma_map_sg_hp_wa = 0;
+#endif
+
 struct ib_client_data {
 	struct list_head  list;
 	struct ib_client *client;
@@ -288,6 +294,8 @@ int ib_register_device(struct ib_device *device)
 	INIT_LIST_HEAD(&device->client_data_list);
 	spin_lock_init(&device->event_handler_lock);
 	spin_lock_init(&device->client_data_lock);
+	device->ib_uverbs_xrcd_table = RB_ROOT;
+	mutex_init(&device->xrcd_table_mutex);
 
 	ret = read_port_table_lengths(device);
 	if (ret) {
@@ -715,6 +723,11 @@ EXPORT_SYMBOL(ib_find_pkey);
 static int __init ib_core_init(void)
 {
 	int ret;
+
+#ifdef __ia64__
+	if (ia64_platform_is("hpzx1"))
+		dma_map_sg_hp_wa = 1;
+#endif
 
 	ret = ib_sysfs_setup();
 	if (ret)
