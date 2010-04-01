@@ -62,9 +62,9 @@ struct mlx4_set_port_rqp_calc_context {
 	__be32 flags;
 	u8 reserved[3];
 	u8 mac_miss;
-	u8 reserved2;
+	u8 intra_no_vlan;
 	u8 no_vlan;
-	u8 reserved3;
+	u8 intra_vlan_miss;
 	u8 vlan_miss;
 	u8 reserved4[3];
 	u8 no_vlan_prio;

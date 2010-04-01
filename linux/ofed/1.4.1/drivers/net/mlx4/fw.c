@@ -138,6 +138,9 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 	struct mlx4_cmd_mailbox *mailbox;
 	u32 *outbox;
 	u8 field;
+	u16 field16;
+	u32 field32;
+	u64 field64;
 	u16 size;
 	u16 stat_rate;
 	int err;
@@ -192,6 +195,8 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 #define QUERY_DEV_CAP_MAX_MCG_OFFSET		0x63
 #define QUERY_DEV_CAP_RSVD_PD_OFFSET		0x64
 #define QUERY_DEV_CAP_MAX_PD_OFFSET		0x65
+#define QUERY_DEV_CAP_RSVD_XRC_OFFSET		0x66
+#define QUERY_DEV_CAP_MAX_XRC_OFFSET		0x67
 #define QUERY_DEV_CAP_RDMARC_ENTRY_SZ_OFFSET	0x80
 #define QUERY_DEV_CAP_QPC_ENTRY_SZ_OFFSET	0x82
 #define QUERY_DEV_CAP_AUX_ENTRY_SZ_OFFSET	0x84
@@ -302,6 +307,11 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 	MLX4_GET(field, outbox, QUERY_DEV_CAP_MAX_PD_OFFSET);
 	dev_cap->max_pds = 1 << (field & 0x3f);
 
+	MLX4_GET(field, outbox, QUERY_DEV_CAP_RSVD_XRC_OFFSET);
+	dev_cap->reserved_xrcds = field >> 4;
+	MLX4_GET(field, outbox, QUERY_DEV_CAP_MAX_XRC_OFFSET);
+	dev_cap->max_xrcds = 1 << (field & 0x1f);
+
 	MLX4_GET(size, outbox, QUERY_DEV_CAP_RDMARC_ENTRY_SZ_OFFSET);
 	dev_cap->rdmarc_entry_sz = size;
 	MLX4_GET(size, outbox, QUERY_DEV_CAP_QPC_ENTRY_SZ_OFFSET);
@@ -346,7 +356,7 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 			MLX4_GET(field, outbox, QUERY_DEV_CAP_VL_PORT_OFFSET);
 			dev_cap->max_vl[i]	   = field >> 4;
 			MLX4_GET(field, outbox, QUERY_DEV_CAP_MTU_WIDTH_OFFSET);
-			dev_cap->max_mtu[i]	   = field >> 4;
+			dev_cap->ib_mtu[i]	   = field >> 4;
 			dev_cap->max_port_width[i] = field & 0xf;
 			MLX4_GET(field, outbox, QUERY_DEV_CAP_MAX_GID_OFFSET);
 			dev_cap->max_gids[i]	   = 1 << (field & 0xf);
@@ -354,10 +364,15 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 			dev_cap->max_pkeys[i]	   = 1 << (field & 0xf);
 		}
 	} else {
+#define QUERY_PORT_SUPPORTED_TYPE_OFFSET	0x00
 #define QUERY_PORT_MTU_OFFSET			0x01
 #define QUERY_PORT_WIDTH_OFFSET			0x06
 #define QUERY_PORT_MAX_GID_PKEY_OFFSET		0x07
+#define QUERY_PORT_MAX_MACVLAN_OFFSET		0x0a
 #define QUERY_PORT_MAX_VL_OFFSET		0x0b
+#define QUERY_PORT_TRANS_VENDOR_OFFSET		0x18
+#define QUERY_PORT_WAVELENGTH_OFFSET		0x1c
+#define QUERY_PORT_TRANS_CODE_OFFSET		0x20
 
 		for (i = 1; i <= dev_cap->num_ports; ++i) {
 			err = mlx4_cmd_box(dev, 0, mailbox->dma, i, 0, MLX4_CMD_QUERY_PORT,
@@ -365,8 +380,11 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 			if (err)
 				goto out;
 
+			MLX4_GET(field, outbox,
+				 QUERY_PORT_SUPPORTED_TYPE_OFFSET);
+			dev_cap->supported_port_types[i] = field & 3;
 			MLX4_GET(field, outbox, QUERY_PORT_MTU_OFFSET);
-			dev_cap->max_mtu[i]	   = field & 0xf;
+			dev_cap->ib_mtu[i]	   = field & 0xf;
 			MLX4_GET(field, outbox, QUERY_PORT_WIDTH_OFFSET);
 			dev_cap->max_port_width[i] = field & 0xf;
 			MLX4_GET(field, outbox, QUERY_PORT_MAX_GID_PKEY_OFFSET);
@@ -374,6 +392,18 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 			dev_cap->max_pkeys[i]	   = 1 << (field & 0xf);
 			MLX4_GET(field, outbox, QUERY_PORT_MAX_VL_OFFSET);
 			dev_cap->max_vl[i]	   = field & 0xf;
+			MLX4_GET(field, outbox, QUERY_PORT_MAX_MACVLAN_OFFSET);
+			dev_cap->log_max_macs[i]  = field & 0xf;
+			dev_cap->log_max_vlans[i] = field >> 4;
+			dev_cap->eth_mtu[i] = be16_to_cpu(((u16 *) outbox)[1]);
+			dev_cap->def_mac[i] = be64_to_cpu(((u64 *) outbox)[2]);
+			MLX4_GET(field32, outbox, QUERY_PORT_TRANS_VENDOR_OFFSET);
+			dev_cap->trans_type[i] = field32 >> 24;
+			dev_cap->vendor_oui[i] = field32 & 0xffffff;
+			MLX4_GET(field16, outbox, QUERY_PORT_WAVELENGTH_OFFSET);
+			dev_cap->wavelength[i] = field16;
+			MLX4_GET(field64, outbox, QUERY_PORT_TRANS_CODE_OFFSET);
+			dev_cap->trans_code[i] = field64;
 		}
 	}
 
@@ -407,7 +437,7 @@ int mlx4_QUERY_DEV_CAP(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 	mlx4_dbg(dev, "Max CQEs: %d, max WQEs: %d, max SRQ WQEs: %d\n",
 		 dev_cap->max_cq_sz, dev_cap->max_qp_sz, dev_cap->max_srq_sz);
 	mlx4_dbg(dev, "Local CA ACK delay: %d, max MTU: %d, port width cap: %d\n",
-		 dev_cap->local_ca_ack_delay, 128 << dev_cap->max_mtu[1],
+		 dev_cap->local_ca_ack_delay, 128 << dev_cap->ib_mtu[1],
 		 dev_cap->max_port_width[1]);
 	mlx4_dbg(dev, "Max SQ desc size: %d, max SQ S/G: %d\n",
 		 dev_cap->max_sq_desc_sz, dev_cap->max_sq_sg);
@@ -686,6 +716,8 @@ int mlx4_INIT_HCA(struct mlx4_dev *dev, struct mlx4_init_hca_param *param)
 #define INIT_HCA_IN_SIZE		 0x200
 #define INIT_HCA_VERSION_OFFSET		 0x000
 #define	 INIT_HCA_VERSION		 2
+#define INIT_HCA_CACHELINE_SZ_OFFSET	 0x0e
+#define INIT_HCA_X86_64_BYTE_CACHELINE_SZ	 0x40
 #define INIT_HCA_FLAGS_OFFSET		 0x014
 #define INIT_HCA_QPC_OFFSET		 0x020
 #define	 INIT_HCA_QPC_BASE_OFFSET	 (INIT_HCA_QPC_OFFSET + 0x10)
@@ -722,6 +754,9 @@ int mlx4_INIT_HCA(struct mlx4_dev *dev, struct mlx4_init_hca_param *param)
 	memset(inbox, 0, INIT_HCA_IN_SIZE);
 
 	*((u8 *) mailbox->buf + INIT_HCA_VERSION_OFFSET) = INIT_HCA_VERSION;
+#if defined(__x86_64__) || defined(__PPC64__)
+	*((u8 *) mailbox->buf + INIT_HCA_CACHELINE_SZ_OFFSET) = INIT_HCA_X86_64_BYTE_CACHELINE_SZ;
+#endif
 
 #if defined(__LITTLE_ENDIAN)
 	*(inbox + INIT_HCA_FLAGS_OFFSET / 4) &= ~cpu_to_be32(1 << 1);
@@ -819,7 +854,7 @@ int mlx4_INIT_PORT(struct mlx4_dev *dev, int port)
 		flags |= (dev->caps.port_width_cap[port] & 0xf) << INIT_PORT_PORT_WIDTH_SHIFT;
 		MLX4_PUT(inbox, flags,		  INIT_PORT_FLAGS_OFFSET);
 
-		field = 128 << dev->caps.mtu_cap[port];
+		field = 128 << dev->caps.ib_mtu_cap[port];
 		MLX4_PUT(inbox, field, INIT_PORT_MTU_OFFSET);
 		field = dev->caps.gid_table_len[port];
 		MLX4_PUT(inbox, field, INIT_PORT_MAX_GID_OFFSET);
@@ -872,3 +907,37 @@ int mlx4_NOP(struct mlx4_dev *dev)
 	/* Input modifier of 0x1f means "finish as soon as possible." */
 	return mlx4_cmd(dev, 0, 0x1f, 0, MLX4_CMD_NOP, 100);
 }
+
+int mlx4_query_diag_counters(struct mlx4_dev *dev, int array_length,
+			     u8 op_modifier, u32 in_offset[], u32 counter_out[])
+{
+	struct mlx4_cmd_mailbox *mailbox;
+	u32 *outbox;
+	int ret;
+	int i;
+
+	mailbox = mlx4_alloc_cmd_mailbox(dev);
+	if (IS_ERR(mailbox))
+		return PTR_ERR(mailbox);
+	outbox = mailbox->buf;
+
+	ret = mlx4_cmd_box(dev, 0, mailbox->dma, 0, op_modifier,
+			   MLX4_CMD_DIAG_RPRT, MLX4_CMD_TIME_CLASS_A);
+	if (ret)
+		goto out;
+
+	for (i=0; i < array_length; i++) {
+		if (in_offset[i] > MLX4_MAILBOX_SIZE) {
+			ret = -EINVAL;
+			goto out;
+		}
+
+		MLX4_GET(counter_out[i], outbox, in_offset[i]);
+	}
+
+out:
+	mlx4_free_cmd_mailbox(dev, mailbox);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mlx4_query_diag_counters);
+

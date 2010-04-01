@@ -538,8 +538,7 @@ static inline int mthca_poll_one(struct mthca_dev *dev,
 		wq = &(*cur_qp)->sq;
 		wqe_index = ((be32_to_cpu(cqe->wqe) - (*cur_qp)->send_wqe_offset)
 			     >> wq->wqe_shift);
-		entry->wr_id = (*cur_qp)->wrid[wqe_index +
-					       (*cur_qp)->rq.max];
+		entry->wr_id = (*cur_qp)->wrid[wqe_index];
 	} else if ((*cur_qp)->ibqp.srq) {
 		struct mthca_srq *srq = to_msrq((*cur_qp)->ibqp.srq);
 		u32 wqe = be32_to_cpu(cqe->wqe);
@@ -559,7 +558,7 @@ static inline int mthca_poll_one(struct mthca_dev *dev,
 		 */
 		if (unlikely(wqe_index < 0))
 			wqe_index = wq->max - 1;
-		entry->wr_id = (*cur_qp)->wrid[wqe_index];
+		entry->wr_id = (*cur_qp)->wrid[wqe_index + (*cur_qp)->sq.max];
 	}
 
 	if (wq) {

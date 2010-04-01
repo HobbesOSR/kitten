@@ -374,6 +374,12 @@ static PORT_PMA_ATTR(port_xmit_data		    , 12, 32, 192);
 static PORT_PMA_ATTR(port_rcv_data		    , 13, 32, 224);
 static PORT_PMA_ATTR(port_xmit_packets		    , 14, 32, 256);
 static PORT_PMA_ATTR(port_rcv_packets		    , 15, 32, 288);
+/*
+ * There is no bit allocated for port_xmit_wait in the CounterSelect field
+ * (IB spec). However, since this bit is ignored when reading
+ * (show_pma_counter), the _counter field of port_xmit_wait can be set to zero.
+ */
+static PORT_PMA_ATTR(port_xmit_wait		    ,  0, 32, 320);
 
 static struct attribute *pma_attrs[] = {
 	&port_pma_attr_symbol_error.attr.attr,
@@ -392,6 +398,7 @@ static struct attribute *pma_attrs[] = {
 	&port_pma_attr_port_rcv_data.attr.attr,
 	&port_pma_attr_port_xmit_packets.attr.attr,
 	&port_pma_attr_port_rcv_packets.attr.attr,
+	&port_pma_attr_port_xmit_wait.attr.attr,
 	NULL
 };
 
@@ -855,6 +862,9 @@ void ib_device_unregister_sysfs(struct ib_device *device)
 {
 	struct kobject *p, *t;
 	struct ib_port *port;
+
+	/* Hold kobject until ib_dealloc_device() */
+	kobject_get(&device->dev.kobj);
 
 	list_for_each_entry_safe(p, t, &device->port_list, entry) {
 		list_del(&p->entry);

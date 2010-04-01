@@ -43,8 +43,9 @@
 
 #include "mlx4_ib.h"
 #include "user.h"
+#include "wc.h"
 
-#define DRV_NAME	"mlx4_ib"
+#define DRV_NAME	MLX4_IB_DRV_NAME
 #define DRV_VERSION	"1.0"
 #define DRV_RELDATE	"April 4, 2008"
 
@@ -52,6 +53,14 @@ MODULE_AUTHOR("Roland Dreier");
 MODULE_DESCRIPTION("Mellanox ConnectX HCA InfiniBand driver");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_VERSION(DRV_VERSION);
+
+#ifdef CONFIG_MLX4_DEBUG
+
+int mlx4_ib_debug_level = 0;
+module_param_named(debug_level, mlx4_ib_debug_level, int, 0644);
+MODULE_PARM_DESC(debug_level, "Enable debug tracing if > 0");
+
+#endif /* CONFIG_MLX4_DEBUG */
 
 static const char mlx4_ib_version[] =
 	DRV_NAME ": Mellanox ConnectX InfiniBand driver v"
@@ -111,6 +120,10 @@ static int mlx4_ib_query_device(struct ib_device *ibdev,
 	    (dev->dev->caps.bmme_flags & MLX4_BMME_FLAG_REMOTE_INV) &&
 	    (dev->dev->caps.bmme_flags & MLX4_BMME_FLAG_FAST_REG_WR))
 		props->device_cap_flags |= IB_DEVICE_MEM_MGT_EXTENSIONS;
+	if (dev->dev->caps.flags & MLX4_DEV_CAP_FLAG_XRC)
+		props->device_cap_flags |= IB_DEVICE_XRC;
+	if (dev->dev->caps.flags & MLX4_DEV_CAP_FLAG_RAW_ETY)
+		props->max_raw_ethy_qp = dev->ib_dev.phys_port_cnt;
 
 	props->vendor_id	   = be32_to_cpup((__be32 *) (out_mad->data + 36)) &
 		0xffffff;
@@ -121,7 +134,7 @@ static int mlx4_ib_query_device(struct ib_device *ibdev,
 	props->max_mr_size	   = ~0ull;
 	props->page_size_cap	   = dev->dev->caps.page_size_cap;
 	props->max_qp		   = dev->dev->caps.num_qps - dev->dev->caps.reserved_qps;
-	props->max_qp_wr	   = dev->dev->caps.max_wqes;
+	props->max_qp_wr	   = dev->dev->caps.max_wqes - MLX4_IB_SQ_MAX_SPARE;
 	props->max_sge		   = min(dev->dev->caps.max_sq_sg,
 					 dev->dev->caps.max_rq_sg);
 	props->max_cq		   = dev->dev->caps.num_cqs - dev->dev->caps.reserved_cqs;
@@ -343,8 +356,14 @@ static struct ib_ucontext *mlx4_ib_alloc_ucontext(struct ib_device *ibdev,
 	int err;
 
 	resp.qp_tab_size      = dev->dev->caps.num_qps;
-	resp.bf_reg_size      = dev->dev->caps.bf_reg_size;
-	resp.bf_regs_per_page = dev->dev->caps.bf_regs_per_page;
+
+	if (mlx4_wc_enabled()) {
+		resp.bf_reg_size      = dev->dev->caps.bf_reg_size;
+		resp.bf_regs_per_page = dev->dev->caps.bf_regs_per_page;
+	} else {
+		resp.bf_reg_size      = 0;
+		resp.bf_regs_per_page = 0;
+	}
 
 	context = kmalloc(sizeof *context, GFP_KERNEL);
 	if (!context)
@@ -395,7 +414,7 @@ static int mlx4_ib_mmap(struct ib_ucontext *context, struct vm_area_struct *vma)
 			return -EAGAIN;
 	} else if (vma->vm_pgoff == 1 && dev->dev->caps.bf_reg_size != 0) {
 		/* FIXME want pgprot_writecombine() for BlueFlame pages */
-		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+		vma->vm_page_prot = pgprot_wc(vma->vm_page_prot);
 
 		if (io_remap_pfn_range(vma, vma->vm_start,
 				       to_mucontext(context)->uar.pfn +
@@ -415,7 +434,7 @@ static struct ib_pd *mlx4_ib_alloc_pd(struct ib_device *ibdev,
 	struct mlx4_ib_pd *pd;
 	int err;
 
-	pd = kmalloc(sizeof *pd, GFP_KERNEL);
+	pd = kzalloc(sizeof *pd, GFP_KERNEL);
 	if (!pd)
 		return ERR_PTR(-ENOMEM);
 
@@ -456,6 +475,80 @@ static int mlx4_ib_mcg_detach(struct ib_qp *ibqp, union ib_gid *gid, u16 lid)
 	return mlx4_multicast_detach(to_mdev(ibqp->device)->dev,
 				     &to_mqp(ibqp)->mqp, gid->raw);
 }
+
+static void mlx4_dummy_comp_handler(struct ib_cq *cq, void *cq_context)
+{
+}
+
+static struct ib_xrcd *mlx4_ib_alloc_xrcd(struct ib_device *ibdev,
+					  struct ib_ucontext *context,
+					  struct ib_udata *udata)
+{
+	struct mlx4_ib_xrcd *xrcd;
+	struct mlx4_ib_dev *mdev = to_mdev(ibdev);
+	struct ib_pd *pd;
+	struct ib_cq *cq;
+	int err;
+
+	if (!(mdev->dev->caps.flags & MLX4_DEV_CAP_FLAG_XRC))
+		return ERR_PTR(-ENOSYS);
+
+	xrcd = kmalloc(sizeof *xrcd, GFP_KERNEL);
+	if (!xrcd)
+		return ERR_PTR(-ENOMEM);
+
+	err = mlx4_xrcd_alloc(mdev->dev, &xrcd->xrcdn);
+	if (err)
+		goto err_xrcd;
+
+	pd = mlx4_ib_alloc_pd(ibdev, NULL, NULL);
+	if (IS_ERR(pd)) {
+		err = PTR_ERR(pd);
+		goto err_pd;
+	}
+	pd->device  = ibdev;
+
+	cq = mlx4_ib_create_cq(ibdev, 1, 0, NULL, NULL);
+	if (IS_ERR(cq)) {
+		err = PTR_ERR(cq);
+		goto err_cq;
+	}
+	cq->device        = ibdev;
+	cq->comp_handler  = mlx4_dummy_comp_handler;
+
+	if (context)
+		if (ib_copy_to_udata(udata, &xrcd->xrcdn, sizeof(__u32))) {
+			err = -EFAULT;
+			goto err_copy;
+		}
+
+	xrcd->cq = cq;
+	xrcd->pd = pd;
+	return &xrcd->ibxrcd;
+
+err_copy:
+	mlx4_ib_destroy_cq(cq);
+err_cq:
+	mlx4_ib_dealloc_pd(pd);
+err_pd:
+	mlx4_xrcd_free(mdev->dev, xrcd->xrcdn);
+err_xrcd:
+	kfree(xrcd);
+	return ERR_PTR(err);
+}
+
+static int mlx4_ib_dealloc_xrcd(struct ib_xrcd *xrcd)
+{
+	struct mlx4_ib_xrcd *mxrcd = to_mxrcd(xrcd);
+
+	mlx4_ib_destroy_cq(mxrcd->cq);
+	mlx4_ib_dealloc_pd(mxrcd->pd);
+	mlx4_xrcd_free(to_mdev(xrcd->device)->dev, to_mxrcd(xrcd)->xrcdn);
+	kfree(xrcd);
+
+	return 0;
+}
+
 
 static int init_node_data(struct mlx4_ib_dev *dev)
 {
@@ -539,17 +632,155 @@ static struct device_attribute *mlx4_class_attributes[] = {
 	&dev_attr_board_id
 };
 
+/*
+ * create show function and a device_attribute struct pointing to
+ * the function for _name
+ */
+#define DEVICE_DIAG_RPRT_ATTR(_name, _offset, _op_mod)		\
+static ssize_t show_rprt_##_name(struct device *dev,		\
+				 struct device_attribute *attr,	\
+				 char *buf){			\
+	return show_diag_rprt(dev, buf, _offset, _op_mod);	\
+}								\
+static DEVICE_ATTR(_name, S_IRUGO, show_rprt_##_name, NULL);
+
+#define MLX4_DIAG_RPRT_CLEAR_DIAGS 3
+
+static size_t show_diag_rprt(struct device *device, char *buf,
+                              u32 offset, u8 op_modifier)
+{
+	size_t ret;
+	u32 counter_offset = offset;
+	u32 diag_counter = 0;
+	struct mlx4_ib_dev *dev = container_of(device, struct mlx4_ib_dev,
+					       ib_dev.dev);
+
+	ret = mlx4_query_diag_counters(dev->dev, 1, op_modifier,
+				       &counter_offset, &diag_counter);
+	if (ret)
+		return ret;
+
+	return sprintf(buf,"%d\n", diag_counter);
+}
+
+static ssize_t clear_diag_counters(struct device *device,
+				   struct device_attribute *attr,
+				   const char *buf, size_t length)
+{
+	size_t ret;
+	struct mlx4_ib_dev *dev = container_of(device, struct mlx4_ib_dev,
+					       ib_dev.dev);
+
+	ret = mlx4_query_diag_counters(dev->dev, 0, MLX4_DIAG_RPRT_CLEAR_DIAGS,
+				       NULL, NULL);
+	if (ret)
+		return ret;
+
+	return length;
+}
+
+DEVICE_DIAG_RPRT_ATTR(rq_num_lle	, 0x00, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_lle	, 0x04, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_lqpoe	, 0x08, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_lqpoe 	, 0x0C, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_leeoe	, 0x10, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_leeoe	, 0x14, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_lpe	, 0x18, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_lpe	, 0x1C, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_wrfe	, 0x20, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_wrfe	, 0x24, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_mwbe	, 0x2C, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_bre	, 0x34, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_lae	, 0x38, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_rire	, 0x44, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_rire	, 0x48, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_rae	, 0x4C, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_rae	, 0x50, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_roe	, 0x54, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_tree	, 0x5C, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_rree	, 0x64, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_rnr	, 0x68, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_rnr	, 0x6C, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_rabrte	, 0x7C, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_ieecne	, 0x84, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_ieecse	, 0x8C, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_oos	, 0x100, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_oos	, 0x104, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_mce	, 0x108, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_rsync	, 0x110, 2);
+DEVICE_DIAG_RPRT_ATTR(sq_num_rsync	, 0x114, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_udsdprd	, 0x118, 2);
+DEVICE_DIAG_RPRT_ATTR(rq_num_ucsdprd	, 0x120, 2);
+DEVICE_DIAG_RPRT_ATTR(num_cqovf		, 0x1A0, 2);
+DEVICE_DIAG_RPRT_ATTR(num_eqovf		, 0x1A4, 2);
+DEVICE_DIAG_RPRT_ATTR(num_baddb		, 0x1A8, 2);
+
+static DEVICE_ATTR(clear_diag, S_IWUGO, NULL, clear_diag_counters);
+
+static struct attribute *diag_rprt_attrs[] = {
+	&dev_attr_rq_num_lle.attr,
+	&dev_attr_sq_num_lle.attr,
+	&dev_attr_rq_num_lqpoe.attr,
+	&dev_attr_sq_num_lqpoe.attr,
+	&dev_attr_rq_num_leeoe.attr,
+	&dev_attr_sq_num_leeoe.attr,
+	&dev_attr_rq_num_lpe.attr,
+	&dev_attr_sq_num_lpe.attr,
+	&dev_attr_rq_num_wrfe.attr,
+	&dev_attr_sq_num_wrfe.attr,
+	&dev_attr_sq_num_mwbe.attr,
+	&dev_attr_sq_num_bre.attr,
+	&dev_attr_rq_num_lae.attr,
+	&dev_attr_sq_num_rire.attr,
+	&dev_attr_rq_num_rire.attr,
+	&dev_attr_sq_num_rae.attr,
+	&dev_attr_rq_num_rae.attr,
+	&dev_attr_sq_num_roe.attr,
+	&dev_attr_sq_num_tree.attr,
+	&dev_attr_sq_num_rree.attr,
+	&dev_attr_rq_num_rnr.attr,
+	&dev_attr_sq_num_rnr.attr,
+	&dev_attr_sq_num_rabrte.attr,
+	&dev_attr_sq_num_ieecne.attr,
+	&dev_attr_sq_num_ieecse.attr,
+	&dev_attr_rq_num_oos.attr,
+	&dev_attr_sq_num_oos.attr,
+	&dev_attr_rq_num_mce.attr,
+	&dev_attr_rq_num_rsync.attr,
+	&dev_attr_sq_num_rsync.attr,
+	&dev_attr_rq_num_udsdprd.attr,
+	&dev_attr_rq_num_ucsdprd.attr,
+	&dev_attr_num_cqovf.attr,
+	&dev_attr_num_eqovf.attr,
+	&dev_attr_num_baddb.attr,
+	&dev_attr_clear_diag.attr,
+	NULL
+};
+
+static struct attribute_group diag_counters_group = {
+	.name  = "diag_counters",
+	.attrs  = diag_rprt_attrs
+};
+
 static void *mlx4_ib_add(struct mlx4_dev *dev)
 {
 	static int mlx4_ib_version_printed;
 	struct mlx4_ib_dev *ibdev;
+	int num_ports = 0;
 	int i;
-
 
 	if (!mlx4_ib_version_printed) {
 		printk(KERN_INFO "%s", mlx4_ib_version);
 		++mlx4_ib_version_printed;
 	}
+
+
+	mlx4_foreach_port(i, dev, MLX4_PORT_TYPE_IB)
+		num_ports++;
+
+	/* No point in registering device with no ports */
+	if (num_ports == 0)
+		return NULL;
 
 	ibdev = (struct mlx4_ib_dev *) ib_alloc_device(sizeof *ibdev);
 	if (!ibdev) {
@@ -574,8 +805,9 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
 	ibdev->ib_dev.owner		= THIS_MODULE;
 	ibdev->ib_dev.node_type		= RDMA_NODE_IB_CA;
 	ibdev->ib_dev.local_dma_lkey	= dev->caps.reserved_lkey;
-	ibdev->ib_dev.phys_port_cnt	= dev->caps.num_ports;
-	ibdev->ib_dev.num_comp_vectors	= 1;
+	ibdev->num_ports = num_ports;
+	ibdev->ib_dev.phys_port_cnt     = ibdev->num_ports;
+	ibdev->ib_dev.num_comp_vectors	= dev->caps.num_comp_vectors;
 	ibdev->ib_dev.dma_device	= &dev->pdev->dev;
 
 	ibdev->ib_dev.uverbs_abi_ver	= MLX4_IB_UVERBS_ABI_VERSION;
@@ -647,12 +879,32 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
 	ibdev->ib_dev.map_phys_fmr	= mlx4_ib_map_phys_fmr;
 	ibdev->ib_dev.unmap_fmr		= mlx4_ib_unmap_fmr;
 	ibdev->ib_dev.dealloc_fmr	= mlx4_ib_fmr_dealloc;
+	if (dev->caps.flags & MLX4_DEV_CAP_FLAG_XRC) {
+		ibdev->ib_dev.create_xrc_srq = mlx4_ib_create_xrc_srq;
+		ibdev->ib_dev.alloc_xrcd = mlx4_ib_alloc_xrcd;
+		ibdev->ib_dev.dealloc_xrcd = mlx4_ib_dealloc_xrcd;
+		ibdev->ib_dev.create_xrc_rcv_qp = mlx4_ib_create_xrc_rcv_qp;
+		ibdev->ib_dev.modify_xrc_rcv_qp = mlx4_ib_modify_xrc_rcv_qp;
+		ibdev->ib_dev.query_xrc_rcv_qp = mlx4_ib_query_xrc_rcv_qp;
+		ibdev->ib_dev.reg_xrc_rcv_qp = mlx4_ib_reg_xrc_rcv_qp;
+		ibdev->ib_dev.unreg_xrc_rcv_qp = mlx4_ib_unreg_xrc_rcv_qp;
+		ibdev->ib_dev.uverbs_cmd_mask |=
+			(1ull << IB_USER_VERBS_CMD_CREATE_XRC_SRQ)	|
+			(1ull << IB_USER_VERBS_CMD_OPEN_XRC_DOMAIN)	|
+			(1ull << IB_USER_VERBS_CMD_CLOSE_XRC_DOMAIN)	|
+			(1ull << IB_USER_VERBS_CMD_CREATE_XRC_RCV_QP)	|
+			(1ull << IB_USER_VERBS_CMD_MODIFY_XRC_RCV_QP)	|
+			(1ull << IB_USER_VERBS_CMD_QUERY_XRC_RCV_QP)	|
+			(1ull << IB_USER_VERBS_CMD_REG_XRC_RCV_QP)	|
+			(1ull << IB_USER_VERBS_CMD_UNREG_XRC_RCV_QP);
+	}
 
 	if (init_node_data(ibdev))
 		goto err_map;
 
 	spin_lock_init(&ibdev->sm_lock);
 	mutex_init(&ibdev->cap_mask_mutex);
+	mutex_init(&ibdev->xrc_reg_mutex);
 
 	if (ib_register_device(&ibdev->ib_dev))
 		goto err_map;
@@ -665,6 +917,9 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
 				       mlx4_class_attributes[i]))
 			goto err_reg;
 	}
+
+	if(sysfs_create_group(&ibdev->ib_dev.dev.kobj, &diag_counters_group))
+		goto err_reg;
 
 	return ibdev;
 
@@ -691,11 +946,17 @@ static void mlx4_ib_remove(struct mlx4_dev *dev, void *ibdev_ptr)
 	struct mlx4_ib_dev *ibdev = ibdev_ptr;
 	int p;
 
-	for (p = 1; p <= dev->caps.num_ports; ++p)
-		mlx4_CLOSE_PORT(dev, p);
+	if (!ibdev->num_ports)
+		return;
+
+	sysfs_remove_group(&ibdev->ib_dev.dev.kobj, &diag_counters_group);
 
 	mlx4_ib_mad_cleanup(ibdev);
 	ib_unregister_device(&ibdev->ib_dev);
+
+	for (p = 1; p <= ibdev->num_ports; ++p)
+		mlx4_CLOSE_PORT(dev, p);
+
 	iounmap(ibdev->uar_map);
 	mlx4_uar_free(dev, &ibdev->priv_uar);
 	mlx4_pd_free(dev, ibdev->priv_pdn);
@@ -706,6 +967,10 @@ static void mlx4_ib_event(struct mlx4_dev *dev, void *ibdev_ptr,
 			  enum mlx4_dev_event event, int port)
 {
 	struct ib_event ibev;
+	struct mlx4_ib_dev *ibdev = to_mdev((struct ib_device *) ibdev_ptr);
+
+	if (port > ibdev->num_ports || !ibdev->num_ports)
+		return;
 
 	switch (event) {
 	case MLX4_DEV_EVENT_PORT_UP:
@@ -738,12 +1003,14 @@ static struct mlx4_interface mlx4_ib_interface = {
 
 static int __init mlx4_ib_init(void)
 {
+	mlx4_enable_wc();
 	return mlx4_register_interface(&mlx4_ib_interface);
 }
 
 static void __exit mlx4_ib_cleanup(void)
 {
 	mlx4_unregister_interface(&mlx4_ib_interface);
+	mlx4_disable_wc();
 }
 
 module_init(mlx4_ib_init);
