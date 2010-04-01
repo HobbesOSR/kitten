@@ -163,6 +163,7 @@ static int mlx4_eq_int(struct mlx4_dev *dev, struct mlx4_eq *eq)
 	int cqn;
 	int eqes_found = 0;
 	int set_ci = 0;
+	int port;
 
 	while ((eqe = next_eqe_sw(eq))) {
 		/*
@@ -203,11 +204,16 @@ static int mlx4_eq_int(struct mlx4_dev *dev, struct mlx4_eq *eq)
 			break;
 
 		case MLX4_EVENT_TYPE_PORT_CHANGE:
-			mlx4_dispatch_event(dev,
-					    eqe->subtype == MLX4_PORT_CHANGE_SUBTYPE_ACTIVE ?
-					    MLX4_DEV_EVENT_PORT_UP :
-					    MLX4_DEV_EVENT_PORT_DOWN,
-					    be32_to_cpu(eqe->event.port_change.port) >> 28);
+			port = be32_to_cpu(eqe->event.port_change.port) >> 28;
+			if (eqe->subtype == MLX4_PORT_CHANGE_SUBTYPE_DOWN) {
+				mlx4_dispatch_event(dev, MLX4_DEV_EVENT_PORT_DOWN,
+						    port);
+				mlx4_priv(dev)->sense.do_sense_port[port] = 1;
+			} else {
+				mlx4_dispatch_event(dev, MLX4_DEV_EVENT_PORT_UP,
+						    port);
+				mlx4_priv(dev)->sense.do_sense_port[port] = 0;
+			}
 			break;
 
 		case MLX4_EVENT_TYPE_CQ_ERROR:
@@ -266,7 +272,7 @@ static irqreturn_t mlx4_interrupt(int irq, void *dev_ptr)
 
 	writel(priv->eq_table.clr_mask, priv->eq_table.clr_int);
 
-	for (i = 0; i < MLX4_NUM_EQ; ++i)
+	for (i = 0; i < MLX4_EQ_COMP_CPU0 + dev->caps.num_comp_vectors; ++i)
 		work |= mlx4_eq_int(dev, &priv->eq_table.eq[i]);
 
 	return IRQ_RETVAL(work);
@@ -483,7 +489,7 @@ static void mlx4_free_irqs(struct mlx4_dev *dev)
 
 	if (eq_table->have_irq)
 		free_irq(dev->pdev->irq, dev);
-	for (i = 0; i < MLX4_NUM_EQ; ++i)
+	for (i = 0; i < MLX4_EQ_COMP_CPU0 + dev->caps.num_comp_vectors; ++i)
 		if (eq_table->eq[i].have_irq)
 			free_irq(eq_table->eq[i].irq, eq_table->eq + i);
 }
@@ -513,29 +519,35 @@ int mlx4_map_eq_icm(struct mlx4_dev *dev, u64 icm_virt)
 {
 	struct mlx4_priv *priv = mlx4_priv(dev);
 	int ret;
+	int host_pages, icm_pages;
+	int i;
 
-	/*
-	 * We assume that mapping one page is enough for the whole EQ
-	 * context table.  This is fine with all current HCAs, because
-	 * we only use 32 EQs and each EQ uses 64 bytes of context
-	 * memory, or 1 KB total.
-	 */
+	host_pages = ALIGN(min_t(int, dev->caps.num_eqs, num_possible_cpus() + MLX4_EQ_COMP_CPU0) *
+			   dev->caps.eqc_entry_size, PAGE_SIZE) >> PAGE_SHIFT;
+	priv->eq_table.order = ilog2(roundup_pow_of_two(host_pages));
+
 	priv->eq_table.icm_virt = icm_virt;
-	priv->eq_table.icm_page = alloc_page(GFP_HIGHUSER);
+	priv->eq_table.icm_page = alloc_pages(GFP_HIGHUSER, priv->eq_table.order);
 	if (!priv->eq_table.icm_page)
 		return -ENOMEM;
 	priv->eq_table.icm_dma  = pci_map_page(dev->pdev, priv->eq_table.icm_page, 0,
-					       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
+					       PAGE_SIZE << priv->eq_table.order,
+					       PCI_DMA_BIDIRECTIONAL);
 	if (pci_dma_mapping_error(dev->pdev, priv->eq_table.icm_dma)) {
-		__free_page(priv->eq_table.icm_page);
+		__free_pages(priv->eq_table.icm_page, priv->eq_table.order);
 		return -ENOMEM;
 	}
 
-	ret = mlx4_MAP_ICM_page(dev, priv->eq_table.icm_dma, icm_virt);
-	if (ret) {
-		pci_unmap_page(dev->pdev, priv->eq_table.icm_dma, PAGE_SIZE,
-			       PCI_DMA_BIDIRECTIONAL);
-		__free_page(priv->eq_table.icm_page);
+	icm_pages = (PAGE_SIZE / MLX4_ICM_PAGE_SIZE) * (1 << priv->eq_table.order);
+	for (i = 0; i < icm_pages; ++i) {
+		ret = mlx4_MAP_ICM_page(dev, priv->eq_table.icm_dma, icm_virt + i * MLX4_ICM_PAGE_SIZE);
+		if (ret) {
+			mlx4_UNMAP_ICM(dev, priv->eq_table.icm_virt, i);
+			pci_unmap_page(dev->pdev, priv->eq_table.icm_dma, PAGE_SIZE,
+				       PCI_DMA_BIDIRECTIONAL);
+			__free_pages(priv->eq_table.icm_page, priv->eq_table.order);
+			break;
+		}
 	}
 
 	return ret;
@@ -544,21 +556,23 @@ int mlx4_map_eq_icm(struct mlx4_dev *dev, u64 icm_virt)
 void mlx4_unmap_eq_icm(struct mlx4_dev *dev)
 {
 	struct mlx4_priv *priv = mlx4_priv(dev);
+	int icm_pages = (PAGE_SIZE / MLX4_ICM_PAGE_SIZE) * (1 << priv->eq_table.order);
 
-	mlx4_UNMAP_ICM(dev, priv->eq_table.icm_virt, 1);
-	pci_unmap_page(dev->pdev, priv->eq_table.icm_dma, PAGE_SIZE,
-		       PCI_DMA_BIDIRECTIONAL);
-	__free_page(priv->eq_table.icm_page);
+	mlx4_UNMAP_ICM(dev, priv->eq_table.icm_virt, icm_pages);
+	pci_unmap_page(dev->pdev, priv->eq_table.icm_dma,
+		       PAGE_SIZE << priv->eq_table.order, PCI_DMA_BIDIRECTIONAL);
+	__free_pages(priv->eq_table.icm_page, priv->eq_table.order);
 }
 
 int mlx4_init_eq_table(struct mlx4_dev *dev)
 {
 	struct mlx4_priv *priv = mlx4_priv(dev);
+	int req_eqs;
 	int err;
 	int i;
 
 	err = mlx4_bitmap_init(&priv->eq_table.bitmap, dev->caps.num_eqs,
-			       dev->caps.num_eqs - 1, dev->caps.reserved_eqs);
+			       dev->caps.num_eqs - 1, dev->caps.reserved_eqs, 0);
 	if (err)
 		return err;
 
@@ -574,11 +588,21 @@ int mlx4_init_eq_table(struct mlx4_dev *dev)
 	priv->eq_table.clr_int  = priv->clr_base +
 		(priv->eq_table.inta_pin < 32 ? 4 : 0);
 
-	err = mlx4_create_eq(dev, dev->caps.num_cqs + MLX4_NUM_SPARE_EQE,
-			     (dev->flags & MLX4_FLAG_MSI_X) ? MLX4_EQ_COMP : 0,
-			     &priv->eq_table.eq[MLX4_EQ_COMP]);
-	if (err)
-		goto err_out_unmap;
+	dev->caps.num_comp_vectors = 0;
+	req_eqs = (dev->flags & MLX4_FLAG_MSI_X) ? num_online_cpus() : 1;
+	while (req_eqs) {
+		err = mlx4_create_eq(
+			dev, dev->caps.num_cqs + MLX4_NUM_SPARE_EQE,
+			(dev->flags & MLX4_FLAG_MSI_X) ?
+			(MLX4_EQ_COMP_CPU0 + dev->caps.num_comp_vectors) : 0,
+			&priv->eq_table.eq[MLX4_EQ_COMP_CPU0 +
+			dev->caps.num_comp_vectors]);
+		if (err)
+			goto err_out_comp;
+
+		dev->caps.num_comp_vectors++;
+		req_eqs--;
+	}
 
 	err = mlx4_create_eq(dev, MLX4_NUM_ASYNC_EQE + MLX4_NUM_SPARE_EQE,
 			     (dev->flags & MLX4_FLAG_MSI_X) ? MLX4_EQ_ASYNC : 0,
@@ -587,12 +611,16 @@ int mlx4_init_eq_table(struct mlx4_dev *dev)
 		goto err_out_comp;
 
 	if (dev->flags & MLX4_FLAG_MSI_X) {
-		static const char *eq_name[] = {
-			[MLX4_EQ_COMP]  = DRV_NAME " (comp)",
-			[MLX4_EQ_ASYNC] = DRV_NAME " (async)"
-		};
+		static char eq_name[MLX4_NUM_EQ][20];
 
-		for (i = 0; i < MLX4_NUM_EQ; ++i) {
+		for (i = 0; i < MLX4_EQ_COMP_CPU0 +
+		      dev->caps.num_comp_vectors; ++i) {
+			if (i == 0)
+				snprintf(eq_name[0], 20, DRV_NAME "(async)");
+			else
+				snprintf(eq_name[i], 20, "eth-mlx4-%d",
+					 i - 1);
+
 			err = request_irq(priv->eq_table.eq[i].irq,
 					  mlx4_msi_x_interrupt,
 					  0, eq_name[i], priv->eq_table.eq + i);
@@ -617,7 +645,7 @@ int mlx4_init_eq_table(struct mlx4_dev *dev)
 		mlx4_warn(dev, "MAP_EQ for async EQ %d failed (%d)\n",
 			   priv->eq_table.eq[MLX4_EQ_ASYNC].eqn, err);
 
-	for (i = 0; i < MLX4_NUM_EQ; ++i)
+	for (i = 0; i < MLX4_EQ_COMP_CPU0 + dev->caps.num_comp_vectors; ++i)
 		eq_set_ci(&priv->eq_table.eq[i], 1);
 
 	return 0;
@@ -626,9 +654,9 @@ err_out_async:
 	mlx4_free_eq(dev, &priv->eq_table.eq[MLX4_EQ_ASYNC]);
 
 err_out_comp:
-	mlx4_free_eq(dev, &priv->eq_table.eq[MLX4_EQ_COMP]);
+	for (i = 0; i < dev->caps.num_comp_vectors; ++i)
+		mlx4_free_eq(dev, &priv->eq_table.eq[MLX4_EQ_COMP_CPU0 + i]);
 
-err_out_unmap:
 	mlx4_unmap_clr_int(dev);
 	mlx4_free_irqs(dev);
 
@@ -647,7 +675,7 @@ void mlx4_cleanup_eq_table(struct mlx4_dev *dev)
 
 	mlx4_free_irqs(dev);
 
-	for (i = 0; i < MLX4_NUM_EQ; ++i)
+	for (i = 0; i < MLX4_EQ_COMP_CPU0 + dev->caps.num_comp_vectors; ++i)
 		mlx4_free_eq(dev, &priv->eq_table.eq[i]);
 
 	mlx4_unmap_clr_int(dev);

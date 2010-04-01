@@ -301,6 +301,16 @@ struct ib_mad_agent *ib_register_mad_agent(struct ib_device *device,
 	mad_agent_priv->agent.context = context;
 	mad_agent_priv->agent.qp = port_priv->qp_info[qpn].qp;
 	mad_agent_priv->agent.port_num = port_num;
+	spin_lock_init(&mad_agent_priv->lock);
+	INIT_LIST_HEAD(&mad_agent_priv->send_list);
+	INIT_LIST_HEAD(&mad_agent_priv->wait_list);
+	INIT_LIST_HEAD(&mad_agent_priv->done_list);
+	INIT_LIST_HEAD(&mad_agent_priv->rmpp_list);
+	INIT_DELAYED_WORK(&mad_agent_priv->timed_work, timeout_sends);
+	INIT_LIST_HEAD(&mad_agent_priv->local_list);
+	INIT_WORK(&mad_agent_priv->local_work, local_completions);
+	atomic_set(&mad_agent_priv->refcount, 1);
+	init_completion(&mad_agent_priv->comp);
 
 	spin_lock_irqsave(&port_priv->reg_lock, flags);
 	mad_agent_priv->agent.hi_tid = ++ib_mad_client_id;
@@ -349,17 +359,6 @@ struct ib_mad_agent *ib_register_mad_agent(struct ib_device *device,
 	/* Add mad agent into port's agent list */
 	list_add_tail(&mad_agent_priv->agent_list, &port_priv->agent_list);
 	spin_unlock_irqrestore(&port_priv->reg_lock, flags);
-
-	spin_lock_init(&mad_agent_priv->lock);
-	INIT_LIST_HEAD(&mad_agent_priv->send_list);
-	INIT_LIST_HEAD(&mad_agent_priv->wait_list);
-	INIT_LIST_HEAD(&mad_agent_priv->done_list);
-	INIT_LIST_HEAD(&mad_agent_priv->rmpp_list);
-	INIT_DELAYED_WORK(&mad_agent_priv->timed_work, timeout_sends);
-	INIT_LIST_HEAD(&mad_agent_priv->local_list);
-	INIT_WORK(&mad_agent_priv->local_work, local_completions);
-	atomic_set(&mad_agent_priv->refcount, 1);
-	init_completion(&mad_agent_priv->comp);
 
 	return &mad_agent_priv->agent;
 
@@ -679,8 +678,7 @@ static int handle_outgoing_dr_smp(struct ib_mad_agent_private *mad_agent_priv,
 	struct ib_wc mad_wc;
 	struct ib_send_wr *send_wr = &mad_send_wr->send_wr;
 
-	if (device->node_type == RDMA_NODE_IB_SWITCH &&
-	    smp->mgmt_class == IB_MGMT_CLASS_SUBN_DIRECTED_ROUTE)
+	if (device->node_type == RDMA_NODE_IB_SWITCH)
 		port_num = send_wr->wr.ud.port_num;
 	else
 		port_num = mad_agent_priv->agent.port_num;
@@ -691,9 +689,10 @@ static int handle_outgoing_dr_smp(struct ib_mad_agent_private *mad_agent_priv,
 	 * If we are at the start of the LID routed part, don't update the
 	 * hop_ptr or hop_cnt.  See section 14.2.2, Vol 1 IB spec.
 	 */
-	if ((ib_get_smp_direction(smp) ? smp->dr_dlid : smp->dr_slid) ==
-	     IB_LID_PERMISSIVE &&
-	     smi_handle_dr_smp_send(smp, device->node_type, port_num) ==
+	if ((ib_get_smp_direction(smp) ? smp->dr_dlid : smp->dr_slid) !=
+	     IB_LID_PERMISSIVE)
+		goto out;
+	if (smi_handle_dr_smp_send(smp, device->node_type, port_num) ==
 	     IB_SMI_DISCARD) {
 		ret = -EINVAL;
 		printk(KERN_ERR PFX "Invalid directed route\n");
@@ -747,9 +746,7 @@ static int handle_outgoing_dr_smp(struct ib_mad_agent_private *mad_agent_priv,
 		break;
 	case IB_MAD_RESULT_SUCCESS | IB_MAD_RESULT_CONSUMED:
 		kmem_cache_free(ib_mad_cache, mad_priv);
-		kfree(local);
-		ret = 1;
-		goto out;
+		break;
 	case IB_MAD_RESULT_SUCCESS:
 		/* Treat like an incoming receive MAD */
 		port_priv = ib_get_mad_port(mad_agent_priv->agent.device,
@@ -760,10 +757,12 @@ static int handle_outgoing_dr_smp(struct ib_mad_agent_private *mad_agent_priv,
 						        &mad_priv->mad.mad);
 		}
 		if (!port_priv || !recv_mad_agent) {
+			/*
+			 * No receiving agent so drop packet and
+			 * generate send completion.
+			 */
 			kmem_cache_free(ib_mad_cache, mad_priv);
-			kfree(local);
-			ret = 0;
-			goto out;
+			break;
 		}
 		local->mad_priv = mad_priv;
 		local->recv_mad_agent = recv_mad_agent;
@@ -1697,9 +1696,8 @@ static inline int rcv_has_same_gid(struct ib_mad_agent_private *mad_agent_priv,
 	u8 port_num = mad_agent_priv->agent.port_num;
 	u8 lmc;
 
-	send_resp = ((struct ib_mad *)(wr->send_buf.mad))->
-		     mad_hdr.method & IB_MGMT_METHOD_RESP;
-	rcv_resp = rwc->recv_buf.mad->mad_hdr.method & IB_MGMT_METHOD_RESP;
+	send_resp = ib_response_mad((struct ib_mad *)wr->send_buf.mad);
+	rcv_resp = ib_response_mad(rwc->recv_buf.mad);
 
 	if (send_resp == rcv_resp)
 		/* both requests, or both responses. GIDs different */
@@ -2361,7 +2359,7 @@ static void local_completions(struct work_struct *work)
 	struct ib_mad_local_private *local;
 	struct ib_mad_agent_private *recv_mad_agent;
 	unsigned long flags;
-	int recv = 0;
+	int free_mad;
 	struct ib_wc wc;
 	struct ib_mad_send_wc mad_send_wc;
 
@@ -2375,14 +2373,15 @@ static void local_completions(struct work_struct *work)
 				   completion_list);
 		list_del(&local->completion_list);
 		spin_unlock_irqrestore(&mad_agent_priv->lock, flags);
+		free_mad = 0;
 		if (local->mad_priv) {
 			recv_mad_agent = local->recv_mad_agent;
 			if (!recv_mad_agent) {
 				printk(KERN_ERR PFX "No receive MAD agent for local completion\n");
+				free_mad = 1;
 				goto local_send_completion;
 			}
 
-			recv = 1;
 			/*
 			 * Defined behavior is to complete response
 			 * before request
@@ -2427,7 +2426,7 @@ local_send_completion:
 
 		spin_lock_irqsave(&mad_agent_priv->lock, flags);
 		atomic_dec(&mad_agent_priv->refcount);
-		if (!recv)
+		if (free_mad)
 			kmem_cache_free(ib_mad_cache, local->mad_priv);
 		kfree(local);
 	}

@@ -129,6 +129,10 @@ int mlx4_SET_PORT_qpn_calc(struct mlx4_dev *dev, u8 port, u32 base_qpn,
 	context->base_qpn = cpu_to_be32(base_qpn);
 	context->promisc = cpu_to_be32(promisc << SET_PORT_PROMISC_SHIFT | base_qpn);
 	context->mcast = cpu_to_be32(1 << SET_PORT_PROMISC_SHIFT | base_qpn);
+	context->intra_no_vlan = 0;
+	context->no_vlan = MLX4_NO_VLAN_IDX;
+	context->intra_vlan_miss = 0;
+	context->vlan_miss = MLX4_VLAN_MISS_IDX;
 
 	in_mod = MLX4_SET_PORT_RQP_CALC << 8 | port;
 	err = mlx4_cmd(dev, mailbox->dma, in_mod, 1, MLX4_CMD_SET_PORT,
