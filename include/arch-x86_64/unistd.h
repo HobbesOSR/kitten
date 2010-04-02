@@ -686,10 +686,18 @@ __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
 #define __NR_v3_start_guest	308
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
 
-#define __NR_lwk_arp            309
-__SYSCALL(__NR_lwk_arp, sys_lwk_arp)
 
+
+#define __NR_lwk_arp            309
 #define __NR_lwk_ifconfig       310
+
+#ifdef CONFIG_LINUX 
+/* TODO: Move these registrations to the Linux compatibility layer initialization */
+__SYSCALL(__NR_lwk_arp, sys_lwk_arp)
 __SYSCALL(__NR_lwk_ifconfig, sys_lwk_ifconfig)
+#else 
+__SYSCALL(__NR_lwk_arp, syscall_not_implemented)
+__SYSCALL(__NR_lwk_ifconfig, syscall_not_implemented)
+#endif
 
 #endif
