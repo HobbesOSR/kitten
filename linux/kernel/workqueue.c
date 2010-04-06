@@ -208,6 +208,10 @@ int cancel_delayed_work_sync(struct delayed_work *dwork)
 	return __cancel_work_timer(&dwork->work, &dwork->timer);
 }
 
+int cancel_work_sync(struct work_struct *work)
+{
+	return __cancel_work_timer(work, NULL);
+}
 
 void
 init_workqueues(void)

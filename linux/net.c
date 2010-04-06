@@ -10,6 +10,31 @@
 struct net init_net;
 struct neigh_table arp_tbl;
 
+DEFINE_RWLOCK(dev_base_lock);
+
+static DEFINE_MUTEX(rtnl_mutex);
+
+void rtnl_lock(void)
+{
+        mutex_lock(&rtnl_mutex);
+}
+EXPORT_SYMBOL(rtnl_lock);
+
+void rtnl_unlock(void)
+{
+	/*FIXME Linux has more protection !*/
+        mutex_unlock(&rtnl_mutex);
+}
+
+int dev_mc_delete(struct net_device *dev, void *addr, int alen, int glbl)
+{
+	return 0;
+}
+
+int dev_mc_add(struct net_device *dev, void *addr, int alen, int glbl)
+{
+	return 0;
+}
 // we allow one device and it's ib0
 static struct in_device* _ib0_in_device = NULL;
 
