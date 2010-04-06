@@ -48,7 +48,7 @@ static unsigned int wc_enabled;
 #define QIB_WC_MASK     (~_PAGE_PCD)    /* selects PAT1 for this page */
 #define QIB_WC_FLAGS    (_PAGE_PWT)     /* selects PAT1 for this page */
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_FIXME_64__)
 
 #define X86_MSR_PAT_OFFSET  0x277
 

@@ -1645,9 +1645,9 @@ static int qib_assign_ctxt(struct file *fp, const struct qib_user_info *uinfo)
 		}
 	}
 
-	i_minor = iminor(fp->f_dentry->d_inode) - QIB_USER_MINOR_BASE;
+	i_minor = iminor(fp->inode) - QIB_USER_MINOR_BASE;
 	qib_cdbg(VERBOSE, "open on dev %lx (minor %d)\n",
-		 (long)fp->f_dentry->d_inode->i_rdev, i_minor);
+		 (long)fp->inode->i_rdev, i_minor);
 
 	if (i_minor)
 		ret = find_free_ctxt(i_minor - 1, fp, uinfo);
