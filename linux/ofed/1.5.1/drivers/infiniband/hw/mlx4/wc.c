@@ -33,7 +33,7 @@
 #include <linux/pci.h>
 #include "wc.h"
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_FIXME_64__)
 
 pgprot_t pgprot_wc(pgprot_t _prot)
 {
@@ -58,7 +58,7 @@ int mlx4_wc_enabled(void)
 	return 1;
 }
 
-#else	/* !(defined(__i386__) || defined(__x86_64__)) */
+#else	/* !(defined(__i386__) || defined(__x86_FIXME_64__)) */
 
 pgprot_t pgprot_wc(pgprot_t _prot)
 {
