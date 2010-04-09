@@ -194,7 +194,7 @@ int mlx4_buf_alloc(struct mlx4_dev *dev, int size, int max_direct,
 {
 	dma_addr_t t;
 
-	if (size <= max_direct) {
+	if (size <= INT_MAX) {
 		buf->nbufs        = 1;
 		buf->npages       = 1;
 		buf->page_shift   = get_order(size) + PAGE_SHIFT;
