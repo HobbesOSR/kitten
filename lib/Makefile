@@ -15,6 +15,5 @@ lib-y := \
 	htable.o \
 	mutex.o \
 	semaphore.o \
-	sscanf.o \
 	cmdline.o \
 	sha1.o \

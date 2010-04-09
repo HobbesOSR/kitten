@@ -17,19 +17,28 @@
  */
 
 #include <stdarg.h>
-#include <linux/module.h>
-#include <linux/types.h>
-#include <linux/string.h>
-#include <linux/ctype.h>
-#include <linux/kernel.h>
-#include <linux/kallsyms.h>
-#include <linux/uaccess.h>
-#include <linux/ioport.h>
-#include <net/addrconf.h>
+#include <lwk/linux_compat.h>
+#include <lwk/types.h>
+#include <lwk/string.h>
+#include <lwk/ctype.h>
+#include <lwk/kernel.h>
+#include <lwk/kallsyms.h>
+#include <lwk/resource.h>
 
-#include <asm/page.h>		/* for PAGE_SIZE */
-#include <asm/div64.h>
-#include <asm/sections.h>	/* for dereference_function_descriptor() */
+#include <arch/page.h>          /* for PAGE_SIZE */
+#include <arch/div64.h>
+
+const char hex_asc[] = "0123456789abcdef";
+
+#define hex_asc_lo(x)   hex_asc[((x) & 0x0f)]
+#define hex_asc_hi(x)   hex_asc[((x) & 0xf0) >> 4]
+
+static inline char *pack_hex_byte(char *buf, u8 byte)
+{
+        *buf++ = hex_asc_hi(byte);
+        *buf++ = hex_asc_lo(byte);
+        return buf;
+}
 
 /* Works only for digits and letters, but small and fast */
 #define TOLOWER(x) ((x) | 0x20)
@@ -582,9 +591,9 @@ static char *symbol_string(char *buf, char *end, void *ptr,
 #ifdef CONFIG_KALLSYMS
 	char sym[KSYM_SYMBOL_LEN];
 	if (ext != 'f' && ext != 's')
-		sprint_symbol(sym, value);
+		kallsyms_sprint_symbol(sym, value);
 	else
-		kallsyms_lookup(value, NULL, NULL, NULL, sym);
+		kallsyms_lookup(value, NULL, NULL, sym);
 	return string(buf, end, sym, spec);
 #else
 	spec.field_width = 2*sizeof(void *);
@@ -671,88 +680,6 @@ static char *ip4_string(char *p, const u8 *addr, bool leading_zeros)
 	return p;
 }
 
-static char *ip6_compressed_string(char *p, const char *addr)
-{
-	int i;
-	int j;
-	int range;
-	unsigned char zerolength[8];
-	int longest = 1;
-	int colonpos = -1;
-	u16 word;
-	u8 hi;
-	u8 lo;
-	bool needcolon = false;
-	bool useIPv4;
-	struct in6_addr in6;
-
-	memcpy(&in6, addr, sizeof(struct in6_addr));
-
-	useIPv4 = ipv6_addr_v4mapped(&in6) || ipv6_addr_is_isatap(&in6);
-
-	memset(zerolength, 0, sizeof(zerolength));
-
-	if (useIPv4)
-		range = 6;
-	else
-		range = 8;
-
-	/* find position of longest 0 run */
-	for (i = 0; i < range; i++) {
-		for (j = i; j < range; j++) {
-			if (in6.s6_addr16[j] != 0)
-				break;
-			zerolength[i]++;
-		}
-	}
-	for (i = 0; i < range; i++) {
-		if (zerolength[i] > longest) {
-			longest = zerolength[i];
-			colonpos = i;
-		}
-	}
-
-	/* emit address */
-	for (i = 0; i < range; i++) {
-		if (i == colonpos) {
-			if (needcolon || i == 0)
-				*p++ = ':';
-			*p++ = ':';
-			needcolon = false;
-			i += longest - 1;
-			continue;
-		}
-		if (needcolon) {
-			*p++ = ':';
-			needcolon = false;
-		}
-		/* hex u16 without leading 0s */
-		word = ntohs(in6.s6_addr16[i]);
-		hi = word >> 8;
-		lo = word & 0xff;
-		if (hi) {
-			if (hi > 0x0f)
-				p = pack_hex_byte(p, hi);
-			else
-				*p++ = hex_asc_lo(hi);
-		}
-		if (hi || lo > 0x0f)
-			p = pack_hex_byte(p, lo);
-		else
-			*p++ = hex_asc_lo(lo);
-		needcolon = true;
-	}
-
-	if (useIPv4) {
-		if (needcolon)
-			*p++ = ':';
-		p = ip4_string(p, &in6.s6_addr[12], false);
-	}
-
-	*p = '\0';
-	return p;
-}
-
 static char *ip6_string(char *p, const char *addr, const char *fmt)
 {
 	int i;
@@ -772,10 +699,7 @@ static char *ip6_addr_string(char *buf, char *end, const u8 *addr,
 {
 	char ip6_addr[sizeof("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255")];
 
-	if (fmt[0] == 'I' && fmt[2] == 'c')
-		ip6_compressed_string(ip6_addr, addr);
-	else
-		ip6_string(ip6_addr, addr, fmt);
+	ip6_string(ip6_addr, addr, fmt);
 
 	return string(buf, end, ip6_addr, spec);
 }
@@ -825,9 +749,6 @@ static char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 		return string(buf, end, "(null)", spec);
 
 	switch (*fmt) {
-	case 'F':
-	case 'f':
-		ptr = dereference_function_descriptor(ptr);
 	case 's':
 		/* Fallthrough */
 	case 'S':
