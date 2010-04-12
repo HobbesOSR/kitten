@@ -12,6 +12,7 @@
  */
 #define jiffies			get_time()
 #define HZ			1000000000ul
+#define CURRENT_TIME		ns_to_timespec(get_time())
 
 /**
  * These macros are for handling wrap-around.
