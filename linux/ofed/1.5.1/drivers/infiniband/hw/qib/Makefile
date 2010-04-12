@@ -1,4 +1,5 @@
-ccflags-y += -DQIB_KERN_TYPE=0 -DQIB_IDSTR='"QLogic kernel.org driver"'
+#ccflags-y += -DQIB_KERN_TYPE=0 -DQIB_IDSTR='"QLogic kernel.org driver"'
+CPPFLAGS += -DQIB_KERN_TYPE=0 -DQIB_IDSTR='"QLogic kernel.org driver"'
 
 obj-$(CONFIG_INFINIBAND_QIB) += ib_qib.o
 
