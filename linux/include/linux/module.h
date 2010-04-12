@@ -38,6 +38,8 @@
 	DRIVER_PARAM_ARRAY(name,type,nump)
 #define module_param_array_named(name,array,type,nump,perm) \
 	DRIVER_PARAM_ARRAY_NAMED(name,array,type,nump)
+#define module_param_call(name, set, get, arg, perm) 
+
 
 #define module_init(init_func) DRIVER_INIT("linux", (init_func))
 #define module_exit(exit_func) DRIVER_EXIT((exit_func))

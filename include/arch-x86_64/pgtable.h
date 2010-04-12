@@ -320,7 +320,6 @@ static inline void ptep_set_wrprotect(struct mm_struct *mm, unsigned long addr, 
  * Macro to mark a page protection value as "uncacheable".
  */
 #define pgprot_noncached(prot)	(__pgprot(pgprot_val(prot) | _PAGE_PCD | _PAGE_PWT))
-#define pgprot_writecombine(prot)  pgprot_noncached(prot);
 
 static inline int pmd_large(pmd_t pte) { 
 	return (pmd_val(pte) & __LARGE_PTE) == __LARGE_PTE; 

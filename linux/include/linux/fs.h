@@ -4,9 +4,10 @@
 #include <lwk/kfs.h>
 #include <linux/err.h>
 #define file_operations kfs_fops
+#define i_fop fops
 
 #include <linux/kdev_t.h>
-
+#include <linux/file.h>
 #define CHRDEV_MAJOR_HASH_SIZE     255
 
 /* file is open for reading */
@@ -37,7 +38,9 @@
 struct vfsmount;
 
 struct super_block {
+	struct dentry           *s_root;
 };
+struct tree_descr { char *name; const struct file_operations *ops; int mode; };
 
 struct file_system_type {
 	const char *name;
@@ -45,6 +48,7 @@ struct file_system_type {
 		const char *, void *, struct vfsmount *);
 	void (*kill_sb) (struct super_block *);
 	struct file_system_type * next;
+	struct module *owner;
 };
 
 struct super_operations {
@@ -56,6 +60,9 @@ extern int get_sb_pseudo(struct file_system_type *, char *,
 void kill_litter_super(struct super_block *sb);
 extern int register_filesystem(struct file_system_type *);
 extern int unregister_filesystem(struct file_system_type *);
+
+extern const struct file_operations simple_dir_operations;
+extern const struct inode_operations simple_dir_inode_operations;
 
 extern struct vfsmount *kern_mount_data(struct file_system_type *, void *data);
 #define kern_mount(type) kern_mount_data(type, NULL)

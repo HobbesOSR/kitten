@@ -16,6 +16,8 @@ extern char *kasprintf(gfp_t gfp, const char *fmt, ...)
 	__attribute__ ((format (printf, 2, 3)));
 extern char *kvasprintf(gfp_t gfp, const char *fmt, va_list args);
 
+extern struct atomic_notifier_head panic_notifier_list;
+
 /**
  * upper_32_bits - return bits 32-63 of a number
  * @n: the number we're accessing

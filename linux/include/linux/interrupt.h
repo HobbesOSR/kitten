@@ -2,6 +2,7 @@
 #define __LINUX_INTERRUPT_H
 
 #include <lwk/interrupt.h>
+#include <lwk/spinlock.h>
 
 #define request_irq	irq_request
 #define free_irq	irq_free
@@ -29,5 +30,14 @@
 #define IRQF_PERCPU		0x00000400
 #define IRQF_NOBALANCING	0x00000800
 #define IRQF_IRQPOLL		0x00001000
+
+struct tasklet_struct
+{
+	struct tasklet_struct *next;
+	unsigned long state;
+	atomic_t count;
+	void (*func)(unsigned long);
+	unsigned long data;
+};
 
 #endif

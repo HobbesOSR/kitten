@@ -1,10 +1,14 @@
 #ifndef _LINUX_SCHED_H
 #define _LINUX_SCHED_H
 
+#define pid id
+#define tgid gid
+#define cpus_allowed cpumask
+
+
 #include <lwk/sched.h>
 #include <linux/capability.h>
 #include <asm/processor.h>
-
 #define wake_up_process(p)      sched_wakeup_task((p), TASK_ALL)
 
 /**

@@ -35,4 +35,7 @@ sg_page(struct scatterlist *sg);
 extern void
 sg_set_buf(struct scatterlist *sg, const void *buf, unsigned int buflen);
 
+#define for_each_sg(sglist, sg, nr, __i)        \
+        for (__i = 0, sg = (sglist); __i < (nr); __i++, sg = sg_next(sg))
+
 #endif

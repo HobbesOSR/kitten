@@ -6,13 +6,17 @@
 
 #include <lwk/list.h>
 #include <lwk/task.h>
+#include <lwk/mutex.h>
 
 /* fcntl.h */
 #ifndef O_NONBLOCK
 #define O_NONBLOCK      00004000
 #endif
 
+struct iovec;
+struct kiocb;
 struct poll_table_struct;
+typedef u64 blkcnt_t;
 
 struct inode
 {
@@ -33,6 +37,20 @@ struct inode
 	dev_t                   i_rdev;
 	struct cdev             *i_cdev;
 	struct list_head        i_devices;
+
+	/* for qib driver combpatibility */
+	struct super_block      *i_sb;
+	umode_t                 i_mode;
+	uid_t                   i_uid;
+	gid_t                   i_gid;
+	blkcnt_t                i_blocks;
+	struct timespec         i_atime;
+	struct timespec         i_mtime;
+	struct timespec         i_ctime;
+	const struct inode_operations   *i_op;
+	void                    *i_private;
+	struct mutex            i_mutex;
+
 
 	struct inode *link_target;
 };
@@ -65,6 +83,7 @@ struct kfs_fops
 	unsigned int (*poll) (struct file *, struct poll_table_struct *);
 	int (*release) (struct inode *, struct file *);
 	int (*readdir) (struct file *, uaddr_t, unsigned int);
+	ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
 
 	struct module *owner; /* can we get rid of the module stuff? */
 };
@@ -81,6 +100,7 @@ struct file
         const struct kfs_fops * f_op;
         unsigned int            f_mode;
 	unsigned int            f_flags;
+	struct dentry *f_dentry;
 	void *                  private_data;
 };
 

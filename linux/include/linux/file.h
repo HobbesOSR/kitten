@@ -4,8 +4,8 @@
 #include <linux/compiler.h>
 #include <linux/types.h>
 #include <lwk/posix_types.h>
-#include <linux/fs.h>
-
+#include <lwk/spinlock.h>
+#include <lwk/list.h>
 /* dcache.h */
 /**
  *      dget, dget_locked       -       get a reference to a dentry
@@ -19,6 +19,8 @@
  *      needs and they take necessary precautions) you should hold dcache_lock
  *      and call dget_locked() instead of dget().
  */
+
+extern spinlock_t dcache_lock;
 
 struct dentry {
 	atomic_t d_count;

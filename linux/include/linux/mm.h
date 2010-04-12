@@ -14,15 +14,46 @@
 #define mm_struct aspace
 extern void mmput(struct mm_struct *);
 
+#define VM_SHARED       0x00000008
+
+#define VM_MAYREAD      0x00000010
+#define VM_MAYWRITE     0x00000020
+#define VM_MAYEXEC      0x00000040
+#define VM_MAYSHARE     0x00000080
+
+#define VM_DONTCOPY     0x00020000      /* Do not copy this vma on fork */
+#define VM_DONTEXPAND   0x00040000      /* Cannot expand with mremap() */
+
+#define VM_FAULT_SIGBUS 0x0002
+
+#define VM_RESERVED     0x00080000
+
 struct page {
 	void *virtual;
 	int order;
 	int user;
 };
 
+#ifndef pgoff_t
+#define pgoff_t unsigned long
+#endif
+
+struct vm_fault {
+        unsigned int flags;             /* FAULT_FLAG_xxx flags */
+        pgoff_t pgoff;                  /* Logical page offset based on vma */
+        void __user *virtual_address;   /* Faulting virtual address */
+
+        struct page *page;              /* ->fault handlers should return a
+                                         * page here, unless VM_FAULT_NOPAGE
+                                         * is set (which is also implied by
+                                         * VM_FAULT_ERROR).
+                                         */
+};
+
 struct vm_operations_struct {
 	void (*open)(struct vm_area_struct *area);
 	void (*close)(struct vm_area_struct *area);
+	int (*fault)(struct vm_area_struct *vma, struct vm_fault *vmf);
 
 	/* called by access_process_vm when get_user_pages() fails, typically
 	 * for use by special VMAs that can switch between memory and hardware */
@@ -38,6 +69,8 @@ struct vm_area_struct {
 	unsigned long vm_pgoff;		/* Offset (within vm_file) in PAGE_SIZE
 					   units, *not* PAGE_CACHE_SIZE */
 
+	unsigned long vm_flags;
+	void * vm_private_data;
 	struct vm_operations_struct *vm_ops;
 };
 
