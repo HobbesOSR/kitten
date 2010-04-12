@@ -2,6 +2,8 @@
 
 #include <linux/notifier.h>
 
+ATOMIC_NOTIFIER_HEAD(panic_notifier_list);
+
 int
 blocking_notifier_call_chain(struct blocking_notifier_head *nh, unsigned long val, void *v)
 {
