@@ -47,4 +47,10 @@ extern struct atomic_notifier_head panic_notifier_list;
 
 #define roundup round_up
 
+/* preempt.h */
+
+#define preempt_disable()               do { } while (0)
+#define preempt_enable()                do { } while (0)
+#define might_sleep() 			do { } while (0)
+
 #endif

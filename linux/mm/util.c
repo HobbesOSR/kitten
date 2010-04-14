@@ -112,3 +112,9 @@ int set_page_dirty_lock(struct page *page)
 	//unlock_page(page);
 	return ret;
 }
+void __iomem *ioremap_wc(resource_size_t phys_addr, unsigned long size)
+{
+	printk("ioremap_wc :  not implemented\n");
+	return NULL; /* ioremap_nocache(phys_addr, size); */
+}
+

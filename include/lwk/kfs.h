@@ -50,6 +50,8 @@ struct inode
 	const struct inode_operations   *i_op;
 	void                    *i_private;
 	struct mutex            i_mutex;
+	unsigned int            i_nlink;
+
 
 
 	struct inode *link_target;

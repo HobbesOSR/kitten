@@ -5,6 +5,8 @@
 #include <lwk/if.h>
 #include <linux/if_infiniband.h>
 #include <linux/arp_table.h>
+#include <linux/interrupt.h>
+#include <linux/sched.h>
 
 // needed by linux code to compile but not used by executed code path
 struct net init_net;
@@ -16,14 +18,14 @@ static DEFINE_MUTEX(rtnl_mutex);
 
 void rtnl_lock(void)
 {
-        mutex_lock(&rtnl_mutex);
+	mutex_lock(&rtnl_mutex);
 }
 EXPORT_SYMBOL(rtnl_lock);
 
 void rtnl_unlock(void)
 {
 	/*FIXME Linux has more protection !*/
-        mutex_unlock(&rtnl_mutex);
+	mutex_unlock(&rtnl_mutex);
 }
 
 int dev_mc_delete(struct net_device *dev, void *addr, int alen, int glbl)
@@ -55,7 +57,7 @@ int sys_lwk_arp( struct lwk_arpreq* req )
 	if ( ! _ib0_in_device ) {
 		return -EINVAL;
 	}
-      
+
 	if ( kbuf.arp_flags == ATF_PUBL ) {
 		return arp_set( (struct sockaddr_in*)
 					&kbuf.arp_pa, (hw_addr_t*)kbuf.arp_ha );
@@ -70,7 +72,7 @@ static int arp_set( struct sockaddr_in* in_addr, hw_addr_t* hw_addr )
 {
 	if ( _ib0_in_device->arp_table->set( _ib0_in_device->arp_table,
 				in_addr->sin_addr.s_addr, hw_addr ) )
-	{ 
+	{
 		return -EINVAL;
 	}
 	return 0;
@@ -80,7 +82,7 @@ static int arp_delete( struct sockaddr_in* in_addr )
 {
 	if ( _ib0_in_device->arp_table->delete( _ib0_in_device->arp_table,
 				in_addr->sin_addr.s_addr ) )
-	{ 
+	{
 		return -EINVAL;
 	}
 	return 0;
@@ -93,7 +95,7 @@ static hw_addr_t* arp_find( __be32 addr )
 }
 
 static struct in_device* ib_dev_alloc(__be32 addr, __be32 netmask, hw_addr_t* );
-static int ib_dev_destroy( struct in_device * ); 
+static int ib_dev_destroy( struct in_device * );
 
 int sys_lwk_ifconfig( struct lwk_ifreq* req )
 {
@@ -101,7 +103,7 @@ int sys_lwk_ifconfig( struct lwk_ifreq* req )
 
 	if( copy_from_user( &kbuf, (void*) req, sizeof(kbuf) ) )
 		return -EFAULT;
-      
+
 	if ( strncmp( kbuf.ifr_name, "ib0", 3 ) ) {
 		return -EINVAL;
 	}
@@ -113,15 +115,15 @@ int sys_lwk_ifconfig( struct lwk_ifreq* req )
 	_ib0_in_device = ib_dev_alloc(
 		((struct sockaddr_in*) &kbuf.ifr_addr)->sin_addr.s_addr,
 		((struct sockaddr_in*) &kbuf.ifr_netmask)->sin_addr.s_addr,
-			&kbuf.ifr_hwaddr ); 
+			&kbuf.ifr_hwaddr );
 
-	return _ib0_in_device ? 0 : -EINVAL; 
+	return _ib0_in_device ? 0 : -EINVAL;
 }
 
-static struct in_device* ib_dev_alloc(__be32 addr, __be32 netmask, 
+static struct in_device* ib_dev_alloc(__be32 addr, __be32 netmask,
 			hw_addr_t* hw_addr )
 {
-	struct in_device* in_dev = (struct in_device*) 
+	struct in_device* in_dev = (struct in_device*)
 				kmem_alloc( sizeof( *in_dev ) );
 	if ( ! in_dev )  return NULL;
 
@@ -148,7 +150,7 @@ static struct in_device* ib_dev_alloc(__be32 addr, __be32 netmask,
 }
 static int ib_dev_destroy( struct in_device* dev )
 {
-	dev->arp_table->fini( dev->arp_table ); 
+	dev->arp_table->fini( dev->arp_table );
 	kmem_free( dev->dev );
 	kmem_free( dev );
 	return 0;
@@ -200,8 +202,8 @@ void ip_rt_put(struct rtable * rt)
 
 struct net_device *ip_dev_find(struct net *net, __be32 addr)
 {
-	if ( _ib0_in_device && _ib0_in_device->ifa_address == addr ) {	
-		return _ib0_in_device->dev; 
+	if ( _ib0_in_device && _ib0_in_device->ifa_address == addr ) {
+		return _ib0_in_device->dev;
 	}
     	return NULL;
 }
@@ -209,4 +211,51 @@ struct net_device *ip_dev_find(struct net *net, __be32 addr)
 int neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 {
 	return 0;
+}
+
+void local_bh_disable(void)
+{
+	printk("local_bh_disable: not implemented\n");
+}
+
+void local_bh_enable(void)
+{
+	printk("local_bh_enable: not implemented\n");
+}
+
+void tasklet_init(struct tasklet_struct *t,
+		  void (*func)(unsigned long), unsigned long data)
+{
+	t->next = NULL;
+	t->state = 0;
+	atomic_set(&t->count, 0);
+	t->func = func;
+	t->data = data;
+}
+
+
+void tasklet_kill(struct tasklet_struct *t)
+{
+	if (in_interrupt())
+		printk("Attempt to kill tasklet from interrupt\n");
+
+	while (test_and_set_bit(TASKLET_STATE_SCHED, &t->state)) {
+		do {
+			yield();
+		} while (test_bit(TASKLET_STATE_SCHED, &t->state));
+	}
+	tasklet_unlock_wait(t);
+	clear_bit(TASKLET_STATE_SCHED, &t->state);
+}
+
+void __tasklet_hi_schedule(struct tasklet_struct *t)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+	t->next = NULL;
+	/* *__get_cpu_var(tasklet_hi_vec).tail = t;
+	__get_cpu_var(tasklet_hi_vec).tail = &(t->next);
+	raise_softirq_irqoff(HI_SOFTIRQ); */
+	local_irq_restore(flags);
 }

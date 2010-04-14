@@ -77,8 +77,10 @@ struct vm_area_struct {
 extern void
 put_page(struct page *page);
 
-extern void
-get_page(struct page *page);
+static inline void get_page(struct page *page)
+{
+	printk("get_page: not implemented\n");
+}
 
 extern int
 set_page_dirty_lock(struct page *page);
@@ -101,5 +103,8 @@ get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 extern int
 generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
                     void *buf, int len, int write);
+
+struct page *vmalloc_to_page(const void *addr);
+void *page_address(struct page *page);
 
 #endif

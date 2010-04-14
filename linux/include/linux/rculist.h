@@ -7,6 +7,24 @@
  * RCU-protected list version
  */
 #include <linux/list.h>
+#define ACCESS_ONCE(x) (*(volatile typeof(x) *)&(x))
+
+#define synchronize_rcu synchronize_sched
+extern void synchronize_sched(void);
+
+#define rcu_assign_pointer(p, v) \
+	({ \
+		if (!__builtin_constant_p(v) || \
+		    ((v) != NULL)) \
+			smp_wmb(); \
+		(p) = (v); \
+	})
+
+#define rcu_dereference(p)     ({ \
+			typeof(p) _________p1 = ACCESS_ONCE(p); \
+			smp_read_barrier_depends();		\
+			(_________p1);				\
+		})
 
 /*
  * Insert a new entry between two known consecutive entries.

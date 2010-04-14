@@ -4,8 +4,21 @@
 #include <linux/workqueue.h>
 #include <linux/spinlock.h>
 #include <linux/smp.h>
+#include <linux/wait.h>
+
+struct cpu_workqueue_struct {
+	spinlock_t lock;
+	struct list_head worklist;
+	wait_queue_head_t more_work;
+	struct work_struct *current_work;
+
+	struct workqueue_struct *wq;
+	struct task_struct *thread;
+} ____cacheline_aligned;
+
 
 struct workqueue_struct {
+	struct cpu_workqueue_struct *cpu_wq;
 	spinlock_t		lock;
 	struct list_head	list;
 	const char		name[64];
@@ -80,6 +93,27 @@ queue_work(struct workqueue_struct *wq, struct work_struct *work)
     }
     return ret;
 }
+
+struct cpu_workqueue_struct *wq_per_cpu(struct workqueue_struct *wq, int cpu)
+{
+/*	if (unlikely(is_wq_single_threaded(wq)))
+	cpu = singlethread_cpu; */
+	return per_cpu_ptr(wq->cpu_wq, cpu);
+}
+
+int
+queue_work_on(int cpu, struct workqueue_struct *wq, struct work_struct *work)
+{
+	int ret = 0;
+
+	if (!test_and_set_bit(WORK_STRUCT_PENDING, work_data_bits(work))) {
+		BUG_ON(!list_empty(&work->entry));
+		__queue_work(wq_per_cpu(wq, cpu), work);
+		ret = 1;
+	}
+	return ret;
+}
+
 
 void
 flush_workqueue(struct workqueue_struct *wq)
@@ -187,6 +221,13 @@ queue_delayed_work(struct workqueue_struct *wq,
     return queue_delayed_work_on(-1, wq, dwork, delay);
 }
 
+int schedule_delayed_work(struct delayed_work *dwork,
+			  unsigned long delay)
+{
+	return queue_delayed_work(keventd_wq, dwork, delay);
+}
+
+
 static int __cancel_work_timer(struct work_struct *work,
 				struct timer_list* timer)
 {
@@ -271,4 +312,30 @@ run_workqueues(void) {
 	work->func((struct work_struct *)work);
     //    _KDBG("done\n");
     }
+}
+
+void
+prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
+{
+	unsigned long flags;
+
+	wait->flags &= ~WQ_FLAG_EXCLUSIVE;
+	spin_lock_irqsave(&q->lock, flags);
+	if (list_empty(&wait->task_list))
+		__add_wait_queue(q, wait);
+	set_current_state(state);
+	spin_unlock_irqrestore(&q->lock, flags);
+}
+
+void finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
+{
+	unsigned long flags;
+
+	__set_current_state(TASK_RUNNING);
+
+	if (!list_empty_careful(&wait->task_list)) {
+		spin_lock_irqsave(&q->lock, flags);
+		list_del_init(&wait->task_list);
+		spin_unlock_irqrestore(&q->lock, flags);
+	}
 }

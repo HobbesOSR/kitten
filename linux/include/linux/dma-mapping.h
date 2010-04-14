@@ -110,6 +110,14 @@ struct dma_attrs;
 #define dma_sync_single         dma_sync_single_for_cpu
 #define dma_sync_sg             dma_sync_sg_for_cpu
 
+static inline int valid_dma_direction(int dma_direction)
+{
+	return ((dma_direction == DMA_BIDIRECTIONAL) ||
+		(dma_direction == DMA_TO_DEVICE) ||
+		(dma_direction == DMA_FROM_DEVICE));
+}
+
+
 extern u64 dma_get_required_mask(struct device *dev);
 
 static inline unsigned int dma_get_max_seg_size(struct device *dev)

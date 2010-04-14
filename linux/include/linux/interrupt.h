@@ -31,6 +31,13 @@
 #define IRQF_NOBALANCING	0x00000800
 #define IRQF_IRQPOLL		0x00001000
 
+enum
+{
+	TASKLET_STATE_SCHED,    /* Tasklet is scheduled for execution */
+	TASKLET_STATE_RUN       /* Tasklet is running (SMP only) */
+};
+
+
 struct tasklet_struct
 {
 	struct tasklet_struct *next;
@@ -39,5 +46,29 @@ struct tasklet_struct
 	void (*func)(unsigned long);
 	unsigned long data;
 };
+
+
+static inline void tasklet_unlock_wait(struct tasklet_struct *t)
+{
+	while (test_bit(TASKLET_STATE_RUN, &(t)->state)) { barrier(); }
+}
+
+extern void __tasklet_hi_schedule(struct tasklet_struct *t);
+
+static inline void tasklet_hi_schedule(struct tasklet_struct *t)
+{
+	if (!test_and_set_bit(TASKLET_STATE_SCHED, &t->state))
+		__tasklet_hi_schedule(t);
+}
+
+extern void tasklet_kill(struct tasklet_struct *t);
+extern void tasklet_init(struct tasklet_struct *t,
+			 void (*func)(unsigned long), unsigned long data);
+
+extern void local_bh_disable(void);
+extern void _local_bh_enable(void);
+extern void local_bh_enable(void);
+extern void local_bh_enable_ip(unsigned long ip);
+
 
 #endif

@@ -3,9 +3,11 @@
 
 #include <lwk/kfs.h>
 #include <linux/err.h>
+#define simple_dir_operations kfs_default_fops
+
 #define file_operations kfs_fops
 #define i_fop fops
-
+#include <linux/namei.h>
 #include <linux/kdev_t.h>
 #include <linux/file.h>
 #define CHRDEV_MAJOR_HASH_SIZE     255
@@ -42,6 +44,9 @@ struct super_block {
 };
 struct tree_descr { char *name; const struct file_operations *ops; int mode; };
 
+extern int simple_fill_super(struct super_block *, int, struct tree_descr *);
+void deactivate_super(struct super_block *sb);
+
 struct file_system_type {
 	const char *name;
 	int (*get_sb) (struct file_system_type *, int,
@@ -51,8 +56,28 @@ struct file_system_type {
 	struct module *owner;
 };
 
+extern int get_sb_single(struct file_system_type *fs_type,
+	int flags, void *data,
+	int (*fill_super)(struct super_block *, void *, int),
+	struct vfsmount *mnt);
+
+
+struct inode_operations {
+	struct dentry * (*lookup) (struct inode *,struct dentry *, struct nameidata *);
+};
+
+extern struct inode *new_inode(struct super_block *);
+
 struct super_operations {
 };
+
+static inline void file_accessed(struct file *file)
+{
+	printk("file_accessed: not implemented\n");
+/*	if (!(file->f_flags & O_NOATIME))
+	touch_atime(file->f_path.mnt, file->f_path.dentry); */
+}
+
 
 extern int get_sb_pseudo(struct file_system_type *, char *,
 	const struct super_operations *ops, unsigned long,
@@ -61,18 +86,20 @@ void kill_litter_super(struct super_block *sb);
 extern int register_filesystem(struct file_system_type *);
 extern int unregister_filesystem(struct file_system_type *);
 
-extern const struct file_operations simple_dir_operations;
 extern const struct inode_operations simple_dir_inode_operations;
 
 extern struct vfsmount *kern_mount_data(struct file_system_type *, void *data);
 #define kern_mount(type) kern_mount_data(type, NULL)
 
+extern struct file *alloc_file(struct vfsmount *, struct dentry *dentry,
+		fmode_t mode, const struct file_operations *fop);
 
 extern int register_chrdev_region(dev_t, unsigned, const char *);
 extern void unregister_chrdev_region(dev_t, unsigned);
 extern int register_chrdev(unsigned int, const char *,
-               const struct file_operations *);
+	       const struct file_operations *);
 extern void unregister_chrdev(unsigned int, const char *);
+extern int alloc_chrdev_region(dev_t *, unsigned, unsigned, const char *);
 
 
 struct fasync_struct {
@@ -89,10 +116,23 @@ extern void kill_fasync(struct fasync_struct **, int, int);
 /* only for net: no internal synchronization */
 extern void __kill_fasync(struct fasync_struct *, int, int);
 
+extern void iput(struct inode *);
+extern struct inode * igrab(struct inode *);
+
 static inline unsigned iminor(const struct inode *inode)
 {
 	return MINOR(inode->i_rdev);
 }
 
+static inline void inc_nlink(struct inode *inode)
+{
+	inode->i_nlink++;
+}
+
+extern ssize_t simple_read_from_buffer(void __user *to, size_t count,
+			loff_t *ppos, const void *from, size_t available);
+
+extern int simple_unlink(struct inode *, struct dentry *);
+extern int simple_rmdir(struct inode *, struct dentry *);
 
 #endif /* _LINUX_FS_H */

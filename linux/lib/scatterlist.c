@@ -69,3 +69,27 @@ sg_set_buf(struct scatterlist *sg, const void *buf, unsigned int buflen)
 	sg->length	=	buflen;
 	sg->offset	=	offset_in_page(buf);
 }
+
+struct scatterlist *sg_next(struct scatterlist *sg)
+{
+        if (sg_is_last(sg))
+                return NULL;
+
+        sg++;
+        if (unlikely(sg_is_chain(sg)))
+                sg = sg_chain_ptr(sg);
+
+        return sg;
+}
+
+struct scatterlist *sg_last(struct scatterlist *sgl, unsigned int nents)
+{
+        struct scatterlist *sg, *ret = NULL;
+        unsigned int i;
+
+        for_each_sg(sgl, sg, nents, i)
+                ret = sg;
+
+        return ret;
+}
+

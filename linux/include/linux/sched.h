@@ -10,7 +10,7 @@
 #include <linux/capability.h>
 #include <asm/processor.h>
 #define wake_up_process(p)      sched_wakeup_task((p), TASK_ALL)
-
+#define yield schedule
 /**
  * Linux trys to call schedule() during long latency operations.
  * For now LWK doesn't since there will usually be only one task per CPU.

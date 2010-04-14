@@ -18,6 +18,8 @@ struct scatterlist {
 
 	dma_addr_t	dma_address;
 	size_t		dma_length;
+	unsigned long   page_link;
+
 };
 
 #define sg_dma_address(sg)	((sg)->dma_address)
@@ -34,8 +36,15 @@ sg_page(struct scatterlist *sg);
 
 extern void
 sg_set_buf(struct scatterlist *sg, const void *buf, unsigned int buflen);
+struct scatterlist *sg_next(struct scatterlist *);
 
 #define for_each_sg(sglist, sg, nr, __i)        \
-        for (__i = 0, sg = (sglist); __i < (nr); __i++, sg = sg_next(sg))
+	for (__i = 0, sg = (sglist); __i < (nr); __i++, sg = sg_next(sg))
+
+
+#define sg_is_chain(sg)         ((sg)->page_link & 0x01)
+#define sg_is_last(sg)          ((sg)->page_link & 0x02)
+#define sg_chain_ptr(sg)        \
+	((struct scatterlist *) ((sg)->page_link & ~0x03))
 
 #endif

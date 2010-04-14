@@ -10,7 +10,7 @@ struct waitq_entry;
 typedef int (*waitq_func_t)(struct waitq_entry *wait, unsigned mode,
 							int flags, void *key);
 int default_wake_function(struct waitq_entry *wait, unsigned mode, int flags,
-                          void *key);
+			  void *key);
 
 
 typedef struct waitq {
@@ -18,9 +18,13 @@ typedef struct waitq {
 	struct list_head     waitq;
 } waitq_t;
 
+#define task_list link
+#define WQ_FLAG_EXCLUSIVE       0x01
+
 typedef struct waitq_entry {
 	struct list_head     link;
 	void *private;
+	unsigned int flags;
 	waitq_func_t func;
 } waitq_entry_t;
 

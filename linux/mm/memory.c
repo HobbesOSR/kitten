@@ -69,6 +69,11 @@ put_page(struct page *page)
 	kmem_free(page);
 }
 
+void *page_address(struct page *page)
+{
+	return (void *)page->virtual;
+}
+
 void *
 lowmem_page_address(struct page *page)
 {
@@ -117,4 +122,35 @@ void *vmap(struct page **pages, unsigned int count,
 void vunmap(const void *addr)
 {
 }
+
+void *vmalloc(unsigned long size)
+{
+	printk("vmalloc: not implemented\n");
+	return NULL;
+}
+
+void vfree(const void *addr)
+{
+	printk("vfree: not implemented\n");
+}
+
+struct page *vmalloc_to_page(const void *vmalloc_addr)
+{
+	printk("vmalloc_to_page: not implemented\n");
+	return NULL;
+}
+
+void *vmalloc_user(unsigned long size)
+{
+	printk("vmalloc_user: not implemented\n");
+	return NULL;
+}
+
+int remap_vmalloc_range(struct vm_area_struct *vma, void *addr,
+			unsigned long pgoff)
+{
+	printk("remap_vmalloc_range: not implemented\n");
+	return 0;
+}
+
 

@@ -88,5 +88,8 @@ static inline void dev_hold(struct net_device *dev)
 {
         atomic_inc(&dev->refcnt);
 }
+extern struct net_device        *dev_get_by_index(struct net *net, int ifindex);
+extern int              dev_mc_add(struct net_device *dev, void *addr, int alen, int newonly);
+extern int              dev_mc_delete(struct net_device *dev, void *addr, int alen, int all);
 
 #endif
