@@ -27,8 +27,6 @@ obj-y := \
 	interrupt.o \
 	semaphore.o \
 	random.o \
-	sethostname.o \
-	clock_gettime.o \
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
 obj-y += mm/

@@ -21,4 +21,5 @@ obj-y := \
 	getrlimit.o \
 	exit.o \
 	getpid.o \
-
+	sethostname.o \
+	clock_gettime.o \
