@@ -1258,6 +1258,7 @@ kfs_init( void )
 	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
+	syscall_register( __NR_lseek, (syscall_ptr_t) sys_lseek );
 	syscall_register( __NR_dup2, (syscall_ptr_t) sys_dup2 );
 	syscall_register( __NR_ioctl, (syscall_ptr_t) sys_ioctl );
 	syscall_register( __NR_fcntl, (syscall_ptr_t) sys_fcntl );
