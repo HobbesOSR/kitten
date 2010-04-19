@@ -5,8 +5,8 @@
 
 int
 get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
-               unsigned long start, int len, int write, int force,
-               struct page **pages, struct vm_area_struct **vmas)
+	unsigned long start, int len, int write, int force,
+	struct page **pages, struct vm_area_struct **vmas)
 {
 	int i, status;
 
@@ -82,7 +82,7 @@ lowmem_page_address(struct page *page)
 
 int
 generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
-                    void *buf, int len, int write)
+		    void *buf, int len, int write)
 {
 	panic("In generic_access_phys()... needs to be implemented.");
 }
@@ -101,7 +101,7 @@ generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
  */
 int
 remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
-                unsigned long pfn, unsigned long size, pgprot_t prot)
+		unsigned long pfn, unsigned long size, pgprot_t prot)
 {
 	paddr_t phys_addr = PFN_PHYS(pfn);
 	vaddr_t virt_addr = addr;
@@ -114,7 +114,7 @@ remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 }
 
 void *vmap(struct page **pages, unsigned int count,
-                unsigned long flags, pgprot_t prot)
+		unsigned long flags, pgprot_t prot)
 {
 	printk("vmap :  %lx %d\n",(unsigned long)pages[0], count);
 	return (page_to_virt(pages[0]));
@@ -125,13 +125,12 @@ void vunmap(const void *addr)
 
 void *vmalloc(unsigned long size)
 {
-	printk("vmalloc: not implemented\n");
-	return NULL;
+	return kmalloc(size,GFP_KERNEL);
 }
 
 void vfree(const void *addr)
 {
-	printk("vfree: not implemented\n");
+	kfree(addr);
 }
 
 struct page *vmalloc_to_page(const void *vmalloc_addr)
@@ -142,8 +141,7 @@ struct page *vmalloc_to_page(const void *vmalloc_addr)
 
 void *vmalloc_user(unsigned long size)
 {
-	printk("vmalloc_user: not implemented\n");
-	return NULL;
+	return kzalloc(size,GFP_KERNEL);
 }
 
 int remap_vmalloc_range(struct vm_area_struct *vma, void *addr,
@@ -152,5 +150,3 @@ int remap_vmalloc_range(struct vm_area_struct *vma, void *addr,
 	printk("remap_vmalloc_range: not implemented\n");
 	return 0;
 }
-
-
