@@ -16,4 +16,6 @@ struct lwk_arpreq {
 	char		arp_dev[16];
 };
 
+extern int lwk_arp( struct lwk_arpreq* req );
+
 #endif

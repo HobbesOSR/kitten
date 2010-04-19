@@ -13,4 +13,6 @@ struct lwk_ifreq {
         unsigned char ifr_hwaddr[MAX_ADDR_LEN];
 };
 
+extern int lwk_ifconfig( struct lwk_ifreq* req );
+
 #endif
