@@ -23,6 +23,7 @@ struct inode
 	char			name[ 128 ];
 	const struct kfs_fops *	fops;
 	unsigned int		mode;
+	loff_t                  size;
 
 	void *			priv;
 	size_t			priv_len;
@@ -54,6 +55,7 @@ struct kfs_fops
 			  loff_t *);
 	ssize_t (*read) (struct file *, char __user *, size_t,
 			 loff_t *);
+	off_t (*lseek) ( struct file*, off_t, int );
 	long (*unlocked_ioctl) (struct file *, unsigned int,
 				unsigned long);
 	long (*compat_ioctl) (struct file *, unsigned int, unsigned long);

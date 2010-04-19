@@ -563,7 +563,9 @@ kfs_open(struct inode *inode, int flags, mode_t mode)
 	if(NULL == file)
 		return NULL;
 
-	/* TODO: mode and flags ... */
+	file->f_flags = flags;
+	file->f_mode = mode;
+
 	kfs_init_file(file, mode, inode->fops);
 	file->inode = inode;
 	atomic_inc(&inode->refs);
@@ -796,6 +798,7 @@ sys_fcntl(int fd, int cmd, long arg)
 	case F_SETFL:
 		/* TODO: implement; currently we need at least O_NONBLOCK for
 		   IB verbs interface */
+		file->f_flags = arg;
 		return 0;
 	case F_GETFD:
 	case F_SETFD:
@@ -808,6 +811,22 @@ sys_fcntl(int fd, int cmd, long arg)
 
 	/* not reached */
 }
+
+static off_t
+sys_lseek( int fd, off_t offset, int whence )
+{
+	struct file * const file = get_current_file( fd );
+	if( !file )
+		return -EBADF;
+
+	if( file->f_op->lseek )
+		return file->f_op->lseek( file, offset, whence );
+
+	printk( KERN_WARNING "%s: fd %d has no lseek operation\n",
+		__func__, fd );
+	return -EBADF;
+}
+
 
 static int
 sys_getdents(unsigned int fd, uaddr_t dirp, unsigned int count)
