@@ -1,0 +1,28 @@
+
+LDFLAGS = 
+LDFLAGS += -L$(HOME)/IB/install/lib 
+LDFLAGS += -L$(HOME)/local/lib 
+LDFLAGS += -L ../../libs/openmpi-1.2.9/install/lib
+LDFLAGS += -L../../liblwk
+LDFLAGS	+= -Wl,-whole-archive -lmlx4 -Wl,-no-whole-archive
+LDFLAGS += -lmpi 
+LDFLAGS += -lopen-rte 
+LDFLAGS += -lopen-pal 
+LDFLAGS += -libverbs
+LDFLAGS += -lpthread
+LDFLAGS += -ldl
+
+CPPFLAGS = -Wall
+CPPFLAGS += -I$(HOME)/IB/install/include
+CPPFLAGS += -I../../../include
+CPPFLAGS += -I ../../libs/openmpi-1.2.9/install/include 
+
+app_SRC = hello.c
+
+app_OBJS = $(app_SRC:.c=.o)
+
+app: $(app_OBJS) 
+	$(CXX) -static $(app_OBJS) $(LDFLAGS) -o $@
+
+clean:
+	rm -rf $(app_OBJS) app
