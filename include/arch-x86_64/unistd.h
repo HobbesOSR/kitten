@@ -389,7 +389,7 @@ __SYSCALL(__NR_swapoff, syscall_not_implemented)
 __SYSCALL(__NR_reboot, syscall_not_implemented)
 
 #define __NR_sethostname                       170
-__SYSCALL(__NR_sethostname, syscall_not_implemented)
+__SYSCALL(__NR_sethostname, sys_sethostname)
 #define __NR_setdomainname                     171
 __SYSCALL(__NR_setdomainname, syscall_not_implemented)
 
@@ -515,7 +515,7 @@ __SYSCALL(__NR_timer_delete, syscall_not_implemented)
 #define __NR_clock_settime	227
 __SYSCALL(__NR_clock_settime, syscall_not_implemented)
 #define __NR_clock_gettime	228
-__SYSCALL(__NR_clock_gettime, syscall_not_implemented)
+__SYSCALL(__NR_clock_gettime, sys_clock_gettime)
 #define __NR_clock_getres	229
 __SYSCALL(__NR_clock_getres, syscall_not_implemented)
 #define __NR_clock_nanosleep	230

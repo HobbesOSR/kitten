@@ -110,7 +110,7 @@ static struct in_device* ib_dev_alloc(__be32 addr, __be32 netmask,
 	in_dev->ifa_address = addr;
 	in_dev->arp_table = &_arp_table_simple;
 	in_dev->arp_table->init( in_dev->arp_table,
-					__be32_to_cpu( netmask ) + 1 );
+					__be32_to_cpu( netmask ) );
 
 	memset( in_dev->dev, 0, sizeof(*in_dev->dev) );
 
@@ -118,9 +118,6 @@ static struct in_device* ib_dev_alloc(__be32 addr, __be32 netmask,
 	in_dev->dev->addr_len = INFINIBAND_ALEN;
 	memcpy( in_dev->dev->dev_addr, hw_addr, in_dev->dev->addr_len );
 	memset( in_dev->dev->broadcast, 0xff, MAX_ADDR_LEN );
-
-	LINUX_DBG( FALSE, "addr=%#x\n", __be32_to_cpu(addr));
-	LINUX_DBG( FALSE, "netmask=%#x\n", __be32_to_cpu(netmask));
 
 	return in_dev;
 }
@@ -138,8 +135,6 @@ struct neighbour* neigh_lookup(struct neigh_table *tbl, const void *pkey,
 	struct neighbour* neigh;
 	hw_addr_t*   	  dst_hw_addr;
 
-	LINUX_DBG( FALSE, "\n" );
-
 	dst_hw_addr = arp_find( *(__be32*) pkey );
 	if ( ! dst_hw_addr ) return NULL;
 
@@ -156,17 +151,12 @@ struct neighbour* neigh_lookup(struct neigh_table *tbl, const void *pkey,
 
 void neigh_release(struct neighbour *neigh)
 {
-	LINUX_DBG( FALSE, "\n");
 	kmem_free( neigh );
 }
 
 int ip_route_output_key(struct net *net, struct rtable **rt,
 							struct flowi *flp)
 {
-	LINUX_DBG( FALSE, "dst=%#x src=%#x\n",
-					be32_to_cpu(flp->nl_u.ip4_u.daddr),
-					be32_to_cpu(flp->nl_u.ip4_u.saddr));
-
 	*rt = (struct rtable*) kmem_alloc( sizeof( **rt ) );
 
 	if ( ! *rt ) return -1;
@@ -179,16 +169,13 @@ int ip_route_output_key(struct net *net, struct rtable **rt,
 
 void ip_rt_put(struct rtable * rt)
 {
-	LINUX_DBG( FALSE, "\n");
 	kmem_free( rt );
 }
 
 
 struct net_device *ip_dev_find(struct net *net, __be32 addr)
 {
-	LINUX_DBG(FALSE,"addr=%#x\n",be32_to_cpu(addr));
 	if ( _ib0_in_device && _ib0_in_device->ifa_address == addr ) {	
-		LINUX_DBG(FALSE,"local\n");
 		return _ib0_in_device->dev; 
 	}
     	return NULL;
@@ -196,6 +183,5 @@ struct net_device *ip_dev_find(struct net *net, __be32 addr)
 
 int neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 {
-	LINUX_DBG(TRUE,"\n");
 	return 0;
 }

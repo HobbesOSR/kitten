@@ -2,12 +2,14 @@
 #include <linux/byteorder.h>
 #include <lwk/string.h>
 #include <lwk/kmem.h>
+#include <lwk/kernel.h>
 
 static int init( struct arp_table* tbl, __u32 netmask )
 {
 	tbl->mask = ~netmask;
 
-	tbl->private = kmem_alloc( tbl->mask + 1 * sizeof(hw_addr_t) );
+	//_KDBG("size %d\n",tbl->mask);
+	tbl->private = kmem_alloc( (tbl->mask + 1) * sizeof(hw_addr_t) );
 	if ( !tbl->private ) return -1;
 	return 0;
 }
@@ -24,6 +26,7 @@ static int set( struct arp_table* tbl, __be32 addr, hw_addr_t* hw_addr )
 {
 	int index = be32_to_cpu( addr ) & tbl->mask;
 
+	//_KDBG("%#x %d\n",be32_to_cpu(addr),index);
 	memcpy( ((hw_addr_t*)tbl->private)[index], hw_addr, sizeof(*hw_addr) );
 	return 0;
 }
@@ -36,6 +39,7 @@ static int delete( struct arp_table* tbl, __be32 addr )
 static hw_addr_t* get( struct arp_table* tbl, __be32 addr )
 {
 	int index = be32_to_cpu( addr ) & tbl->mask;
+	//_KDBG("%#x %d\n",be32_to_cpu(addr),index);
 	return &((hw_addr_t*)tbl->private)[index];
 }
 
