@@ -4,7 +4,7 @@ CPPFLAGS = -Wall
 CPPFLAGS += -I../../../include
 CPPFLAGS += -I../../user/liblwk/include
 
-libwait4net_C_SOURCE = wait4net.c 
+libwait4net_C_SOURCE = wait4net.c getaddrinfo.c
 
 libwait4net_OBJS=$(libwait4net_C_SOURCE:.c=.o)
 
