@@ -527,7 +527,7 @@ __SYSCALL(__NR_epoll_wait, syscall_not_implemented)
 #define __NR_epoll_ctl		233
 __SYSCALL(__NR_epoll_ctl, syscall_not_implemented)
 #define __NR_tgkill		234
-__SYSCALL(__NR_tgkill, syscall_not_implemented)
+__SYSCALL(__NR_tgkill, sys_tgkill)
 #define __NR_utimes		235
 __SYSCALL(__NR_utimes, syscall_not_implemented)
 #define __NR_vserver		236
@@ -690,6 +690,13 @@ __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
 
 #define __NR_lwk_arp            309
 #define __NR_lwk_ifconfig       310
+
+#define __NR_task_destroy       311
+__SYSCALL(__NR_task_destroy, sys_task_destroy)
+#define __NR_task_kill          312
+__SYSCALL(__NR_task_kill, sys_task_kill)
+#define __NR_task_is_zombie     313
+__SYSCALL(__NR_task_is_zombie, sys_task_is_zombie)
 
 #ifdef CONFIG_LINUX 
 /* TODO: Move these registrations to the Linux compatibility layer initialization */

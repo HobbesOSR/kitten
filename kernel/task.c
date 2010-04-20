@@ -16,7 +16,7 @@ static DEFINE_SPINLOCK(htable_lock);
  * Where to start looking for ANY_ID kernel tasks and user tasks, respectively.
  */
 static id_t ktask_next_id = KTASK_MIN_ID;
-static id_t utask_next_id = UTASK_MIN_ID;
+static id_t utask_next_id = UTASK_MIN_ID + 100;
 
 int __init
 task_subsys_init(void)
@@ -32,6 +32,13 @@ task_subsys_init(void)
 		panic("Failed to create task hash table.");
 
 	return 0;
+}
+
+int sys_task_is_zombie(id_t id)
+{
+    struct task_struct *tsk = task_lookup(id);
+    if ( tsk  == NULL ) return -EINVAL;
+    return ( tsk->state == TASK_EXIT_ZOMBIE );
 }
 
 int
@@ -181,6 +188,28 @@ fail_id_alloc:
 	return NULL;
 }
 
+int __task_destroy( struct task_struct *tsk )
+{
+	__KDBG("tsk=%p\n",tsk);
+	aspace_release(tsk->aspace);
+	aspace_destroy(tsk->aspace->id);
+	//idspace_free_id(idspace, tsk->id);
+	kmem_free_pages(tsk, TASK_ORDER);
+	return 0;
+}
+
+int sys_task_destroy( id_t id )
+{   
+    __KDBG("id=%d\n",id);
+    struct task_struct *tsk = task_lookup(id);
+    
+    if ( tsk == NULL ) 
+        return -EINVAL;
+    
+    return __task_destroy( tsk );
+}
+
+
 int
 task_create(const start_state_t *start_state, id_t *task_id)
 {
@@ -209,6 +238,25 @@ task_exit(int status)
 	schedule(); /* task is dead, so this should never return */
 	BUG();
 	while (1) {}
+}
+
+int
+sys_task_kill( id_t id, int signal)
+{
+    _KDBG("id=%d signal=%d\n",id,signal);
+
+    struct task_struct *tsk = task_lookup(id);
+    if ( tsk  == NULL ) return -EINVAL;
+    tsk->state = TASK_EXIT_ZOMBIE;
+
+    return 0;
+}
+
+int sys_tgkill( int tgid, int pid, int sig )
+{
+	_KDBG("tgid=%d pid=%d sig=%d\n",tgid,pid,sig);
+	return sys_task_kill(pid,sig);
+	//return sys_task_destroy(pid);
 }
 
 int
