@@ -27,6 +27,7 @@ obj-y := \
 	interrupt.o \
 	semaphore.o \
 	random.o \
+	in_mem_fs.o \
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
 obj-y += mm/
