@@ -22,7 +22,7 @@
 Pct::Pct()
 {
 	const char* tmp = "/etc/opal/fifo";
-	m_ompiFd =  open( tmp, O_RDWR );
+	m_ompiFd =  open( tmp, O_RDONLY );
 	if ( m_ompiFd == -1 ) {
                 printf("couldn't open `%s`\n",tmp);
                 abort();
