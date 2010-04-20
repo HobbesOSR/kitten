@@ -110,6 +110,8 @@ extern struct inode *kfs_lookup(struct inode *,
 				unsigned);
 extern struct inode *kfs_mkdir(char *,
 			       unsigned);
+
+extern struct inode *kfs_create_inode(void);
 extern void kfs_destroy(struct inode *);
 extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 

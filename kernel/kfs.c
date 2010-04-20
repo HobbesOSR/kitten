@@ -311,7 +311,7 @@ int kfs_init_file(struct file * file,unsigned int mode,
 	return 0;
 }
 
-static struct inode *
+struct inode *
 kfs_create_inode(void)
 {
 	struct inode *inode = kmem_alloc(sizeof(struct inode));

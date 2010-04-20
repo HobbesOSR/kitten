@@ -4,6 +4,7 @@
 #include <arch/uaccess.h>
 #include <lwk/kfs.h>
 #include <lwk/sched.h>
+#include <arch/unistd.h>
 
 #define FIFO_SIZE               PAGE_SIZE
 
@@ -16,6 +17,12 @@ struct fifo_file {
 	wait_queue_head_t	poll_wait;
 	struct fifo_file*	other;
 	struct fifo_buffer*	buffer;
+};
+
+struct fifo_inode_priv {
+	struct fifo_buffer*	buffer;
+	struct fifo_file*	read;
+	struct fifo_file*	write;
 };
 
 static int buf_write( struct fifo_buffer* pbuf,
@@ -166,9 +173,20 @@ static unsigned int poll(struct file *filep, struct poll_table_struct *table)
         return mask;
 }
 
+#define O_RDONLY             00
+#define O_WRONLY             01
+
 static int open(struct inode * inodep, struct file * filep)
 {
-	_KDBG("\n");
+	_KDBG("flags %#x\n",filep->f_flags);
+	struct fifo_inode_priv* priv = inodep->priv;
+	if ( filep->f_flags == O_RDONLY  ) {
+		filep->private_data = priv->read;
+	} else if ( filep->f_flags == O_WRONLY  ) {
+		filep->private_data = priv->write;
+	} else {
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -186,35 +204,89 @@ static struct kfs_fops fifo_fops = {
 	.close = close,
 };
 
+static struct fifo_inode_priv* create_fifo_priv( void )
+{
+	struct fifo_inode_priv* priv = kmem_alloc( sizeof( *priv ) ); 
+	if ( ! priv ) { 
+		return NULL;
+	}
+
+	_KDBG("\n");
+	priv->read = kmem_alloc(sizeof(struct fifo_file));
+	if ( ! priv->read  ) return NULL;
+
+	priv->write = kmem_alloc(sizeof(struct fifo_file));
+	if ( ! priv->write  ) return NULL;
+
+	priv->write->buffer = alloc_fifo_buffer( FIFO_SIZE );
+	if ( ! priv->write->buffer ) return NULL;
+
+	priv->read->buffer = priv->write->buffer; 
+
+	priv->read->other = priv->write;
+	priv->write->other = priv->read;
+
+	init_waitqueue_head(&priv->write->poll_wait);
+	init_waitqueue_head(&priv->read->poll_wait);
+
+	return priv;
+}
+
 int mkfifo( const char* name, mode_t mode )
 {
+
 	struct inode* inode;
-	struct fifo_file *rfile, *wfile;
-
+	struct fifo_inode_priv* priv = create_fifo_priv();
+	if ( ! priv ) return -ENOMEM;
 	_KDBG("\n");
-	rfile = kmem_alloc(sizeof(struct fifo_file));
-	if ( ! rfile  ) return -ENOMEM;
-
-	wfile = kmem_alloc(sizeof(struct fifo_file));
-	if ( ! wfile  ) return -ENOMEM;
-
-	wfile->buffer = alloc_fifo_buffer( FIFO_SIZE );
-	if ( ! wfile->buffer ) return -ENOMEM;
-
-	rfile->buffer = wfile->buffer; 
-
-	rfile->other = wfile;
-	wfile->other = rfile;
-
-	init_waitqueue_head(&wfile->poll_wait);
-	init_waitqueue_head(&rfile->poll_wait);
-
-	_KDBG("\n");
-	inode = kfs_create( name, &fifo_fops, mode, 0, 0);	
+	inode = kfs_create( name, &fifo_fops, mode, priv, sizeof(*priv) );
 	if ( ! inode ) {
 	_KDBG("\n");
 		 return -ENOMEM;
 	}
 	
 	return 0;
+}
+
+int do_pipe( int fds[] )
+{
+	struct inode* inode;
+	struct fifo_inode_priv* priv = create_fifo_priv();
+
+        inode = kfs_create_inode();
+        if ( ! inode ) {
+                 return -ENOMEM;
+        }
+        inode->fops = &fifo_fops;
+
+        fds[0] = get_unused_fd();
+        if ( fds[0]  < 0 ) {
+        }
+
+        current->files[ fds[0] ] = kfs_open( inode, 0, 0 );
+        current->files[ fds[0] ]->private_data = priv->read;
+
+        fds[1] = get_unused_fd();
+        if ( fds[1]  < 0 ) {
+        }
+        current->files[ fds[1] ] = kfs_open( inode, 0 , 0 );
+        current->files[ fds[1] ]->private_data = priv->write;
+
+        return 0;
+}
+
+long sys_pipe(int __user *fildes)
+{
+        int fd[2];
+        int error;
+
+        //_KDBG("\n");
+
+        if (! ( error = do_pipe(fd) ) ) {
+                if ( copy_to_user( fildes, fd, 2 * sizeof(int) ) ) {
+                        error = -EFAULT;
+                }
+        }
+
+        return error;
 }

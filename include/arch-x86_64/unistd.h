@@ -58,7 +58,7 @@ __SYSCALL(__NR_writev, syscall_not_implemented)
 #define __NR_access                             21
 __SYSCALL(__NR_access, syscall_not_implemented)
 #define __NR_pipe                               22
-__SYSCALL(__NR_pipe, syscall_not_implemented)
+__SYSCALL(__NR_pipe, sys_pipe)
 #define __NR_select                             23
 __SYSCALL(__NR_select, syscall_not_implemented)
 
