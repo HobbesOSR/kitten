@@ -23,7 +23,7 @@ struct inode
 	char			name[ 128 ];
 	const struct kfs_fops *	fops;
 	unsigned int		mode;
-	loff_t                  size;
+	loff_t			size;
 
 	void *			priv;
 	size_t			priv_len;

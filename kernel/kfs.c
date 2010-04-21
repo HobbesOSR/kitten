@@ -827,6 +827,26 @@ sys_lseek( int fd, off_t offset, int whence )
 	return -EBADF;
 }
 
+static int
+sys_mkdir(uaddr_t u_pathname,
+         mode_t  mode)
+{
+        char pathname[ MAX_PATHLEN ];
+        if( strncpy_from_user( pathname, (void*) u_pathname,
+                               sizeof(pathname) ) < 0 )
+                return -EFAULT;
+
+        if(1)
+                printk( "%s: '%s' mode %x\n",
+                        __func__,
+                        pathname,
+                        mode);
+
+        struct inode* i = kfs_mkdir( pathname, mode );
+        if ( ! i ) return ENOENT;
+        return 0;
+}
+
 
 static int
 sys_getdents(unsigned int fd, uaddr_t dirp, unsigned int count)
@@ -1265,6 +1285,7 @@ kfs_init( void )
 	syscall_register( __NR_getdents, (syscall_ptr_t) sys_getdents );
 	syscall_register( __NR_stat, (syscall_ptr_t) sys_stat );
 	syscall_register( __NR_fstat, (syscall_ptr_t) sys_fstat );
+	syscall_register( __NR_mkdir, (syscall_ptr_t) sys_mkdir );
 #ifdef CONFIG_LINUX
 	syscall_register( __NR_poll, (syscall_ptr_t) sys_poll );
 #endif /* CONFIG_LINUX */
