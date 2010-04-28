@@ -3,6 +3,7 @@
 
 #include <lwk/interrupt.h>
 #include <lwk/spinlock.h>
+#include <linux/workqueue.h>
 
 #define request_irq	irq_request
 #define free_irq	irq_free
@@ -31,34 +32,24 @@
 #define IRQF_NOBALANCING	0x00000800
 #define IRQF_IRQPOLL		0x00001000
 
-enum
-{
-	TASKLET_STATE_SCHED,    /* Tasklet is scheduled for execution */
-	TASKLET_STATE_RUN       /* Tasklet is running (SMP only) */
-};
-
-
 struct tasklet_struct
 {
-	struct tasklet_struct *next;
+	struct work_struct work;
+	struct list_head list;
 	unsigned long state;
 	atomic_t count;
 	void (*func)(unsigned long);
 	unsigned long data;
+	char *n;
 };
 
+extern struct workqueue_struct *ktaskletd_wq;
 
-static inline void tasklet_unlock_wait(struct tasklet_struct *t)
+#define tasklet_hi_schedule tasklet_schedule
+static inline void tasklet_schedule(struct tasklet_struct *t)
 {
-	while (test_bit(TASKLET_STATE_RUN, &(t)->state)) { barrier(); }
-}
-
-extern void __tasklet_hi_schedule(struct tasklet_struct *t);
-
-static inline void tasklet_hi_schedule(struct tasklet_struct *t)
-{
-	if (!test_and_set_bit(TASKLET_STATE_SCHED, &t->state))
-		__tasklet_hi_schedule(t);
+	WARN_ON_ONCE(!ktaskletd_wq);
+	queue_work(ktaskletd_wq, &t->work);
 }
 
 extern void tasklet_kill(struct tasklet_struct *t);

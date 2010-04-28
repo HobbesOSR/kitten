@@ -215,47 +215,73 @@ int neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 
 void local_bh_disable(void)
 {
-	printk("local_bh_disable: not implemented\n");
 }
 
 void local_bh_enable(void)
 {
-	printk("local_bh_enable: not implemented\n");
 }
+
+struct workqueue_struct *ktaskletd_wq;
+EXPORT_SYMBOL(ktaskletd_wq);
+
+enum
+{
+	TASKLET_STATE_SCHED,	/* Tasklet is scheduled for execution */
+	TASKLET_STATE_RUN,	/* Tasklet is running (SMP only) */
+	TASKLET_STATE_PENDING	/* Tasklet is pending */
+};
+
+#define TASKLET_STATEF_SCHED	(1 << TASKLET_STATE_SCHED)
+#define TASKLET_STATEF_RUN	(1 << TASKLET_STATE_RUN)
+#define TASKLET_STATEF_PENDING	(1 << TASKLET_STATE_PENDING)
+
+void __init init_tasklets(void)
+{
+	ktaskletd_wq = create_workqueue("tasklets");
+	BUG_ON(!ktaskletd_wq);
+}
+
+void work_tasklet_exec(struct work_struct *work)
+{
+	struct tasklet_struct *t =
+		container_of(work, struct tasklet_struct, work);
+
+	if (unlikely(atomic_read(&t->count))) {
+		set_bit(TASKLET_STATE_PENDING, &t->state);
+		smp_mb();
+		/* make sure we were not just enabled */
+		if (likely(atomic_read(&t->count)))
+			goto out;
+		if (!test_and_clear_bit(TASKLET_STATE_PENDING, &t->state))
+			goto out;
+	}
+
+	local_bh_disable();
+	t->func(t->data);
+	local_bh_enable();
+
+out:
+	return;
+}
+
 
 void tasklet_init(struct tasklet_struct *t,
 		  void (*func)(unsigned long), unsigned long data)
 {
-	t->next = NULL;
+	INIT_WORK(&t->work, work_tasklet_exec);
+	INIT_LIST_HEAD(&t->list);
 	t->state = 0;
 	atomic_set(&t->count, 0);
 	t->func = func;
 	t->data = data;
+	t->n = "anonymous";
+	printk("anonymous tasklet %p set at %p\n",
+		t, __builtin_return_address(0)); 
 }
 
 
 void tasklet_kill(struct tasklet_struct *t)
 {
-	if (in_interrupt())
-		printk("Attempt to kill tasklet from interrupt\n");
-
-	while (test_and_set_bit(TASKLET_STATE_SCHED, &t->state)) {
-		do {
-			yield();
-		} while (test_bit(TASKLET_STATE_SCHED, &t->state));
-	}
-	tasklet_unlock_wait(t);
-	clear_bit(TASKLET_STATE_SCHED, &t->state);
+	flush_workqueue(ktaskletd_wq);
 }
 
-void __tasklet_hi_schedule(struct tasklet_struct *t)
-{
-	unsigned long flags;
-
-	local_irq_save(flags);
-	t->next = NULL;
-	/* *__get_cpu_var(tasklet_hi_vec).tail = t;
-	__get_cpu_var(tasklet_hi_vec).tail = &(t->next);
-	raise_softirq_irqoff(HI_SOFTIRQ); */
-	local_irq_restore(flags);
-}

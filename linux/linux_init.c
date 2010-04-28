@@ -47,6 +47,7 @@ linux_init(void)
 {
 	radix_tree_init();
 	init_workqueues();
+	init_tasklets();
 	driver_init();
 	early_param_pci_setup();
 	postcore_initcall_pcibus_class_init();
@@ -58,7 +59,6 @@ linux_init(void)
 	fs_initcall_pcibios_assign_resources();
 	late_initcall_pci_sysfs_init();
 	device_initcall_pci_init();
-	driver_init_by_name("linux", "*");
 
 	if ( kfs_mkdir("/etc",0777) == NULL ) {
 		panic("kfs_mkdir( \"/etc\", 0777) failed\n");
@@ -94,7 +94,7 @@ linux_init(void)
 		"linux_kthread/%d",
 		this_cpu
 	);
-
+	driver_init_by_name("linux", "*");
 	if (!tux)
 		panic("Failed to create Linux kernel thread.\n");
 }
