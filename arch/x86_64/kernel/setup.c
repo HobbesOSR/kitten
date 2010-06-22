@@ -310,8 +310,6 @@ setup_arch(void)
 
 	cpu_init();
 
-	current->cpumask = cpu_present_map;
-
 	ioapic_init();
 
 	lapic_set_timer_freq(sched_hz);

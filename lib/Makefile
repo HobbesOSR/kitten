@@ -17,3 +17,5 @@ lib-y := \
 	semaphore.o \
 	cmdline.o \
 	sha1.o \
+	sigset.o \
+	siginfo.o \

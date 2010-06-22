@@ -1,4 +1,4 @@
-/** \file
+/**
  * Architecture dependent entry points.
  *
  * Context switches, system calls, interrupts and other entry points
@@ -11,6 +11,7 @@
 #include <arch/idt_vectors.h>
 #include <arch/dwarf2.h>
 #include <arch/task.h>
+#include <arch/segment.h>
 
 
 /**
@@ -22,17 +23,14 @@
  * stack just has the pt_regs to use for the new task), execution returns
  * directly to the new task, rather than context_switch().
  *
- * \returns prev in %rsi (same value as on entry)
+ * Returns prev in %rsi (same value as on entry)
  *
- * \note External interrupts are disabled on entry.
+ * NOTE: External interrupts are disabled on entry.
+ *
+ * C Prototype:
+ *       int arch_context_switch(struct task_struct *prev,
+ *                               struct task_struct *next);
  */
-#ifndef __ASSEMBLY__
-struct task_struct *
-arch_context_switch(
-	struct task_struct *	prev, //!< In %rdi
-	struct task_struct *	next  //!< In %rsi
-) {}
-#else
 ENTRY(arch_context_switch)
 	/* Save prev's callee saved registers (others saved by caller) */
 	pushf
@@ -54,7 +52,7 @@ ENTRY(arch_context_switch)
 	movq %gs:pda_pcurrent, %rsi
 
 	/* New tasks need to be kick-started */
-	lock btr $_TF_NEW_TASK_BIT, tsk_arch_flags(%rsi)
+	lock btr $TF_NEW_TASK_BIT, tsk_arch_flags(%rsi)
 	jc kickstart_new_task
 
 	/* Restore next's callee saved registers */
@@ -90,11 +88,10 @@ kickstart_new_task:
 	movq 12*8(%rsp), %rdx
 	movq 13*8(%rsp), %rsi
 	movq 14*8(%rsp), %rdi
-	add $128, %rsp              /* Bump to point to RIP slot in pt_regs   */
+	addq $16*8, %rsp            /* Move RSP to RIP slot in pt_regs   */
 	iretq                       /* Start the new task running             */
 
 END(arch_context_switch)
-#endif
 
 
 /**
@@ -108,46 +105,49 @@ END(arch_context_switch)
  * containing all caller-saved registers. After this is done, the system call
  * number (stored in RAX by user-level) is used to index into the system call
  * table (sys_call_table) and call the handler function. The handler function
- * is responsible for saving all callee-saved registers... if it is a C
+ * is responsible for saving all callee-saved registers. If it is a C
  * function, callee-saved registers are saved automatically by the compiler.
  *
- * Immediately before calling the handler function, the kernel stack looks
- * like:
+ * Immediately before calling the syscall handler function, the kernel stack
+ * looks like the following.  All fields represent the saved state of the
+ * calling user-level task:
  *
- * <pre>
- *            RIP      = user-space RIP
- *            ORIG_RAX = system call number, passed from user-space
- *            RDI      = ARG0, passed from user-space
- *            RSI      = ARG1, passed from user-space
- *            RDX      = ARG2, passed from user-space
- *            (junk)   = normally RCX, but RCX is clobbered by SYSCALL
- *            RAX      = system call number, passed from user-space
- *            R8       = ARG4, passed from user-space
- *            R9       = ARG5, passed from user-space
- *            R10      = ARG3, passed from user-space
- *     RSP -> R11      = user-space RFLAGS
- * </pre>
+ *            UNDEF      = Undefined, normally holds user-space SS
+ *            UNDEF      = Undefined, normally holds user-space RSP
+ *            UNDEF      = Undefined, normally holds user-space RFLAGS
+ *            UNDEF      = Undefined, normally holds user-space CS
+ *            RIP        = user-space RIP
+ *            ORIG_RAX   = system call number, passed from user-space
+ *            RDI        = ARG0, passed from user-space
+ *            RSI        = ARG1, passed from user-space
+ *            RDX        = ARG2, passed from user-space
+ *            (junk)     = normally RCX, but RCX is clobbered by SYSCALL
+ *            RAX        = system call number, passed from user-space
+ *            R8         = ARG4, passed from user-space
+ *            R9         = ARG5, passed from user-space
+ *            R10        = ARG3, passed from user-space
+ *     RSP -> R11        = user-space RFLAGS
  *
  * And the registers are setup as follows:
  *
- * - RDI      = ARG0
- * - RSI      = ARG1
- * - RDX      = ARG2
- * - RCX      = ARG3 (was stored on R10 on entry)
- * - R8       = ARG4
- * - R9       = ARG5
- * - RAX      = System call number
+ *            RDI        = ARG0
+ *            RSI        = ARG1
+ *            RDX        = ARG2
+ *            RCX        = ARG3 (was stored on R10 on entry)
+ *            R8         = ARG4
+ *            R9         = ARG5
+ *            RAX        = System call number
  *
- * \note RCX and R11 are clobbered by system calls. This is due to the SYSCALL
+ * NOTE: RCX and R11 are clobbered by system calls. This is due to the SYSCALL
  *       instruction using RCX and R11 to store RIP and RFLAGS before
  *       transfering control to the kernel. User-level will observe different
  *       values of RCX and R11 after SYSCALL than before.
  * 
- * \note External interrupts are disabled on entry.
+ * NOTE: External interrupts are disabled on entry.
+ *
+ * C Prototype:
+ *       int asm_syscall(void);
  */
-#ifndef __ASSEMBLY__
-int asm_syscall( void ) {};
-#else
 ENTRY(asm_syscall)
 	/*
 	 * Enter from user-space
@@ -187,9 +187,31 @@ ENTRY(asm_syscall)
 2:
 	movq %rax, 4*8(%rsp)		/* Save return code in stack frame   */
 
-	/* Reschedule, since we're returning to user space */
-	call schedule
+	/*
+	 * Fast-path optimization, if there is no extra-work to do,
+	 * jump straight to the return to user-space code.
+	 */
+	movq %gs:pda_pcurrent, %rdi	/* Move current task pointer to RDI  */
+	movl tsk_arch_flags(%rdi), %esi /* Move current->arch.flags to ESI   */
+	testl %esi, %esi		/* Sets zero flag if ESI=0           */
+	jz 4f				/* If zero flag is set, goto 4:      */
 
+	/*
+	 * Reschedule if necessary
+	 */
+	testl $TF_NEED_RESCHED_MASK,%esi /* AND TF_NEED_RESCHED_MASK with ESI */
+	jz 3f				/* If result is zero, goto 3:        */
+	pushq %rsi			/* Backup RSI to stack               */
+	call schedule			/* Try to reschedule                 */
+	popq %rsi			/* Restore RSI from stack            */
+3:
+	/*
+	 * Handle pending signals, if any
+	 */
+	testl $TF_SIG_PENDING_MASK,%esi /* AND TF_SIG_PENDING_MASK with ESI  */
+	jz 4f				/* If result is zero, goto 4:        */
+	jmp asm_syscall_do_signal       /* Try to handle pending signals     */
+4:
 	/*
 	 * Return to user-space
 	 */
@@ -206,7 +228,144 @@ ENTRY(asm_syscall)
 	swapgs				/* Restore user-space GS.base        */
 	sysretq				/* Return to user-space              */
 END(asm_syscall)
-#endif
+
+
+/*
+ * Wrapper that constructs a complete pt_regs structure on the kernel
+ * stack, and then calls do_signal() to handle any pending signals.
+ *
+ * NOTE: External interrupts are disabled on entry.
+ */
+ENTRY(asm_syscall_do_signal)
+	subq $6*8, %rsp			/* Make room for rest of user regs   */
+	movq %rbx, 5*8(%rsp)		/* Save user-space RBX               */
+	movq %rbp, 4*8(%rsp)		/* Save user-space RBP               */
+	movq %r12, 3*8(%rsp)		/* Save user-space R12               */
+	movq %r13, 2*8(%rsp)		/* Save user-space R13               */
+	movq %r14, 1*8(%rsp)		/* Save user-space R14               */
+	movq %r15,    (%rsp)		/* Save user-space R15               */
+
+	movq $(__USER_DS),   20*8(%rsp)	/* Write user-space SS to pt_regs    */
+	movq %gs:pda_oldrsp, %r11
+	movq %r11,           19*8(%rsp)	/* Write user-space RSP to pt_regs   */
+	movq 6*8(%rsp),      %r11
+	movq %r11,           18*8(%rsp)	/* Write user-space RFLAGS to pt_regs*/
+	movq $(__USER_CS),   17*8(%rsp)	/* Write user-space CS to pt_regs    */
+
+	/* There is now a complete ptregs structure on the stack */
+
+	movq %rsp, %rdi			/* Pass ptr to pt_regs in RDI (ARG0) */
+	call do_signal			/* Handle pending signals, if any    */
+
+	/*
+	 * Return to user-space using the slower iretq mechanism
+	 * so that all registers in ptregs can be restored -- sysretq
+	 * clobbers RCX and R11.
+	 */
+	swapgs				/* Restore user-space GS register    */
+	movq     (%rsp), %r15		/* Restore user-space R15            */
+	movq  1*8(%rsp), %r14		/* Restore user-space R14            */
+	movq  2*8(%rsp), %r13		/* Restore user-space R13            */
+	movq  3*8(%rsp), %r12		/* Restore user-space R12            */
+	movq  4*8(%rsp), %rbp		/* Restore user-space RBP            */
+	movq  5*8(%rsp), %rbx		/* Restore user-space RBX            */
+	movq  6*8(%rsp), %r11		/* Restore user-space R11            */
+	movq  7*8(%rsp), %r10		/* Restore user-space R10            */
+	movq  8*8(%rsp), %r9		/* Restore user-space R9             */
+	movq  9*8(%rsp), %r8		/* Restore user-space R8             */
+	movq 10*8(%rsp), %rax		/* Restore user-space RAX            */
+	movq 11*8(%rsp), %rcx		/* Restore user-space RCX            */
+	movq 12*8(%rsp), %rdx		/* Restore user-space RDX            */
+	movq 13*8(%rsp), %rsi		/* Restore user-space RSI            */
+	movq 14*8(%rsp), %rdi		/* Restore user-space RDI            */
+	addq $16*8, %rsp		/* Move RSP to RIP slot in pt_regs   */
+	iretq
+END(asm_syscall_do_signal)
+
+
+/*
+ * Wrapper that constructs a complete pt_regs structure on the kernel
+ * stack, and then calls sys_rt_sigreturn().
+ *
+ * NOTE: External interrupts are ENABLED on entry.
+ *
+ * C Prototype:
+ *       int asm_sys_rt_sigreturn(void);
+ */
+ENTRY(asm_sys_rt_sigreturn)
+	cli				/* Disable external interrupts       */
+	popq %r11			/* Pop return address off stack      */
+
+	subq $6*8, %rsp			/* Make room for rest of user regs   */
+	movq %rbx, 5*8(%rsp)		/* Save user-space RBX               */
+	movq %rbp, 4*8(%rsp)		/* Save user-space RBP               */
+	movq %r12, 3*8(%rsp)		/* Save user-space R12               */
+	movq %r13, 2*8(%rsp)		/* Save user-space R13               */
+	movq %r14, 1*8(%rsp)		/* Save user-space R14               */
+	movq %r15,    (%rsp)		/* Save user-space R15               */
+
+	movq $(__USER_DS),   20*8(%rsp)	/* Write user-space SS to pt_regs    */
+	movq %gs:pda_oldrsp, %r11
+	movq %r11,           19*8(%rsp)	/* Write user-space RSP to pt_regs   */
+	movq 6*8(%rsp),      %r11
+	movq %r11,           18*8(%rsp)	/* Write user-space RFLAGS to pt_regs*/
+	movq $(__USER_CS),   17*8(%rsp)	/* Write user-space CS to pt_regs    */
+
+	/* There is now a complete ptregs structure on the stack */
+
+	movq %rsp, %rdi			/* Pass ptr to pt_regs in RDI (ARG0) */
+	sti				/* Enable external interrupts        */
+	call sys_rt_sigreturn		/* Call sys_rt_sigreturn()           */
+	cli				/* Disable external interrupts       */
+
+	/*
+	 * Fast-path optimization, if there is no extra-work to do,
+	 * jump straight to the return to user-space code.
+	 */
+	movq %gs:pda_pcurrent, %r12	/* Move current task pointer to R12  */
+	movl tsk_arch_flags(%r12), %ebx /* Move current->arch.flags to EBX   */
+	testl %ebx, %ebx		/* Sets zero flag if EBX=0           */
+	jz 2f				/* If zero flag is set, goto 2:      */
+
+	/*
+	 * Reschedule if necessary
+	 */
+	testl $TF_NEED_RESCHED_MASK,%ebx /* AND TF_NEED_RESCHED_MASK with EBX */
+	jz 1f				/* If result is zero, goto 1:        */
+	call schedule			/* Try to reschedule                 */
+1:
+	/*
+	 * Handle pending signals, if any
+	 */
+	testl $TF_SIG_PENDING_MASK,%ebx /* AND TF_SIG_PENDING_MASK with EBX  */
+	jz 2f				/* If result is zero, goto 2:        */
+	movq %rsp, %rdi			/* Pass ptr to pt_regs in RDI (ARG0) */
+	call do_signal			/* Handle pending signals, if any    */
+2:
+	/*
+	 * Return to user-space using the slower iretq mechanism
+	 * so that all registers in ptregs can be restored -- sysretq
+	 * clobbers RCX and R11.
+	 */
+	swapgs				/* Restore user-space GS register    */
+	movq     (%rsp), %r15		/* Restore user-space R15            */
+	movq  1*8(%rsp), %r14		/* Restore user-space R14            */
+	movq  2*8(%rsp), %r13		/* Restore user-space R13            */
+	movq  3*8(%rsp), %r12		/* Restore user-space R12            */
+	movq  4*8(%rsp), %rbp		/* Restore user-space RBP            */
+	movq  5*8(%rsp), %rbx		/* Restore user-space RBX            */
+	movq  6*8(%rsp), %r11		/* Restore user-space R11            */
+	movq  7*8(%rsp), %r10		/* Restore user-space R10            */
+	movq  8*8(%rsp), %r9		/* Restore user-space R9             */
+	movq  9*8(%rsp), %r8		/* Restore user-space R8             */
+	movq 10*8(%rsp), %rax		/* Restore user-space RAX            */
+	movq 11*8(%rsp), %rcx		/* Restore user-space RCX            */
+	movq 12*8(%rsp), %rdx		/* Restore user-space RDX            */
+	movq 13*8(%rsp), %rsi		/* Restore user-space RSI            */
+	movq 14*8(%rsp), %rdi		/* Restore user-space RDI            */
+	addq $16*8, %rsp		/* Move RSP to RIP slot in pt_regs   */
+	iretq
+END(asm_sys_rt_sigreturn)
 
 
 /**
@@ -215,10 +374,10 @@ END(asm_syscall)
  * It backs up the registers that haven't already been saved
  * by asm_syscall() and then passes a pointer to the complete
  * 'struct pt_regs' to sys_clone().
+ *
+ * C Prototype:
+ *       int asm_sys_clone(void);
  */
-#ifndef __ASSEMBLY__
-int asm_sys_clone( void ) {};
-#else
 ENTRY(asm_sys_clone)
 	popq %r11			/* Pop return address off stack      */
 
@@ -246,38 +405,38 @@ ENTRY(asm_sys_clone)
 	pushq %r11			/* Push return address onto stack    */
 	ret				/* Return to asm_syscall             */
 END(asm_sys_clone)
-#endif
+
 
 
 /**
  * Handler for SYSCALL instructions issued from compatibility mode.
  * 
- * \note We don't support them.
+ * NOTE: We don't support them.
+ *
+ * C Prototype:
+ *       int asm_syscall_ignore(void);
  */
-#ifndef __ASSEMBLY__
-int asm_syscall_ignore( void ) {}
-#else
 ENTRY(asm_syscall_ignore)
 	mov $-ENOSYS,%eax
 	sysret
 END(asm_syscall_ignore)
-#endif
 
 
 /**
  * Common entry point for all interrupts. 
  * 
- * Before calling the C handler function, the kernel stack looks like:
+ * Immediately before calling the interrupt handler function, the kernel stack
+ * looks like the following.  All fields represent the state of the interrupted
+ * context of execution, immediately before it was interrupted:
  *
- * <pre>
  *            [...]
- *            SS         (stack segment selector)
- *            RSP        (stack pointer)
- *            RFLAGS     (flags register)
- *            CS         (code segment selector)
- *            RIP        (instruction pointer)
- *            ERROR_CODE (0 for interrupts with no error code)
- *            RDI        (this was the vector # on entry, we move to %rsi/ARG1)
+ *            SS         = Stack Segment Selector
+ *            RSP        = Stack Pointer
+ *            RFLAGS     = Flags Register
+ *            CS         = Code Segment Selector
+ *            RIP        = Instruction Pointer
+ *            ERROR_CODE = Error Code, 0 for interrupts with no error code
+ *            RDI        = Vector #
  *            RSI
  *            RDX
  *            RCX
@@ -292,22 +451,19 @@ END(asm_syscall_ignore)
  *            R13
  *            R14
  *     RSP -> R15
- * </pre>
  *
  * And the registers are setup as follows according to the C calling
  * convention for the C function do_interrupt() that will vector
  * the interrupt to the appropriate registered handler.
  *
- * <pre>
- *            RDI      = ARG0: A fully populated 'struct pt_regs *'
- *            RSI      = ARG1: The interrupt vector number 
- * </pre>
+ *            RDI        = ARG0: A fully populated 'struct pt_regs *'
+ *            RSI        = ARG1: The interrupt vector number 
  *
- * \note External interrupts are disabled on entry.
+ * NOTE: External interrupts are disabled on entry.
+ *
+ * C Prototype:
+ *       void asm_interrupt(void);
  */
-#ifndef __ASSEMBLY__
-void asm_interrupt( void ) {};
-#else
 ENTRY(asm_interrupt)
 	cld				/* Clear direction flag              */
 
@@ -348,13 +504,37 @@ ENTRY(asm_interrupt)
 	decl %gs:pda_irqcount		/* Unmark that we're in an interrupt */
 
 	/*
-	 * If returning to user-space, reschedule and restore user-space GS
+	 * If returning to kernel-space, skip straight to 4: below
 	 */
 	testl $3, CS(%rsp)		/* Sets ZF=1 if returning to kspace  */
-	je 2f				/* If ZF=1, jump forward to 2: below */
-	call schedule			/* Reschedule                        */
-	swapgs				/* Restore uspace GS register        */
+	je 4f				/* If ZF=1, jump forward to 4: below */
+
+	/*
+	 * Fast-path optimization, if there is no extra-work to do,
+	 * jump straight to the return to user-space code.
+	 */
+	movq %gs:pda_pcurrent, %r12	/* Move current task pointer to R12  */
+	movl tsk_arch_flags(%r12), %ebx /* Move current->arch.flags to EBX   */
+	testl %ebx, %ebx		/* Sets zero flag if EBX=0           */
+	jz 3f				/* If zero flag is set, goto 3:      */
+
+	/*
+	 * Reschedule if necessary
+	 */
+	testl $TF_NEED_RESCHED_MASK,%ebx /* AND TF_NEED_RESCHED_MASK with EBX */
+	jz 2f				/* If result is zero, goto 2:        */
+	call schedule			/* Try to reschedule                 */
 2:
+	/*
+	 * Handle pending signals, if any
+	 */
+	testl $TF_SIG_PENDING_MASK,%ebx	/* AND TF_SIG_PENDING_MASK with EBX  */
+	jz 3f				/* If result is zero, goto 3:        */
+	movq %rsp, %rdi			/* Pass ptr to pt_regs in RDI (ARG0) */
+	call do_signal			/* Handle pending signals, if any    */
+3:
+	swapgs				/* Restore user-space GS register    */
+4:
 	/*
 	 * Restore registers and return to interrupted program
 	 */
@@ -376,7 +556,6 @@ ENTRY(asm_interrupt)
 	addq $16*8, %rsp
 	iretq
 END(asm_interrupt)
-#endif
 
 
 /**
@@ -391,12 +570,12 @@ END(asm_interrupt)
  * the stack when necessary, always push the vector number, and then call
  * the common handler asm_interrupt().
  *
- * \warning Each function/entry in this table must be <= 16 bytes.
+ * WARNING: Each function/entry in this table must be <= 16 bytes.
  *          Be very careful when adding instructions.
+ * 
+ * C Prototype:
+ *       void asm_idtvec_table(void) { asm_interrupt(); }
  */
-#ifndef __ASSEMBLY__
-void asm_idtvec_table(void) { asm_interrupt(); }
-#else
 .align 16
 ENTRY(asm_idtvec_table)
 	vector=0
@@ -412,16 +591,15 @@ ENTRY(asm_idtvec_table)
 		vector=vector+1
 	.endr
 END(asm_idtvec_table)
-#endif
 
 
 /**
  * Reload gs selector with exception handling.
  *     edi:  new selector
+ *
+ * C Prototype:
+ *       void load_gs_index(unsigned gs);
  */
-#ifndef __ASSEMBLY__
-void load_gs_index( unsigned gs ) {}
-#else
 ENTRY(load_gs_index)
 	CFI_STARTPROC
 	pushf
@@ -450,6 +628,4 @@ bad_gs:
 	movl %eax,%gs
 	jmp  2b
 	.previous
-#endif
-
 

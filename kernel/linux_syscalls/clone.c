@@ -49,47 +49,43 @@ sys_clone(
 		return -ENOSYS;
 	}
 
-	/* Pick a CPU to spawn the new task on */
-	id_t cpu_id = current->next_cpu;
-	current->next_cpu = next_cpu(current->next_cpu, current->cpumask);
-	if (current->next_cpu == NR_CPUS)
-		current->next_cpu = first_cpu(current->cpumask);
-
 	start_state_t start_state = {
 		.task_id	= ANY_ID,
 		.user_id	= current->uid,
 		.group_id	= current->gid,
 		.aspace_id	= current->aspace->id,
-		.cpu_id		= cpu_id,
-		.cpumask	= cpumask_kernel2user(&current->cpumask),
+		.cpu_id		= ANY_ID,
 		.stack_ptr	= new_stack_ptr,
-		.entry_point	= 0,    /* set automagically for clone() */
+		.entry_point	= USE_PARENT_IP,
+		.use_args	= 0,
 	};
 
-	/* Name the new task something semi-sensible */
-	snprintf(start_state.task_name, sizeof(start_state.task_name),
-		 "%s_thread", strlen(current->name) ? current->name : "noname");
-
-	struct task_struct *task = __task_create(&start_state, parent_regs);
-	if (!task)
+	struct task_struct *tsk = __task_create(&start_state, parent_regs);
+	if (!tsk)
 		return -EINVAL;
+
+	/* Name the new task something semi-sensible */
+	snprintf(tsk->name, sizeof(tsk->name),
+		 "%s.thread_%u",
+		 strlen(current->name) ? current->name : "noname",
+		 tsk->id - tsk->aspace->id);
 
 	/* Optionally initialize the task's set_child_tid and clear_child_tid */
 	if ((flags & CLONE_CHILD_SETTID))
-		task->set_child_tid = child_tid_ptr;
+		tsk->set_child_tid = child_tid_ptr;
 	if ((flags & CLONE_CHILD_CLEARTID))
-		task->clear_child_tid = child_tid_ptr;
+		tsk->clear_child_tid = child_tid_ptr;
 
 	/* Optionally write the new task's ID to user-space memory.
 	 * It doesn't really matter if these fail. */
-	int tid = task->id;
+	int tid = tsk->id;
 	if ((flags & CLONE_PARENT_SETTID))
 		put_user(tid, parent_tid_ptr);
 	if ((flags & CLONE_CHILD_SETTID))
 		put_user(tid, child_tid_ptr);
 
 	/* Add the new task to the target CPU's run queue */
-	sched_add_task(task);
+	sched_add_task(tsk);
 		
-	return task->id;
+	return tsk->id;
 }

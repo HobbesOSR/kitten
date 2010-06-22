@@ -10,6 +10,7 @@
 #include <lwk/cpuinfo.h>
 #include <lwk/pmem.h>
 #include <lwk/tlbflush.h>
+#include <lwk/waitq.h>
 
 /**
  * Hash table used to lookup address space structures by ID.
@@ -272,6 +273,23 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	sema_init(&aspace->mmap_sem, 1);
 	if (name)
 		strlcpy(aspace->name, name, sizeof(aspace->name));
+
+	list_head_init(&aspace->task_list);
+	aspace->next_task_id = aspace->id;
+
+	aspace->cpu_mask = cpu_present_map;
+	aspace->next_cpu_id = first_cpu(aspace->cpu_mask);
+
+	list_head_init(&aspace->sigpending.list);
+
+	aspace->parent = current->aspace;
+	list_head_init(&aspace->child_list);
+	waitq_init(&aspace->child_exit_waitq);
+
+	spin_lock(&current->aspace->lock);
+	list_add_tail(&aspace->child_link, &current->aspace->child_list);
+	spin_unlock(&current->aspace->lock);
+
 	/* Create a region for the kernel portion of the address space */
 	status =
 	__aspace_add_region(
@@ -329,7 +347,7 @@ aspace_destroy(id_t id)
 	/* Lock the identified aspace */
 	spin_lock(&aspace->lock);
 
-	if (aspace->refcnt) {
+	if (aspace->refcnt || !list_empty(&aspace->child_list)) {
 		spin_unlock(&aspace->lock);
 		spin_unlock_irqrestore(&htable_lock, irqstate);
 		return -EBUSY;
@@ -338,9 +356,16 @@ aspace_destroy(id_t id)
 	/* Remove aspace from hash table, preventing others from finding it */
 	htable_del(htable, aspace);
 
+	/* Unlock the destroyed aspace, we are the only users of it now */
+	spin_unlock(&aspace->lock);
+
+	/* Remove the destroyed aspace from its parent's child_list */
+	spin_lock(&aspace->parent->lock);
+	list_del(&aspace->child_link);
+	spin_unlock(&aspace->parent->lock);
+
 	/* Unlock the hash table, others may now use it */
 	spin_unlock_irqrestore(&htable_lock, irqstate);
-	spin_unlock(&aspace->lock);
  
 	/* Finish up destroying the aspace, we have the only reference */
 	list_for_each_safe(pos, tmp, &aspace->region_list) {
@@ -873,6 +898,108 @@ aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t *paddr)
 	if (aspace) spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
 
+	return status;
+}
+
+int
+aspace_wait4_child_exit(id_t child_id, bool block, id_t *exit_id, int *exit_status)
+{
+	DECLARE_WAITQ_ENTRY(wait, current);
+	unsigned long irqstate;
+	struct aspace *child;
+	size_t unreaped_children;
+	bool found_exited_child, found_child_id;
+	int saved_id = 0, saved_exit_status = 0;
+	int status;
+
+	waitq_add_entry(&current->aspace->child_exit_waitq, &wait);
+repeat:
+	// Setup initial conditions
+	found_exited_child = false;
+	found_child_id     = false;
+	unreaped_children  = 0;
+
+	set_task_state(current, TASK_INTERRUPTIBLE);
+
+	// Taking htable_lock prevents new aspaces from being created,
+	// which guarantees that no children are added to current's child_list
+	spin_lock_irqsave(&htable_lock, irqstate);
+
+	list_for_each_entry(child, &current->aspace->child_list, child_link) {
+		spin_lock(&child->lock);
+
+		if (child->reaped == true) {
+			spin_unlock(&child->lock);
+			continue;
+		}
+
+		++unreaped_children;
+
+		if (child_id != ANY_ID) {
+			if (child->id != child_id) {
+				spin_unlock(&child->lock);
+				continue;
+			} else {
+				found_child_id = true;
+			}
+		}
+
+		if (child->exiting && list_empty(&child->task_list)) {
+			found_exited_child = true;
+			saved_id           = child->id;
+			saved_exit_status  = child->exit_status;
+			child->reaped      = true;
+		}
+
+		spin_unlock(&child->lock);
+
+		if (found_exited_child || found_child_id)
+			break;
+	}
+
+	spin_unlock_irqrestore(&htable_lock, irqstate);
+
+	// Have all of the information needed to know if we should sleep or return
+
+	if (unreaped_children == 0) {
+		status = -ECHILD;
+		goto end;
+	}
+
+	if ((child_id != ANY_ID) && (found_child_id == false)) {
+		status = -ECHILD;
+		goto end;
+	}
+
+	if (found_exited_child == false) {
+		if (block == false) {
+			status = -EAGAIN;
+			goto end;
+		}
+
+		schedule();
+
+		if (signal_pending(current)) {
+			status = -EINTR;
+			goto end;
+		}
+
+		goto repeat;
+	}
+
+	// Success, found_exited_child == true
+
+	if (exit_id)
+		*exit_id = saved_id;
+
+	if (exit_status)
+		*exit_status = saved_exit_status;
+
+	status = 0;
+
+end:
+	set_task_state(current, TASK_RUNNING);
+	waitq_remove_entry(&current->aspace->child_exit_waitq, &wait);
 	return status;
 }
 

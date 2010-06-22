@@ -11,7 +11,10 @@ obj-y := \
 	sched_yield.o \
 	time.o \
 	rt_sigprocmask.o \
+	rt_sigpending.o \
 	rt_sigaction.o \
+	kill.o \
+	wait4.o \
 	mprotect.o \
 	clone.o \
 	futex.o \
@@ -20,6 +23,9 @@ obj-y := \
 	sched_getaffinity.o \
 	getrlimit.o \
 	exit.o \
+	exit_group.o \
 	getpid.o \
+	gettid.o \
 	sethostname.o \
 	clock_gettime.o \
+	getcpu.o \

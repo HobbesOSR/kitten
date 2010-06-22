@@ -56,12 +56,12 @@ create_init_task(void)
 {
 	int status;
 	start_state_t start_state = {
-		.task_id	= INIT_TASK_ID,
+		.task_id	= ANY_ID,
 		.task_name	= "init_task",
 		.user_id	= 0,
 		.group_id	= 0,
 		.cpu_id		= this_cpu,
-		.cpumask	= cpumask_kernel2user(&cpu_online_map),
+		.use_args	= false,
 	};
 
 	if (!init_elf_image) {
@@ -96,15 +96,10 @@ create_init_task(void)
 		return status;
 	}
 
-	id_t task_id;
-	int rc = task_create(&start_state, &task_id);
-	if( rc != 0 )
-		return rc;
+
+	struct task_struct *new_task = __task_create(&start_state, NULL);
 
 	/* Assign stdout and stderr */
-	struct task_struct * new_task = task_lookup( task_id );
-	if( !new_task )
-		panic( "Unable to retrieve init task id %lu?", task_id  );
 
 	/* TODO: should really do a kfs_open() once for each of the
 	   std fds ... and use appropriate flags and mode for each */
@@ -114,6 +109,8 @@ create_init_task(void)
 	new_task->files[ 0 ] = console;
 	new_task->files[ 1 ] = console;
 	new_task->files[ 2 ] = console;
+
+	sched_add_task(new_task);
 
 	return 0;
 }

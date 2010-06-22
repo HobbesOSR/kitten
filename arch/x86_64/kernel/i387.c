@@ -54,8 +54,49 @@ void __cpuinit fpu_init(void)
 	write_cr0(oldcr0 & ~((1UL<<3)|(1UL<<2))); /* clear TS and EM */
 
 	mxcsr_feature_mask_init();
-	/* clean state in init */
-	current->arch.flags = 0;
-	clear_used_math();
+
+	clts();
 }
 
+
+void
+reinit_fpu_state(struct task_struct *tsk)
+{
+	memset(&tsk->arch.thread.i387.fxsave, 0, sizeof(struct i387_fxsave_struct));
+	tsk->arch.thread.i387.fxsave.cwd = 0x37f;
+	tsk->arch.thread.i387.fxsave.mxcsr = 0x1f80;
+}
+
+
+// Used by signal delivery path to save FPU state on the user stack
+int save_i387(struct _fpstate __user *buf)
+{
+	int err;
+
+	if ((unsigned long)buf % 16)
+		printk("save_i387: bad fpstate %p\n",buf);
+
+	// Stash the caller's FPU state on the user-level stack
+	err = save_i387_checking((struct i387_fxsave_struct __user *)buf);
+	if (err)
+		return err;
+
+	// Reinitialize FPU state, so signal handler can use floating-point ops
+	reinit_fpu_state(current);
+	fpu_restore_state(current);
+
+	return 0;
+}
+
+
+// Used by sys_sigreturn to restore FPU state from the user stack
+int restore_i387(struct _fpstate __user *buf)
+{
+	int err;
+
+	err = restore_fpu_checking((__force struct i387_fxsave_struct *)buf);
+	if (err)
+		return err;
+
+	return 0;
+}

@@ -4,6 +4,7 @@
 #include <arch/ptrace.h>
 #include <arch/prctl.h>
 #include <arch/unistd.h>
+#include <arch/i387.h>
 
 int
 arch_task_create(
@@ -24,15 +25,18 @@ arch_task_create(
 		((struct pt_regs *)((kaddr_t)task + TASK_SIZE)) - 1;
 
 	/* Initialize GPRs */
-	if (is_clone) {
-		*regs = *parent_regs;
-		regs->rax = 0;  /* set child's clone() return value to 0 */
-	} else {
+	if (start_state->use_args) {
 		/* Pass C-style arguments to new task */
 		regs->rdi = start_state->arg[0];
 		regs->rsi = start_state->arg[1];
 		regs->rdx = start_state->arg[2];
 		regs->rcx = start_state->arg[3];
+	} else if (is_clone) {
+		*regs = *parent_regs;
+		regs->rax = 0;  /* set child's clone() return value to 0 */
+	} else {
+		/* Zero all registers */
+		memset(regs, 0, sizeof(regs));
 	}
 
 	task->arch.thread.rsp0    = (kaddr_t)(regs + 1);    /* kstack top */
@@ -40,14 +44,13 @@ arch_task_create(
 	task->arch.thread.userrsp = start_state->stack_ptr; /* ustack ptr */
 
 	/* Mark this as a new-task... arch_context_switch() checks this flag */
-	task->arch.flags = TF_NEW_TASK;
+	task->arch.flags = TF_NEW_TASK_MASK;
 
 	/* Task's address space is from [0, task->addr_limit) */
 	task->arch.addr_limit = PAGE_OFFSET;
 
 	/* Initialize FPU state */
-	task->arch.thread.i387.fxsave.cwd = 0x37f;
-	task->arch.thread.i387.fxsave.mxcsr = 0x1f80;
+	reinit_fpu_state(task);
 
 	/* If this is a clone, initialize new task's thread local storage */
 	if (is_clone)

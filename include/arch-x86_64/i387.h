@@ -22,6 +22,9 @@
 extern void fpu_init(void);
 extern unsigned int mxcsr_feature_mask;
 extern void mxcsr_feature_mask_init(void);
+extern void reinit_fpu_state(struct task_struct *tsk);
+extern int save_i387(struct _fpstate __user *buf);
+extern int restore_i387(struct _fpstate __user *buf);
 
 /* Ignore delayed exceptions from user space */
 static inline void tolerant_fwait(void)
@@ -34,12 +37,8 @@ static inline void tolerant_fwait(void)
 		     "	.previous\n");
 }
 
-#define clear_fpu(tsk) do { \
-	if (tsk->arch.status & TS_USEDFPU) {			\
-		tolerant_fwait();				\
-		tsk->arch.status &= ~TS_USEDFPU;		\
-		stts();						\
-	}							\
+#define clear_fpu(tsk) do { 	\
+	tolerant_fwait();	\
 } while (0)
 
 /*
@@ -82,6 +81,31 @@ static inline void clear_fpu_state(struct i387_fxsave_struct *fx)
 	asm volatile ("fildl %gs:0");	/* load to clear state */
 }
 
+static inline int restore_fpu_checking(struct i387_fxsave_struct *fx)
+{ 
+	int err;
+
+	asm volatile("1:  rex64/fxrstor (%[fx])\n\t"
+		     "2:\n"
+		     ".section .fixup,\"ax\"\n"
+		     "3:  movl $-1,%[err]\n"
+		     "    jmp  2b\n"
+		     ".previous\n"
+		     ".section __ex_table,\"a\"\n"
+		     "   .align 8\n"
+		     "   .quad  1b,3b\n"
+		     ".previous"
+		     : [err] "=r" (err)
+#if 0 /* See comment in __fxsave_clear() below. */
+		     : [fx] "r" (fx), "m" (*fx), "0" (0));
+#else
+		     : [fx] "cdaSDb" (fx), "m" (*fx), "0" (0));
+#endif
+	if (unlikely(err))
+		reinit_fpu_state(current);
+	return err;
+} 
+
 static inline int save_i387_checking(struct i387_fxsave_struct __user *fx) 
 { 
 	int err;
@@ -104,7 +128,7 @@ static inline int save_i387_checking(struct i387_fxsave_struct __user *fx)
 #endif
 	if (unlikely(err) && __clear_user(fx, sizeof(struct i387_fxsave_struct)))
 		err = -EFAULT;
-	/* No need to clear here because the caller clears USED_MATH */
+
 	return err;
 } 
 
@@ -138,20 +162,6 @@ static inline void __fxsave_clear(struct task_struct *tsk)
 	clear_fpu_state(&tsk->arch.thread.i387.fxsave);
 }
 
-static inline void kernel_fpu_begin(void)
-{
-	if (current->arch.flags & TF_USED_FPU) {
-		__fxsave_clear(current);
-		return;
-	}
-	clts();
-}
-
-static inline void kernel_fpu_end(void)
-{
-	stts();
-}
-
 static inline void
 fpu_save_state(struct task_struct *task)
 {
@@ -162,8 +172,19 @@ static inline void
 fpu_restore_state(struct task_struct *task)
 {
 	struct i387_fxsave_struct *fx = &task->arch.thread.i387.fxsave;
+	clear_fpu_state(fx);  // just in case
 	asm volatile("rex64/fxrstor (%[fx])\n\t"
                      :: [fx] "cdaSDb" (fx), "m" (*fx));
+}
+
+static inline void kernel_fpu_begin(void)
+{
+	fpu_save_state(current);
+}
+
+static inline void kernel_fpu_end(void)
+{
+	fpu_restore_state(current);
 }
 
 #endif /* _X86_64_I387_H */

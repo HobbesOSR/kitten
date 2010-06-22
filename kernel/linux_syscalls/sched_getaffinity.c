@@ -1,5 +1,6 @@
 #include <lwk/kernel.h>
 #include <lwk/task.h>
+#include <lwk/aspace.h>
 #include <arch/uaccess.h>
 
 long
@@ -18,7 +19,7 @@ sys_sched_getaffinity(
 	if (cpumask_len < sizeof(cpumask_t))
 		return -EINVAL;
 
-	if (copy_to_user(cpumask, &current->cpumask, sizeof(cpumask_t)))
+	if (copy_to_user(cpumask, &current->cpu_mask, sizeof(cpumask_t)))
 		return -EFAULT;
 
 	return sizeof(cpumask_t);

@@ -109,11 +109,6 @@ start_kernel()
 	aspace_subsys_init();
 
 	/*
- 	 * Initialize the task management subsystem.
- 	 */
-	task_subsys_init();
-
-	/*
  	 * Initialize the task scheduling subsystem.
  	 */
 	sched_subsys_init();
@@ -192,8 +187,7 @@ start_kernel()
 	printk(KERN_INFO "Loading initial user-level task (init_task)...\n");
 	if ((status = create_init_task()) != 0)
 		panic("Failed to create init_task (status=%d).", status);
-
-	current->state = TASK_EXIT_ZOMBIE;
+	current->state = TASK_EXITED;
 	schedule();  /* This should not return */
 	BUG();
 }

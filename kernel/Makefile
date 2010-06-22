@@ -16,7 +16,6 @@ obj-y := \
 	time.o \
 	xcall.o \
 	elf_liblwk.o \
-	task.o \
 	sched.o \
 	completion.o \
 	waitq.o \
@@ -29,6 +28,9 @@ obj-y := \
 	random.o \
 	in_mem_fs.o \
 	fifo.o \
+	task.o \
+	kthread.o \
+	signal.o \
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
 obj-y += mm/

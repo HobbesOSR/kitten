@@ -1,38 +1,12 @@
-#ifndef _ASM_X86_64_SIGNAL_H
-#define _ASM_X86_64_SIGNAL_H
-
-#ifndef __ASSEMBLY__
-#include <lwk/types.h>
-#include <lwk/time.h>
-
-/* Avoid too many header ordering problems.  */
-struct siginfo;
-
-#ifdef __KERNEL__
-#include <lwk/linkage.h>
-/* Most things should be clean enough to redefine this at will, if care
-   is taken to make libc match.  */
-
-#define _NSIG		64
-#define _NSIG_BPW	64
-#define _NSIG_WORDS	(_NSIG / _NSIG_BPW)
-
-typedef unsigned long old_sigset_t;		/* at least 32 bits */
-
-typedef struct {
-	unsigned long sig[_NSIG_WORDS];
-} sigset_t;
+#ifndef _ARCH_X86_64_SIGNAL_H
+#define _ARCH_X86_64_SIGNAL_H
 
 
-#else
-/* Here we must cater to libcs that poke about in kernel headers.  */
+// x86_64 supports 64 signals
+#define NUM_SIGNALS	64
 
-#define NSIG		32
-typedef unsigned long sigset_t;
 
-#endif /* __KERNEL__ */
-#endif
-
+// Signal numbers names
 #define SIGHUP		 1
 #define SIGINT		 2
 #define SIGQUIT		 3
@@ -64,81 +38,51 @@ typedef unsigned long sigset_t;
 #define SIGWINCH	28
 #define SIGIO		29
 #define SIGPOLL		SIGIO
-/*
-#define SIGLOST		29
-*/
 #define SIGPWR		30
 #define SIGSYS		31
 #define	SIGUNUSED	31
-
-/* These should not be considered constants from userland.  */
 #define SIGRTMIN	32
-#define SIGRTMAX	_NSIG
+#define SIGRTMAX	NUM_SIGNALS
 
-/*
- * SA_FLAGS values:
- *
- * SA_ONSTACK indicates that a registered stack_t will be used.
- * SA_RESTART flag to get restarting signals (which were the default long ago)
- * SA_NOCLDSTOP flag to turn off SIGCHLD when children stop.
- * SA_RESETHAND clears the handler when the signal is delivered.
- * SA_NOCLDWAIT flag on SIGCHLD to inhibit zombies.
- * SA_NODEFER prevents the current signal from being masked in the handler.
- *
- * SA_ONESHOT and SA_NOMASK are the historical Linux names for the Single
- * Unix names RESETHAND and NODEFER respectively.
- */
-#define SA_NOCLDSTOP	0x00000001
-#define SA_NOCLDWAIT	0x00000002
-#define SA_SIGINFO	0x00000004
-#define SA_ONSTACK	0x08000000
-#define SA_RESTART	0x10000000
-#define SA_NODEFER	0x40000000
-#define SA_RESETHAND	0x80000000
 
-#define SA_NOMASK	SA_NODEFER
-#define SA_ONESHOT	SA_RESETHAND
+// Values for sigprocmask() 'how' argument
+#define SIG_BLOCK	0
+#define SIG_UNBLOCK	1
+#define SIG_SETMASK	2
 
-#define SA_RESTORER	0x04000000
 
-/*
- * sigaltstack controls
- */
-#define SS_ONSTACK	1
-#define SS_DISABLE	2
+// Signal handler function constants, for use in sigaction.sa_handler field
+#define SIG_DFL		((sighandler_func_t *)  0)
+#define SIG_IGN		((sighandler_func_t *)  1)
+#define SIG_ERR		((sighandler_func_t *) -1)
 
-#define MINSIGSTKSZ	2048
-#define SIGSTKSZ	8192
 
-#include <arch-generic/signal.h>
+// Values for sigaction.sa_flags
+#define SA_SIGINFO	0x00000004	// Pass siginfo_t to signal handler
+#define SA_NODEFER	0x40000000	// Don't block signal while it is being handled
+#define SA_RESETHAND	0x80000000	// Reset to SIG_DFL on entry to handler
+#define SA_RESTART	0x10000000	// Restart system call on signal return
+#define SA_RESTORER	0x04000000	// Indicates that there is a restorer function
 
-#ifndef __ASSEMBLY__
 
+// Signal set type
+typedef struct {
+	unsigned long bitmap[BITS_TO_LONGS(NUM_SIGNALS)];
+} sigset_t;
+
+
+// Signal handler and restorer function typedefs
+typedef void sighandler_func_t(int);
+typedef void sigrestorer_func_t(void);
+
+
+// Signal action type
 struct sigaction {
-	__sighandler_t sa_handler;
-	unsigned long sa_flags;
-	__sigrestore_t sa_restorer;
-	sigset_t sa_mask;		/* mask last for extensibility */
+	sighandler_func_t *	sa_handler;
+	unsigned long		sa_flags;
+	sigrestorer_func_t *	sa_restorer;
+	sigset_t		sa_mask;
 };
 
-struct k_sigaction {
-	struct sigaction sa;
-};
-
-typedef struct sigaltstack {
-	void __user *ss_sp;
-	int ss_flags;
-	size_t ss_size;
-} stack_t;
-
-#ifdef __KERNEL__
-#include <arch/sigcontext.h>
-
-#undef __HAVE_ARCH_SIG_BITOPS
-#endif
-
-#define ptrace_signal_deliver(regs, cookie) do { } while (0)
-
-#endif /* __KERNEL__ */
 
 #endif

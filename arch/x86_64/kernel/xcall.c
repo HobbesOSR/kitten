@@ -1,6 +1,8 @@
 #include <lwk/kernel.h>
 #include <lwk/spinlock.h>
 #include <lwk/xcall.h>
+#include <lwk/task.h>
+#include <lwk/smp.h>
 #include <arch/apic.h>
 #include <arch/idt_vectors.h>
 #include <arch/processor.h>
@@ -119,7 +121,10 @@ arch_xcall_function_interrupt(struct pt_regs *regs, unsigned int vector)
 void
 arch_xcall_reschedule(id_t cpu)
 {
-	lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
+	if (cpu == this_cpu)
+		set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);
+	else
+		lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
 }
 
 /**
@@ -128,8 +133,7 @@ arch_xcall_reschedule(id_t cpu)
 void
 arch_xcall_reschedule_interrupt(struct pt_regs *regs, unsigned int vector)
 {
-	/*
-	 * Nothing to do, schedule() will be automatically
-	 * called before returning to user-space
-	 */
+	// This causes schedule() to be called right before
+	// the next return to user-space
+	set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);
 }

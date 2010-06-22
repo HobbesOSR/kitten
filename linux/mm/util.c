@@ -66,11 +66,7 @@ void *krealloc(const void *p, size_t new_size, gfp_t flags)
 
 int can_do_mlock(void)
 {
-	if (capable(CAP_IPC_LOCK))
-		return 1;
-	if (current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur != 0)
-		return 1;
-	return 0;
+	return 1;
 }
 
 struct mm_struct *get_task_mm(struct task_struct *task)

@@ -23,6 +23,7 @@
 #include <lwk/string.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/driver.h>
+#include <lwk/kthread.h>
 #include <arch/page.h>
 #include <arch/ptrace.h>
 #include <arch/apic.h>

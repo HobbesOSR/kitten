@@ -4,7 +4,11 @@
 /**
  * Initializes architecture-independent fields in the bootstrap address space.
  */
-#define BOOTSTRAP_ASPACE(name)
+#define BOOTSTRAP_ASPACE(aspace) \
+	.id		=	0,					\
+	.name		=	"bootstrap",				\
+	.lock		=	SPIN_LOCK_UNLOCKED,			\
+	.child_list	=	LIST_HEAD_INIT(aspace.child_list),	\
 
 /**
  * Initializes architecture-independent fields in the bootstrap task structure.

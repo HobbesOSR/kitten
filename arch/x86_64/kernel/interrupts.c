@@ -96,10 +96,9 @@ do_invalid_op(struct pt_regs *regs, unsigned int vector)
 void
 do_device_not_available(struct pt_regs *regs, unsigned int vector)
 {
-	BUG_ON(current->arch.flags & TF_USED_FPU);
-	current->arch.flags |= TF_USED_FPU;
-	clts();
-	fpu_restore_state(current);
+	printk("Device Not Available Exception\n");
+	show_registers(regs);
+	while (1) {}
 }
 
 void
@@ -213,7 +212,10 @@ void
 do_apic_timer(struct pt_regs *regs, unsigned int vector)
 {
 	expire_timers();
-	// should call schedule_next_wakeup?
+
+	// This causes schedule() to be called right before
+	// the next return to user-space
+	set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);
 }
 
 void

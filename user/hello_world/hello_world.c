@@ -1,5 +1,7 @@
 /* Copyright (c) 2008, Sandia National Laboratories */
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -12,6 +14,9 @@
 #include <lwk/liblwk.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <utmpx.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 static int pmem_api_test(void);
 static int aspace_api_test(void);
@@ -141,112 +146,96 @@ aspace_api_test(void)
 	return 0;
 }
 
+
+// Glibc doesn't provide a wrapper the Linux-specific gettid() call.
+static pid_t
+gettid(void)
+{
+	return syscall(__NR_gettid);
+}
+
+
 static void *
 hello_world_thread(void *arg)
 {
-	int i;
-	const unsigned long id = (unsigned long) arg;
-	id_t my_cpu;
-	struct timeval tv;
+	int my_id = (int)(uintptr_t) arg;
+	unsigned my_cpu = sched_getcpu();
 
-	/* Pause a bit to avoid cluttering up the console */
 	sleep(1);
 
-	task_get_cpu(&my_cpu);
+	printf("Hello from thread %d on CPU %u: pid=%d, tid=%d\n",
+		my_id, my_cpu, getpid(), gettid());
 
-	printf( "%ld: Hello from a thread on cpu %u\n", id, my_cpu );
-	for (i = 0; i < 10; i++) {
-		sleep(5);
-		gettimeofday(&tv, NULL);
-		printf( "%ld: Meow %d! now=%ld.%06ld\n",
-			id, i, tv.tv_sec, tv.tv_usec );
-	}
-	printf( "%ld: That's all, folks!\n", id );
+	sleep(1);
 
-	while(1)
-		sleep(100000);
+	printf("Goodbye from thread %d on CPU %u\n", my_id, my_cpu);
+
+	sleep(1);
+
+	pthread_exit((void *)(uintptr_t)my_id);
 }
+
 
 static int 
 task_api_test(void)
 {
-	int status;
-	unsigned i;
-	id_t my_id, my_cpu;
-	user_cpumask_t my_cpumask;
-	pthread_t tid;
+	pthread_t pthread_id[CPU_SETSIZE];
+	cpu_set_t cpu_mask;
+	int status, i, nthr=0;
+	void *value_ptr;
 
-	printf("\nTEST BEGIN: Task Management\n");
+	printf("TEST BEGIN: Task Management\n");
 
-	status = task_get_myid(&my_id);
+	printf("  My Linux process id (PID) is:       %d\n",  getpid());
+	printf("  My Linux thread id  (TID) is:       %d\n",  gettid());
+	
+	status = pthread_getaffinity_np(pthread_self(), sizeof(cpu_mask), &cpu_mask);
 	if (status) {
-		printf("ERROR: task_get_myid() status=%d\n", status);
+		printf("ERROR: pthread_getaffinity_np() status=%d\n", status);
 		return -1;
 	}
 
-	status = task_get_cpu(&my_cpu);
-	if (status) {
-		printf("ERROR: task_get_cpu() status=%d\n", status);
-		return -1;
-	}
-
-	status = task_get_cpumask(&my_cpumask);
-	if (status) {
-		printf("ERROR: task_get_cpumask() status=%d\n", status);
-		return -1;
-	}
-
-	printf("  My task ID is %u\n", my_id);
-	printf("  I'm executing on CPU %u\n", my_cpu);
-	printf("  The following CPUs are in my cpumask:\n    ");
-	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
-		if (cpu_isset(i, my_cpumask))
+	printf("  My CPU mask is:                     ");
+	for (i = 0; i < CPU_SETSIZE; i++) {
+		if (CPU_ISSET(i, &cpu_mask))
 			printf("%d ", i);
 	}
 	printf("\n");
 
-	printf("  Creating a thread on each CPU:\n");
-	for (i = CPU_MIN_ID; i <= CPU_MAX_ID; i++) {
-		if (!cpu_isset(i, my_cpumask))
+	printf("  Creating one thread for each CPU:\n");
+	for (i = 0; i < CPU_SETSIZE; i++) {
+		if (!CPU_ISSET(i, &cpu_mask))
 			continue;
 
-		int rc = pthread_create(
-			&tid,
+		status = pthread_create(
+			&pthread_id[nthr],
 			NULL,
 			&hello_world_thread,
-			(void*) (uintptr_t) i
+			(void *)(uintptr_t)nthr+1
 		);
 
-		printf( "    thread %d: rc=%d\n", i, rc );
+		if (status) {
+			printf("    ERROR: pthread_create() status=%d\n", status);
+			continue;
+		} else {
+			printf("    created thread %d\n", nthr+1);
+			++nthr;
+		}
+	}
+
+	printf("  Waiting for threads to exit:\n");
+	for (i = 0; i < nthr; i++) {
+		status = pthread_join(pthread_id[i], &value_ptr);
+		if (status) {
+			printf("    ERROR: pthread_join() status=%d\n", status);
+			continue;
+		} else {
+			printf("    thread %d exited\n", (int)(uintptr_t)value_ptr);
+		}
 	}
 
 	printf("TEST END: Task Management\n");
 	return 0;
-}
-
-/* writen() is from "UNIX Network Programming" by W. Richard Stevents */
-static ssize_t 
-writen(int fd, const void *vptr, size_t n)
-{
-	size_t nleft;
-	ssize_t nwritten;
-	const char *ptr;
-
-	ptr = vptr;
-	nleft = n;
-	while (nleft > 0) {
-		if ((nwritten = write(fd, ptr, nleft)) <= 0) {
-			if (errno == EINTR) {
-				nwritten = 0;  /* and call write() again */
-			} else {
-				perror( "write" );
-				return -1;     /* error */
-			}
-		}
-		nleft -= nwritten;
-		ptr   += nwritten;
-	}
-	return n;
 }
 
 

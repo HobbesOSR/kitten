@@ -7,6 +7,9 @@ elf_hwcap(
 	uint32_t *    hwcap
 )
 {
+	if (cpu_id == ANY_ID)
+		cpu_id = 0;
+
 	if (!cpu_isset(cpu_id, cpu_online_map))
 		return -ENOENT;
 

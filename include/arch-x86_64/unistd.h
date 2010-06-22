@@ -43,7 +43,7 @@ __SYSCALL(__NR_rt_sigaction, sys_rt_sigaction)
 #define __NR_rt_sigprocmask                     14
 __SYSCALL(__NR_rt_sigprocmask, sys_rt_sigprocmask)
 #define __NR_rt_sigreturn                       15
-__SYSCALL(__NR_rt_sigreturn, syscall_not_implemented)
+__SYSCALL(__NR_rt_sigreturn, asm_sys_rt_sigreturn)
 
 #define __NR_ioctl                              16
 __SYSCALL(__NR_ioctl, syscall_not_implemented)
@@ -141,9 +141,9 @@ __SYSCALL(__NR_execve, syscall_not_implemented)
 #define __NR_exit                               60
 __SYSCALL(__NR_exit, sys_exit)
 #define __NR_wait4                              61
-__SYSCALL(__NR_wait4, syscall_not_implemented)
+__SYSCALL(__NR_wait4, sys_wait4)
 #define __NR_kill                               62
-__SYSCALL(__NR_kill, syscall_not_implemented)
+__SYSCALL(__NR_kill, sys_kill)
 #define __NR_uname                              63
 __SYSCALL(__NR_uname, sys_uname)
 
@@ -283,7 +283,7 @@ __SYSCALL(__NR_capget, syscall_not_implemented)
 __SYSCALL(__NR_capset, syscall_not_implemented)
 
 #define __NR_rt_sigpending                     127
-__SYSCALL(__NR_rt_sigpending, syscall_not_implemented)
+__SYSCALL(__NR_rt_sigpending, sys_rt_sigpending)
 #define __NR_rt_sigtimedwait                   128
 __SYSCALL(__NR_rt_sigtimedwait, syscall_not_implemented)
 #define __NR_rt_sigqueueinfo                   129
@@ -430,7 +430,7 @@ __SYSCALL(__NR_tuxcall, syscall_not_implemented)
 __SYSCALL(__NR_security, syscall_not_implemented)
 
 #define __NR_gettid		186
-__SYSCALL(__NR_gettid, syscall_not_implemented)
+__SYSCALL(__NR_gettid, sys_gettid)
 
 #define __NR_readahead		187
 __SYSCALL(__NR_readahead, syscall_not_implemented)
@@ -521,13 +521,13 @@ __SYSCALL(__NR_clock_getres, syscall_not_implemented)
 #define __NR_clock_nanosleep	230
 __SYSCALL(__NR_clock_nanosleep, syscall_not_implemented)
 #define __NR_exit_group		231
-__SYSCALL(__NR_exit_group, syscall_not_implemented)
+__SYSCALL(__NR_exit_group, sys_exit_group)
 #define __NR_epoll_wait		232
 __SYSCALL(__NR_epoll_wait, syscall_not_implemented)
 #define __NR_epoll_ctl		233
 __SYSCALL(__NR_epoll_ctl, syscall_not_implemented)
 #define __NR_tgkill		234
-__SYSCALL(__NR_tgkill, sys_tgkill)
+__SYSCALL(__NR_tgkill, syscall_not_implemented)
 #define __NR_utimes		235
 __SYSCALL(__NR_utimes, syscall_not_implemented)
 #define __NR_vserver		236
@@ -668,37 +668,22 @@ __SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
 __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
 #define __NR_aspace_dump2console 301
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
-
-#define __NR_task_get_myid      302
-__SYSCALL(__NR_task_get_myid, sys_task_get_myid)
-#define __NR_task_create        303
+#define __NR_task_create        302
 __SYSCALL(__NR_task_create, sys_task_create)
-#define __NR_task_exit          304
-__SYSCALL(__NR_task_exit, sys_task_exit)
-#define __NR_task_get_cpu       305
-__SYSCALL(__NR_task_get_cpu, sys_task_get_cpu)
-#define __NR_task_get_cpumask   306
-__SYSCALL(__NR_task_get_cpumask, sys_task_get_cpumask)
-
-#define __NR_elf_hwcap          307
+#define __NR_elf_hwcap          303
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
-
-#define __NR_v3_start_guest	308
+#define __NR_v3_start_guest	304
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
+#define __NR_getcpu		305
+__SYSCALL(__NR_getcpu, sys_getcpu)
 
 
+#define __NR_lwk_arp            306
+#define __NR_lwk_ifconfig       307
 
-#define __NR_lwk_arp            309
-#define __NR_lwk_ifconfig       310
-
-#define __NR_task_destroy       311
-__SYSCALL(__NR_task_destroy, sys_task_destroy)
-#define __NR_task_kill          312
-__SYSCALL(__NR_task_kill, sys_task_kill)
-#define __NR_task_is_zombie     313
-__SYSCALL(__NR_task_is_zombie, sys_task_is_zombie)
 
 #ifdef CONFIG_LINUX 
+
 /* TODO: Move these registrations to the Linux compatibility layer initialization */
 __SYSCALL(__NR_lwk_arp, sys_lwk_arp)
 __SYSCALL(__NR_lwk_ifconfig, sys_lwk_ifconfig)

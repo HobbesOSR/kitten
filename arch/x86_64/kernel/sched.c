@@ -54,23 +54,9 @@ __arch_context_switch(struct task_struct *prev_p, struct task_struct *next_p)
 	write_pda(pcurrent, next_p);
 	write_pda(kernelstack, (vaddr_t)next_p + TASK_SIZE - PDA_STACKOFFSET);
 
-	/* If necessary, save and restore floating-point state */
-	if (prev_p->arch.flags & TF_USED_FPU)
-		fpu_save_state(prev_p);
-	if (next_p->arch.flags & TF_USED_FPU) {
-		clts();
-		fpu_restore_state(next_p);
-	} else {
-		/*
-		 * Set the TS flag of CR0 so that FPU/MMX/SSE instructions
-		 * will cause a "Device not available" exception. The exception
-		 * handler will then initialize the FPU state and set the
-		 * task's TF_USED_FPU flag.  From that point on, the task
-		 * should never experience another "Device not available"
-		 * exception.
-		 */
-		stts();
-	}
+	/* save and restore floating-point state */
+	fpu_save_state(prev_p);
+	fpu_restore_state(next_p);
 
 	return prev_p;
 }

@@ -18,11 +18,6 @@ sys_task_create(
 	if (copy_from_user(&_start_state, start_state, sizeof(_start_state)))
 		return -EFAULT;
 
-	if ((_start_state.task_id != ANY_ID) &&
-	    ((_start_state.task_id < UTASK_MIN_ID) ||
-	     (_start_state.task_id > UTASK_MAX_ID)))
-		return -EINVAL;
-
 	if ((_start_state.aspace_id < UASPACE_MIN_ID) ||
 	    (_start_state.aspace_id > UASPACE_MAX_ID))
 		return -EINVAL;

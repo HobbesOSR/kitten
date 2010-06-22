@@ -57,7 +57,7 @@ vgetcpu(unsigned *cpu, unsigned *node, void *tcache)
 {
 	asm volatile("syscall"
 		:
-		: "a" (__NR_task_get_cpu),"D" (cpu)
+		: "a" (__NR_getcpu),"D" (cpu)
 		: __syscall_clobber );
 	return 0;
 }

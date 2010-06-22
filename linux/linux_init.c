@@ -1,4 +1,5 @@
 #include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/radix-tree.h>
 #include <lwk/kfs.h>
 

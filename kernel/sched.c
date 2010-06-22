@@ -9,6 +9,7 @@
 #include <lwk/sched.h>
 #include <lwk/xcall.h>
 #include <lwk/timer.h>
+#include <lwk/bootstrap.h>
 
 
 /**
@@ -73,10 +74,10 @@ sched_subsys_init(void)
 			.user_id     = 0,
 			.group_id    = 0,
 			.aspace_id   = KERNEL_ASPACE_ID,
-			.entry_point = (vaddr_t) idle_task_loop,
-			.stack_ptr   = 0, /* will be set automatically */
 			.cpu_id      = cpu_id,
-			.cpumask     = user_cpumask_of_cpu(cpu_id),
+			.stack_ptr   = 0, /* will be set automatically */
+			.entry_point = (vaddr_t) idle_task_loop,
+			.use_args    = 0,
 		};
 
 		struct task_struct *idle_task = __task_create(&start_state, NULL);
@@ -150,7 +151,7 @@ repeat_lock_runq:
 	return status;
 }
 
-static void
+static struct task_struct *
 context_switch(struct task_struct *prev, struct task_struct *next)
 {
 	/* Switch to the next task's address space */
@@ -172,6 +173,8 @@ context_switch(struct task_struct *prev, struct task_struct *next)
 
 	/* Prevent compiler from optimizing beyond this point */
 	barrier();
+
+	return prev;
 }
 
 void
@@ -186,11 +189,15 @@ schedule(void)
 	local_irq_disable();
 	spin_lock(&runq->lock);
 
+	/* Fix race where signal arrived before caller set TASK_INTERRUPTIBLE */
+	if ((prev->state == TASK_INTERRUPTIBLE) && signal_pending(prev))
+		set_task_state(prev, TASK_RUNNING);
+
 	/* Move the currently running task to the end of the run queue */
 	if (!list_empty(&prev->sched_link)) {
 		list_del(&prev->sched_link);
 		/* If the task has exited, don't re-link it */
-		if (prev->state != TASK_EXIT_ZOMBIE)
+		if (prev->state != TASK_EXITED)
 			list_add_tail(&prev->sched_link, &runq->task_list);
 	}
 
@@ -206,8 +213,12 @@ schedule(void)
 	if (next == NULL)
 		next = runq->idle_task;
 
+	/* A reschedule has occurred, so clear prev's TF_NEED_RESCHED_BIT */
+	clear_bit(TF_NEED_RESCHED_BIT, &prev->arch.flags);
+
 	if (prev != next) {
-		context_switch(prev, next);
+		prev = context_switch(prev, next);
+
 		/* "next" is now running. Since it may have changed CPUs
 		 * while it was sleeping, we need to refresh local variables.
 		 * Also note that the 'next' variable is stale... it is
@@ -216,6 +227,10 @@ schedule(void)
 		 * 'current' should be used to refer to the currently
 		 * executing task. */
 		runq = &per_cpu(run_queue, this_cpu);
+
+		/* Free memory used by prev if it has exited */
+		if (prev->state == TASK_EXITED)
+			kmem_free_pages(prev, TASK_ORDER);
 	}
 
 	spin_unlock(&runq->lock);
@@ -228,13 +243,19 @@ schedule(void)
 }
 
 void
-schedule_new_task_tail(void)
+schedule_new_task_tail(struct task_struct *prev, struct task_struct *next)
 {
 	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
+
+	/* Free memory used by prev if it has exited.
+	 * Have to be careful not to free the bootstrap task_struct,
+	 * since it is not part of the kmem allocator heap. */
+	if ((prev->state == TASK_EXITED) && (prev != &bootstrap_task))
+		kmem_free_pages(prev, TASK_ORDER);
+
+	spin_unlock(&runq->lock);
 	BUG_ON(irqs_enabled());
-	spin_unlock(&runq->lock);  /* keep IRQs disabled, arch code will
-	                            * re-enable IRQs as part of starting
-	                            * the new task */
+	/* arch code will re-enable IRQs as part of starting the new task */
 }
 
 ktime_t
