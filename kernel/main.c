@@ -162,11 +162,6 @@ start_kernel()
 	local_irq_enable();
 
 	/*
-	 * Bring up any network devices.
-	 */
-	netdev_init();
-
-	/*
 	 * And any modules that need to be started.
 	 */
 	driver_init_by_name( "module", "*" );

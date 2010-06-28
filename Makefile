@@ -438,7 +438,7 @@ scripts_basic: include/lwk/autoconf.h
 
 # Objects we will link into vmlwk / subdirs we need to visit
 drivers-y	:= drivers/
-net-y		:= net/
+#net-y		:= net/
 libs-y		:= lib/
 linux-y		:= linux/
 #core-y		:= usr/

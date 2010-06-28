@@ -36,23 +36,4 @@ config RCAL0_CONSOLE
 	depends on CRAY_XT
 	default CRAY_XT
 
-config SEASTAR
-	bool "Cray XT3 Seastar network"
-	depends on CRAY_XT && NETWORK
-	default CRAY_XT
-
-config NE2K
-	bool "NE2K Device Driver (rtl8139)"
-	depends on NETWORK && LWIP_ARP
-	default PC
-
-config VMNET
-	bool "VM Network Driver"
-	depends on NETWORK && LWIP_ARP
-	default PC
-	help
-	  Paravirtualized network device driver for use by guest
-	  virtual machines.
-	  If the kernel will be run under Palacios, say yes.
-
 endmenu
