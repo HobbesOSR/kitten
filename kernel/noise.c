@@ -26,13 +26,17 @@ measure_noise(int runtime, uint64_t eps)
     const uint64_t MHZ = cpu_info[this_cpu].arch.tsc_khz * 1000;
 
     if (runtime <= 0) runtime = 30;
-    if (eps == 0) eps = 1000;
+    if (eps == 0) eps = 100;
 
     printk( KERN_NOTICE
 	    "CPU %d: noise measurement runtime=%d eps=%llu\n",
 	    this_cpu, runtime, eps );
 
+    printk( KERN_NOTICE
+	    "CPU %d: disabling all local IRQs for noise measurement\n",
+	    this_cpu );
     disable_APIC_timer();
+    local_irq_disable();
 
     printk( KERN_NOTICE
 	    "CPU %d: beginning noise measurement.\n", this_cpu);
@@ -65,7 +69,11 @@ measure_noise(int runtime, uint64_t eps)
 	    "CPU %d: noise measurement got %d samples over %llu cycles\n", 
 	    this_cpu, sample, now - epoch );
 
+    local_irq_enable();
     enable_APIC_timer();
+    printk( KERN_NOTICE
+	    "CPU %d: reenabled local IRQs after noise measurement\n",
+	    this_cpu );
 
     printk(KERN_NOTICE "CPU\tTime\tDelta\n");
     for( i=0 ; i<sample ; i++ ) {

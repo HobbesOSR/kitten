@@ -64,6 +64,7 @@ config DEBUG_INFO
 
 config DEBUG_HW_NOISE
         bool "Measure noise in the underlying hardware/vmm at boot time"
+	depends on DEBUG_KERNEL
         default "n"
         help
            Measures interruption of the CPU by the underlying
