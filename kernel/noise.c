@@ -32,7 +32,7 @@ measure_noise(int runtime, uint64_t eps)
 	    "CPU %d: noise measurement runtime=%d eps=%llu\n",
 	    this_cpu, runtime, eps );
 
-    disable_timer_irq();
+    disable_APIC_timer();
 
     printk( KERN_NOTICE
 	    "CPU %d: beginning noise measurement.\n", this_cpu);
@@ -65,7 +65,7 @@ measure_noise(int runtime, uint64_t eps)
 	    "CPU %d: noise measurement got %d samples over %llu cycles\n", 
 	    this_cpu, sample, now - epoch );
 
-    enable_timer_irq();
+    enable_APIC_timer();
 
     printk(KERN_NOTICE "CPU\tTime\tDelta\n");
     for( i=0 ; i<sample ; i++ ) {
