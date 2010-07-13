@@ -232,7 +232,7 @@ sigsend(id_t aspace_id, id_t task_id, int signum, struct siginfo *siginfo)
 	sigq = sigqueue_alloc();
 
 	// Real-time signals abort if the siginfo can't be queued
-	if (signum >= SIGRTMIN) {
+	if (!sigq && signum >= SIGRTMIN) {
 		status = -EAGAIN;
 		goto out;
 	}
