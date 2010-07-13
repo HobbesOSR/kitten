@@ -315,3 +315,17 @@ setup_arch(void)
 	lapic_set_timer_freq(sched_hz);
 }
 
+void disable_APIC_timer(void)
+{
+      printk( KERN_NOTICE
+              "CPU %d: disabling APIC timer.\n", this_cpu);
+      lapic_stop_timer();
+}
+
+
+void enable_APIC_timer(void)
+{
+      lapic_set_timer_freq(sched_hz);
+      printk( KERN_NOTICE
+              "CPU %d: enabled APIC timer.\n", this_cpu);
+}

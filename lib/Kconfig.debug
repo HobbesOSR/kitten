@@ -62,6 +62,20 @@ config DEBUG_INFO
 
 	  If unsure, say N.
 
+config DEBUG_HW_NOISE
+        bool "Measure noise in the underlying hardware/vmm at boot time"
+        default "n"
+        help
+           Measures interruption of the CPU by the underlying
+           hardware/bios/virtual machine monitor at boot just after
+           initializing core kitten functionality but prior to starting the
+           scheduler. The LAPIC timer is disabled during this measurement.
+           Has no impact on system performance after final boot. 
+	   Say Y here if you need to diagnose or understand performance
+	   quirks of the underlying hardware or VMM.
+
+	   If unsure, say N.
+
 config KGDB
         bool "KGDB: kernel debugging with remote gdb"
         select FRAME_POINTER

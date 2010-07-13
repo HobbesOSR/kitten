@@ -176,6 +176,11 @@ start_kernel()
 	 */
 	linux_init();
 
+#ifdef CONFIG_DEBUG_HW_NOISE
+	/* Measure noise/interference in the underlying hardware/VMM */
+	measure_noise(0, 0);
+#endif
+
 	/*
 	 * Start up user-space...
 	 */
