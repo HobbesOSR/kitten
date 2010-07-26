@@ -28,22 +28,6 @@ void kill_fasync(struct fasync_struct **fp, int sig, int band)
 	}
 }
 
-/* file_table.c */
-#include <linux/file.h>
-
-struct file *alloc_file(struct vfsmount *mnt, struct dentry *dentry,
-		fmode_t mode, const struct file_operations *fop)
-{
-	struct file *file;
-
-	file = get_empty_filp();
-	if (!file)
-		return NULL;
-
-	kfs_init_file(file, mode, fop);
-	return file;
-}
-
 /* fs/libfs.c */
 int get_sb_pseudo(struct file_system_type *fs_type, char *name,
 	const struct super_operations *ops, unsigned long magic,
