@@ -214,3 +214,11 @@ htable_next(
 	// We ran off the end.  Flag that we're done.
 	return NULL;
 }
+
+int
+htable_empty(
+	struct htable* ht	
+)
+{
+    return ( ht->num_entries == 0 );
+}
