@@ -4,6 +4,7 @@
 #include <lwk/aspace.h>
 #include <lwk/sched.h>
 #include <arch/uaccess.h>
+#include <lwk/fdTable.h>
 
 #define CLONE_VM		0x00000100	/* set if VM shared between processes */
 #define CLONE_FS		0x00000200	/* set if fs info shared between processes */
@@ -54,7 +55,7 @@ sys_clone(
 		.user_id	= current->uid,
 		.group_id	= current->gid,
 		.aspace_id	= current->aspace->id,
-		.cpu_id		= ANY_ID,
+		.cpu_id		= current->cpu_id, //ANY_ID,
 		.stack_ptr	= new_stack_ptr,
 		.entry_point	= USE_PARENT_IP,
 		.use_args	= 0,
@@ -83,6 +84,9 @@ sys_clone(
 		put_user(tid, parent_tid_ptr);
 	if ((flags & CLONE_CHILD_SETTID))
 		put_user(tid, child_tid_ptr);
+
+	fdTableFree( tsk->fdTable );
+	tsk->fdTable = fdTableClone( current->fdTable );
 
 	/* Add the new task to the target CPU's run queue */
 	sched_add_task(tsk);
