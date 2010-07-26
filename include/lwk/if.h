@@ -5,6 +5,7 @@
 #include <lwk/netdevice.h>
 
 #define IFNAMSIZ 16
+#define IFF_LOOPBACK    0x8
 
 struct lwk_ifreq {
         char    ifr_name[IFNAMSIZ];      /* if name, e.g. "en0" */
