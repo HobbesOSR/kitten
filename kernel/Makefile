@@ -30,6 +30,7 @@ obj-y := \
 	task.o \
 	kthread.o \
 	signal.o \
+	fdTable.o \
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
 obj-y += mm/
