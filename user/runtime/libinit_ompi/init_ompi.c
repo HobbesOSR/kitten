@@ -22,6 +22,7 @@ static char* mca_btl_openib_hca_params_ini =
 static char* openmpi_mca_params_conf =
 "orte_debug = 0\n"
 "btl_base_debug = 0\n"
+"btl = self,openib\n"
 ;
 
 static void foo( char* filename, char* data )
@@ -29,10 +30,10 @@ static void foo( char* filename, char* data )
         int ret;
         printf("creating %s\n",filename);
 
-	printf("%s\n %s", filename, data);
+	//printf("%s\n %s", filename, data);
 
         int fd;
-        if ( ( fd = open(filename, O_RDWR ) ) == -1 ) {
+        if ( ( fd = open(filename, O_CREAT|O_RDWR ) ) == -1 ) {
                 printf("open %s failed %s\n",filename,strerror(ret));
                 while(1);
         }
@@ -47,6 +48,17 @@ static void foo( char* filename, char* data )
 
 static __attribute__ ((constructor (65535))) void init(void)
 {
+
+    if ( mkdir("/etc",0777) ) {
+        printf("mkdir( `/etc`, 0777) failed\n");
+                while(1);
+    }
+
+    if ( mkdir("/etc/opal",0777) ) {
+        printf("mkdir( `/etc/opal`, 0777) failed\n");
+        while(1);
+    }
+
 	foo( "/etc/opal/mca-btl-openib-hca-params.ini",
 		mca_btl_openib_hca_params_ini );
 
