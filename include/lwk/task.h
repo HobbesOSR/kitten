@@ -42,8 +42,7 @@ task_create(
 
 extern int
 task_destroy(
-	id_t			task_id,
-	int *			exit_status
+	id_t			task_id
 );
 
 // End core task management API
@@ -84,10 +83,7 @@ typedef unsigned int taskstate_t;
 #define TASK_NORMAL		(TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)
 #define TASK_ALL		(TASK_NORMAL)
 
-
-// Maximum files opened at one time
-#define MAX_FILES		16
-
+struct fdTable;
 
 // Task structure (aka Process Control Block).
 // There is one of these for each OS-managed thread of execution in the
@@ -123,7 +119,7 @@ struct task_struct {
 	int			exit_status;	// Reason the task exited
 
 	struct arch_task	arch;		// arch specific task info
-	struct file *	        files[ MAX_FILES ];
+	struct fdTable*		fdTable;
 
 	// Stuff needed for the Linux compatibility layer
 	char *			comm;		// The task's name
