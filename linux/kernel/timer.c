@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/timer.h>
 #include <linux/smp.h>
+#include <lwk/percpu.h>
 
 void
 init_timer(
@@ -29,7 +30,7 @@ __mod_timer(
 
 	BUG_ON(!timer->function);
 
-	not_expired = timer_del(timer);
+	not_expired = del_timer(timer);
 
 	timer->expires = expires;
 
@@ -47,6 +48,9 @@ mod_timer(
 	unsigned long			expires
 )
 {
+	f (timer_pending(timer) && timer->expires == expires)
+		return 1;
+
 	return __mod_timer(timer, expires);
 }
 
@@ -55,7 +59,13 @@ del_timer(
         struct timer_list *             timer
 )
 {
-        return timer_del(timer);
+	int ret = 0;
+	if ( timer_pending(timer) ) {
+		if ( ( ret = timer_del(timer) ) ) {
+			list_head_init(&timer->link);
+		}
+	}
+	return ret;
 }
 
 int
