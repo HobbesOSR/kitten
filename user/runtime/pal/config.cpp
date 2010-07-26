@@ -16,10 +16,8 @@
 Config::Config( int argc, char* argv[]) :
     m_pctPid( 1 ),
     m_jobId( 1000 ),
-    m_heapLen( 1024L*1024L*1024L * 4L ),
-//    m_heapLen( 1024L*1024L*512*2 ),
-    //m_heapLen( 1024L*1024L*16 ),
-    m_stackLen( 1024*1024 ),
+    m_heapLen( 1024L*1024L*128 ),
+    m_stackLen( 1024*1024*16 ),
     m_fanout( 4 ),
     m_ranksPer( 1 )
 {
@@ -30,6 +28,7 @@ Config::Config( int argc, char* argv[]) :
             {"nl",1,0,'n'},    // nid list
             {"cpus",1,0,'c'},  
             {"fanout",1,0,'f'}, 
+            {"heap",1,0,'h'}, 
             {0,0,0,0}
         };
 
@@ -40,6 +39,11 @@ Config::Config( int argc, char* argv[]) :
         }
 
         switch( c ) {
+            case 'h':
+                Debug( Config, "-nl %s\n",optarg);
+                m_heapLen = (long) atoi(optarg) * 1024L*1024L;
+                break;
+
             case 'n':
                 Debug( Config, "-nl %s\n",optarg);
                 nidList = optarg;
