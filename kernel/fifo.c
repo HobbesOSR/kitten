@@ -5,12 +5,17 @@
 #include <lwk/kfs.h>
 #include <lwk/sched.h>
 #include <arch/unistd.h>
+#include <lwk/spinlock.h>
 
 #define FIFO_SIZE               PAGE_SIZE
 
+#undef _KDBG
+#define _KDBG(fmt,args...)
+
 struct fifo_buffer {
-        unsigned char *buf;
-        unsigned int rIndex, wIndex, avail, length;
+	unsigned char *buf;
+	unsigned int rIndex, wIndex, avail, length;
+	spinlock_t	lock;
 };
 
 struct fifo_file {
@@ -28,12 +33,14 @@ struct fifo_inode_priv {
 static int buf_write( struct fifo_buffer* pbuf,
 				const char __user *ubuf, size_t size )
 {
+	spin_lock( &pbuf->lock );
 	int num = size > ( pbuf->length - pbuf->avail ) ? 
 			( pbuf->length - pbuf->avail ) : size; 
 	int i = 0;
 
 	while ( i++ < num ) {
        		if ( copy_from_user( pbuf->buf + pbuf->wIndex++, ubuf++, 1 ) ) {
+			spin_unlock( &pbuf->lock );
                		return -EFAULT;
 		}
 		if ( pbuf->wIndex == pbuf->length ) {
@@ -41,16 +48,19 @@ static int buf_write( struct fifo_buffer* pbuf,
 		} 
 	}
 	pbuf->avail += num;
+	spin_unlock( &pbuf->lock );
 	return num;
 }
 
 static int buf_read( struct fifo_buffer* pbuf, char __user *ubuf, size_t size )
 {
+	spin_lock( &pbuf->lock );
 	int num = size > pbuf->avail ? pbuf->avail : size; 
 	int i = 0;
 
 	while ( i++ < num ) {
        		if ( copy_to_user( ubuf++, pbuf->buf + pbuf->rIndex++, 1 ) ) {
+			spin_unlock( &pbuf->lock );
                		return -EFAULT;
 		}
 		if ( pbuf->rIndex == pbuf->length ) {
@@ -58,6 +68,7 @@ static int buf_read( struct fifo_buffer* pbuf, char __user *ubuf, size_t size )
 		} 
 	}
 	pbuf->avail -= num;
+	spin_unlock( &pbuf->lock );
 	return num;
 }
 
@@ -67,6 +78,7 @@ static struct fifo_buffer* alloc_fifo_buffer( int length )
 
 	if ( ! pbuf ) return NULL;
 
+	spin_lock_init(&pbuf->lock);
 	pbuf->rIndex = 0;
 	pbuf->wIndex = 0;
 	pbuf->avail = 0;
@@ -86,9 +98,7 @@ read(struct file *filep, char __user *ubuf, size_t size, loff_t* off )
 	struct fifo_buffer* pbuf = file->buffer;   
 	int num_read = 0;
 
-#if 1 
-	_KDBG("size=%ld\n",size);
-#endif
+	_KDBG("id=%d size=%ld\n",current->id,size);
 
 	while(1) {
 		int ret = buf_read( pbuf, ubuf, size );
@@ -119,9 +129,7 @@ write(struct file *filep, const char __user *ubuf, size_t size, loff_t* off )
 	struct fifo_buffer* pbuf = file->buffer;   
 	int num_wrote = 0;
 
-#if 1 
-	_KDBG("size=%ld\n",size);
-#endif
+	_KDBG("id=%d size=%ld\n",current->id, size);
 
 	while(1) {
 		int ret = buf_write( pbuf, ubuf, size );
@@ -146,31 +154,28 @@ write(struct file *filep, const char __user *ubuf, size_t size, loff_t* off )
 
 static unsigned int poll(struct file *filep, struct poll_table_struct *table)
 {
-        struct fifo_file *pfile = filep->private_data;
-        unsigned int mask = 0;
+	struct fifo_file *pfile = filep->private_data;
+	unsigned int mask = 0;
 	unsigned int key = 0;
 	if ( table ) key = table->key;
 
-
-#if 0
 	_KDBG("wait table=%p %d %d want events %#x\n",  table,
 			pfile->buffer->avail, pfile->buffer->length, key );
-#endif
-
-        poll_wait(filep, &pfile->poll_wait, table);
+	
+	poll_wait(filep, &pfile->poll_wait, table);
 
 	if ( pfile->buffer->avail )  {
-		if ( key & POLLIN  ) mask |= POLLIN; 
-		if ( key & POLLRDNORM  ) mask |= POLLRDNORM; 
+		mask |= POLLIN; 
+		mask |= POLLRDNORM; 
 	}
 
 	if ( pfile->buffer->length - pfile->buffer->avail  )  {
-		if ( key & POLLOUT ) mask |= POLLOUT; 
-		if ( key & POLLWRNORM ) mask |= POLLWRNORM; 
+		mask |= POLLOUT; 
+		mask |= POLLWRNORM; 
 	}
 
-	//_KDBG("mask=%#x\n",mask);
-        return mask;
+	_KDBG("mask=%#x\n",mask);
+	return mask;
 }
 
 #define O_RDONLY             00
@@ -241,52 +246,8 @@ int mkfifo( const char* name, mode_t mode )
 	_KDBG("\n");
 	inode = kfs_create( name, &fifo_fops, mode, priv, sizeof(*priv) );
 	if ( ! inode ) {
-	_KDBG("\n");
 		 return -ENOMEM;
 	}
 	
 	return 0;
-}
-
-int do_pipe( int fds[] )
-{
-	struct inode* inode;
-	struct fifo_inode_priv* priv = create_fifo_priv();
-
-        inode = kfs_create_inode();
-        if ( ! inode ) {
-                 return -ENOMEM;
-        }
-        inode->fops = &fifo_fops;
-
-        fds[0] = get_unused_fd();
-        if ( fds[0]  < 0 ) {
-        }
-
-        current->files[ fds[0] ] = kfs_open( inode, 0, 0 );
-        current->files[ fds[0] ]->private_data = priv->read;
-
-        fds[1] = get_unused_fd();
-        if ( fds[1]  < 0 ) {
-        }
-        current->files[ fds[1] ] = kfs_open( inode, 0 , 0 );
-        current->files[ fds[1] ]->private_data = priv->write;
-
-        return 0;
-}
-
-long sys_pipe(int __user *fildes)
-{
-        int fd[2];
-        int error;
-
-        //_KDBG("\n");
-
-        if (! ( error = do_pipe(fd) ) ) {
-                if ( copy_to_user( fildes, fd, 2 * sizeof(int) ) ) {
-                        error = -EFAULT;
-                }
-        }
-
-        return error;
 }
