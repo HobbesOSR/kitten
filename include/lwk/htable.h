@@ -130,6 +130,11 @@ htable_id_key_compare(
 	const void *		key2
 );
 
+extern int 
+htable_empty(
+    struct htable* ht
+);
+
 
 /** \name Hash Table Iterator.
  *
