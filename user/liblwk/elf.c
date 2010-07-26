@@ -229,7 +229,8 @@ elf_init_str_array(
 		while (*str && !isspace(*str))
 			++str;
 
-		*str++ = 0;
+        if (*str)
+		    *str++ = 0;
 
 		if (strlen(tmp)) {
 			if (pos == size - 1)
