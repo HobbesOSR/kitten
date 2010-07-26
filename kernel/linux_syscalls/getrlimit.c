@@ -15,6 +15,10 @@ sys_getrlimit(
 			rlimit.rlim_cur = RLIM_INFINITY;
 			rlimit.rlim_max = RLIM_INFINITY;
 			break;
+		case RLIMIT_MEMLOCK:
+			rlimit.rlim_cur = RLIM_INFINITY;
+			rlimit.rlim_max = RLIM_INFINITY;
+			break;
 		default:
 			printk("Unsupported rlimit (resource=%d).\n", resource);
 			return -EINVAL;
