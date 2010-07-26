@@ -26,7 +26,7 @@ struct workqueue_struct {
 
 static struct workqueue_struct *keventd_wq;
 
-#define NUM_WQS 10
+#define NUM_WQS 40
 static struct workqueue_struct *_wqs[NUM_WQS] = {0,};
 
 static struct workqueue_struct *
