@@ -22,7 +22,25 @@
 #include <arch/vsyscall.h>
 #include <arch/atomic.h>
 
+#include <lwk/spinlock.h>
+
+static DEFINE_SPINLOCK( _lock ); 
+
+static inline void __lock( spinlock_t *lock )
+{
+	spin_lock(lock);
+	//_KDBG("\n");
+}
+static inline void __unlock( spinlock_t *lock )
+{
+	//_KDBG("\n");
+	spin_unlock(lock);
+}
+
 #include <asm-generic/fcntl.h>
+
+//#define dbg _KDBG
+#define dbg(fmt,args...)
 
 /* in-kernel dirent struct: should match the libc dirent semantics */
 struct dirent {
@@ -54,9 +72,6 @@ kfs_compare_filename(const void *name_in_search,
 	const char * search = name_in_search;
 	const char * dir = name_in_dir;
 
-	if(0)
-		printk( "%s: Comparing '%s' to '%s'\n", __func__, search, dir );
-
 	while(1)
 	{
 		char s = *search++;
@@ -87,6 +102,8 @@ kfs_stat(struct inode *inode, uaddr_t buf)
 {
 	struct stat rv;
 
+	dbg("\n");
+
 	memset(&rv, 0x00, sizeof(struct stat));
 	rv.st_mode = inode->mode;
 	rv.st_rdev = inode->i_rdev;
@@ -108,6 +125,7 @@ kfs_default_read(struct file * dir,
 {
 	size_t offset = 0;
 	struct inode * inode;
+__lock(&_lock);
 	struct htable_iter iter = htable_iter( dir->inode->files );
 	while( (inode = htable_next( &iter )) )
 	{
@@ -128,6 +146,7 @@ kfs_default_read(struct file * dir,
 	}
 
 done:
+__unlock(&_lock);
 	return offset;
 }
 
@@ -137,6 +156,7 @@ kfs_default_write(struct file *	file,
 		  size_t        len,
 		  loff_t *      off)
 {
+	dbg("\n");
 	return -1;
 }
 
@@ -144,6 +164,7 @@ kfs_default_write(struct file *	file,
 static int
 kfs_default_close(struct file *	file)
 {
+	dbg("\n");
 	return 0;
 }
 
@@ -156,6 +177,8 @@ kfs_fill_dirent(uaddr_t buf, unsigned int count,
 	struct dirent __user *de;
 	unsigned short len = ALIGN(offsetof(struct dirent, d_name)
 				   + namelen + 2, sizeof(long));
+	dbg("name=`%s`\n",name);
+
 	if(count < len)
 		return -EINVAL;
 
@@ -180,6 +203,7 @@ int
 kfs_readdir(struct file * filp, uaddr_t buf, unsigned int count)
 {
 	struct inode *child;
+__lock(&_lock);
 	struct htable_iter iter = htable_iter( filp->inode->files );
 	int res = 0, rv = 0, i;
 
@@ -227,6 +251,7 @@ kfs_readdir(struct file * filp, uaddr_t buf, unsigned int count)
 		buf += rv;
 	}
  out:
+__unlock(&_lock);
 	if(rv < 0 && (rv != -EINVAL || res == 0))
 		return rv;
 	return res;
@@ -294,7 +319,7 @@ struct kfs_fops kfs_string_fops =
 	.close		= kfs_default_close,
 };
 
-struct file *
+static struct file *
 kfs_alloc_file(void)
 {
 	struct file *file = kmem_alloc(sizeof(struct file));
@@ -303,15 +328,7 @@ kfs_alloc_file(void)
 	return file;
 }
 
-int kfs_init_file(struct file * file,unsigned int mode,
-		const struct kfs_fops *fop)
-{
-	file->f_mode = mode;
-	file->f_op = fop;
-	return 0;
-}
-
-struct inode *
+static struct inode *
 kfs_create_inode(void)
 {
 	struct inode *inode = kmem_alloc(sizeof(struct inode));
@@ -329,13 +346,7 @@ kfs_mkdirent(struct inode *          parent,
 	     void *                  priv,
 	     size_t                  priv_len)
 {
-#if 0
-	printk( "%s: Creating '%s' (parent %s)\n",
-		__func__,
-		name,
-		parent ? parent->name : "NONE"
-	);
-#endif
+	dbg( "name='%s' (parent=`%s`)\n", name, parent ? parent->name : "NONE");
 
 	struct inode * inode = NULL;
 	int new_entry = 0;
@@ -396,21 +407,27 @@ kfs_mkdirent(struct inode *          parent,
 }
 
 
-void
+static void
 kfs_destroy(struct inode *inode)
 {
 	// Should we check ref counts?
 	/* TODO: yes, we should. but not right now. */
-	htable_destroy( inode->files );
+	dbg("\n");
+#if 0
+	if ( inode->files )
+		htable_destroy( inode->files );
 	kmem_free( inode );
+#endif
 }
 
 
-struct inode *
+static struct inode *
 kfs_lookup(struct inode *       root,
 	   const char *		dirname,
 	   unsigned		create_mode)
 {
+	dbg("root=%p dirname=`%s`\n",root,dirname);
+
 	// Special case -- use the root if root is null
 	if( !root )
 		root = kfs_root;
@@ -488,6 +505,9 @@ kfs_create(const char *            full_filename,
 {
 	struct inode *dir;
 	const char *filename = strrchr( full_filename, '/' );
+
+	dbg("name=`%s`\n",full_filename);
+
 	if( !filename )
 	{
 		printk( "%s: Non-absolute path name! '%s'\n",
@@ -506,10 +526,11 @@ kfs_create(const char *            full_filename,
 	return kfs_mkdirent(dir, filename, fops, mode, priv, priv_len);
 }
 
-struct inode *
+static struct inode *
 kfs_mkdir(char *   name,
 	  unsigned mode)
 {
+	dbg("name=`%s`\n",name);
 	return kfs_create(name,
 			  &kfs_default_fops,
 			  (mode & ~S_IFMT) | S_IFDIR,
@@ -517,46 +538,7 @@ kfs_mkdir(char *   name,
 			  0);
 }
 
-int
-get_unused_fd(void)
-{
-	int fd;
-	for( fd=0 ; fd<MAX_FILES ; fd++ )
-	{
-		if( !current->files[fd] )
-			break;
-	}
-
-	if( fd == MAX_FILES )
-		return -EMFILE;
-	return fd;
-}
-
-void
-put_unused_fd(unsigned int fd)
-{
-	current->files[fd] = NULL;
-}
-
-struct file *
-fget(unsigned int fd)
-{
-	return current->files[fd];
-}
-
-void
-fput(struct file *file)
-{
-	/* sync an release everything tied to the file */
-}
-
-void
-fd_install(unsigned int fd, struct file *file)
-{
-	current->files[fd] = file;
-}
-
-struct file *
+static struct file *
 kfs_open(struct inode *inode, int flags, mode_t mode)
 {
 	struct file *file = kfs_alloc_file();
@@ -564,31 +546,36 @@ kfs_open(struct inode *inode, int flags, mode_t mode)
 		return NULL;
 
 	file->f_flags = flags;
-	file->f_mode = mode;
 
-	kfs_init_file(file, mode, inode->fops);
+	file->f_mode = mode;
+	file->f_op = inode->fops;
 	file->inode = inode;
+	atomic_set(&file->f_count,1);
 	atomic_inc(&inode->refs);
 
 	return file;
 }
 
-#if 0
-static void
+static char* 
 get_full_path(struct inode *inode, char *buf)
 {
-  if(inode->parent)
-    get_full_path(inode->parent, buf);
-  strcat(buf, inode->name);
-  strcat(buf, "/");
+	if ( ! inode ) return buf;
+	if( inode->parent )
+		get_full_path(inode->parent, buf);
+
+	if ( inode->parent )
+		strcat(buf, inode->name);
+	
+	strcat(buf, "/");
+	return buf;
 }
-#endif
 
 struct inode *
 kfs_link(struct inode *target, struct inode *parent, const char *name)
 {
 	struct inode *link;
 
+	dbg("name=`%s`\n",name);
 #if 0
 	char p1[2048], p2[2048];
 
@@ -623,21 +610,30 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 	return link;
 }
 
-void
+static void
 kfs_close(struct file *file)
 {
+	char buff[300]; memset(buff,0,300);
+#if 0
+	dbg("%p\n",file);
+        dbg("name=`%s`\n", file->inode ? 
+
+				get_full_path(file->inode,buff) : "");
+#endif
 	if (file->inode)
 		atomic_dec(&file->inode->refs);
+
 	kmem_free(file);
 }
 
-int
+static int
 kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
 {
 	struct inode * inode = kfs_lookup( kfs_root, pathname, 0 );
 	if( !inode )
 		return -ENOENT;
 
+	dbg("name=`%s`\n",pathname);
 	struct file *file = kfs_open(inode, flags, mode);
 	if(NULL == file)
 		return -ENOMEM;
@@ -652,6 +648,25 @@ kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
 
 	return 0;
 }
+
+void kfs_init_stdio( struct fdTable* tbl )
+{
+        /* TODO: should really do a kfs_open() once for each of the
+           std fds ... and use appropriate flags and mode for each */
+
+	dbg("\n");
+        struct file * console;
+        if(kfs_open_path("/dev/console", 0, 0, &console ))
+                panic( "Unable to open /dev/console?" );
+        tbl->files[ 0 ] = console;
+        if(kfs_open_path("/dev/console", 0, 0, &console ))
+                panic( "Unable to open /dev/console?" );
+        tbl->files[ 1 ] = console;
+        if(kfs_open_path("/dev/console", 0, 0, &console ))
+                panic( "Unable to open /dev/console?" );
+        tbl->files[ 2 ] = console;
+}
+
 
 /** Open system call
  *
@@ -669,20 +684,31 @@ sys_open(uaddr_t u_pathname,
 			       sizeof(pathname) ) < 0 )
 		return -EFAULT;
 
-	if(1)
-		printk( "%s: Opening '%s' flags %x mode %x\n",
-			__func__,
-			pathname,
-			flags,
-			mode);
+	dbg( "name='%s' flags %x mode %x\n", pathname, flags, mode);
+	//_KDBG( "name='%s' flags %x mode %x\n", pathname, flags, mode);
+
+	// FIX ME
+__lock(&_lock);
+	if ( ! kfs_lookup( kfs_root, pathname, 0 ) && ( flags & O_CREAT ) )  {
+		extern struct kfs_fops in_mem_fops;
+		if ( kfs_create( pathname, &in_mem_fops, 0777, 0, 0 ) 
+							== NULL ) {
+			fd = -EFAULT;
+			goto out;
+       		}
+    	}
 
 	if((fd = kfs_open_path(pathname, flags, mode, &file)) < 0) {
-		printk("sys_open failed : %s (%d)\n",pathname,fd);
-		return fd;
+		//printk("sys_open failed : %s (%d)\n",pathname,fd);
+		goto out;
 	}
-	fd = get_unused_fd();
-	current->files[fd] = file;
+	fd = fdTableGetUnused( current->fdTable );
+	fdTableInstallFd( current->fdTable, fd, file );
 
+        dbg("name=`%s` fd=%d \n",pathname,fd );
+        //__KDBG("name=`%s` fd=%d \n",pathname,fd );
+out:
+__unlock(&_lock);
 	return fd;
 }
 
@@ -691,18 +717,59 @@ sys_write(int     fd,
 	  uaddr_t buf,
 	  size_t  len)
 {
+	ssize_t ret = -EBADF;
 	struct file * const file = get_current_file( fd );
-	if( !file )
-		return -EBADF;
+	if( !file ) 
+		goto out;
 
-	if( file->f_op->write )
-		return file->f_op->write( file,
+	if( file->f_op->write ) {
+		ret = file->f_op->write( file,
 						 (const char __user *)buf,
 						 len , (loff_t *) NULL );
+	} else {
 
-	printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
+		printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
 		__func__, fd, file->inode->name);
-	return -EBADF;
+	}
+
+out:
+	return ret;
+}
+
+
+struct iovec {
+	void* iov_base;
+	size_t iov_len;
+};	
+
+static ssize_t
+sys_writev(int     fd,
+	  const struct iovec* u_iovec,
+	  int  count)
+{
+	int ret = -EBADF;
+	struct file * const file = get_current_file( fd );
+	if( !file )
+		goto out;
+
+	struct iovec* iovec = kmem_alloc( sizeof(struct iovec) * count ); 
+	if ( ! iovec )  {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	if (copy_from_user(iovec, u_iovec, sizeof(struct iovec) * count)) {
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if( file->f_op->writev )
+		ret = file->f_op->writev( file, iovec, count, NULL );
+	else 
+		printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
+				__func__, fd, file->inode->name);
+out:
+	return ret;
 }
 
 static ssize_t
@@ -710,56 +777,69 @@ sys_read(int     fd,
 	 uaddr_t buf,
 	 size_t  len)
 {
+	ssize_t ret = -EBADF;
 	struct file * const file = get_current_file( fd );
 	if( !file )
-		return -EBADF;
+		goto out;
 
 	if( file->f_op->read )
-		return file->f_op->read( file, (char *)buf, len, NULL );
-
-	printk( KERN_WARNING "%s: fd %d has no read operation\n",
-		__func__, fd );
-	return -EBADF;
+		ret = file->f_op->read( file, (char *)buf, len, NULL );
+	else 
+		printk( KERN_WARNING "%s: fd %d has no read operation\n",
+				__func__, fd );
+out:
+	return ret;
 }
-
 
 static ssize_t
 sys_close(int fd)
 {
-	int rv = 0;
+	int ret = 0;
 	struct file * const file = get_current_file( fd );
 
-	if( !file )
-		return -EBADF;
-
-	if( file->f_op->close )
-		rv = file->f_op->close( file );
-
-	if(rv == 0) {
-		kfs_close(file);
-		current->files[ fd ] = 0;
+	if( !file ) {
+		ret = -EBADF;
+		goto out;
 	}
 
-	return rv;
+	char buff[300]; memset(buff,0,300);
+        dbg("name=`%s` fd=%d\n", file->inode ? 
+        //_KDBG("name=`%s` fd=%d\n", file->inode ? 
+				get_full_path(file->inode,buff) : "", fd);
+
+	if( file->f_op && file->f_op->close )
+		ret = file->f_op->close( file );
+
+	if(ret == 0) {
+		kfs_close(file);
+		fdTableInstallFd( current->fdTable, fd, 0 );
+	}
+
+out:
+	return ret;
 }
 
 static int
 sys_dup2(int oldfd,
 	 int newfd)
 {
+	int ret = -EBADF;
 	struct file * const oldfile = get_current_file( oldfd );
 
-	if( !oldfile )
-		return -EBADF;
+	dbg("oldfd=%d newfd=%d\n",oldfd,newfd);
+	if( !oldfile ) 
+		goto out;
 
 	if( newfd < 0 || newfd > MAX_FILES )
-		return -EBADF;
+		goto out;
 
-	sys_close( newfd );
+//	sys_close( newfd );
+	
+//	atomic_inc( &oldfile->f_count );
 
-	current->files[ newfd ] = oldfile;
-
-	return 0;
+	fdTableInstallFd( current->fdTable, newfd, oldfile );
+out:
+	return ret;
 }
 
 
@@ -768,63 +848,77 @@ sys_ioctl(int fd,
 	  int request,
 	  uaddr_t arg)
 {
+	int ret = -EBADF;
 	struct file * const file = get_current_file( fd );
 	if( !file )
-		return -EBADF;
+		goto out;
 
 	if( file->f_op->unlocked_ioctl )
-		return file->f_op->unlocked_ioctl( file, request, arg );
+		ret = file->f_op->unlocked_ioctl( file, request, arg );
 
-	if( file->f_op->ioctl )
-		return file->f_op->ioctl( file, request, arg );
+	else if( file->f_op->ioctl )
+		ret = file->f_op->ioctl( file, request, arg );
 
-	printk("sys_ioctl %s : no ioctl!",file->inode->name);
-	return -ENOTTY;
+	else {
+		printk("sys_ioctl %s : no ioctl!",file->inode->name);
+		ret = -ENOTTY;
+	}
+out:
+	return ret;
 }
 
 static int
 sys_fcntl(int fd, int cmd, long arg)
 {
+	int ret = -EBADF;
 	struct file * const file = get_current_file( fd );
 
-	printk( "%s: %d %x %lx\n", __func__, fd, cmd, arg );
+	dbg( "%d %x %lx\n", fd, cmd, arg );
 
 	if(NULL == file)
-		return -EBADF;
+		goto out;
 
 	switch(cmd) {
 	case F_GETFL:
-		return file->f_flags;
+		ret = file->f_flags;
+		break;
 	case F_SETFL:
 		/* TODO: implement; currently we need at least O_NONBLOCK for
 		   IB verbs interface */
 		file->f_flags = arg;
-		return 0;
+		ret = 0;
+		break;
 	case F_GETFD:
 	case F_SETFD:
 		/* TODO: implement; we do need a place for per-fd flags first,
 		   though */
-		return 0;
+		ret = 0;
+		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
 
+out:
+	return ret;
 	/* not reached */
 }
 
 static off_t
 sys_lseek( int fd, off_t offset, int whence )
 {
+	off_t ret = -EBADF;
 	struct file * const file = get_current_file( fd );
 	if( !file )
-		return -EBADF;
+		goto out;
 
 	if( file->f_op->lseek )
-		return file->f_op->lseek( file, offset, whence );
-
-	printk( KERN_WARNING "%s: fd %d has no lseek operation\n",
-		__func__, fd );
-	return -EBADF;
+		ret = file->f_op->lseek( file, offset, whence );
+	else
+		printk( KERN_WARNING "%s: fd %d has no lseek operation\n",
+			__func__, fd );
+out:
+	return ret;
 }
 
 static int
@@ -836,33 +930,126 @@ sys_mkdir(uaddr_t u_pathname,
                                sizeof(pathname) ) < 0 )
                 return -EFAULT;
 
-        if(1)
-                printk( "%s: '%s' mode %x\n",
-                        __func__,
-                        pathname,
-                        mode);
+	dbg( "name=`%s' mode %x\n", pathname, mode);
+	//_KDBG( "name=`%s' mode %x\n", pathname, mode);
 
+__lock(&_lock);
         struct inode* i = kfs_mkdir( pathname, mode );
+__unlock(&_lock);
+
         if ( ! i ) return ENOENT;
         return 0;
+}
+
+static int
+sys_unlink(uaddr_t u_pathname)
+{
+// Note that this function is hack 
+	char pathname[ MAX_PATHLEN ];
+	if( strncpy_from_user( pathname, (void*) u_pathname,
+                               sizeof(pathname) ) < 0 )
+	return -EFAULT;
+
+	dbg( "name='%s'\n", pathname);
+
+	int ret = 0;
+__lock(&_lock);
+	struct inode * inode = kfs_lookup( kfs_root, pathname, 0 );
+	if( !inode ) {
+		ret = ENOENT;
+		goto out;
+	}
+
+	if(S_ISDIR(inode->mode)) {
+		ret = -EISDIR;
+		goto out;
+	}
+
+	htable_del( inode->parent->files, inode );
+
+	kfs_destroy( inode );
+
+out:
+__unlock(&_lock);
+	return ret;
+}
+
+static int
+sys_rmdir(uaddr_t u_pathname)
+{
+// Note that this function is hack 
+	char pathname[ MAX_PATHLEN ];
+	if( strncpy_from_user( pathname, (void*) u_pathname,
+                               sizeof(pathname) ) < 0 )
+		return -EFAULT;
+
+	dbg( "name='%s' \n", pathname);
+
+	int ret = 0;
+__lock(&_lock);
+	struct inode * inode = kfs_lookup( kfs_root, pathname, 0 );
+	if( !inode ) {
+		ret = ENOENT;
+		goto out;
+	}
+
+	if(! S_ISDIR(inode->mode)) {
+		ret = -ENOTDIR;
+		goto out;
+	}
+
+	if ( ! htable_empty( inode->files ) ) {
+		ret = -ENOTEMPTY;
+		goto out;
+	}
+
+	htable_del( inode->parent->files, inode );
+
+	kfs_destroy( inode );
+
+out:
+__unlock(&_lock);
+	return ret;
+}
+
+static int
+sys_mknod(uaddr_t u_pathname, mode_t  mode, dev_t dev)
+{
+	char pathname[ MAX_PATHLEN ];
+	if( strncpy_from_user( pathname, (void*) u_pathname,
+                               sizeof(pathname) ) < 0 )
+		return -EFAULT;
+
+	dbg( "name='%s' \n", pathname);
+
+	extern int mkfifo( const char*, mode_t );
+
+__lock(&_lock);
+	int ret = mkfifo( pathname, 0777 );
+__unlock(&_lock);
+
+	return ret;
 }
 
 
 static int
 sys_getdents(unsigned int fd, uaddr_t dirp, unsigned int count)
 {
+	int ret = -EBADF;
 	struct file * const file = get_current_file( fd );
-	int res;
 
 	if(NULL == file)
-		return -EBADF;
+		goto out;
 
-	if(!S_ISDIR(file->inode->mode))
-		return -ENOTDIR;
+	if(!S_ISDIR(file->inode->mode)) {
+		ret = -ENOTDIR;
+		goto out;
+	}
 
-	res = file->f_op->readdir(file, dirp, count);
+	ret = file->f_op->readdir(file, dirp, count);
+out:
 
-	return res;
+	return ret;
 }
 
 static pid_t
@@ -875,26 +1062,35 @@ sys_fork( void )
 static int
 sys_stat( const char *path, uaddr_t buf)
 {
+	int ret = -EBADF;
+__lock(&_lock);
 	struct inode * const inode = kfs_lookup(NULL, path, 0);
 	if( !inode )
-		return -EBADF;
+		goto out;
 
-	return kfs_stat(inode, buf);
+	ret = kfs_stat(inode, buf);
+out:
+__unlock(&_lock);
+	return ret; 
 }
 
 static int
 sys_fstat(int fd, uaddr_t buf)
 {
+	int ret = -EBADF;
 	struct file * const file = get_current_file( fd );
 	if( !file )
-		return -EBADF;
+		goto out;
 
+__lock(&_lock);
 	if(file->inode)
-		return kfs_stat(file->inode, buf);
-
-	printk(KERN_WARNING
-	       "Attempting fstat() on fd %d with no backing inode.\n", fd);
-	return 0;
+		ret = kfs_stat(file->inode, buf);
+	else 
+		printk(KERN_WARNING
+		"Attempting fstat() on fd %d with no backing inode.\n", fd);
+out:
+__unlock(&_lock);
+	return ret;
 }
 
 #ifdef CONFIG_LINUX
@@ -1024,7 +1220,7 @@ void poll_initwait(struct poll_wqueues *pwq)
 static void free_poll_entry(struct poll_table_entry *entry)
 {
 	remove_wait_queue(entry->wait_address, &entry->wait);
-	fput(entry->filp);
+	//fput(entry->filp);
 }
 
 void poll_freewait(struct poll_wqueues *pwq)
@@ -1277,6 +1473,7 @@ kfs_init( void )
 	syscall_register( __NR_open, (syscall_ptr_t) sys_open );
 	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
+	syscall_register( __NR_writev, (syscall_ptr_t) sys_writev );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
 	syscall_register( __NR_lseek, (syscall_ptr_t) sys_lseek );
 	syscall_register( __NR_dup2, (syscall_ptr_t) sys_dup2 );
@@ -1286,6 +1483,9 @@ kfs_init( void )
 	syscall_register( __NR_stat, (syscall_ptr_t) sys_stat );
 	syscall_register( __NR_fstat, (syscall_ptr_t) sys_fstat );
 	syscall_register( __NR_mkdir, (syscall_ptr_t) sys_mkdir );
+	syscall_register( __NR_mknod, (syscall_ptr_t) sys_mknod );
+	syscall_register( __NR_unlink, (syscall_ptr_t) sys_unlink);
+	syscall_register( __NR_rmdir, (syscall_ptr_t) sys_rmdir);
 #ifdef CONFIG_LINUX
 	syscall_register( __NR_poll, (syscall_ptr_t) sys_poll );
 #endif /* CONFIG_LINUX */
