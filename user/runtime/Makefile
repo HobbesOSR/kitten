@@ -5,3 +5,5 @@ all:
 	cd liblwkOrte; make; cd .. 
 	cd libwait4net; make; cd .. 
 	cd pct; make; cd .. 
+	cd pal; make; cd .. 
+	cd app; make; cd .. 
