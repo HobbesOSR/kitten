@@ -7,6 +7,7 @@
 #include <lwk/list.h>
 #include <lwk/task.h>
 #include <lwk/mutex.h>
+#include <lwk/fdTable.h>
 
 /* fcntl.h */
 #ifndef O_NONBLOCK
@@ -58,6 +59,7 @@ struct inode
 };
 struct vm_area_struct;
 
+struct file;
 struct kfs_fops
 {
 	struct inode * (*lookup)(
@@ -73,6 +75,8 @@ struct kfs_fops
 	);
 	ssize_t (*write) (struct file *, const char __user *, size_t,
 			  loff_t *);
+	ssize_t (*writev) (struct file *, const struct iovec *, unsigned long,
+				 loff_t *);
 	ssize_t (*read) (struct file *, char __user *, size_t,
 			 loff_t *);
 	off_t (*lseek) ( struct file*, off_t, int );
@@ -104,16 +108,16 @@ struct file
 	unsigned int            f_flags;
 	struct dentry *f_dentry;
 	void *                  private_data;
+	atomic_t		f_count;
 };
 
 static inline struct file *get_current_file(int fd)
 {
-	if( fd < 0 || fd > MAX_FILES )
-		return 0;
-	return current->files[ fd ];
+	return fdTableFile( current->fdTable, fd );
 }
 
 extern void kfs_init(void);
+extern void kfs_init_stdio( struct fdTable* );
 
 /* kfs inode manipulation */
 extern struct inode *kfs_mkdirent(struct inode *,
@@ -127,32 +131,10 @@ extern struct inode *kfs_create(const char *,
 				unsigned,
 				void *,
 				size_t);
-extern struct inode *kfs_lookup(struct inode *,
-				const char *,
-				unsigned);
-extern struct inode *kfs_mkdir(char *,
-			       unsigned);
 
-extern struct inode *kfs_create_inode(void);
-extern void kfs_destroy(struct inode *);
 extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 
-/* kfs file manipulation */
-extern struct file *kfs_alloc_file(void);
-extern int kfs_init_file(struct file *,unsigned int mode,
-		const struct kfs_fops *fop);
-extern struct file *kfs_open(struct inode *, int flags, mode_t mode);
-extern void kfs_close(struct file *);
-extern int kfs_open_path(const char *pathname, int flags, mode_t mode,
-			 struct file **rv);
 /* generally useful file ops */
 extern int kfs_readdir(struct file *, uaddr_t, unsigned int);
-
-/* current task file table manipulation */
-extern int get_unused_fd(void);
-extern void put_unused_fd(unsigned int fd);
-extern struct file *fget(unsigned int fd);
-extern void fput(struct file *);
-extern void fd_install(unsigned int fd, struct file *file);
 
 #endif /* _lwk_kfs_h_ */
