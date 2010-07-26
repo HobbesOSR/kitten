@@ -1,6 +1,8 @@
 #ifndef _LINUX_POLL_H
 #define _LINUX_POLL_H
 
+#include <linux/fs.h>
+
 /* asm/poll.h */
 /* These are specified by iBCS2 */
 #define POLLIN          0x0001
