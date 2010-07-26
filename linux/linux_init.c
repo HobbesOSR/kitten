@@ -48,6 +48,7 @@ linux_init(void)
 {
 	radix_tree_init();
 	init_workqueues();
+extern void init_tasklets(void);
 	init_tasklets();
 	driver_init();
 	early_param_pci_setup();
@@ -60,34 +61,6 @@ linux_init(void)
 	fs_initcall_pcibios_assign_resources();
 	late_initcall_pci_sysfs_init();
 	device_initcall_pci_init();
-
-	if ( kfs_mkdir("/etc",0777) == NULL ) {
-		panic("kfs_mkdir( \"/etc\", 0777) failed\n");
-	} 
-
-	if ( kfs_create( "/etc/dat.conf", &in_mem_fops, 0777, 0, 0 )
-								== NULL ) {
-		panic("kfs_create( \"/etc/dat.conf\",,,,) failed\n");
-	}	
-
-	if ( kfs_mkdir("/etc/opal",0777) == NULL ) {
-		panic("kfs_mkdir( \"/etc/opal\", 0777) failed\n");
-	} 
-
-	char* filename = "/etc/opal/mca-btl-openib-hca-params.ini";
-	if ( kfs_create( filename, &in_mem_fops, 0777, 0, 0 )
-								== NULL ) {
-		panic("kfs_create( \"/etc/opal/mca-btl-openib-hca-params.ini\",,,,) failed\n");
-	}	
-
-	filename = "/etc/opal/openmpi-mca-params.conf";
-	if ( kfs_create( filename, &in_mem_fops, 0777, 0, 0 )
-								== NULL ) {
-		panic("kfs_create( \"/etc/opal/openmpi-mca-params.conf\",,,,) failed\n");
-	}	
-
-	filename = "/etc/opal/fifo";
-	mkfifo(filename,0777);
 
 	struct task_struct *tux = kthread_create(
 		linux_kthread,
