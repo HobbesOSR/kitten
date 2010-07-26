@@ -7,6 +7,9 @@
 #include <lwk/posix_types.h>
 #include <lwk/spinlock.h>
 #include <lwk/list.h>
+
+struct file_operations;
+
 /* dcache.h */
 /**
  *      dget, dget_locked       -       get a reference to a dentry
@@ -60,7 +63,6 @@ static inline struct dentry *dget(struct dentry *dentry)
 }
 
 struct vfsmount;
-#define get_empty_filp kfs_alloc_file
 extern void d_instantiate(struct dentry *, struct inode *);
 extern struct dentry * dget_locked(struct dentry *);
 extern void d_delete(struct dentry *);
