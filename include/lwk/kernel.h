@@ -23,11 +23,11 @@
 
 #include <lwk/print.h>
 #define _KDBG(fmt, args...) \
-print("%s:%s():%i: " fmt, __FILE__,__FUNCTION__, __LINE__, ## args)
+print("(%d)%s:%s(%i) "fmt,current->id,__FILE__,__FUNCTION__, __LINE__, ## args)
 
 extern int __flag;
 #define __KDBG(fmt, args...) if ( current->id != 0  )\
-print("%s:%s()%i: " fmt, __FILE__,__FUNCTION__, __LINE__, ## args)
+print("(%d)%s:%s(%i) "fmt,current->id,__FILE__,__FUNCTION__, __LINE__, ## args)
 
 
 extern const char lwk_banner[];
