@@ -31,7 +31,6 @@ int main(int argc, char *argv[], char *envp[] )
     MPI_Finalize();
     printf("exiting\n");
 
-//	sleep(myrank);
     _exit(0);
 
     return 0;
