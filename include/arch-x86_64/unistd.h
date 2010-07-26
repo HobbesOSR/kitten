@@ -58,7 +58,7 @@ __SYSCALL(__NR_writev, syscall_not_implemented)
 #define __NR_access                             21
 __SYSCALL(__NR_access, syscall_not_implemented)
 #define __NR_pipe                               22
-__SYSCALL(__NR_pipe, sys_pipe)
+__SYSCALL(__NR_pipe, syscall_not_implemented)
 #define __NR_select                             23
 __SYSCALL(__NR_select, syscall_not_implemented)
 
@@ -527,7 +527,7 @@ __SYSCALL(__NR_epoll_wait, syscall_not_implemented)
 #define __NR_epoll_ctl		233
 __SYSCALL(__NR_epoll_ctl, syscall_not_implemented)
 #define __NR_tgkill		234
-__SYSCALL(__NR_tgkill, syscall_not_implemented)
+__SYSCALL(__NR_tgkill, sys_tgkill)
 #define __NR_utimes		235
 __SYSCALL(__NR_utimes, syscall_not_implemented)
 #define __NR_vserver		236
