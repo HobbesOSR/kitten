@@ -6,7 +6,7 @@ struct in_mem_priv_data {
 };
 
 #define PRIV_DATA(x) ((struct in_mem_priv_data*) x)
-#define MAX_FILE_SIZE	512
+#define MAX_FILE_SIZE  (512*8)	
 
 static int in_mem_open(struct inode * inode, struct file * file)
 {
