@@ -43,6 +43,7 @@ struct net_device {
 	unsigned int priv_flags;
 	const struct ethtool_ops *ethtool_ops;
 	unsigned                mtu; 
+    int                     ifindex;
 };
 
 struct ethtool_ops {
@@ -52,7 +53,7 @@ struct ethtool_ops {
 static inline void dev_put(struct net_device *dev)
 {
 	// this is called after ip_dev_find which doesn't allocate a structure
-	LINUX_DBG(FALSE,"\n");
+	//LINUX_DBG(FALSE,"\n");
 }
 
 static inline int register_netdevice_notifier(struct notifier_block *nb)
@@ -88,7 +89,13 @@ static inline void dev_hold(struct net_device *dev)
 {
         atomic_inc(&dev->refcnt);
 }
-extern struct net_device        *dev_get_by_index(struct net *net, int ifindex);
+
+
+static inline struct net_device        *dev_get_by_index(struct net *net, int ifindex)
+{
+        LINUX_DBG(TRUE,"\n");
+        return NULL;
+}
 extern int              dev_mc_add(struct net_device *dev, void *addr, int alen, int newonly);
 extern int              dev_mc_delete(struct net_device *dev, void *addr, int alen, int all);
 

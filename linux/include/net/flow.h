@@ -4,6 +4,7 @@
 #include <linux/types.h>
 
 struct flowi {
+    int oif;
 	union {
 		struct {
 			__be32          daddr;

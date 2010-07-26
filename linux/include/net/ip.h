@@ -5,7 +5,6 @@
 
 static inline void inet_get_local_port_range(int *low, int *high)
 {
-	LINUX_DBG(FALSE,"\n");
 	*low = 1;
 	*high = 1024;
 }
