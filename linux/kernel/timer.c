@@ -48,7 +48,7 @@ mod_timer(
 	unsigned long			expires
 )
 {
-	f (timer_pending(timer) && timer->expires == expires)
+	if (timer_pending(timer) && timer->expires == expires)
 		return 1;
 
 	return __mod_timer(timer, expires);
