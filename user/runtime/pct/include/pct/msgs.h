@@ -1,13 +1,14 @@
 #ifndef PCT_MSGS_H
 #define PCT_MSGS_H
 
-#include <srdma/dm.h>
+#include <rdmaPlus.h>
 
 #define CTRL_MSG_TAG 0xdead
+#define ORTE_MSG_TAG 0xf00d
 #define MAX_FANOUT 7 
 #define SYSCALL_MSG_KEY 0xbeef
 
-using namespace srdma;
+using namespace rdmaPlus;
 typedef int JobId; 
 
 struct NidRnk {
@@ -31,21 +32,24 @@ struct JobMsg {
                     ChildExit } Type;
 
     struct Load {
-        MemRegion::Id   imageKey;
-        MemRegion::Addr imageAddr;
         MemRegion::Id   nidRnkMapKey;
         MemRegion::Addr nidRnkMapAddr;
-        size_t      elf_len;
-        size_t      heap_len;
-        size_t      stack_len;
-        uint        cmdLine_len;
-        uint        env_len;
-        uint        gid;
-        uint        uid;
-        uint        nRanks;
         uint        nNids;
         uint        fanout;
         uint        childNum;
+
+        struct App {
+            MemRegion::Id   imageKey;
+            MemRegion::Addr imageAddr;
+            size_t      elf_len;
+            size_t      heap_len;
+            size_t      stack_len;
+            uint        cmdLine_len;
+            uint        env_len;
+            uint        gid;
+            uint        uid;
+            uint        nRanks;
+        } app;
     };
 
     struct Kill {
@@ -94,5 +98,19 @@ struct CtrlMsg {
         JobMsg      job;
     } u;
 } __attribute((aligned(8)));
+
+struct OrteMsg {
+	enum { OOB, Barrier } type;
+	union u {
+		struct oob {
+			unsigned char data[128];
+		} oob;
+		struct barrier {
+			typedef enum { Up, Down } type_t;	
+			type_t	type;
+		} barrier;
+	} u;
+} __attribute((aligned(8)));
+
 
 #endif

@@ -1,50 +1,124 @@
-
-#include <stdlib.h>
-#include <assert.h>
-
 #include <pct/util.h>
 #include <pct/job.h>
 #include <pct/app.h>
-#include <pct/debug.h>
-#include <pct/msgs.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-Job::Job( Dm& rdma, JobId jobId ) :
+Job::JobMap Job::m_jobMap;
+pthread_mutex_t Job::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+Job::Job( Rdma& rdma, JobId jobId ) :
     m_rdma( rdma ),
     m_jobId( jobId ),
-    m_numStarted( 0 ),
-    m_numExited( 0 ),
+    m_numChildStarted( 0 ),
+    m_numChildAlive( 0 ),
+    m_numLocalAlive( 0 ),
     m_havePidPart( 0 ),
     m_nChildRanks( 0 ),
+    m_nChildNids( 0 ),
     m_stride( 0 )
 {
+    Info( "starting new job %d\n", jobId);
 }
 
 Job::~Job( )
 {
     Debug( Job, "enter\n");
-    try {
-        delete m_app;
-    } catch ( int err ) {
-        printf("delete App() failed %d\n",err);
-        throw -1;
-    }
+    Info( "job %d has terminated\n", m_jobId );
+
+    delete m_app;
+
+    Debug( Job, "\n");
 
 	// note we only disconnect our children
     for ( unsigned int i = 1; i < m_localNidMap.size(); i++ ) {
+	Debug( Job, "disconnect nid=%#x\n", m_localNidMap[i].nid );
         m_rdma.disconnect( m_localNidMap[i] );
     }
 
-    m_rdma.memRegionUnregister( ImageId );
     m_rdma.memRegionUnregister( NidRankId );
     m_rdma.memRegionUnregister( NidPidId );
+    Debug( Job, "return\n");
 }
 
-ProcId& Job::parentNode()
+void* Job::thread( void* obj )
 {
-    return m_localNidMap[0];
+    Job* job = (Job*) obj;
+    Debug(Job,"entered\n");
+
+    if ( pthread_detach( pthread_self() ) ) {
+        Warn( Job, "ptherad_detach()\n" );
+        throw -1;
+    }
+
+    bool alive = true;
+    while ( alive ) {
+        int status;
+
+	//printf("call waitpid()\n");
+        pid_t pid = ::waitpid( -1, &status, 0 );
+
+        Info( "process %d has exited with status %d\n", pid, status );
+
+        pthread_mutex_lock(&m_mutex);
+
+        --job->m_numLocalAlive;
+        if ( job->m_numLocalAlive == 0 ) {
+            if ( job->m_numChildAlive == 0 ) {
+                job->sendChildExit();
+                m_jobMap.erase( m_jobMap.begin() );
+                delete job;
+            }
+            alive = false;        
+        }
+        pthread_mutex_unlock(&m_mutex);
+    }
+    Debug(Job,"returning\n");
+    return NULL;
+}
+                        
+void Job::msg( Rdma& rdma, ProcId src, JobMsg& msg )
+{
+    JobMap::iterator iter;
+
+    Debug( Job, "jobId=%d type=%d\n", msg.jobId, msg.type );
+
+    pthread_mutex_lock(&m_mutex);
+
+    if ( msg.type == JobMsg::Load ) {
+
+        if ( m_jobMap.find( msg.jobId ) != m_jobMap.end() ) {
+            // take care of this error
+            Warn( Job, "duplicate job %d\n", msg.jobId );
+            goto ret;
+        }
+
+        Job* job = new Job( rdma, msg.jobId ); 
+        if ( ! job ) {
+            Warn( Job, "couldn't create Job %d\n", msg.jobId  );
+            goto ret;
+        }
+        iter = m_jobMap.insert( m_jobMap.begin(), 
+                            std::make_pair( msg.jobId, job ) );
+
+    } else {
+        if ( ( iter = m_jobMap.find( msg.jobId ) ) == m_jobMap.end() ) {
+            // take care of this error
+            Warn( Job, "couldn't find Job %d\n", msg.jobId );
+            goto ret;
+        }
+    }
+
+    if ( iter->second->msg( src, msg ) ) {
+        delete iter->second;
+        m_jobMap.erase( iter );
+    }
+   
+ret:
+    pthread_mutex_unlock(&m_mutex);
 }
 
-bool Job::Msg( ProcId src, JobMsg& msg )
+bool Job::msg( ProcId src, JobMsg& msg )
 {
     Debug( Job, "type=%d\n", msg.type );
 
@@ -60,8 +134,7 @@ bool Job::Msg( ProcId src, JobMsg& msg )
             break;
 
         case JobMsg::ChildExit:
-            childExit( msg.u.childExit );
-            break;
+            return childExitMsg(  msg.u.childExit );
 
         case JobMsg::ChildStart:
             childStart( msg.u.childStart );
@@ -77,7 +150,7 @@ bool Job::Msg( ProcId src, JobMsg& msg )
 
         default:
             Warn( Job, "msg.jobId=%d unknown type=%d\n", msg.jobId, msg.type);
-            return true;
+            throw -1;
     }        
     return false;
 }
@@ -86,8 +159,15 @@ void Job::start()
 {
     Debug( Job, "\n");
 
-    m_app->Start(); 
     sendChildStart( );
+
+    m_app->Start(); 
+
+    if ( pthread_create( &m_thread, NULL, thread, this ) ) {
+        Warn( Job, "pthread_create() failed, %s\n", strerror(errno) );
+        throw -1;
+    }
+
 }
 
 bool Job::kill( struct JobMsg::Kill& msg )
@@ -105,46 +185,19 @@ bool Job::kill( struct JobMsg::Kill& msg )
 
 bool Job::load( ProcId src, struct JobMsg::Load& msg )
 {
-
     m_nidRnkMap.resize( msg.nNids );
-    m_localNidMap.resize( 1 );
-    m_localNidMap[0] = src; 
     m_childNum = msg.childNum;
 
-    Debug( Pct, "got LOAD msg jobId=%d childNum=%d\n", m_jobId, m_childNum );
-
-    try {
-        m_app = new App( msg.nRanks, msg.elf_len, msg.heap_len, msg.stack_len,
-                        msg.cmdLine_len, msg.env_len, msg.uid, msg.gid );
-        assert(m_app);
-    } catch( int err ) {
-        Warn( Job, "new App() failed %d\n",err);
-        return true;
-    }
-
-    m_rdma.memRegionRegister( m_app->ImageAddr(), m_app->ImageLen(),
-				ImageId );
-    m_rdma.memRegionRegister( m_nidRnkMap.data(), sizeofVec( m_nidRnkMap),
-                            NidRankId );
-    m_rdma.memRegionRegister( &m_app->NidPidMap(0), 
-                            m_app->NidPidMapSize() * sizeof(ProcId),
-                            NidPidId );
-
+    Debug( Job, "got LOAD msg jobId=%d childNum=%d\n", m_jobId, m_childNum );
     Debug( Job, "nRanks=%d nNids=%d fanout=%d\n", 
-                                msg.nRanks, msg.nNids, msg.fanout );
+                                msg.app.nRanks, msg.nNids, msg.fanout );
 
-    // read the elfimage + cmdline + env
-Debug(Pct,"read image\n");
-    if ( m_rdma.memRead( parentNode(), msg.imageKey, msg.imageAddr,
-                    m_app->ImageAddr(), m_app->ImageLen() ) ) 
-    {
-        Warn( Job, "image read failed\n" );
-        return true;
-    } 
+    m_rdma.memRegionRegister( m_nidRnkMap.data(), sizeofVec(m_nidRnkMap),
+                            NidRankId );
 
     // read the nid/ranksPer/baseRank map
-Debug(Pct,"read nid/rankPer\n");
-    if ( m_rdma.memRead( parentNode(), msg.nidRnkMapKey, msg.nidRnkMapAddr,
+    Debug(Job,"read nid/rankPer\n");
+    if ( m_rdma.memRead( src, msg.nidRnkMapKey, msg.nidRnkMapAddr,
                     m_nidRnkMap.data(), 
                     sizeofVec( m_nidRnkMap ) ))
     {
@@ -152,48 +205,52 @@ Debug(Pct,"read nid/rankPer\n");
         return true;
     }
 
-    for ( m_nidIndex = 0; m_nidIndex < msg.nNids; m_nidIndex++ ) {
-        if ( m_nidRnkMap[m_nidIndex].nid == m_rdma.nid() ) {
-            break;
-        }
-    }
-
-    if ( m_nidIndex == msg.nNids ) {
-        Warn( Job, "bogus nidIndex %d %d\n", m_nidIndex, msg.nNids );
-        return true;
-    }
-
-    Debug( Job, "baseRank=%d ranksPer=%d\n", baseRank(), nRanksThisNode() );
-
-    m_app->AllocPids( m_rdma.nid(), baseRank(), nRanksThisNode() );
-
     uint nSubNids = msg.nNids - 1; 
 
-    m_nChildNids = msg.fanout > nSubNids ? nSubNids : msg.fanout;
-
-    if ( m_nChildNids ) {
-        m_stride = nSubNids / m_nChildNids + 
-                                ( ( nSubNids % m_nChildNids ) ? 1 : 0);  
+    if ( nSubNids ) {
+        m_stride = nSubNids / msg.fanout + ( nSubNids % msg.fanout ? 1 : 0 ); 
+        m_nChildNids = nSubNids / m_stride + ( nSubNids % m_stride ? 1 : 0 );
     }
 
     Debug( Job, "nChildNids=%d stride=%d\n", m_nChildNids, m_stride );
 
+    m_route.add( src.nid );
+
     m_localNidMap.resize( m_nChildNids + 1 );
+    m_childStartedV.resize( m_nChildNids );
+
+    m_numChildAlive = m_nChildNids;
+    m_numLocalAlive =  nRanksThisNode();
+    // set the parent info
+    m_localNidMap[0] = src; 
 
     for ( unsigned int child = 0; child < m_nChildNids; child++ )
     {
-        m_localNidMap[ child + 1 ].nid = 
-                                m_nidRnkMap[ child * m_stride + 1 ].nid;
+        int offset = child * m_stride + 1;
+
+        Debug( Job, "offset=%d\n", offset );
+        m_localNidMap[ child + 1 ].nid = m_nidRnkMap[ offset ].nid;
         m_localNidMap[ child + 1 ].pid = m_rdma.pid();
-        Debug( Job, "child=%d nid=%d pid=%d\n", child, 
+
+        Debug( Job, "child=%d nid=%#x pid=%d\n", child, 
                         m_localNidMap[ child + 1 ].nid,
                         m_localNidMap[ child + 1 ].pid);
+
+        m_rdma.connect( m_localNidMap[child+1] );
+
     }
+
+    m_app = new App( m_rdma, m_route, src, msg.app, m_nidRnkMap[0],
+                                                        m_localNidMap );
+
+    m_rdma.memRegionRegister( &m_app->NidPidMap(0), 
+                            m_app->NidPidMapSize() * sizeof(ProcId),
+                            NidPidId );
 
     if ( m_nChildNids == 0 ) {
         sendNidPidMapPart();
     } else {
-        fanoutLoadMsg( msg );
+        fanoutLoadMsg( msg, m_nidRnkMap[0] );
     }
     return false;
 }
@@ -203,35 +260,25 @@ bool Job::childStart( struct JobMsg::ChildStart& msg )
 {
     Debug( Job, "child %d\n", msg.num);
 
-//    sendGotStart( msg.num );
+    m_childStartedV[msg.num] = true;
 
-    ++m_numStarted;
+    ++m_numChildStarted;
 
-    if ( m_numStarted == m_nChildNids ) {
+    if ( m_numChildStarted == m_nChildNids ) {
         start();
     }
     return 0;
 }
 
-
-bool Job::childExit( struct JobMsg::ChildExit& msg )
+bool Job::childExitMsg( struct JobMsg::ChildExit& msg )
 {
     Debug( Job, "child %d\n", msg.num);
-    ++m_numExited;
-    return false;
-}
+    m_childStartedV[msg.num] = false;
+    --m_numChildAlive;
 
-bool Job::Process()
-{
-    if ( m_app->Exited() )
-    { 
-        if ( m_nChildNids == 0 || 
-		( m_nChildNids && m_numExited == m_nChildNids ) ) 
-        {
-            Debug( Job, "app has exited\n");
-            sendChildExit();
-            return true;
-        }
+    if ( m_numChildAlive == 0 && m_numLocalAlive == 0 ) {
+        sendChildExit();
+        return true;
     }
     return false;
 }
@@ -257,13 +304,46 @@ bool Job::sendCtrlMsg( CtrlMsg& msg, ProcId& dest )
 
     Debug( Job, "type=%d nid=%#x pid=%d\n", msg.u.job.type, dest.nid, dest.pid);
 
+#if 1 
     Status status;
     m_rdma.send( &msg, sizeof(msg), dest, CTRL_MSG_TAG, &status );
+#else
+
+    Request* req = new Request( sendCallback, (void*) this );
+    
+    CtrlMsg* _msg = new CtrlMsg;
+	memcpy(_msg,&msg,sizeof(msg));
+    std::pair<Request*,void*>* tmp = new std::pair<Request*,void*>( req, _msg );
+    req->setCbData( tmp );
+    
+    m_rdma.isend( _msg, sizeof(*_msg), dest, CTRL_MSG_TAG, *req );
+#endif
 
     return false;
 }
 
-bool Job::fanoutLoadMsg( struct JobMsg::Load& _msg )
+void* Job::sendCallback( void* obj, void *data )
+{
+    return ( ( Job*)obj)->sendCallback( (sendCbData_t*) data );
+}
+
+void* Job::sendCallback( sendCbData_t* data  )
+{
+        Debug( Job, "enter\n");
+
+        // Request*
+        delete data->first;
+
+        // CtrlMsg*
+        delete data->second;
+
+        //std::pair<Request*,void*>
+        delete data;
+        return NULL;
+}
+
+
+bool Job::fanoutLoadMsg( struct JobMsg::Load& _msg, NidRnk& parentNidRnk )
 {
     Debug( Job, "%d\n",m_nChildNids);
 
@@ -274,8 +354,8 @@ bool Job::fanoutLoadMsg( struct JobMsg::Load& _msg )
 
     loadMsg = _msg;
 
-    loadMsg.imageKey = ImageId;
-    loadMsg.imageAddr = 0;
+    loadMsg.app.imageKey = App::ImageId;
+    loadMsg.app.imageAddr = 0;
 
     loadMsg.nidRnkMapKey = NidRankId;
 
@@ -287,17 +367,18 @@ bool Job::fanoutLoadMsg( struct JobMsg::Load& _msg )
             loadMsg.nNids = (_msg.nNids - 1) % m_stride ;
         }
 
-        loadMsg.nidRnkMapAddr = 
-                            (child * m_stride + 1) * sizeof( struct NidRnk );
+        int offset = child * m_stride + 1;
         loadMsg.childNum = child;
+        loadMsg.nidRnkMapAddr = offset * sizeof( struct NidRnk );
 
         Debug( Job, "child=%d addr=%#lx nNids=%d\n", 
-                            child, loadMsg.nidRnkMapAddr, loadMsg.nNids );
+                            child, loadMsg.nidRnkMapAddr, loadMsg.nNids);
 
         if ( sendCtrlMsg2Child( msg, child ) ) {
             return true;
         }
     }   
+    Debug( Job, "return\n");
     return false;
 }
 
@@ -309,6 +390,7 @@ bool Job::nidPidMapPart( ProcId src, struct JobMsg::NidPidMapPart& msg )
     Debug( Job, "num=%d base=%d m_havePidPart=%d\n", 
 			msg.numRank, msg.baseRank, m_havePidPart );
 
+    m_route.add( src.nid, msg.baseRank, msg.baseRank + msg.numRank );
     if ( m_rdma.memRead( src, msg.key, msg.addr,
                     &m_app->NidPidMap( msg.baseRank ),
                     msg.numRank * sizeof( ProcId ) ))
@@ -331,7 +413,7 @@ bool Job::nidPidMapPart( ProcId src, struct JobMsg::NidPidMapPart& msg )
 
 bool Job::nidPidMapAll( ProcId src, struct JobMsg::NidPidMapAll& msg )
 {
-    Debug( Job, "\n");
+    Debug( Job, "src=[%#x,%d]\n",src.nid,src.pid);
 
     if ( m_rdma.memRead( src, msg.key, msg.addr,
                     &m_app->NidPidMap( 0 ),
@@ -380,7 +462,9 @@ void Job::fanoutKill( int signal )
     msg.u.job.u.kill.signal = signal;
 
     for ( unsigned int child = 0; child < m_nChildNids; child++ ) {
-        sendCtrlMsg2Child( msg, child );
+        if ( m_childStartedV[child] ) {
+            sendCtrlMsg2Child( msg, child );
+        }
     }
 }
 
@@ -427,12 +511,14 @@ int Job::sendChildExit( )
     return 0; 
 }
 
+// do we really need this
 uint Job::nRanksThisNode()
 {
-    return m_nidRnkMap[m_nidIndex].ranksPer;
+    return m_nidRnkMap[0].ranksPer;
 }
 
+// do we really need this
 uint Job::baseRank()
 {
-    return m_nidRnkMap[m_nidIndex].baseRank;
+    return m_nidRnkMap[0].baseRank;
 }

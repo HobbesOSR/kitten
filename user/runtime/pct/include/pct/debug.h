@@ -4,10 +4,10 @@
 
 #include <stdio.h>
 
-#define Foo( name, fmt, args... ) \
-    printf( "%s::%s():%d: "fmt, #name,__FUNCTION__,__LINE__, ## args )
+#define Info(fmt, args... ) \
+    printf( "Info: "fmt, ## args )
 
-#if 1 
+#if 0
 
 #define Debug( name, fmt, args... ) \
     printf( "%s::%s():%d: "fmt, #name,__FUNCTION__,__LINE__, ## args )

@@ -1,8 +1,4 @@
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/utsname.h>
-
 #include <pct/pct.h>
 
 int main(int argc, char *argv[] )

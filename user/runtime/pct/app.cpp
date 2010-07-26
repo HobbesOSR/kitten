@@ -1,46 +1,46 @@
-
 #include <stdio.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <pct/app.h>
 #include <pct/pmem.h>
 #include <pct/debug.h>
 #include <pct/mem.h>
+#include <lwk/autoconf.h>
+#include <lwk/cpu.h>
+#include <arch/types.h>
+#include <lwk/macros.h>
+#include <stdint.h>
 
 extern "C" {
     #include <pct/elf.h>
 }
 
-static int findCpu( unsigned int start, user_cpumask_t mask )
+App::App( Rdma& rdma, Route& route, ProcId& srcId, JobMsg::Load::App& msg,
+                    NidRnk& nidRnk, std::vector< ProcId >& nidMap ):
+    m_heap_len( msg.heap_len),
+    m_stack_len( msg.stack_len),
+    m_nidPidMapSize( msg.nRanks ),
+    m_rdma( rdma ),
+    m_orte( rdma, route, nidRnk.baseRank, nidRnk.ranksPer, nidMap )
 {
-    for ( int i = start; i <= CPU_MAX_ID; i++) {
-        if (cpu_isset(i, mask)) {
-            return i;
-        }
-    }
-    return -1;
-}
+    Debug( App, "nid=%#x baseRank=%d ranksThisNode=%d\n",
+                    nidRnk.nid, nidRnk.baseRank, nidRnk.ranksPer );
 
-
-App::App( uint nRanks, size_t elf_len, size_t heap_len, size_t stack_len, 
-            uint cmdLine_len, uint env_len, uint uid, uint gid ) :
-    m_heap_len(heap_len),
-    m_stack_len(stack_len),
-    m_imageLen( elf_len + cmdLine_len +  env_len ),
-    m_nidPidMapSize( nRanks )
-{
-
-    Debug( App, "heap_len=%lu stack_len=%lu\n",m_heap_len,m_stack_len);
-
-    m_elfAddr = mem_alloc( elf_len + cmdLine_len + env_len );
+    size_t  imageLen = msg.elf_len + msg.cmdLine_len +  msg.env_len;
+    m_elfAddr = mem_alloc( imageLen );
     if ( m_elfAddr == NULL ) {
         throw -ENOMEM;
     }
+        
+
     Debug( App, "elfAddr=%p\n", m_elfAddr );
-    m_cmdAddr = (char*) ( (size_t) m_elfAddr + elf_len );
-    m_envAddr = (char*) ( (size_t) m_cmdAddr + cmdLine_len );
-    m_start_state.user_id = uid;
-    m_start_state.group_id = gid;
+    m_cmdAddr = (char*) ( (size_t) m_elfAddr + msg.elf_len );
+
+    m_uid = msg.uid;
+    m_gid = msg.gid;
 
     // alloc space to store the number of ranks and the nid/pid map
     // mem_alloc must return a pointer that's aligned on page size 
@@ -57,41 +57,63 @@ App::App( uint nRanks, size_t elf_len, size_t heap_len, size_t stack_len,
         throw -ENOMEM;
     }
 
-    *m_runTimeInfo = nRanks;
+    *m_runTimeInfo = msg.nRanks;
     m_nidPidMap = (ProcId*)(m_runTimeInfo + 1);
+
+    rdma.memRegionRegister( m_elfAddr, imageLen, ImageId );
+
+    Debug(App,"read image\n");
+    if ( rdma.memRead( srcId, msg.imageKey, msg.imageAddr,
+                                            m_elfAddr, imageLen ) ) 
+    {
+        Warn( App, "image read failed\n" );
+        throw;
+    } 
+
+    m_envAddrV.resize(nidRnk.ranksPer);
+    m_envAddrV[0] = (char*) ( (size_t) m_cmdAddr + msg.cmdLine_len );
+
+    for ( unsigned int i = 1; i < m_envAddrV.size(); i++ ) {
+        m_envAddrV[i] = (char*) mem_alloc( msg.env_len );
+        memcpy( m_envAddrV[i], m_envAddrV[0], msg.env_len );
+    }
+
+    allocPids( msg.nRanks, nidRnk ); 
+
+    m_orte.startThread();
 }
 
 App::~App()
 {
     Debug( App, "enter\n");
 
+    m_orte.stopThread();
+
+    // we should call finiPid as each rank dies or move this to Orte
+    for ( unsigned int i = 0; i < m_pidCpuMap.size(); i++ ) {
+        m_orte.finiPid( m_pidCpuMap[i].pid );
+    }
+
+    m_rdma.memRegionUnregister( ImageId );
+
     mem_free( m_runTimeInfo );
     mem_free( m_elfAddr );
+    for ( unsigned int i = 1; i < m_envAddrV.size(); i++ ) {
+        mem_free( m_envAddrV[i] );
+    }
 
     while ( ! m_allocQ.empty() ) {
         _pmem_free( m_allocQ.front() );
         m_allocQ.pop();
     }
 
-    while ( ! m_pidQ.empty() ) {
-        int rc;
-        Debug( App, "calling task_destroy( %d )\n", m_pidQ.front() );
-        if ( ( rc = task_destroy( m_pidQ.front() ) ) ) {
-            throw rc;
+    for ( unsigned int i = 0; i < m_pidCpuMap.size(); i++ ) {
+        if ( aspace_destroy( m_pidCpuMap[i].pid ) ) {
+            Warn( App, "aspace_destroy( %d)\n", m_pidCpuMap[i].pid );
+            throw -1;
         }
-        m_pidQ.pop();
     }
-}
-
-
-void* App::ImageAddr()
-{
-    return m_elfAddr;
-}
-
-size_t App::ImageLen()
-{
-    return m_imageLen;
+    Debug( App, "return\n");
 }
 
 ProcId& App::NidPidMap( uint pos )
@@ -104,47 +126,37 @@ size_t App::NidPidMapSize()
     return m_nidPidMapSize;
 }
 
-
 bool App::Start()
 {
     Debug( App, "\n");
     for ( unsigned int i = 0; i < m_pidCpuMap.size(); i++ ) {
-        if ( run( m_pidCpuMap[i].pid, m_pidCpuMap[i].cpu ) )
+        if ( run( i, m_pidCpuMap[i].pid, m_pidCpuMap[i].cpu,
+                                        m_pidCpuMap[i].cpumask ) )
         {
             Debug( App, "app->Run() failed\n");
             return -1;
         }
+        Info( "started process %d\n", m_pidCpuMap[i].pid );
     }
     return 0;
 }
 
-
-int App::AllocPids( Nid nid, uint baseRank, uint nRanks )
+int App::allocPids( int totalRanks, NidRnk& nidRnk )
 {
-    int current = -1;
-    user_cpumask_t my_cpumask;
 
-    if ( task_get_cpumask(&my_cpumask) ) {
-        Warn( App, "\n");
-        return -1;
-    }
+    m_pidCpuMap.resize( nidRnk.ranksPer );
 
-    m_pidCpuMap.resize( nRanks );
+    unsigned int i;
+    for ( i = 0; i < nidRnk.ranksPer; i++ ) {
+        m_pidCpuMap[i].pid = i + 100; // start app pids at 100
+	// FIXME: assuming 8 cpus, wrap
+        m_pidCpuMap[i].cpu = (i + 1)%8;
 
-    static int Cur = 0;
+        m_orte.initPid( m_pidCpuMap[i].pid, totalRanks, nidRnk.baseRank + i );
 
-    for ( unsigned int i = 0; i < nRanks; i++ ) {
-        current = findCpu( current + 1, my_cpumask );
-        if ( current == -1 ) {
-            Warn( App, "\n");
-            m_pidCpuMap.clear();
-            return -1;
-        }
-        m_pidCpuMap[i].pid = i + UASPACE_MIN_ID + Cur++;
-        m_pidCpuMap[i].cpu = current;
-        m_nidPidMap[baseRank + i].pid = m_pidCpuMap[i].pid; 
-        m_nidPidMap[baseRank + i].nid = nid; 
-
+        m_nidPidMap[nidRnk.baseRank + i].pid = m_pidCpuMap[i].pid; 
+        m_nidPidMap[nidRnk.baseRank + i].nid = nidRnk.nid; 
+        Debug(App,"pid=%d cpu=%d\n", m_pidCpuMap[i].pid, m_pidCpuMap[i].cpu );
     }
     return 0;
 }
@@ -154,28 +166,16 @@ int App::Kill( int signal )
     Debug( App, "\n");
 
     for ( unsigned int i = 0; i < m_pidCpuMap.size(); i++ ) {
-        if ( task_kill( m_pidCpuMap[i].pid, signal ) ) {
+        if ( kill( m_pidCpuMap[i].pid, signal ) ) {
             Debug( App,"task_kill() failed\n" );
         }
     }
     return 0;
 }
 
-bool App::Exited()
+bool App::run( int rankThisNode, id_t pid, uint cpu_id, user_cpumask_t cpumask )
 {
-    // has the app started 
-    if ( m_pidQ.size() != m_pidCpuMap.size() ) return false;
-
-    for ( unsigned int i = 0; i < m_pidCpuMap.size(); i++ ) {
-        if( ! zombie( m_pidCpuMap[i].pid ) )
-            return false;
-    }
-    //Debug(App,"\n");
-    return true;
-}
-
-bool App::run( id_t pid, uint cpu_id )
-{
+    start_state_t   start_state;
     Debug( App, "pid=%d cpu_id=%d\n", pid, cpu_id );
     Debug( App, "argv=%s\n",m_cmdAddr);
     //Debug( App, "envp=%s\n",m_envAddr);
@@ -190,31 +190,32 @@ bool App::run( id_t pid, uint cpu_id )
     std::string name = argv.substr( 0, argv.find(" ") );
     argv = argv.substr( name.size(), argv.size() );
 
-    m_start_state.cpu_id  = cpu_id;
-    m_start_state.task_id  = pid;
-    m_start_state.user_id  = 1;
-    m_start_state.group_id  = 1;
+    start_state.cpu_id  = cpu_id;
+    start_state.task_id  = pid;
+    start_state.user_id  = 1;
+    start_state.group_id  = 1;
+    start_state.user_id = m_uid;
+    start_state.group_id = m_gid;
+    //start_state.cpumask = cpumask;
 
-    sprintf(m_start_state.task_name, "user-%d", pid );
-    task_get_cpumask( & m_start_state.cpumask );
-    //Debug( App, "%s %s\n", name.c_str(), argv.c_str() );
+    sprintf(start_state.task_name, "user-%d", pid );
 
     int rc;
 
     if ( ( rc = elf_load( 
                     m_elfAddr, 
-                    //mem_paddr(m_elfAddr),
                     name.c_str(), 
                     pid, // aspace id is the same as the pid 
                     PAGE_SIZE,
                     m_heap_len,
                     m_stack_len,
                     (char*) argv.data(),
-                    m_envAddr,
-                    &m_start_state,
+                    m_envAddrV[rankThisNode],
+                    &start_state,
                     (uintptr_t) &m_allocQ,
                     pmem_alloc) ) ) 
     {
+        Warn( App, "elf_load() failed\n");
         return rc;
     }
 
@@ -227,18 +228,12 @@ bool App::run( id_t pid, uint cpu_id )
     }
 
     id_t gotId;
-    //rc = task_create( pid, name.c_str(), &m_start_state, &gotId );
-    rc = task_create( &m_start_state, &gotId );
+    rc = task_create( &start_state, &gotId );
     if ( rc || pid != gotId ) {
+        Warn( App, "task_create() failed\n");
         return  -1;
     }
-    m_pidQ.push( gotId );
     return 0;
-}
-
-bool App::zombie( id_t pid )
-{
-    return task_is_zombie( pid );
 }
 
 paddr_t App::pmem_alloc( size_t len, size_t alignment, uintptr_t arg )

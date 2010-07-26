@@ -21,16 +21,6 @@ return NULL;
 void *dlsym(void *handle, const char *symbol)
 {
 	void* ret = NULL;
-	if ( ! strcmp( symbol, "dat_provider_init" ) ) {
-		extern int dat_provider_init();
-		ret = dat_provider_init;
-	} else if ( ! strcmp( symbol, "dat_provider_fini" ) ) {
-		extern int dat_provider_fini();
-		ret = dat_provider_fini;
-	} else if ( ! strcmp( symbol, "dat_provider_init" ) ) {
-		extern int dat_provider_init();
-		ret = dat_provider_init;
-	}
 	_KDBG("handle=%p symbol=%s addr=%p\n",handle,symbol,ret);
 	return ret;
 }
