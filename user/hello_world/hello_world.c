@@ -159,7 +159,7 @@ static void *
 hello_world_thread(void *arg)
 {
 	int my_id = (int)(uintptr_t) arg;
-	unsigned my_cpu = sched_getcpu();
+	unsigned my_cpu = -1;
 
 	sleep(1);
 
