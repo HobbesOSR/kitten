@@ -4,6 +4,7 @@
 #include <lwk/aspace.h>
 #include <lwk/task.h>
 #include <lwk/xcall.h>
+#include <lwk/kfs.h>
 
 
 // Caller must have aspace->lock locked
@@ -120,6 +121,7 @@ __task_create(
 	tsk->gid	=	start_state->group_id;
 	tsk->aspace	=	aspace;
 	tsk->cpu_mask	=	aspace->cpu_mask;
+	tsk->fdTable	=	NULL;
 	strlcpy(tsk->name, start_state->task_name, sizeof(tsk->name));
 	list_head_init(&tsk->aspace_link);
 	list_head_init(&tsk->sched_link);
@@ -133,10 +135,9 @@ __task_create(
 	list_add(&tsk->aspace_link, &aspace->task_list);
 
 	// TODO: fix this stuff, it is broken
-	{
-		// Always "clone" files
-		memcpy(tsk->files, current->files, sizeof(tsk->files));
-
+	if (tsk->aspace->id !=  KERNEL_ASPACE_ID ) {
+        	tsk->fdTable = fdTableAlloc();
+		kfs_init_stdio( tsk->fdTable );
 		// Setup aliases needed for Linux compatibility layer
 		tsk->comm = tsk->name;
 		tsk->mm	  = tsk->aspace;
@@ -236,6 +237,9 @@ task_exit(
 			siginfo.si_code   = CLD_EXITED;
 			siginfo.si_status = current->aspace->exit_status >> 8;
 		}
+
+		if ( current->fdTable )
+			fdTableClose( current->fdTable );	
 	}
 
 	// End critical section
@@ -250,6 +254,9 @@ task_exit(
 		sigsend(current->aspace->parent->id, ANY_ID, SIGCHLD, &siginfo);
 		waitq_wakeup(&current->aspace->parent->child_exit_waitq);
 	}
+
+	if ( current->fdTable )
+		fdTableFree( current->fdTable );	
 
 	// Decrement the aspace's reference count
 	aspace_release(current->aspace);
