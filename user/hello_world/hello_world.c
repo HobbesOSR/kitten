@@ -159,16 +159,15 @@ static void *
 hello_world_thread(void *arg)
 {
 	int my_id = (int)(uintptr_t) arg;
-	unsigned my_cpu = -1;
 
 	sleep(1);
 
-	printf("Hello from thread %d on CPU %u: pid=%d, tid=%d\n",
-		my_id, my_cpu, getpid(), gettid());
+	printf("Hello from thread %d: pid=%d, tid=%d\n",
+		my_id, getpid(), gettid());
 
 	sleep(1);
 
-	printf("Goodbye from thread %d on CPU %u\n", my_id, my_cpu);
+	printf("Goodbye from thread %d\n", my_id);
 
 	sleep(1);
 

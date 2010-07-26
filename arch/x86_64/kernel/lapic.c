@@ -179,7 +179,7 @@ lapic_stop_timer(void)
 	/* Set the initial count to 0 */
 	apic_write(APIC_TMICT, 0);
 
-	/* Enable the local APIC timer */
+	/* Disable the local APIC timer */
 	lvt = apic_read(APIC_LVTT);
 	lvt |= APIC_LVT_MASKED;
 	apic_write(APIC_LVTT, lvt);

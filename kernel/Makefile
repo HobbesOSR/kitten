@@ -33,6 +33,7 @@ obj-y := \
 	fdTable.o \
 
 obj-$(CONFIG_KGDB) += kgdb.o kgdboc.o
+obj-$(CONFIG_DEBUG_HW_NOISE) += noise.o
 obj-y += mm/
 obj-y += lwk_syscalls/
 obj-y += linux_syscalls/
