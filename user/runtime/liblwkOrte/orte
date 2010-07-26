@@ -1,0 +1,6 @@
+
+OPENMPI=/home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/
+
+
+g++ -DHAVE_CONFIG_H -I. -I$OPENMPI/build/opal/include -I$OPENMPI/build/orte/include -I$OPENMPI/build/ompi/include -I$OPENMPI/orte/mca/rml/cnos -I$OPENMPI/opal/include -I$OPENMPI/orte/include -I$OPENMPI/ompi/include -finline-functions -I$OPENMPI -fno-strict-aliasing  -c orte.cpp
+
