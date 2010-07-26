@@ -14,9 +14,11 @@
 
 
 Config::Config( int argc, char* argv[]) :
-    m_pctPid( 65535 ),
+    m_pctPid( 1 ),
     m_jobId( 1000 ),
-    m_heapLen( 1024*1024*100 ),
+    m_heapLen( 1024L*1024L*1024L * 4L ),
+//    m_heapLen( 1024L*1024L*512*2 ),
+    //m_heapLen( 1024L*1024L*16 ),
     m_stackLen( 1024*1024 ),
     m_fanout( 4 ),
     m_ranksPer( 1 )
@@ -171,7 +173,7 @@ bool Config::initNidRnkMap( std::string& nidList )
             continue;
         }
         Nid cur = strtol( foo.front().c_str(), NULL ,0 );
-        Debug( Config, "cur=%d\n", cur );
+        Debug( Config, "cur=%#x\n", cur );
 
         if ( range ) {
             ++prev;

@@ -3,13 +3,13 @@
 #define PAL_PAH_H
 
 #include <vector>
-#include <srdma/dm.h>
+#include <rdmaPlus.h>
 #include <pct/msgs.h>
 
 class Config;
 class Job;
 
-using namespace srdma;
+using namespace rdmaPlus;
 
 class Pal {
     public:
@@ -25,6 +25,6 @@ class Pal {
         bool do_ctrl( CtrlMsg& );
 
         Job*    m_job;
-        Dm      m_rdma;
+        Rdma      m_rdma;
 };
 #endif

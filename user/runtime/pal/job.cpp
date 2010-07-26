@@ -3,7 +3,7 @@
 #include <pal/debug.h>
 #include <pal/util.h>
 
-Job::Job( Dm& rdma, Config& config ) :
+Job::Job( Rdma& rdma, Config& config ) :
     m_config( config ),
     m_rdma( rdma ),
     m_kill(false)
@@ -15,8 +15,8 @@ Job::Job( Dm& rdma, Config& config ) :
 
     m_nidPidMap.resize( config.nRanks() );
 
-    m_rdma.memRegionRegister( config.nidRnkMap().data(), sizeofVec( config.nidRnkMap() ),
-                                    NidRankId );
+    m_rdma.memRegionRegister( config.nidRnkMap().data(),
+                                sizeofVec( config.nidRnkMap() ), NidRankId );
 
     m_rdma.memRegionRegister( config.appImage().data(), config.appImageLen(),
                                     ImageId );
@@ -24,14 +24,18 @@ Job::Job( Dm& rdma, Config& config ) :
     m_rdma.memRegionRegister( m_nidPidMap.data(), sizeofVec(m_nidPidMap),
                                     NidPidId );
 
+    m_rdma.connect( m_rootNodeId );
     m_jobId = config.jobId();
 }
 
 Job::~Job()
 {
+    //Debug(Job,"\n");
+    m_rdma.disconnect( m_rootNodeId );
     m_rdma.memRegionUnregister( NidRankId );
     m_rdma.memRegionUnregister( ImageId );
     m_rdma.memRegionUnregister( NidPidId );
+    Debug(Job,"\n");
 }
 
 bool Job::Kill( int sig )
@@ -56,18 +60,19 @@ bool Job::Load()
     CtrlMsg msg;
 
     msg.u.job.type                 = JobMsg::Load;
-    msg.u.job.u.load.imageKey      = ImageId;
-    msg.u.job.u.load.imageAddr     = 0;
-    msg.u.job.u.load.elf_len       = m_config.elfLen(); 
-    msg.u.job.u.load.cmdLine_len   = m_config.cmdLen();
-    msg.u.job.u.load.env_len       = m_config.envLen();
+    msg.u.job.u.load.app.imageKey      = ImageId;
+    msg.u.job.u.load.app.imageAddr     = 0;
+    msg.u.job.u.load.app.elf_len       = m_config.elfLen(); 
+    msg.u.job.u.load.app.cmdLine_len   = m_config.cmdLen();
+    msg.u.job.u.load.app.env_len       = m_config.envLen();
 
-    msg.u.job.u.load.heap_len      = m_config.heapLen();
-    msg.u.job.u.load.stack_len     = m_config.stackLen();
+    msg.u.job.u.load.app.heap_len      = m_config.heapLen();
+    msg.u.job.u.load.app.stack_len     = m_config.stackLen();
+
+    msg.u.job.u.load.app.nRanks        = m_config.nRanks();
 
     msg.u.job.u.load.nNids         = m_config.nNids(); 
     msg.u.job.u.load.fanout        = m_config.fanout();
-    msg.u.job.u.load.nRanks        = m_config.nRanks();
     msg.u.job.u.load.childNum      = 0;
 
     msg.u.job.u.load.nidRnkMapKey  = NidRankId;

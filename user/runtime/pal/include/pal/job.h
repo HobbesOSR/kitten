@@ -2,20 +2,20 @@
 #ifndef JOB_PAH_H
 #define JOB_PAH_H
 
-#include <srdma/dm.h>
+#include <rdmaPlus.h>
 #include <pct/msgs.h>
 #include <vector>
 
-using namespace srdma;
+using namespace rdmaPlus;
 class Config;
 
 class Job {
-        static const int ImageId = 0xfead0001;
-        static const int NidRankId = 0xfead0002;
-        static const int NidPidId = 0xfead0003;
+        static const int ImageId = 0x1;
+        static const int NidRankId = 0x2;
+        static const int NidPidId = 0x3;
 
     public:
-        Job( Dm&, Config& );
+        Job( Rdma&, Config& );
         ~Job();
         bool Load();
         bool JobMsg( ProcId&, struct JobMsg& );
@@ -30,7 +30,7 @@ class Job {
         bool childStart( );
 
         Config&             m_config;
-        Dm&                 m_rdma;
+        Rdma&               m_rdma;
         bool                m_kill;
         ProcId              m_myNodeId;
         ProcId              m_rootNodeId;
