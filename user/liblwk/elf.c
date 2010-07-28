@@ -483,7 +483,7 @@ load_writable_segment(
 {
 	int status;
 	paddr_t pmem;
-	vaddr_t local_start;
+	vaddr_t local_start = 0;
 	vaddr_t src, dst;
 	id_t my_aspace_id;
 
@@ -528,6 +528,7 @@ load_writable_segment(
 	dst = local_start + (phdr->p_vaddr - start);
 	src = (vaddr_t)elf_image + phdr->p_offset;
 	memcpy((void *)dst, (void *)src, phdr->p_filesz);
+	memset((void *)dst + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
 
 	/* Unmap the segment from this address space */
 	status = aspace_del_region(my_aspace_id, local_start, extent);
