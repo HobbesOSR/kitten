@@ -4087,8 +4087,7 @@ static void* sys_alloc(mstate m, size_t nb) {
           char* oldbase = sp->base;
           sp->base = tbase;
           sp->size += tsize;
-          return memset( prepend_alloc(m, tbase, oldbase, nb), 0, nb );
-          //return prepend_alloc(m, tbase, oldbase, nb);
+          return prepend_alloc(m, tbase, oldbase, nb);
         }
         else
           add_segment(m, tbase, tsize, mmap_flag);
@@ -4103,8 +4102,7 @@ static void* sys_alloc(mstate m, size_t nb) {
       set_size_and_pinuse_of_inuse_chunk(m, p, nb);
       check_top_chunk(m, m->top);
       check_malloced_chunk(m, chunk2mem(p), nb);
-      return memset( chunk2mem(p), 0, nb) ;
-      //return chunk2mem(p);
+      return chunk2mem(p);
     }
   }
 
