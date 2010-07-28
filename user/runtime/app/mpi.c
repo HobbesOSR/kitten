@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <limits.h>
-//#include <lwk/liblwk.h>
 #include <mpi.h>
 #include <sys/stat.h>
 
@@ -13,6 +12,10 @@ int main(int argc, char *argv[], char *envp[] )
     int ret;
     int myrank;
     int size;
+    //setenv( "OMPI_MCA_orte_debug", "5", 1 );
+    //setenv( "OMPI_MCA_btl_base_debug", "5", 1 );
+    //setenv( "OPAL_PKGDATADIR", "/etc/opal", 1 );
+    //setenv( "OPAL_SYSCONFDIR", "/etc/opal", 1 );
 
     printf("calling MPI_Init\n");
     MPI_Init( &argc, & argv);
@@ -35,14 +38,3 @@ int main(int argc, char *argv[], char *envp[] )
 
     return 0;
 }
-
-#if 0 
-static void init_ompi(void)
-{
-    setenv( "OPAL_PKGDATADIR", "/etc/opal", 1 );
-    setenv( "OPAL_SYSCONFDIR", "/etc/opal", 1 );
-
-//    setenv( "OMPI_MCA_orte_debug", "5", 1 );
-//    setenv( "OMPI_MCA_btl_base_debug", "5", 1 );
-}
-#endif
