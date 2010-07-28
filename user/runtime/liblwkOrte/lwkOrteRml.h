@@ -11,7 +11,7 @@
 
 struct LwkOrteRmlMsg;
 
-#if 0  
+#if 0
 #define Debug( name, fmt, args... ) \
     printf( "%s::%s():%d: "fmt, #name,__FUNCTION__,__LINE__, ## args )
 #else
