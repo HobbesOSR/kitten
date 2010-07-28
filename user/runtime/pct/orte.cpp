@@ -21,37 +21,37 @@
 
 Orte::Orte( Rdma& dm, Route& route, int baseRank, int ranksPer, 
                                     std::vector< ProcId >& nidMap ) :
-	m_localNidMap( nidMap ),
-	m_dm( dm ),	
-	m_route( route ),
+    m_localNidMap( nidMap ),
+    m_dm( dm ),	
+    m_route( route ),
     m_baseRank( baseRank ),
     m_ranksPer( ranksPer ),
-	m_numChildren( m_localNidMap.size() - 1 ),
-	m_barrierPendingCnt(  m_numChildren + ranksPer ),
+    m_numChildren( m_localNidMap.size() - 1 ),
+    m_barrierPendingCnt(  m_numChildren + ranksPer ),
 #if 0
     m_log( "Orte::" ),
 #endif
-	m_barrierRoot( baseRank == 0 ? true : false )
+    m_barrierRoot( baseRank == 0 ? true : false )
 {
     Debug( Orte, "baseRank=%d ranksPer=%d\n", baseRank, ranksPer );
-	Debug( Orte, "root=%d numChildren=%d pending=%d\n",
+    Debug( Orte, "root=%d numChildren=%d pending=%d\n",
                     m_barrierRoot, m_numChildren, m_barrierPendingCnt );
-	armRecv();
+    armRecv();
     pthread_mutex_init(&m_mutex,NULL);
 }
 
 Orte::~Orte()
 {
-	Debug(Orte,"enter\n");
+    Debug(Orte,"enter\n");
 
-	Key key = { { -1, -1 }, ORTE_MSG_TAG, sizeof(m_msg) };
-	Request* req;
+    Key key = { { -1, -1 }, ORTE_MSG_TAG, sizeof(m_msg) };
+    Request* req;
 
-	if ( ( req = m_dm.recvCancel( key ) ) ) {
-		Debug( Orte, "canceled Request=%p\n", req );
-		delete req;
-	}
-	Debug(Orte,"return\n");
+    if ( ( req = m_dm.recvCancel( key ) ) ) {
+        Debug( Orte, "canceled Request=%p\n", req );
+        delete req;
+    }
+    Debug(Orte,"return\n");
 
     //m_log.dump();
 }
@@ -103,7 +103,7 @@ void Orte::initPid( int pid, int totalRanks, int myRank )
     }
 
     filename = dir.str() +"/app-info";
-    Debug(Job,"open %s\n", filename.c_str() );
+    Debug(Orte,"open %s\n", filename.c_str() );
 
     std::ofstream file( filename.c_str() );
     file << totalRanks << std::endl;
@@ -111,7 +111,7 @@ void Orte::initPid( int pid, int totalRanks, int myRank )
     file.close();
 
     filename = dir.str() +"/pctFifo";
-	Debug( Orte, "mknod(%s)\n", filename.c_str()  );
+    Debug( Orte, "mknod(%s)\n", filename.c_str()  );
     if  ( mknod( filename.c_str(), 0666, 0 ) ) {
         Warn(App,"mknod(%s) failed: %s\n", filename.c_str(),strerror(errno));
         throw -1;
@@ -121,10 +121,10 @@ void Orte::initPid( int pid, int totalRanks, int myRank )
         Warn(App,"open(%s) failed: %s\n", filename.c_str(), strerror(errno) );
         throw -1;
     }
-	Debug( Orte, "open(%s) = %d\n", filename.c_str(), m_pid2fdM[pid].first  );
+    Debug( Orte, "open(%s) = %d\n", filename.c_str(), m_pid2fdM[pid].first  );
 
     filename = dir.str() +"/appFifo";
-	Debug( Orte, "mknod(%s)\n", filename.c_str()  );
+    Debug( Orte, "mknod(%s)\n", filename.c_str()  );
     if ( mknod( filename.c_str(), 0666, 0 ) ) {
         Warn(App,"mknod(%s) failed: %s\n", filename.c_str(),strerror(errno));
         throw -1;
@@ -134,34 +134,34 @@ void Orte::initPid( int pid, int totalRanks, int myRank )
         Warn(App,"open(%s) failed: %s\n", filename.c_str(), strerror(errno) );
         throw -1;
     }
-	Debug( Orte, "open(%s) = %d\n", filename.c_str(), m_pid2fdM[pid].second  );
+    Debug( Orte, "open(%s) = %d\n", filename.c_str(), m_pid2fdM[pid].second  );
 }
 
 void Orte::finiPid( int pid )
 {
-	close( m_pid2fdM[pid].first );
-	close( m_pid2fdM[pid].second );
+    close( m_pid2fdM[pid].first );
+    close( m_pid2fdM[pid].second );
 
     std::string filename;
     std::ostringstream dir;
     dir << "/proc/" << pid;
 
     filename = dir.str() +"/app-info";
-	Debug( Orte, "unlink(%s)\n", filename.c_str()  );
+    Debug( Orte, "unlink(%s)\n", filename.c_str()  );
     if ( unlink( filename.c_str() ) ) {
         Warn(App,"unlink(%s) failed: %s\n", filename.c_str(),strerror(errno));
         throw -1;
     }
 
     filename = dir.str() +"/pctFifo";
-	Debug( Orte, "unlink(%s)\n", filename.c_str()  );
+    Debug( Orte, "unlink(%s)\n", filename.c_str()  );
     if ( unlink( filename.c_str() ) ) {
         Warn(App,"unlink(%s) failed: %s\n", filename.c_str(),strerror(errno));
         throw -1;
     }
 
     filename = dir.str() +"/appFifo";
-	Debug( Orte, "unlink(%s)\n", filename.c_str()  );
+    Debug( Orte, "unlink(%s)\n", filename.c_str()  );
     if ( unlink( filename.c_str() ) ) {
         Warn(App,"unlink(%s) failed: %s\n", filename.c_str(),strerror(errno));
         throw -1;
@@ -177,20 +177,20 @@ void Orte::armRecv( )
 {
     ProcId  id = { -1, -1 };
 
-	Request* req = new Request( recvCallback, (void*) this );
-	req->setCbData( req );
+    Request* req = new Request( recvCallback, (void*) this );
+    req->setCbData( req );
 
-	Debug(Orte,"request=%p\n", req );
+    Debug(Orte,"request=%p\n", req );
 
-	// should dynamically allocate m_msg, as it stands we only post one
-	// recv at a time and a single receive buffer works, however if for
-	// some reason we want more posted receives this will not work 
+    // should dynamically allocate m_msg, as it stands we only post one
+    // recv at a time and a single receive buffer works, however if for
+    // some reason we want more posted receives this will not work 
     if ( m_dm.irecv( &m_msg, sizeof(m_msg), id, ORTE_MSG_TAG, *req ) > 0 )
-	{
+    {
         printf("irecv failed\n");
         exit(-1);
     }
-	Debug(Orte,"returning\n" );
+    Debug(Orte,"returning\n" );
 }
 
 void Orte::thread( )
@@ -236,25 +236,25 @@ void Orte::thread( )
 
 void* Orte::recvCallback( void* obj, void *data ) 
 {
-	return ( ( Orte*)obj)->recvCallback( (Request*) data );
+    return ( ( Orte*)obj)->recvCallback( (Request*) data );
 }
 
 void* Orte::recvCallback( Request* req  ) 
 {
-	Debug( Orte, "req=%p\n", req );
+    Debug( Orte, "req=%p\n", req );
     Debug( Orte, "type=%d\n", m_msg.type );
 
-	switch ( m_msg.type ) {
-		case LwkOrteRmlMsg::BARRIER:
-			processBarrierMsg( &m_msg );
-			break;
-		case LwkOrteRmlMsg::OOB:
-			processOOBMsg( &m_msg );
-			break;
-	}
-	delete req;
-	armRecv();
-	return NULL;
+    switch ( m_msg.type ) {
+        case LwkOrteRmlMsg::BARRIER:
+            processBarrierMsg( &m_msg );
+            break;
+        case LwkOrteRmlMsg::OOB:
+            processOOBMsg( &m_msg );
+            break;
+    }
+    delete req;
+    armRecv();
+    return NULL;
 }
 
 void Orte::processOOBMsg( OrteMsg* orteMsg )
@@ -302,22 +302,22 @@ pthread_mutex_unlock(&m_mutex);
 
 void* Orte::sendCallback( void* obj, void *data ) 
 {
-	return ( ( Orte*)obj)->sendCallback( (sendCbData_t*) data );
+    return ( ( Orte*)obj)->sendCallback( (sendCbData_t*) data );
 }
 
 void* Orte::sendCallback( sendCbData_t* data  ) 
 {
-	Debug( Orte, "enter\n");
+    Debug( Orte, "enter\n");
 
-	// Request*
-	delete data->first;
+    // Request*
+    delete data->first;
 
-	// OrteMsg*
-	delete data->second;
+    // OrteMsg*
+    delete data->second;
 
-	//std::pair<Request*,void*>
-	delete data;
-	return NULL;
+    //std::pair<Request*,void*>
+    delete data;
+    return NULL;
 }
 
 void Orte::processRead( int fd )
@@ -363,23 +363,23 @@ void Orte::barrier( LwkOrteRmlMsg* msg )
 #endif
 
     if ( m_barrierPendingCnt == 0 ) {
-    	m_barrierPendingCnt = m_numChildren + m_ranksPer;
-	    if ( m_barrierRoot ) {
-		    barrierFanout( );
-	    } else {	
-		    sendBarrierMsg( m_localNidMap[0], OrteMsg::u::barrier::Up );
-	    }
+        m_barrierPendingCnt = m_numChildren + m_ranksPer;
+        if ( m_barrierRoot ) {
+            barrierFanout( );
+        } else {	
+            sendBarrierMsg( m_localNidMap[0], OrteMsg::u::barrier::Up );
+        }
     }
 }
 
 void Orte::processBarrierMsg( OrteMsg* msg )
 {
-	Debug( Orte, "enter\n");
-	if ( msg->u.barrier.type == OrteMsg::u::barrier::Up ) {
-		barrier( NULL );
-	} else {
-		barrierFanout( );
-	}
+    Debug( Orte, "enter\n");
+    if ( msg->u.barrier.type == OrteMsg::u::barrier::Up ) {
+        barrier( NULL );
+    } else {
+	barrierFanout( );
+    }
 }
 
 void Orte::barrierFanout()
