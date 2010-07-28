@@ -47,6 +47,11 @@ sys_mmap(
 		as->mmap_brk = mmap_brk;
 		spin_unlock(&as->lock);
 
+		void* phys;
+		if ( __aspace_virt_to_phys( as, mmap_brk, & phys ) ) {
+			panic("sys_mmap() failed to get physical address\n");
+		}
+		memset( __va(phys), 0, len );
 		return mmap_brk;
 	}
 
