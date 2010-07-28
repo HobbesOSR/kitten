@@ -371,7 +371,6 @@ __pmem_alloc(size_t size, size_t alignment,
 			candidate.allocated = true;
 			status = __pmem_update(&candidate);
 			BUG_ON(status);
-			zero_pmem(&candidate);
 			if (result)
 				*result = candidate;
 			return 0;
