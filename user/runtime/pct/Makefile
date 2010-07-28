@@ -1,7 +1,5 @@
-OPENMPI=/home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/
-
 LDFLAGS = 
-LDFLAGS += -L$(HOME)/IB/install/lib 
+LDFLAGS += -L$(OPENIB)/lib 
 LDFLAGS += -L../libwait4net
 LDFLAGS += -L../libmalloc
 LDFLAGS += -L../libinit_ompi
@@ -20,17 +18,15 @@ LDFLAGS += -lpthread
 CPPFLAGS = -Wall
 CPPFLAGS += -Iinclude
 CPPFLAGS += -I../librdmaPlus
-CPPFLAGS += -I$(HOME)/IB/install/include
+CPPFLAGS += -I$(OPENIB)/include
 CPPFLAGS += -I../../../include
 CPPFLAGS += -I../liblwkOrte
-CPPFLAGS += -I$(OPENMPI)/build/opal/include
-CPPFLAGS += -I$(OPENMPI)/build/orte/include
-CPPFLAGS += -I$(OPENMPI)/build/ompi/include
-CPPFLAGS += -I$(OPENMPI)/orte/mca/rml/cnos
-CPPFLAGS += -I$(OPENMPI)/opal/include
-CPPFLAGS += -I$(OPENMPI)/orte/include
-CPPFLAGS += -I$(OPENMPI)/ompi/include
-CPPFLAGS += -I$(OPENMPI)
+CPPFLAGS += -I$(OPENMPI_SRC)
+CPPFLAGS += -I$(OPENMPI_SRC)/build/orte/include
+CPPFLAGS += -I$(OPENMPI_SRC)/build/opal/include
+CPPFLAGS += -I$(OPENMPI_SRC)/orte/include
+CPPFLAGS += -I$(OPENMPI_SRC)/opal/include
+
 
 pct_SRC = main.cpp pct.cpp job.cpp app.cpp pmem.cpp mem.cpp orte.cpp dl.cpp
 

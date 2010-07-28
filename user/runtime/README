@@ -1,0 +1,3 @@
+export OPENMPI_SRC=$HOME/tmp/openmpi-1.2.9
+export OPENMPI=$HOME/tmp/openmpi-1.2.9/install
+export OPENIB=$HOME/IB/install

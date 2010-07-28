@@ -1,6 +1,6 @@
 
 LDFLAGS =
-LDFLAGS += -L$(HOME)/IB/install/lib
+LDFLAGS += -L$(OPENIB)/lib
 
 LDFLAGS += -lrdmacm
 LDFLAGS += -libverbs
@@ -10,7 +10,7 @@ LDFLAGS += -ldl
 CPPFLAGS = -Wall
 CPPFLAGS += -Iinclude
 CPPFLAGS += -I../pct/include
-CPPFLAGS += -I$(HOME)/IB/install/include
+CPPFLAGS += -I$(OPENIB)/include
 CPPFLAGS += -I../librdmaPlus
 
 all: pal

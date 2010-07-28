@@ -1,7 +1,6 @@
 
-MPI=$(HOME)/hg3/kitten/user/libs/openmpi-1.2.9/install
 LDFLAGS = 
-LDFLAGS += -L$(HOME)/IB/install/lib 
+LDFLAGS += -L$(OPENIB)/lib 
 LDFLAGS += -L../libmalloc
 LDFLAGS += -Wl,-whole-archive -lmalloc -Wl,-no-whole-archive
 LDFLAGS	+= -Wl,-whole-archive -lmlx4 -Wl,-no-whole-archive
@@ -11,15 +10,14 @@ LDFLAGS += -lpthread
 LDFLAGS += -ldl
 
 MPI_LDFLAGS += -L../liblwkOrte
-#MPI_LDFLAGS += -L ../../libs/openmpi-1.2.9/install/lib
-MPI_LDFLAGS += -L $(MPI)/lib
+MPI_LDFLAGS += -L $(OPENMPI)/lib
 MPI_LDFLAGS += -lmpi 
 MPI_LDFLAGS += -lopen-rte 
 MPI_LDFLAGS += -lopen-pal 
 MPI_LDFLAGS += -llwkOrte
 
 CPPFLAGS = 
-CPPFLAGS += -I $(MPI)/include
+CPPFLAGS += -I $(OPENMPI)/include
 
 all: hello mpi
 
