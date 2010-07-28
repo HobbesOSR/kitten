@@ -1,3 +1,40 @@
-export OPENMPI_SRC=$HOME/tmp/openmpi-1.2.9
-export OPENMPI=$HOME/tmp/openmpi-1.2.9/install
+
+
+export OPENMPI_SRC=/home/mjleven/hg8/kitten/user/runtime/openmpi-1.2.9
+export OPENMPI=/home/mjleven/hg8/kitten/user/runtime/openmpi-1.2.9/install
 export OPENIB=$HOME/IB/install
+
+tar xzvf openmpi-1.2.9.tar.gz
+
+cd openmpi-1.2.9
+
+patch  -p1 -i ../openmpi-patch-1.2.9
+
+ln -s ../../../../../liblwkOrte/lwkOrteRmlBinding.h orte/mca/rml/cnos/
+
+mkdir build
+cd build
+../configure --with-platform=redstorm --prefix=`pwd`/../install
+
+edit opal/event/Makefile
+
+remove poll.c from here
+OMPI_LIBEVENT_SOURCES = signal.c epoll_sub.c epoll.c poll.c select.c 
+
+
+edig opal/include/opal_config.h
+
+comment out
+
+/* Define if your system supports the epoll system calls */
+//#define HAVE_EPOLL 1
+
+/* Define to 1 if you have the `poll' function. */
+//#define HAVE_POLL 1
+
+/* Define to 1 if you have the <poll.h> header file. */
+//#define HAVE_POLL_H 1
+
+/* Define to 1 if you have the `select' function. */
+//#define HAVE_SELECT 1
+
