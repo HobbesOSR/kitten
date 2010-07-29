@@ -52,15 +52,6 @@ irq_dispatch(
 	}
 
 	spin_unlock(&irq_desc->lock);
-
-	if (status != IRQ_HANDLED) {
-		printk(KERN_WARNING
-			"%s: Unhandled interrupt %d (%x)\n",
-			__func__,
-			irq,
-			irq
-		);
-	}
 }
 
 int
