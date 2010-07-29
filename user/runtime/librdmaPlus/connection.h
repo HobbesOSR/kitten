@@ -693,7 +693,7 @@ inline void Connection::initAckQP( )
     init_attr.send_cq = m_cq;
     init_attr.recv_cq = m_cq;
     init_attr.qp_context = this;
-    init_attr.cap.max_send_wr = 64;
+    init_attr.cap.max_send_wr = 1024;
     init_attr.cap.max_recv_wr = 2;
     init_attr.cap.max_send_sge = 1;
     init_attr.cap.max_recv_sge = 1;
@@ -734,12 +734,10 @@ inline int Connection::postAckSend(  uint32_t data )
 
     send_wr.imm_data = data;
 
-//printf("send %#x\n",m_farId.nid);
     struct ibv_send_wr* bad_wr;
-    if ( ibv_post_send( m_ackQP, &send_wr, &bad_wr) ) {
-    	printf( "%d %d\n", m_recvCredit, m_creditThreshold );
-        terminal( Connection, "ibv_post_send() %#x:%d\n",
-						m_farId.nid,m_farId.pid);
+    int ret;
+    if ( ( ret = ibv_post_send( m_ackQP, &send_wr, &bad_wr) ) ) {
+        terminal( Connection, "ibv_post_send() ret=%d\n", ret );
     }
 
     return 0;
@@ -755,7 +753,6 @@ inline int Connection::postAckRecv()
     recv_wr.num_sge = 0;
     recv_wr.wr_id = (uintptr_t) &m_recvAckEvent;
 
-//printf("recv %#x\n",m_farId.nid);
     struct ibv_recv_wr* bad_wr;
     if ( ibv_post_recv( m_ackQP, &recv_wr, &bad_wr) ) {
         terminal(Connection, "ibv_post_recv()\n");
