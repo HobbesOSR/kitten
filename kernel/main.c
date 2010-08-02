@@ -178,6 +178,7 @@ start_kernel()
 
 #ifdef CONFIG_DEBUG_HW_NOISE
 	/* Measure noise/interference in the underlying hardware/VMM */
+	extern void measure_noise(int, uint64_t);
 	measure_noise(0, 0);
 #endif
 
