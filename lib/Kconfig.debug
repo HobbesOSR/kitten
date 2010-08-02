@@ -88,11 +88,9 @@ config KGDB
           in Documentation/DocBook/.  If unsure, say N.
 
 config KGDB_SERIAL_CONSOLE
-        tristate "KGDB: use kgdb over the serial console"
+        bool
         depends on KGDB
         default y
-        help
-          Share a serial console with kgdb.
 
 config FRAME_POINTER
 	bool "Compile the kernel with frame pointers"

@@ -30,9 +30,10 @@ static int configured		= -1;
 
 static struct console	*kgdb_console_driver;
 
-int kgdboc_serial_register(struct console *p)
+int kgdboc_serial_register(struct console *p, int *suppress)
 {
 	int err;
+	extern int kgdb_use_con;
 
 	err = -ENODEV;
 
@@ -43,6 +44,8 @@ int kgdboc_serial_register(struct console *p)
 		goto noconfig;
 
 	configured = 1;
+	if (kgdb_use_con)
+		*suppress = 1;
 
 	return 0;
 

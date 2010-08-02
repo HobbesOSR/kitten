@@ -87,7 +87,7 @@ static DEFINE_SPINLOCK(kgdb_registration_lock);
 /* kgdb console driver is loaded */
 static int kgdb_con_registered;
 /* determine if kgdb console output should be used */
-static int kgdb_use_con;
+int kgdb_use_con;
 
 
 /*
@@ -1562,9 +1562,12 @@ void kgdb_breakpoint(void)
 	atomic_set(&kgdb_setting_breakpoint, 0);
 }
 
-int kgdb_console_init(char *str)
+int kgdb_console_init(void)
 {
 	kgdb_use_con = 1;
+#ifdef CONFIG_KGDB_SERIAL_CONSOLE
+	driver_init_by_name("console", "serial");
+#endif
 	return 0;
 }
 DRIVER_INIT("console", kgdb_console_init); /*  allows console=kgdb */
