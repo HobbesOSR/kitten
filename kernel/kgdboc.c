@@ -20,20 +20,19 @@
 #include <lwk/console.h>
 #include <lwk/driver.h>
 
-
-#define MAX_CONFIG_LEN		40
-
 static struct kgdb_io		kgdboc_io_ops;
 
 /* -1 = init not run yet, 0 = unconfigured, 1 = configured. */
 static int configured		= -1;
 
 static struct console	*kgdb_console_driver;
+static int kgdboc_use_con;
+static int kgdboc_con_registered;
+
 
 int kgdboc_serial_register(struct console *p, int *suppress)
 {
 	int err;
-	extern int kgdb_use_con;
 
 	err = -ENODEV;
 
@@ -44,7 +43,7 @@ int kgdboc_serial_register(struct console *p, int *suppress)
 		goto noconfig;
 
 	configured = 1;
-	if (kgdb_use_con)
+	if (kgdboc_use_con)
 		*suppress = 1;
 
 	return 0;
@@ -70,18 +69,47 @@ static struct kgdb_io kgdboc_io_ops = {
 	.write_char		= kgdboc_put_char,
 };
 
-static int __init opt_kgdboc_console(char *str)
+void kgdb_console_write(struct console *co, const char *s)
 {
-	if (driver_init_by_name("console",str))
-                printk(KERN_WARNING "KGDB failed to install console=%s\n", str);
-        else
-                printk(KERN_INFO "KGDB attached to console=%s\n", str);
-	
-	if (!configured)
-                printk(KERN_WARNING "KGDB console %s failed to initialize IO"
-		       " module\n", str);
+	unsigned long flags;
 
-        return 0;
+	/* If we're debugging, or KGDB has not connected, don't try
+	 * and print. */
+	if (!kgdb_connected || atomic_read(&kgdb_active) != -1)
+		return;
+
+	local_irq_save(flags);
+	kgdb_msg_write(s, strlen(s));
+	local_irq_restore(flags);
 }
 
-param_func(kgdboc_console, (param_set_fn)opt_kgdboc_console);
+static struct console kgdbcons = {
+	.name		= "kgdb",
+	.write		= kgdb_console_write,
+
+	/*.flags		= CON_PRINTBUFFER | CON_ENABLED, */
+	/*.index		= -1, */
+};
+
+int kgdboc_console_register(void)
+{
+	if (kgdboc_use_con && !kgdboc_con_registered) {
+		console_register(&kgdbcons);
+		kgdboc_con_registered = 1;
+	}
+	return 0;
+}
+
+int kgdboc_serial_init(void)
+{
+	driver_init_by_name("console", "serial");
+	return 0;
+}
+
+int kgdboc_console_init(void)
+{
+	kgdboc_use_con = 1;
+	return 0;
+}
+
+DRIVER_INIT("console", kgdboc_console_init); /*  allows console=kgdb */

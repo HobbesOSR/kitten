@@ -84,12 +84,6 @@ static int			exception_level;
 static struct kgdb_io		*kgdb_io_ops;
 static DEFINE_SPINLOCK(kgdb_registration_lock);
 
-/* kgdb console driver is loaded */
-static int kgdb_con_registered;
-/* determine if kgdb console output should be used */
-int kgdb_use_con;
-
-
 /*
  * Holds information about breakpoints in a kernel. These breakpoints are
  * added and removed by gdb.
@@ -715,7 +709,7 @@ static inline int shadow_pid(int realpid)
 
 static char gdbmsgbuf[BUFMAX + 1];
 
-static void kgdb_msg_write(const char *s, int len)
+void kgdb_msg_write(const char *s, int len)
 {
 	char *bufptr;
 	int wcount;
@@ -1459,37 +1453,14 @@ int kgdb_nmicallback(int cpu, void *regs)
 	return 1;
 }
 
-void kgdb_console_write(struct console *co, const char *s)
-{
-	unsigned long flags;
-
-	/* If we're debugging, or KGDB has not connected, don't try
-	 * and print. */
-	if (!kgdb_connected || atomic_read(&kgdb_active) != -1)
-		return;
-
-	local_irq_save(flags);
-	kgdb_msg_write(s, strlen(s));
-	local_irq_restore(flags);
-}
-
-static struct console kgdbcons = {
-	.name		= "kgdb",
-	.write		= kgdb_console_write,
-
-	/*.flags		= CON_PRINTBUFFER | CON_ENABLED, */
-	/*.index		= -1, */
-};
-
 static void kgdb_register_callbacks(void)
 {
 	if (!kgdb_io_module_registered) {
 		kgdb_io_module_registered = 1;
 		kgdb_arch_init();
-		if (kgdb_use_con && !kgdb_con_registered) {
-			console_register(&kgdbcons);
-			kgdb_con_registered = 1;
-		}
+#ifdef CONFIG_KGDB_SERIAL_CONSOLE
+		kgdboc_console_register();
+#endif
 	}
 }
 
@@ -1562,13 +1533,13 @@ void kgdb_breakpoint(void)
 	atomic_set(&kgdb_setting_breakpoint, 0);
 }
 
-int kgdb_console_init(void)
+int kgdb_module_init(void)
 {
-	kgdb_use_con = 1;
 #ifdef CONFIG_KGDB_SERIAL_CONSOLE
-	driver_init_by_name("console", "serial");
+	kgdboc_serial_init();
 #endif
 	return 0;
 }
-DRIVER_INIT("console", kgdb_console_init); /*  allows console=kgdb */
+
+DRIVER_INIT("module", kgdb_module_init); /*  allows console=kgdb */
 DRIVER_PARAM(kgdb_break_asap, uint);
