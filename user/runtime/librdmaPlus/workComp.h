@@ -102,15 +102,14 @@ inline void* WorkComp::thread()
             terminal(WorkComp, "Failed to set notify!\n");
         }
 
-        ibv_wc wc[10];
+        ibv_wc wc[50];
 
-        while ( ( ret = ibv_poll_cq( ev_cq, 10, wc ) ) > 0 ) {
+        while ( ( ret = ibv_poll_cq( ev_cq, 50, wc ) ) > 0 ) {
             for ( int i = 0; i < ret; i++ ) {
                 eventHandler( wc[i] );
             }
         } 
-
-        ibv_ack_cq_events( ev_cq, 1);
+        ibv_ack_cq_events( ev_cq, 1 );
     }
     return NULL;
 }
