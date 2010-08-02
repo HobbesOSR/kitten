@@ -26,7 +26,7 @@ measure_noise(int runtime, uint64_t eps)
     const uint64_t MHZ = cpu_info[this_cpu].arch.tsc_khz * 1000;
 
     if (runtime <= 0) runtime = 30;
-    if (eps == 0) eps = 100;
+    if (eps == 0) eps = 250;
 
     printk( KERN_NOTICE
 	    "CPU %d: noise measurement runtime=%d eps=%llu\n",
@@ -43,7 +43,9 @@ measure_noise(int runtime, uint64_t eps)
 
     const uint64_t epoch = get_cycles();
     uint64_t start = epoch;
-    const uint64_t end = start + runtime * MHZ;
+
+/* const uint64_t end = start + runtime * MHZ; */
+    const uint64_t end = start + 69000000000LL; /*69353760000LL; */
 
     while( 1 )
     {

@@ -41,8 +41,11 @@
 #include <lwk/kgdb.h>
 #include <lwk/init.h>
 #include <lwk/smp.h>
+#include <lwk/cpuinfo.h>
 
+#include <arch/apic.h>
 #include <arch/apicdef.h>
+#include <arch/idt_vectors.h>
 #include <arch/system.h>
 
 /* #include <asm/mach_apic.h> */
@@ -265,6 +268,17 @@ kgdb_exception_enter(int trapnr, int err, struct pt_regs *regs)
 	local_irq_restore(flags);
 
 	return ret;
+}
+
+void
+kgdb_nmi_cpus(void)
+{
+	int fromcpu = raw_smp_processor_id();
+	int i;
+	for (i = 0; i < num_cpus(); i++) 
+		if (i != fromcpu)
+			lapic_send_ipi(i, NMI_VECTOR);
+	return;
 }
 
 /**
