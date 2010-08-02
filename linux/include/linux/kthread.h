@@ -3,6 +3,7 @@
 /* Simple interface for creating and stopping kernel threads without mess. */
 #include <linux/err.h>
 #include <linux/sched.h>
+#include <lwk/kthread.h>
 
 struct task_struct *kthread_create(int (*threadfn)(void *data),
 				   void *data,
