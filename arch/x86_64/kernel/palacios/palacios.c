@@ -244,7 +244,7 @@ palacios_xcall(
 /**
  * Starts a kernel thread on the specified CPU.
  */
-static void 
+static void* 
 palacios_start_thread_on_cpu(
 	int			cpu_id, 
 	int			(*fn)(void * arg), 
@@ -252,7 +252,8 @@ palacios_start_thread_on_cpu(
 	char *			thread_name
 )
 {
-	kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
+
+	return kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
 }
 
 /**
@@ -466,6 +467,7 @@ struct v3_os_hooks palacios_os_hooks = {
 static int
 palacios_run_guest(void *arg)
 {
+	unsigned int mask;
 	struct v3_vm_info * vm_info = v3_create_vm((void *) __va(guest_iso_start));
 	
 	if (!vm_info) {
@@ -476,9 +478,24 @@ palacios_run_guest(void *arg)
 	g_vm_guest = vm_info;
 
 	printk(KERN_INFO "Starting Guest OS...\n");
-	v3_start_vm(vm_info, 0);
+	// set the mask to inclue all available CPUs
+	// we assume we will start on CPU 0
 
-	return 0;
+	mask=~((((signed int)1<<(sizeof(unsigned int)*8-1))>>(sizeof(unsigned int)*8-1))<<cpus_weight(cpu_online_map));
+
+	return v3_start_vm(vm_info, mask);
+
+	//	return 0;
+}
+
+static int stuff()
+{
+    int i;
+
+    for (i=0;;i++) {
+	printk(KERN_INFO "hi %d from core 2\n",i);
+	schedule();
+    }
 }
 
 /**
@@ -496,9 +513,12 @@ sys_v3_start_guest(
 	guest_iso_start = iso_start;
 	guest_iso_size  = iso_size;
 
-	kthread_create_on_cpu(0, palacios_run_guest, NULL, "guest_os");
+	//	kthread_create_on_cpu(1, stuff, NULL, "chatty");
 
-	return 0;
+	//kthread_create_on_cpu(0, palacios_run_guest, NULL, "guest_os");
+	return palacios_run_guest(0);
+
+	//	return 0;
 }
 
 /**
@@ -533,7 +553,7 @@ palacios_init(void)
 {
 
 	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
-
+	printk(KERN_INFO "cpus_weight(cpu_online_map)=0x%x\n",cpus_weight(cpu_online_map));
 
 	Init_V3(&palacios_os_hooks, cpus_weight(cpu_online_map));
 
