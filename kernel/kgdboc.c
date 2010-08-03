@@ -32,6 +32,7 @@ static struct console	*kgdb_console_driver;
 static unsigned int kgdboc_use_con;
 static int kgdboc_con_registered;
 static char kgdboc_device[16] = "serial";
+static int kgdboc_active = 0;
 
 void kgdb_console_write(struct console *co, const char *s)
 {
@@ -68,6 +69,11 @@ static int kgdboc_console_register(void)
 int kgdboc_serial_register(struct console *p, int *suppress)
 {
 	int err;
+
+	if (!kgdboc_active) {
+		*suppress = 0;
+		return 0;
+	}
 
 	err = -ENODEV;
 
@@ -125,14 +131,14 @@ static int kgdboc_serial_init(void)
 
 int kgdboc_console_init(void)
 {
-	printk( KERN_INFO
-		"In kgdboc_console_init.\n");
+	if (!kgdboc_active)
+		return 0;
+
 	if (configured < 1) {
 		configured = 0;
 		kgdboc_serial_init();
-	} else {
-		printk("KGDB already configured. Leaving kgdboc_console_init.\n");
-	}
+	} 
+	
 	if (configured != 1) {
 		printk( KERN_WARNING
 			"KGDB failed to configure underlying transport device!\n");
@@ -143,5 +149,6 @@ int kgdboc_console_init(void)
 }
 
 DRIVER_INIT("module", kgdboc_console_init);
+DRIVER_PARAM_NAMED(active, kgdboc_active, uint);
 DRIVER_PARAM_NAMED(console, kgdboc_use_con, uint);
 DRIVER_PARAM_STRING(device, kgdboc_device, 16);
