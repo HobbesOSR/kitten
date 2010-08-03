@@ -16,12 +16,10 @@ void fdTableClose( struct fdTable* tbl )
 
 	        	if ( atomic_dec_and_test( &file->f_count ) ) {
                 		dbg( "f_count is 0\n" );
-#if 0
                 		if ( file->f_op->release ) {
                         		dbg( "release\n" );
                         		file->f_op->release( file->inode, file);
 				}
-#endif
                 	}
 			kmem_free( file );
         	}

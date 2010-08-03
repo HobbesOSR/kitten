@@ -268,7 +268,6 @@ void Orte::processOOBMsg( OrteMsg* orteMsg )
     if ( msg->u.oob.peer.vpid >= m_baseRank &&
                 msg->u.oob.peer.vpid < m_baseRank + m_ranksPer ) { 
 
-
 #if 0
         m_log.write( "%d:%s:%d: recvd from %d\n",pthread_self(),
                                 __func__,__LINE__, msg->myname.vpid);

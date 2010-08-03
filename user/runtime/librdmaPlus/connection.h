@@ -382,7 +382,9 @@ inline void Connection::disconnected()
 
     qp_attr.qp_state = IBV_QPS_ERR;
     if ( ibv_modify_qp(m_cm_id->qp, &qp_attr, IBV_QP_STATE) ) {
-        dbgFail(Connection,"ibv_modify_qp() %s\n", strerror(errno) );
+	// ibv_modify_qp() fails on occasion
+	// it doesn't appear to cause any problems
+        //dbgFail(Connection,"ibv_modify_qp() %s\n", strerror(errno) );
     }
 }
 
@@ -605,12 +607,8 @@ inline int Connection::post_wr( struct ibv_sge* list,
     wr.sg_list = list;
     wr.num_sge = 1;
     wr.opcode = opcode;
-    wr.send_flags = (ibv_send_flags) 0;
+    wr.send_flags = (ibv_send_flags) IBV_SEND_SIGNALED;
     wr.imm_data = imm_data;
-
-    if ( handler ) {
-        wr.send_flags = IBV_SEND_SIGNALED;
-    }
 
     dbg(Connection,"opcode=%#x flags=%#x imm=%#x\n",
                             wr.opcode, wr.send_flags, wr.imm_data );
@@ -693,7 +691,7 @@ inline void Connection::initAckQP( )
     init_attr.send_cq = m_cq;
     init_attr.recv_cq = m_cq;
     init_attr.qp_context = this;
-    init_attr.cap.max_send_wr = 1024;
+    init_attr.cap.max_send_wr = 2;
     init_attr.cap.max_recv_wr = 2;
     init_attr.cap.max_send_sge = 1;
     init_attr.cap.max_recv_sge = 1;
@@ -731,6 +729,8 @@ inline int Connection::postAckSend(  uint32_t data )
 
     send_wr.opcode = IBV_WR_SEND_WITH_IMM;
     send_wr.send_flags = (ibv_send_flags) 0;
+    send_wr.send_flags = IBV_SEND_SIGNALED;
+    send_wr.wr_id = (uintptr_t) NULL;
 
     send_wr.imm_data = data;
 
