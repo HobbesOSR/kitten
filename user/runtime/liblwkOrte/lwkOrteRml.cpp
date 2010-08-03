@@ -285,7 +285,7 @@ void* LwkOrteRml::thread( )
 		    Debug(LwkOrteRml,"poll() returned %d\n",ret);
         }
     }
-    Debug(LwkOrteRRml,"returning\n");
+    Debug(LwkOrteRml,"returning\n");
     return NULL;
 }
 
