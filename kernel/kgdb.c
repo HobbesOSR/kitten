@@ -52,6 +52,7 @@
 #include <arch/uaccess.h>
 
 static unsigned int kgdb_break_asap;
+static unsigned int kgdb_stop_cpus;
 
 struct kgdb_state {
 	int			ex_vector;
@@ -1293,7 +1294,8 @@ static int kgdb_reenter_check(struct kgdb_state *ks)
 
 void kgdb_roundup_cpus(unsigned long flags)
 {
-        kgdb_nmi_cpus();
+	if (kgdb_stop_cpus)
+        	kgdb_nmi_cpus();
 }
 
 /*
@@ -1396,9 +1398,11 @@ acquirelock:
 	/*
 	 * Wait for the other CPUs to be notified and be waiting for us:
 	 */
-	for_each_online_cpu(i) {
-		while (!atomic_read(&cpu_in_kgdb[i]))
-			cpu_relax();
+	if (kgdb_stop_cpus) {
+		for_each_online_cpu(i) {
+			while (!atomic_read(&cpu_in_kgdb[i]))
+				cpu_relax();
+		}
 	}
 
 	/*
@@ -1429,9 +1433,11 @@ acquirelock:
 		 * Wait till all the CPUs have quit
 		 * from the debugger.
 		 */
-		for_each_online_cpu(i) {
-			while (atomic_read(&cpu_in_kgdb[i]))
-				cpu_relax();
+		if (kgdb_stop_cpus) {
+			for_each_online_cpu(i) {
+				while (atomic_read(&cpu_in_kgdb[i]))
+					cpu_relax();
+			}
 		}
 	}
 
@@ -1458,9 +1464,6 @@ static void kgdb_register_callbacks(void)
 	if (!kgdb_io_module_registered) {
 		kgdb_io_module_registered = 1;
 		kgdb_arch_init();
-#ifdef CONFIG_KGDB_SERIAL_CONSOLE
-		kgdboc_console_register();
-#endif
 	}
 }
 
@@ -1533,13 +1536,5 @@ void kgdb_breakpoint(void)
 	atomic_set(&kgdb_setting_breakpoint, 0);
 }
 
-int kgdb_module_init(void)
-{
-#ifdef CONFIG_KGDB_SERIAL_CONSOLE
-	kgdboc_serial_init();
-#endif
-	return 0;
-}
-
-DRIVER_INIT("module", kgdb_module_init); /*  allows console=kgdb */
-DRIVER_PARAM(kgdb_break_asap, uint);
+DRIVER_PARAM_NAMED(stop_cpus, kgdb_stop_cpus, uint);
+DRIVER_PARAM_NAMED(early_break, kgdb_break_asap, uint);

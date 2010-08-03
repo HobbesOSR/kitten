@@ -114,7 +114,7 @@ static struct console serial_console = {
 	.poll_get_char = serial_getc,
 	.poll_put_char = serial_putc
 };
-#ifdef CONFIG_KGDB
+#ifdef CONFIG_KGDB_SERIAL_CONSOLE
 int kgdboc_serial_register(struct console *, int *suppress);
 #endif
 
@@ -144,9 +144,8 @@ int serial_console_init(void)
 	// Setup modem control register
 	outb( MCR_RTS | MCR_DTR | MCR_OUT2 , port+MCR);
 
-#ifdef CONFIG_KGDB
+#ifdef CONFIG_KGDB_SERIAL_CONSOLE
 	kgdboc_serial_register(&serial_console, &suppress);
-		console_register(&serial_console);
 #endif
 	if (!suppress)
 		console_register(&serial_console);
