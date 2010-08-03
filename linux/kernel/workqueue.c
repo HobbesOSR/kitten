@@ -6,6 +6,9 @@
 #include <linux/smp.h>
 #include <linux/wait.h>
 
+#undef _KDBG
+#define _KDBG(fmt,arg...)
+
 struct cpu_workqueue_struct {
 	spinlock_t lock;
 	struct list_head worklist;
@@ -84,7 +87,7 @@ queue_work(struct workqueue_struct *wq, struct work_struct *work)
 {
     int ret = 0;
 
-    //_KDBG("name=%s work=%p\n",wq->name,work);
+    _KDBG("name=%s work=%p\n",wq->name,work);
     if (!test_and_set_bit(WORK_STRUCT_PENDING, work_data_bits(work))) {
 	BUG_ON(!list_empty(&work->entry));
 	__queue_work(wq, work);
@@ -96,6 +99,7 @@ queue_work(struct workqueue_struct *wq, struct work_struct *work)
 
 struct cpu_workqueue_struct *wq_per_cpu(struct workqueue_struct *wq, int cpu)
 {
+	_KDBG("name=%s cpu=%d\n",wq->name,cpu);
 /*	if (unlikely(is_wq_single_threaded(wq)))
 	cpu = singlethread_cpu; */
 	return per_cpu_ptr(wq->cpu_wq, cpu);
@@ -106,6 +110,7 @@ queue_work_on(int cpu, struct workqueue_struct *wq, struct work_struct *work)
 {
 	int ret = 0;
 
+	_KDBG("cpu=%d name=%s work=%p\n",cpu,wq->name,work);
 	if (!test_and_set_bit(WORK_STRUCT_PENDING, work_data_bits(work))) {
 		BUG_ON(!list_empty(&work->entry));
 		__queue_work(wq_per_cpu(wq, cpu), work);
@@ -124,13 +129,14 @@ flush_workqueue(struct workqueue_struct *wq)
 void
 flush_scheduled_work(void)
 {
-    //_KDBG("\n");
+    _KDBG("\n");
     flush_workqueue(keventd_wq);
 }
 
 int
 schedule_work(struct work_struct *work)
 {
+    _KDBG("\n");
     return queue_work(keventd_wq, work);
 }
 
@@ -140,7 +146,7 @@ __create_workqueue_key(const char *name, int singlethread, int freezeable,
 {
     struct workqueue_struct *wq = kmem_alloc(sizeof(struct workqueue_struct ));
 
-    //_KDBG("wq=%p name=%s\n",wq,name);
+    _KDBG("wq=%p name=%s\n",wq,name);
 
     INIT_LIST_HEAD(&wq->list);
     spin_lock_init(&wq->lock);
@@ -163,7 +169,7 @@ void
 destroy_workqueue(struct workqueue_struct *wq)
 {
     int i;
-    //_KDBG("wq=%p\n",wq);
+    _KDBG("wq=%p\n",wq);
     for ( i = 0; i < NUM_WQS; i++ ) {
 	if ( _wqs[i] == wq ) {
 	    _wqs[i] = NULL;
@@ -181,7 +187,7 @@ delayed_work_timer_fn(unsigned long __data)
     struct delayed_work *dwork = (struct delayed_work *)__data;
     struct workqueue_struct *wq = get_wq_data(&dwork->work);
 
-    //_KDBG("\n");
+    _KDBG("\n");
     __queue_work(wq, &dwork->work);
 }
 
@@ -192,7 +198,7 @@ queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
     int ret = 0;
     struct timer_list *timer = &dwork->timer;
     struct work_struct *work = &dwork->work;
-    //_KDBG("\n");
+    _KDBG("\n");
 
     if (!test_and_set_bit(WORK_STRUCT_PENDING, work_data_bits(work))) {
 	BUG_ON(timer_pending(timer));
@@ -214,7 +220,7 @@ int
 queue_delayed_work(struct workqueue_struct *wq,
 		   struct delayed_work *dwork, unsigned long delay)
 {
-    //_KDBG("wq=%p work=%p name=%s delay=%ld\n", wq, dwork, wq->name, delay );
+    _KDBG("wq=%p work=%p name=%s delay=%ld\n", wq, dwork, wq->name, delay );
     if ( delay == 0 )
 	return queue_work( wq, &dwork->work );
 
@@ -224,6 +230,7 @@ queue_delayed_work(struct workqueue_struct *wq,
 int schedule_delayed_work(struct delayed_work *dwork,
 			  unsigned long delay)
 {
+	_KDBG("\n");
 	return queue_delayed_work(keventd_wq, dwork, delay);
 }
 
@@ -246,11 +253,13 @@ static int __cancel_work_timer(struct work_struct *work,
 
 int cancel_delayed_work_sync(struct delayed_work *dwork)
 {
+	_KDBG("\n");
 	return __cancel_work_timer(&dwork->work, &dwork->timer);
 }
 
 int cancel_work_sync(struct work_struct *work)
 {
+	_KDBG("\n");
 	return __cancel_work_timer(work, NULL);
 }
 
@@ -272,7 +281,7 @@ run_workqueues(void) {
     int i;
 
     unsigned long flags;
-//    _KDBG("\n");
+    _KDBG("\n");
     for ( i = 0; i < NUM_WQS; i++ ) {
 	if ( _wqs[i] ) {
 	    struct work_struct *work = NULL;
@@ -319,6 +328,7 @@ prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
 {
 	unsigned long flags;
 
+	_KDBG("\n");
 	wait->flags &= ~WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&q->lock, flags);
 	if (list_empty(&wait->task_list))
@@ -331,6 +341,7 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	unsigned long flags;
 
+	_KDBG("\n");
 	__set_current_state(TASK_RUNNING);
 
 	if (!list_empty_careful(&wait->task_list)) {
