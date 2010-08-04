@@ -15,9 +15,8 @@ void fdTableClose( struct fdTable* tbl )
 				atomic_read( &file->f_count) );
 
 	        	if ( atomic_dec_and_test( &file->f_count ) ) {
-                		dbg( "f_count is 0\n" );
                 		if ( file->f_op->release ) {
-                        		dbg( "release\n" );
+                        		dbg( "release %p\n", file->f_op->release );
                         		file->f_op->release( file->inode, file);
 				}
                 	}
