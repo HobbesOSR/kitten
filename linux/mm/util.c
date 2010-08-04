@@ -73,6 +73,7 @@ struct mm_struct *get_task_mm(struct task_struct *task)
 {
 	struct mm_struct *mm;
 
+	return NULL;
 	//task_lock(task);
 	mm = task->mm;
 	if (mm) {
