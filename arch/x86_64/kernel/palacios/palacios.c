@@ -245,7 +245,7 @@ palacios_xcall(
 /**
  * Starts a kernel thread on the specified CPU.
  */
-static void* 
+static void *
 palacios_start_thread_on_cpu(
 	int			cpu_id, 
 	int			(*fn)(void * arg), 
@@ -253,7 +253,6 @@ palacios_start_thread_on_cpu(
 	char *			thread_name
 )
 {
-
 	return kthread_create_on_cpu(cpu_id, fn, arg, thread_name);
 }
 
@@ -479,24 +478,12 @@ palacios_run_guest(void *arg)
 	g_vm_guest = vm_info;
 
 	printk(KERN_INFO "Starting Guest OS...\n");
+
 	// set the mask to inclue all available CPUs
 	// we assume we will start on CPU 0
-
 	mask=~((((signed int)1<<(sizeof(unsigned int)*8-1))>>(sizeof(unsigned int)*8-1))<<cpus_weight(cpu_online_map));
 
 	return v3_start_vm(vm_info, mask);
-
-	//	return 0;
-}
-
-static int stuff()
-{
-    int i;
-
-    for (i=0;;i++) {
-	printk(KERN_INFO "hi %d from core 2\n",i);
-	schedule();
-    }
 }
 
 /**
@@ -514,12 +501,7 @@ sys_v3_start_guest(
 	guest_iso_start = iso_start;
 	guest_iso_size  = iso_size;
 
-	//	kthread_create_on_cpu(1, stuff, NULL, "chatty");
-
-	//kthread_create_on_cpu(0, palacios_run_guest, NULL, "guest_os");
 	return palacios_run_guest(0);
-
-	//	return 0;
 }
 
 /**
