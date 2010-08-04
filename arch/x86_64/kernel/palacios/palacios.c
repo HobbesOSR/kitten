@@ -126,14 +126,15 @@ palacios_print(
  */
 static void *
 palacios_allocate_pages(
-	int			num_pages
+	int			num_pages,
+	unsigned int		alignment	// must be power of two
 )
 {
 	struct pmem_region result;
 	int status;
-  
+
 	/* Allocate from the user-managed physical memory pool */
-	status = pmem_alloc_umem(num_pages * PAGE_SIZE, PAGE_SIZE, &result);
+	status = pmem_alloc_umem(num_pages * PAGE_SIZE, alignment, &result);
 	if (status)
 		return NULL;
 
