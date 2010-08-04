@@ -234,12 +234,12 @@ void Orte::thread( )
     Debug(Orte,"thread exiting\n");
 }
 
-void* Orte::recvCallback( void* obj, void *data ) 
+bool Orte::recvCallback( void* obj, void *data ) 
 {
     return ( ( Orte*)obj)->recvCallback( (Request*) data );
 }
 
-void* Orte::recvCallback( Request* req  ) 
+bool Orte::recvCallback( Request* req  ) 
 {
     Debug( Orte, "req=%p\n", req );
     Debug( Orte, "type=%d\n", m_msg.type );
@@ -252,9 +252,8 @@ void* Orte::recvCallback( Request* req  )
             processOOBMsg( &m_msg );
             break;
     }
-    delete req;
     armRecv();
-    return NULL;
+    return true;
 }
 
 void Orte::processOOBMsg( OrteMsg* orteMsg )
@@ -299,24 +298,21 @@ pthread_mutex_unlock(&m_mutex);
     }
 }
 
-void* Orte::sendCallback( void* obj, void *data ) 
+bool Orte::sendCallback( void* obj, void *data ) 
 {
     return ( ( Orte*)obj)->sendCallback( (sendCbData_t*) data );
 }
 
-void* Orte::sendCallback( sendCbData_t* data  ) 
+bool Orte::sendCallback( sendCbData_t* data  ) 
 {
     Debug( Orte, "enter\n");
-
-    // Request*
-    delete data->first;
 
     // OrteMsg*
     delete data->second;
 
     //std::pair<Request*,void*>
     delete data;
-    return NULL;
+    return true;
 }
 
 void Orte::processRead( int fd )

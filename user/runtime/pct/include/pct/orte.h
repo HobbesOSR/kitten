@@ -23,16 +23,16 @@ class Orte {
 
     private:
 
-	static void* recvCallback(void*,void*);
-	static void* sendCallback(void*,void*);
+	static bool recvCallback(void*,void*);
+	static bool sendCallback(void*,void*);
     static void* thread(void*);
     void thread();
 	void processOOBMsg( OrteMsg* msg );
 	void processBarrierMsg( OrteMsg* msg );
 
 	typedef std::pair<Request*,LwkOrteRmlMsg*> sendCbData_t;
-	void* recvCallback(Request*);
-	void* sendCallback(sendCbData_t*);
+	bool recvCallback(Request*);
+	bool sendCallback(sendCbData_t*);
 	void armRecv();
 	void processRead( int fd );
 	void processWrite( int fd );

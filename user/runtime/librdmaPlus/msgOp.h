@@ -120,7 +120,9 @@ inline int MsgOp::irecv( void* addr, size_t length,
             
             dbg(MsgOp,"found short\n");
             memcpy( req.buf(), tmp.first->body, tmp.first->hdr.u.req.length );
-            req.wake();
+            if (req.wake() ) {
+                delete &req;
+            }
         } else {
 
             dbg(MsgOp,"found long\n");
@@ -156,7 +158,9 @@ inline bool MsgOp::sendHandler( struct ibv_wc& wc, Request& req, MsgObj* msg )
     }
 
     // need to pass failure somehow
-    req.wake();
+    if ( req.wake() ) {
+        delete &req;
+    }
     delete msg;
     return true;
 }
@@ -222,7 +226,9 @@ inline bool MsgOp::req( Msg& msg, Connection& conn )
         if ( key.count <= Msg::ShortMsgLength ) {
             dbg(MsgOp,"found short\n");
             memcpy( req->buf(), msg.body, key.count );
-            req->wake();
+            if ( req->wake() ) {
+                delete req;
+            }	   
         } else {
             dbg(MsgOp,"found long\n");
 
@@ -255,7 +261,9 @@ inline bool MsgOp::ack( Msg& msg, Connection& conn )
 
     Request* req = (Request*) msg.hdr.cookie;
 
-    req->wake();
+    if ( req->wake() ) {
+        delete req; 
+    }	
     return false;
 }
 

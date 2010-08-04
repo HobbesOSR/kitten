@@ -10,7 +10,7 @@ namespace rdmaPlus {
 
 class Request {
     public:
-	    typedef void* (*callback_t)(void*,void*);
+	    typedef bool (*callback_t)(void*,void*);
 
 	    Request( callback_t func = NULL, void* obj=NULL, void* data = NULL ) :
             m_mr( NULL ),
@@ -60,9 +60,9 @@ class Request {
 
 	    bool wake( )
 	    {
-            sem_post(&m_sem);
-       	    callback();
-       	    return false;
+       	        bool ret = callback();
+                sem_post(&m_sem);
+       	        return ret;
 	    }
 
 	    int wait( long time, Status* status )
@@ -123,11 +123,13 @@ class Request {
 
 
     private:
-	    void callback() {
-		    dbg(Request,"callback=%p\n",m_cbFunc);
-		    if ( m_cbFunc ) {
-			    m_cbFunc( m_cbObj, m_cbData );
-		    }
+	    bool callback() {
+                bool ret = false;
+                dbg(Request,"callback=%p\n",m_cbFunc);
+                if ( m_cbFunc ) {
+                    ret = m_cbFunc( m_cbObj, m_cbData );
+                }
+                return ret;                  	 
 	    }
 
         struct ibv_mr* m_mr;
