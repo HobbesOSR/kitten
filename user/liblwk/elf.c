@@ -688,7 +688,7 @@ make_region(
  * be passed to the new task created by elf_load().
  */
 #define MAX_ARGC 32
-#define MAX_ENVC 32
+#define MAX_ENVC 64 
 
 /**
  * Kitchen-sink ELF image load function.
