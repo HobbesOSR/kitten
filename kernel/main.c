@@ -152,10 +152,6 @@ start_kernel()
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
 
-#ifdef CONFIG_KGDB
-        kgdb_initial_breakpoint();
-#endif
-
 	/*
 	 * Enable external interrupts.
 	 */
@@ -165,6 +161,13 @@ start_kernel()
 	 * And any modules that need to be started.
 	 */
 	driver_init_by_name( "module", "*" );
+
+	/* 
+	 * Stop eary (before "late" devices) in KGDB if requested
+	 */
+#ifdef CONFIG_KGDB
+        kgdb_initial_breakpoint();
+#endif
 
 	/*
 	 * Bring up any late init devices.
@@ -178,6 +181,7 @@ start_kernel()
 
 #ifdef CONFIG_DEBUG_HW_NOISE
 	/* Measure noise/interference in the underlying hardware/VMM */
+	extern void measure_noise(int, uint64_t);
 	measure_noise(0, 0);
 #endif
 

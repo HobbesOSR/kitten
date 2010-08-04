@@ -50,6 +50,7 @@ static inline void arch_kgdb_breakpoint(void)
 int kgdb_exception_enter(int trapnr, int err, struct pt_regs *regs);
 int kgdb_register_idle_task(struct task_struct *);
 int kgdb_register_running_task(struct task_struct *);
+void kgdb_nmi_cpus(void);
 
 #define BREAK_INSTR_SIZE	1
 #define CACHE_FLUSH_IS_SAFE	1

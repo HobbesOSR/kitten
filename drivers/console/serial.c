@@ -49,11 +49,6 @@ static unsigned int port = 0x3F8;  // COM1
 static unsigned int baud = 9600;
 #define SERIAL_MAX_BAUD	115200
 
-#ifdef CONFIG_KGDB
-/** Whether to attach to kgdb or the normal console if KGDB is supported */
-static int kgdb = 0;
-#endif /* CONFIG_KGDB */
-
 /** Set when serial console has been initialized. */
 static int initialized = 0;
 
@@ -119,8 +114,8 @@ static struct console serial_console = {
 	.poll_get_char = serial_getc,
 	.poll_put_char = serial_putc
 };
-#ifdef CONFIG_KGDB
-int kgdboc_serial_register(struct console *);
+#ifdef CONFIG_KGDB_SERIAL_CONSOLE
+int kgdboc_serial_register(struct console *, int *suppress);
 #endif
 
 /**
@@ -130,6 +125,7 @@ int serial_console_init(void)
 {
 	// Setup the divisor latch registers for the specified baud rate
 	unsigned int div = SERIAL_MAX_BAUD / baud;
+	int suppress = 0;
 
 	if (initialized) {
 		printk(KERN_ERR "Serial console already initialized.\n");
@@ -148,14 +144,11 @@ int serial_console_init(void)
 	// Setup modem control register
 	outb( MCR_RTS | MCR_DTR | MCR_OUT2 , port+MCR);
 
-#ifdef CONFIG_KGDB
-	if (kgdb)
-	    kgdboc_serial_register(&serial_console);
-	else
-	    console_register(&serial_console);
-#else
-	console_register(&serial_console);
+#ifdef CONFIG_KGDB_SERIAL_CONSOLE
+	kgdboc_serial_register(&serial_console, &suppress);
 #endif
+	if (!suppress)
+		console_register(&serial_console);
 	initialized = 1;
 
 	return 0;
@@ -169,6 +162,3 @@ DRIVER_INIT("console", serial_console_init);
  */
 DRIVER_PARAM(port, uint);
 DRIVER_PARAM(baud, uint);
-#ifdef CONFIG_KGDB
-DRIVER_PARAM(kgdb, uint);
-#endif

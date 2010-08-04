@@ -28,6 +28,7 @@
  * version 2. This program is licensed "as is" without any warranty of any
  * kind, whether express or implied.
  */
+#include <lwk/driver.h>
 #include <lwk/errno.h>
 #include <lwk/compiler.h>
 #include <lwk/interrupt.h>
@@ -50,7 +51,8 @@
 #include <arch/system.h>
 #include <arch/uaccess.h>
 
-static int kgdb_break_asap;
+static unsigned int kgdb_break_asap;
+static unsigned int kgdb_stop_cpus;
 
 struct kgdb_state {
 	int			ex_vector;
@@ -82,19 +84,6 @@ static int			exception_level;
 
 static struct kgdb_io		*kgdb_io_ops;
 static DEFINE_SPINLOCK(kgdb_registration_lock);
-
-/* kgdb console driver is loaded */
-static int kgdb_con_registered;
-/* determine if kgdb console output should be used */
-static int kgdb_use_con;
-
-static int __init opt_kgdb_con(char *str)
-{
-	kgdb_use_con = 1;
-	return 0;
-}
-
-param_func(kgdbcon, (param_set_fn)opt_kgdb_con);
 
 /*
  * Holds information about breakpoints in a kernel. These breakpoints are
@@ -492,14 +481,23 @@ static void int_to_threadref(unsigned char *id, int value)
 
 static struct task_struct *getthread(struct pt_regs *regs, int tid)
 {
-	return task_lookup(tid);
+	struct task_struct *tsk, *tskret = NULL;
+
+	struct aspace *aspace = aspace_acquire(KERNEL_ASPACE_ID);
+        list_for_each_entry(tsk, &aspace->task_list, aspace_link) {
+		if (tsk->id == tid)
+			tskret = tsk;
+
+	}
+	aspace_release(aspace);
+
+	return tsk;
 }
 
 /*
  * CPU debug state control:
  */
 
-#ifdef CONFIG_SMP
 static void kgdb_wait(struct pt_regs *regs)
 {
 	unsigned long flags;
@@ -543,7 +541,6 @@ static void kgdb_wait(struct pt_regs *regs)
 	atomic_set(&cpu_in_kgdb[cpu], 0);
 	local_irq_restore(flags);
 }
-#endif
 
 /*
  * Some architectures need cache flushes when we set/clear a
@@ -713,7 +710,7 @@ static inline int shadow_pid(int realpid)
 
 static char gdbmsgbuf[BUFMAX + 1];
 
-static void kgdb_msg_write(const char *s, int len)
+void kgdb_msg_write(const char *s, int len)
 {
 	char *bufptr;
 	int wcount;
@@ -1295,6 +1292,12 @@ static int kgdb_reenter_check(struct kgdb_state *ks)
 	return 1;
 }
 
+void kgdb_roundup_cpus(unsigned long flags)
+{
+	if (kgdb_stop_cpus)
+        	kgdb_nmi_cpus();
+}
+
 /*
  * kgdb_handle_exception() - main entry point from a kernel exception
  *
@@ -1382,11 +1385,9 @@ acquirelock:
 			atomic_set(&passive_cpu_wait[i], 1);
 	}
 
-#if defined(CONFIG_SMP) && 0
 	/* Signal the other CPUs to enter kgdb_wait() */
 	if (!kgdb_single_step || !kgdb_contthread)
 		kgdb_roundup_cpus(flags);
-#endif
 
 	/*
 	 * spin_lock code is good enough as a barrier so we don't
@@ -1394,15 +1395,15 @@ acquirelock:
 	 */
 	atomic_set(&cpu_in_kgdb[ks->cpu], 1);
 
-#if 0
 	/*
 	 * Wait for the other CPUs to be notified and be waiting for us:
 	 */
-	for_each_online_cpu(i) {
-		while (!atomic_read(&cpu_in_kgdb[i]))
-			cpu_relax();
+	if (kgdb_stop_cpus) {
+		for_each_online_cpu(i) {
+			while (!atomic_read(&cpu_in_kgdb[i]))
+				cpu_relax();
+		}
 	}
-#endif
 
 	/*
 	 * At this point the primary processor is completely
@@ -1425,7 +1426,6 @@ acquirelock:
 	kgdb_info[ks->cpu].task = NULL;
 	atomic_set(&cpu_in_kgdb[ks->cpu], 0);
 
-#if 0
 	if (!kgdb_single_step || !kgdb_contthread) {
 		for (i = NR_CPUS-1; i >= 0; i--)
 			atomic_set(&passive_cpu_wait[i], 0);
@@ -1433,12 +1433,13 @@ acquirelock:
 		 * Wait till all the CPUs have quit
 		 * from the debugger.
 		 */
-		for_each_online_cpu(i) {
-			while (atomic_read(&cpu_in_kgdb[i]))
-				cpu_relax();
+		if (kgdb_stop_cpus) {
+			for_each_online_cpu(i) {
+				while (atomic_read(&cpu_in_kgdb[i]))
+					cpu_relax();
+			}
 		}
 	}
-#endif
 
 kgdb_restore:
 	/* Free kgdb_active */
@@ -1450,47 +1451,19 @@ kgdb_restore:
 
 int kgdb_nmicallback(int cpu, void *regs)
 {
-#ifdef CONFIG_SMP
 	if (!atomic_read(&cpu_in_kgdb[cpu]) &&
 			atomic_read(&kgdb_active) != cpu) {
 		kgdb_wait((struct pt_regs *)regs);
 		return 0;
 	}
-#endif
 	return 1;
 }
-
-void kgdb_console_write(struct console *co, const char *s)
-{
-	unsigned long flags;
-
-	/* If we're debugging, or KGDB has not connected, don't try
-	 * and print. */
-	if (!kgdb_connected || atomic_read(&kgdb_active) != -1)
-		return;
-
-	local_irq_save(flags);
-	kgdb_msg_write(s, strlen(s));
-	local_irq_restore(flags);
-}
-
-static struct console kgdbcons = {
-	.name		= "kgdb",
-	.write		= kgdb_console_write,
-
-	/*.flags		= CON_PRINTBUFFER | CON_ENABLED, */
-	/*.index		= -1, */
-};
 
 static void kgdb_register_callbacks(void)
 {
 	if (!kgdb_io_module_registered) {
 		kgdb_io_module_registered = 1;
 		kgdb_arch_init();
-		if (kgdb_use_con && !kgdb_con_registered) {
-			console_register(&kgdbcons);
-			kgdb_con_registered = 1;
-		}
 	}
 }
 
@@ -1562,16 +1535,6 @@ void kgdb_breakpoint(void)
 	wmb(); /* Sync point after breakpoint */
 	atomic_set(&kgdb_setting_breakpoint, 0);
 }
-EXPORT_SYMBOL_GPL(kgdb_breakpoint);
 
-static int __init opt_kgdb_wait(char *str)
-{
-	kgdb_break_asap = 1;
-
-	if (kgdb_io_module_registered)
-		kgdb_initial_breakpoint();
-
-	return 0;
-}
-
-param_func(kgdbwait, (param_set_fn)opt_kgdb_wait);
+DRIVER_PARAM_NAMED(stop_cpus, kgdb_stop_cpus, uint);
+DRIVER_PARAM_NAMED(early_break, kgdb_break_asap, uint);

@@ -260,6 +260,7 @@ extern void kgdb_unregister_io_module(struct kgdb_io *local_kgdb_io_ops);
 extern int kgdb_hex2long(char **ptr, long *long_val);
 extern int kgdb_mem2hex(char *mem, char *buf, int count);
 extern int kgdb_hex2mem(char *buf, char *mem, int count);
+extern void kgdb_msg_write(const char *s, int len);
 
 extern int kgdb_register_task(struct task_struct *);
 extern int kgdb_register_idle_task(struct task_struct *);
