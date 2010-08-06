@@ -277,7 +277,7 @@ void* LwkOrteRml::thread( )
 
     while ( m_threadRun ) {
         int ret; 
-        if ( ( ret = poll( fds, 1, -1 ) > 0 ) ) {
+        if ( ( ret = poll( fds, 1, -1 ) ) > 0 ) {
             if ( fds[0].revents & POLLIN ) {
                 processRead( fds[0].fd );
             }

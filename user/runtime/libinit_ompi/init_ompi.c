@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 static char* mca_btl_openib_hca_params_ini =
 "[default]\n"
@@ -27,19 +28,18 @@ static char* openmpi_mca_params_conf =
 
 static void foo( char* filename, char* data )
 {
-        int ret;
         printf("creating %s\n",filename);
 
 	//printf("%s\n %s", filename, data);
 
         int fd;
         if ( ( fd = open(filename, O_CREAT|O_RDWR ) ) == -1 ) {
-                printf("open %s failed %s\n",filename,strerror(ret));
+                printf("open %s failed %s\n",filename,strerror(errno));
                 while(1);
         }
 
         if ( write( fd, data, strlen(data) ) != strlen(data) ) {
-                printf("write failed %s\n",strerror(ret));
+                printf("write failed %s\n",strerror(errno));
                 while(1);
         }
 

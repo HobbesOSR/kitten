@@ -328,7 +328,7 @@ inline Connection::~Connection()
         terminal( Connection,"ibv_dereg_mr() %s\n", strerror(errno));
     } 
 
-    if ( ( ret = rdma_destroy_id( m_cm_id ) ) != ret ) {
+    if ( ( ret = rdma_destroy_id( m_cm_id ) ) ) {
         terminal( Connection,"rdma_destroy_id() error=%d\n",ret);
     }
 
