@@ -270,7 +270,7 @@ void* LwkOrteRml::thread( void* ptr) {
 void* LwkOrteRml::thread( )
 {
     struct pollfd fds[1];
-    Debug(LwkOrteRRml,"entered\n");
+    Debug(LwkOrteRml,"entered\n");
 
     fds[0].fd = m_rFd;
     fds[0].events = POLLIN;
