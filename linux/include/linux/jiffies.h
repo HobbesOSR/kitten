@@ -36,7 +36,7 @@
 static inline unsigned long
 msecs_to_jiffies(const unsigned int m)
 {
-	return m * 1000 * 1000;
+	return m * 1000L * 1000L;
 }
 
 static inline unsigned long usecs_to_jiffies(const unsigned int u)
