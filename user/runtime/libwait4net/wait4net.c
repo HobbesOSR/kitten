@@ -34,7 +34,11 @@ static __attribute__ ((constructor (65534))) void init(void)
 		if ( ibv_query_device( ctx, &attr ) ) {
 			printf("query device %s failed!\n", dev_name );
 		} else {
-			printf("dev=%s guid=%#llx ports=%d\n", dev_name,
+			printf("vendor_id=%#x vendor_part_id=%#x hw_ver=%#x"
+			" fw_ver=`%s`\n",
+				attr.vendor_id, attr.vendor_part_id,
+				attr.hw_ver, attr.fw_ver );
+			printf("dev=%s guid=%#llx Ports=%d\n", dev_name,
 			__be64_to_cpu( attr.node_guid ), attr.phys_port_cnt );
 			
 			int port,lid;
