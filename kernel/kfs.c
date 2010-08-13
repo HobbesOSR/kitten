@@ -804,7 +804,6 @@ sys_close(int fd)
 
 	char buff[300]; memset(buff,0,300);
         dbg("name=`%s` fd=%d\n", file->inode ? 
-        //_KDBG("name=`%s` fd=%d\n", file->inode ? 
 				get_full_path(file->inode,buff) : "", fd);
 
 	if( file->f_op && file->f_op->close )
