@@ -1,5 +1,8 @@
+running pal needs these
+export OPAL_PKGDATADIR=/etc/opal
+export OPAL_SYSCONFDIR=/etc/opal
 
-
+building apps and pct needs these
 export OPENMPI_SRC=/home/mjleven/hg8/kitten/user/runtime/openmpi-1.2.9
 export OPENMPI=/home/mjleven/hg8/kitten/user/runtime/openmpi-1.2.9/install
 export OPENIB=$HOME/IB/install
@@ -22,7 +25,7 @@ remove poll.c from here
 OMPI_LIBEVENT_SOURCES = signal.c epoll_sub.c epoll.c poll.c select.c 
 
 
-edig opal/include/opal_config.h
+edit opal/include/opal_config.h
 
 comment out
 
