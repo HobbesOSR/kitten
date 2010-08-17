@@ -418,7 +418,7 @@ inline int Connection::init(  )
 
     ret = rdma_create_qp( m_cm_id, m_pd, &init_qp_attr);
     if (ret) {
-        terminal( Connection, "unable to create QP\n");
+        terminal( Connection, "unable to create QP %s\n", strerror(errno));
     }
     return 0;
 }
@@ -699,7 +699,7 @@ inline void Connection::initAckQP( )
 
     m_ackQP = ibv_create_qp(m_pd, &init_attr);
     if (!m_ackQP)  {
-        terminal( Connection, "Couldn't create QP\n");
+        terminal( Connection, "Couldn't create QP: %s\n",strerror(errno));
     }
 
     struct ibv_qp_attr attr;
