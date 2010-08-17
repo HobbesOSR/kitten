@@ -19,7 +19,7 @@ struct fifo_buffer {
 };
 
 struct fifo_file {
-	wait_queue_head_t	poll_wait;
+	waitq_t	poll_wait;
 	struct fifo_file*	other;
 	struct fifo_buffer*	buffer;
 };
@@ -109,7 +109,7 @@ read(struct file *filep, char __user *ubuf, size_t size, loff_t* off )
 		size -= ret;
 
 		// we just freed up buffer space, wake the writer
-		wake_up_interruptible( &file->other->poll_wait );
+		waitq_wake_nr( &file->other->poll_wait, 1 );
 
 		if ( size == 0 ) return num_read;
 		
@@ -140,7 +140,7 @@ write(struct file *filep, const char __user *ubuf, size_t size, loff_t* off )
 		size -= ret;
 
 		// we just wrote to buffer space, wake the reader 
-		wake_up_interruptible( &file->other->poll_wait );
+		waitq_wake_nr( &file->other->poll_wait, 1 );
 
 		if ( size == 0 ) return num_wrote;
 		
@@ -231,8 +231,8 @@ static struct fifo_inode_priv* create_fifo_priv( void )
 	priv->read->other = priv->write;
 	priv->write->other = priv->read;
 
-	init_waitqueue_head(&priv->write->poll_wait);
-	init_waitqueue_head(&priv->read->poll_wait);
+	waitq_init(&priv->write->poll_wait);
+	waitq_init(&priv->read->poll_wait);
 
 	return priv;
 }
