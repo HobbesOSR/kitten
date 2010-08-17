@@ -38,7 +38,8 @@ void put_unused_fd( unsigned int fd )
 struct file *fget( unsigned int fd )
 {
 	struct file* file = fdTableFile( current->fdTable, fd );
-        int count = atomic_add_return( 1, &file->f_count );
+        int __attribute__((unused)) count;
+	count = atomic_add_return( 1, &file->f_count );
         dbg( "fd=%d file=%p f_count=%d\n", fd, file, count );
         return file;
 }
