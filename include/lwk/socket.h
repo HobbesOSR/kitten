@@ -1,7 +1,7 @@
 #ifndef _LWK_SOCKET_H
 #define _LWK_SOCKET_H
 
-#include <linux/types.h>
+#include <lwk/types.h>
 
 typedef unsigned short  sa_family_t;
 
