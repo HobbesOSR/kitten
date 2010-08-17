@@ -189,6 +189,8 @@ merge_pmem_list(void)
 }
 
 static void
+zero_pmem(const struct pmem_region *rgn) __attribute__((unused));
+static void
 zero_pmem(const struct pmem_region *rgn)
 {
 	/* access pmem region via the kernel's identity map */
