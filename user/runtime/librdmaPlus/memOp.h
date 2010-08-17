@@ -188,7 +188,7 @@ inline bool MemOp::wakeUpHandler( struct ibv_wc& wc, sem_t* sem )
 {
     dbg(MemOp,"\n");
     if ( wc.status != IBV_WC_SUCCESS ) {
-        dbgFail(MemOp,"\n");
+        dbgFail(MemOp,"wc.status=%#x\n",wc.status);
         return true;
     }
 
