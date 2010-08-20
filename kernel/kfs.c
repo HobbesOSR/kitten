@@ -269,59 +269,6 @@ struct kfs_fops kfs_default_fops =
 	.readdir	= kfs_readdir,
 };
 
-static ssize_t
-kfs_int_read(struct file * file,
-	     char *        u_buf,
-	     size_t        len,
-	     loff_t *      off)
-{
-	char buf[ len > 32 ? 32 : len ];
-	ssize_t rc;
-
-	if( file->inode->priv_len == 0 )
-		rc = snprintf( buf, sizeof(buf), "%ld",
-			       *(long*) file->inode->priv );
-	else
-		rc = snprintf( buf, sizeof(buf), "%lx",
-			       *(long*) file->inode->priv );
-	if( rc < 0 )
-		return -EFAULT;
-
-	if( copy_to_user( (void*) u_buf, buf, rc+1 ) )
-		return -EFAULT;
-
-	return rc;
-}
-
-struct kfs_fops kfs_int_fops =
-{
-	.read		= kfs_int_read,
-	.close		= kfs_default_close,
-};
-
-static ssize_t
-kfs_string_read(struct file * file,
-		char *        u_buf,
-		size_t        len,
-		loff_t *      off
-)
-{
-	if( len > file->inode->priv_len )
-		len = file->inode->priv_len;
-
-	if( copy_to_user( (void*) u_buf, file->inode->priv, len ) )
-		return -EFAULT;
-
-	return len;
-}
-
-
-struct kfs_fops kfs_string_fops =
-{
-	.read		= kfs_string_read,
-	.close		= kfs_default_close,
-};
-
 static struct file *
 kfs_alloc_file(void)
 {
@@ -475,7 +422,7 @@ kfs_lookup(struct inode *       root,
 		// If we have a mount point descend into its lookup routine
 		if( root->i_op && root->i_op->lookup )
 			return root->i_op->lookup( root, (struct dentry*) dirname, 
-							(struct nameidata*) create_mode );
+					(struct nameidata*) (unsigned long) create_mode );
 
 		/* current entry is not a directory, so we can't search any
 		   further */
