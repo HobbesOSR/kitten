@@ -61,11 +61,6 @@ extern int get_sb_single(struct file_system_type *fs_type,
 	int (*fill_super)(struct super_block *, void *, int),
 	struct vfsmount *mnt);
 
-
-struct inode_operations {
-	struct dentry * (*lookup) (struct inode *,struct dentry *, struct nameidata *);
-};
-
 extern struct inode *new_inode(struct super_block *);
 
 struct super_operations {

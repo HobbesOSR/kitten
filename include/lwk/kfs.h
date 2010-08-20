@@ -19,6 +19,23 @@ struct kiocb;
 struct poll_table_struct;
 typedef u64 blkcnt_t;
 
+struct inode;
+struct dentry;
+struct nameidata;
+struct inode_operations {
+#if 0
+	struct inode * (*lookup)(
+		struct inode *	root,
+		const char *		name,
+		unsigned		create_mode
+	);
+#endif
+	struct dentry * (*lookup) (struct inode *,struct dentry *, struct nameidata *);
+
+        int (*create) (struct inode *, int mode );
+        int (*unlink) (struct inode * );
+};
+
 struct inode
 {
 	struct htable *		files;
@@ -26,13 +43,10 @@ struct inode
 
 	struct inode *          parent;
 	char			name[ 128 ];
-	const struct kfs_fops *	fops;
 	unsigned int		mode;
 	loff_t			size;
 
-	void *			priv;
-	size_t			priv_len;
-	atomic_t		refs;
+	atomic_t		i_count;
 
 	/* for chrdevs and linux compatibility */
 	dev_t                   i_rdev;
@@ -49,25 +63,19 @@ struct inode
 	struct timespec         i_mtime;
 	struct timespec         i_ctime;
 	const struct inode_operations   *i_op;
-	void                    *i_private;
-	struct mutex            i_mutex;
+	const struct kfs_fops *	i_fop;
+	void                  * i_private;
 	unsigned int            i_nlink;
-
-
-
 	struct inode *link_target;
+
+	void 			*priv;
+	int			priv_len;
 };
 struct vm_area_struct;
 
 struct file;
 struct kfs_fops
 {
-	struct inode * (*lookup)(
-		struct inode *	root,
-		const char *		name,
-		unsigned		create_mode
-	);
-
 	int (*open) (struct inode *, struct file *);
 
 	int (*close)(
@@ -75,8 +83,6 @@ struct kfs_fops
 	);
 	ssize_t (*write) (struct file *, const char __user *, size_t,
 			  loff_t *);
-	ssize_t (*writev) (struct file *, const struct iovec *, unsigned long,
-				 loff_t *);
 	ssize_t (*read) (struct file *, char __user *, size_t,
 			 loff_t *);
 	off_t (*lseek) ( struct file*, off_t, int );
@@ -122,12 +128,14 @@ extern void kfs_init_stdio( struct fdTable* );
 /* kfs inode manipulation */
 extern struct inode *kfs_mkdirent(struct inode *,
 				  const char *,
+				  const struct inode_operations *,
 				  const struct kfs_fops *,
 				  unsigned,
 				  void *,
 				  size_t);
 extern struct inode *kfs_create(const char *,
-				const struct kfs_fops *,
+				const struct inode_operations *,
+			        const struct kfs_fops *,
 				unsigned,
 				void *,
 				size_t);

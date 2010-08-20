@@ -107,7 +107,7 @@ void create_dev(char * path, int major, int minor) {
 	struct inode * inode;
 	//printk("mknod: %s - %d:%d\n", path, major, minor);
 
-	inode = kfs_create( path, &def_chr_fops, 0777, 0, 0 );
+	inode = kfs_create( path, NULL, &def_chr_fops, 0777, 0, 0 );
 	inode->i_rdev = MKDEV(major, minor);
 }
 #endif
@@ -117,18 +117,18 @@ devfs_init(void)
 {
 	struct inode *inode;
 
-	inode = kfs_create("/dev/console", &console_fops, S_IFCHR|0666, NULL, 0);
+	inode = kfs_create("/dev/console", NULL, &console_fops, S_IFCHR|0666, NULL, 0);
 	if (!inode)
 		panic("Failed to create /dev/console.");
 
 	/* Glibc depends on /dev/console being major 136 */
 	inode->i_rdev = MKDEV(136, 0);
 
-	inode = kfs_create("/dev/null", &dev_null_fops, S_IFCHR|0666, NULL, 0);
+	inode = kfs_create("/dev/null", NULL, &dev_null_fops, S_IFCHR|0666, NULL, 0);
 	if (!inode)
 		panic("Failed to create /dev/null.");
 
-	inode = kfs_create("/dev/zero", &dev_zero_fops, S_IFCHR|0666, NULL, 0);
+	inode = kfs_create("/dev/zero", NULL, &dev_zero_fops, S_IFCHR|0666, NULL, 0);
 	if (!inode)
 		panic("Failed to create /dev/zero.");
 

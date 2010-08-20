@@ -39,6 +39,10 @@ static inline void __unlock( spinlock_t *lock )
 
 #include <asm-generic/fcntl.h>
 
+static char*
+get_full_path(struct inode *inode, char *buf) __attribute__((unused));
+
+
 //#define dbg _KDBG
 #define dbg(fmt,args...)
 
@@ -259,7 +263,6 @@ __unlock(&_lock);
 
 struct kfs_fops kfs_default_fops =
 {
-	.lookup		= 0, // use the kfs_lookup
 	.read		= kfs_default_read,
 	.write		= kfs_default_write,
 	.close		= kfs_default_close,
@@ -333,7 +336,7 @@ kfs_create_inode(void)
 {
 	struct inode *inode = kmem_alloc(sizeof(struct inode));
 	memset(inode, 0x00, sizeof(struct inode));
-	atomic_set(&inode->refs, 0);
+	atomic_set(&inode->i_count, 0);
 
 	return inode;
 }
@@ -341,12 +344,17 @@ kfs_create_inode(void)
 struct inode *
 kfs_mkdirent(struct inode *          parent,
 	     const char *            name,
-	     const struct kfs_fops * fops,
+	     const struct inode_operations * i_ops,
+	     const struct kfs_fops * f_ops,
 	     unsigned                mode,
 	     void *                  priv,
 	     size_t                  priv_len)
 {
-	dbg( "name='%s' (parent=`%s`)\n", name, parent ? parent->name : "NONE");
+	char buf[MAX_PATHLEN]; memset(buf,0,MAX_PATHLEN);
+	if ( parent ) {
+		get_full_path(parent, buf);
+	}
+	dbg( "name=`%s/%s`\n", buf, name );
 
 	struct inode * inode = NULL;
 	int new_entry = 0;
@@ -384,10 +392,18 @@ kfs_mkdirent(struct inode *          parent,
 
 	// \todo This will overwrite any existing file; should it warn?
 	inode->parent	= parent;
-	inode->fops	= fops;
+	inode->i_fop	= f_ops;
+	inode->i_op	= i_ops;
 	inode->priv	= priv;
 	inode->priv_len	= priv_len;
 	inode->mode	= mode;
+
+	if ( i_ops && i_ops->create )  {
+		if ( i_ops->create( inode, mode ) ) {
+			printk("%s:%d() ????\n",__FUNCTION__,__LINE__);
+			return NULL;
+		}
+	}
 	/* note: refs is initialized to 0 in kfs_create_inode() */
 
 	if( name )
@@ -426,7 +442,7 @@ kfs_lookup(struct inode *       root,
 	   const char *		dirname,
 	   unsigned		create_mode)
 {
-	dbg("root=%p dirname=`%s`\n",root,dirname);
+	dbg("name=`%s`\n", dirname );
 
 	// Special case -- use the root if root is null
 	if( !root )
@@ -457,8 +473,9 @@ kfs_lookup(struct inode *       root,
 			return root;
 
 		// If we have a mount point descend into its lookup routine
-		if( root->fops->lookup )
-			return root->fops->lookup( root, dirname, create_mode );
+		if( root->i_op && root->i_op->lookup )
+			return root->i_op->lookup( root, (struct dentry*) dirname, 
+							(struct nameidata*) create_mode );
 
 		/* current entry is not a directory, so we can't search any
 		   further */
@@ -479,6 +496,7 @@ kfs_lookup(struct inode *       root,
 		if( !child )
 			child = kfs_mkdirent(root,
 					     dirname,
+						NULL,
 					     &kfs_default_fops,
 					     (create_mode & ~S_IFMT) | S_IFDIR,
 					     0,
@@ -498,6 +516,7 @@ kfs_lookup(struct inode *       root,
 
 struct inode *
 kfs_create(const char *            full_filename,
+	   const struct inode_operations * iops,
 	   const struct kfs_fops * fops,
 	   unsigned		   mode,
 	   void *		   priv,
@@ -523,7 +542,7 @@ kfs_create(const char *            full_filename,
 		return NULL;
 
 	// Create the file entry in the directory
-	return kfs_mkdirent(dir, filename, fops, mode, priv, priv_len);
+	return kfs_mkdirent(dir, filename, iops, fops, mode, priv, priv_len);
 }
 
 static struct inode *
@@ -532,6 +551,7 @@ kfs_mkdir(char *   name,
 {
 	dbg("name=`%s`\n",name);
 	return kfs_create(name,
+				NULL,
 			  &kfs_default_fops,
 			  (mode & ~S_IFMT) | S_IFDIR,
 			  0,
@@ -548,26 +568,32 @@ kfs_open(struct inode *inode, int flags, mode_t mode)
 	file->f_flags = flags;
 
 	file->f_mode = mode;
-	file->f_op = inode->fops;
+	file->f_op = inode->i_fop;
 	file->inode = inode;
 	atomic_set(&file->f_count,1);
-	atomic_inc(&inode->refs);
+	atomic_inc(&inode->i_count);
 
 	return file;
 }
 
-static char* 
+static char*
+get_full_path2(struct inode *inode, char *buf, int flag )
+{
+	if( inode->parent )
+		get_full_path2(inode->parent, buf, 1);
+
+	strcat(buf, inode->name);
+
+	if ( flag )
+		strcat(buf, "/");
+
+	return buf;
+}
+
+static char*
 get_full_path(struct inode *inode, char *buf)
 {
-	if ( ! inode ) return buf;
-	if( inode->parent )
-		get_full_path(inode->parent, buf);
-
-	if ( inode->parent )
-		strcat(buf, inode->name);
-	
-	strcat(buf, "/");
-	return buf;
+	return  get_full_path2( inode, buf, 0 );
 }
 
 struct inode *
@@ -613,7 +639,7 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 static void
 kfs_close(struct file *file)
 {
-	char buff[300]; memset(buff,0,300);
+	char buff[MAX_PATHLEN]; memset(buff,0,MAX_PATHLEN);
 #if 0
 	dbg("%p\n",file);
         dbg("name=`%s`\n", file->inode ? 
@@ -621,7 +647,7 @@ kfs_close(struct file *file)
 				get_full_path(file->inode,buff) : "");
 #endif
 	if (file->inode)
-		atomic_dec(&file->inode->refs);
+		atomic_dec(&file->inode->i_count);
 
 	kmem_free(file);
 }
@@ -691,7 +717,8 @@ sys_open(uaddr_t u_pathname,
 __lock(&_lock);
 	if ( ! kfs_lookup( kfs_root, pathname, 0 ) && ( flags & O_CREAT ) )  {
 		extern struct kfs_fops in_mem_fops;
-		if ( kfs_create( pathname, &in_mem_fops, 0777, 0, 0 ) 
+		extern struct inode_operations in_mem_iops;
+		if ( kfs_create( pathname, &in_mem_iops, &in_mem_fops, 0777, 0, 0 ) 
 							== NULL ) {
 			fd = -EFAULT;
 			goto out;
@@ -706,7 +733,6 @@ __lock(&_lock);
 	fdTableInstallFd( current->fdTable, fd, file );
 
         dbg("name=`%s` fd=%d \n",pathname,fd );
-        //__KDBG("name=`%s` fd=%d \n",pathname,fd );
 out:
 __unlock(&_lock);
 	return fd;
@@ -732,42 +758,6 @@ sys_write(int     fd,
 		__func__, fd, file->inode->name);
 	}
 
-out:
-	return ret;
-}
-
-
-struct iovec {
-	void* iov_base;
-	size_t iov_len;
-};	
-
-static ssize_t
-sys_writev(int     fd,
-	  const struct iovec* u_iovec,
-	  int  count)
-{
-	int ret = -EBADF;
-	struct file * const file = get_current_file( fd );
-	if( !file )
-		goto out;
-
-	struct iovec* iovec = kmem_alloc( sizeof(struct iovec) * count ); 
-	if ( ! iovec )  {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	if (copy_from_user(iovec, u_iovec, sizeof(struct iovec) * count)) {
-		ret = -EFAULT;
-		goto out;
-	}
-
-	if( file->f_op->writev )
-		ret = file->f_op->writev( file, iovec, count, NULL );
-	else 
-		printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
-				__func__, fd, file->inode->name);
 out:
 	return ret;
 }
@@ -802,7 +792,7 @@ sys_close(int fd)
 		goto out;
 	}
 
-	char buff[300]; memset(buff,0,300);
+	char buff[MAX_PATHLEN]; memset(buff,0,MAX_PATHLEN);
         dbg("name=`%s` fd=%d\n", file->inode ? 
 				get_full_path(file->inode,buff) : "", fd);
 
@@ -930,7 +920,6 @@ sys_mkdir(uaddr_t u_pathname,
                 return -EFAULT;
 
 	dbg( "name=`%s' mode %x\n", pathname, mode);
-	//_KDBG( "name=`%s' mode %x\n", pathname, mode);
 
 __lock(&_lock);
         struct inode* i = kfs_mkdir( pathname, mode );
@@ -962,6 +951,11 @@ __lock(&_lock);
 	if(S_ISDIR(inode->mode)) {
 		ret = -EISDIR;
 		goto out;
+	}
+	if ( inode->i_op && inode->i_op->unlink )  {
+		if ( inode->i_op->unlink( inode ) ) {
+			printk("%s:%d() ????\n",__FUNCTION__,__LINE__);
+		}
 	}
 
 	htable_del( inode->parent->files, inode );
@@ -1181,7 +1175,7 @@ static int pollwake(waitq_entry_t *wait, unsigned mode, int sync, void *key)
 }
 
 /* Add a new entry */
-static void __pollwait(struct file *filp, wait_queue_head_t *wait_address,
+static void __pollwait(struct file *filp, waitq_t *wait_address,
 				poll_table *p)
 {
 	struct poll_wqueues *pwq = container_of(p, struct poll_wqueues, pt);
@@ -1192,9 +1186,12 @@ static void __pollwait(struct file *filp, wait_queue_head_t *wait_address,
 	entry->filp = filp;
 	entry->wait_address = wait_address;
 	entry->key = p->key;
-	init_waitqueue_func_entry(&entry->wait, pollwake);
+	entry->wait.private = NULL;
+	entry->wait.func = pollwake;
+	list_head_init(&entry->wait.link);
+
 	entry->wait.private = pwq;
-	add_wait_queue(wait_address, &entry->wait);
+	waitq_add_entry(wait_address, &entry->wait);
 }
 
 static long estimate_accuracy(struct timespec *tv)
@@ -1218,7 +1215,7 @@ void poll_initwait(struct poll_wqueues *pwq)
 
 static void free_poll_entry(struct poll_table_entry *entry)
 {
-	remove_wait_queue(entry->wait_address, &entry->wait);
+	waitq_remove_entry(entry->wait_address, &entry->wait);
 	//fput(entry->filp);
 }
 
@@ -1462,7 +1459,8 @@ void
 kfs_init( void )
 {
 	kfs_root = kfs_mkdirent(NULL,
-				"root",
+				"",
+				NULL,
 				&kfs_default_fops,
 				0777 | S_IFDIR,
 				0,
@@ -1472,7 +1470,6 @@ kfs_init( void )
 	syscall_register( __NR_open, (syscall_ptr_t) sys_open );
 	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
-	syscall_register( __NR_writev, (syscall_ptr_t) sys_writev );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
 	syscall_register( __NR_lseek, (syscall_ptr_t) sys_lseek );
 	syscall_register( __NR_dup2, (syscall_ptr_t) sys_dup2 );

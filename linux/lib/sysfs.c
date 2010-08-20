@@ -29,6 +29,7 @@ sysfs_create_dir(
 	kobj->sd = kfs_mkdirent(
 		parent,
 		kobject_name(kobj),
+		NULL,
 		&kfs_default_fops,
 		0777 | S_IFDIR,
 		NULL,
@@ -123,6 +124,7 @@ sysfs_create_file(
 	inode = kfs_mkdirent(
 		kobj->sd,
 		attr->name,
+		NULL,
 		&sysfs_file_operations,
 		attr->mode & ~S_IFMT, // should be 0444 as we don't support writes..
 		buffer,
@@ -208,6 +210,7 @@ sysfs_create_group(
 		dir_sd = kfs_mkdirent(
 			kobj->sd,
 			grp->name,
+			NULL,
 			&kfs_default_fops,
 			0777 | S_IFDIR,
 			NULL,
@@ -243,6 +246,7 @@ sysfs_create_group(
 		inode = kfs_mkdirent(
 			dir_sd,
 			(*attr)->name,
+			NULL,
 			&sysfs_file_operations,
 			((*attr)->mode | mode) & ~S_IFMT,
 			buffer,
@@ -265,6 +269,7 @@ sysfs_init(void)
 {
 	sysfs_root = kfs_create(
 		"/sys",
+		NULL,
 		&kfs_default_fops,
 		0777 | S_IFDIR,
 		0,

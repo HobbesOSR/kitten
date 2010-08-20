@@ -5,19 +5,16 @@ struct in_mem_priv_data {
 	char* buf;
 };
 
+#define dbg(fmt,args...)
+//#define dbg _KDBG
+
 #define PRIV_DATA(x) ((struct in_mem_priv_data*) x)
 #define MAX_FILE_SIZE  (512*8)	
 
 static int in_mem_open(struct inode * inode, struct file * file)
 {
-	if ( ! inode->priv ) {
-		inode->priv = kmem_alloc( sizeof( struct in_mem_priv_data ) );
-		PRIV_DATA(inode->priv)->buf = kmem_alloc(MAX_FILE_SIZE);
-		inode->size = 0;
-	}
-
 	file->pos = 0;
-	file->private_data = inode->priv;
+	file->private_data = inode->i_private;
 	return 0;
 }
 
@@ -106,6 +103,29 @@ in_mem_ioctl(
 {
 	return -EINVAL;
 }
+
+static int create(struct inode *inode, int mode )
+{
+	dbg("\n");
+	inode->i_private = kmem_alloc( sizeof( struct in_mem_priv_data ) );
+	PRIV_DATA(inode->i_private)->buf = kmem_alloc(MAX_FILE_SIZE);
+	inode->size = 0;
+
+	return 0;	
+}
+
+static int unlink(struct inode *inode )
+{
+	dbg("\n");
+	kmem_free( PRIV_DATA(inode->i_private)->buf );
+	kmem_free( inode->i_private );
+	return 0;	
+}
+
+struct inode_operations in_mem_iops = {
+	.create = create,	
+	.unlink = unlink,
+};
 
 struct kfs_fops in_mem_fops = {
 	.open = in_mem_open,

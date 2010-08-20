@@ -9,8 +9,8 @@
 
 #define FIFO_SIZE               PAGE_SIZE
 
-#undef _KDBG
-#define _KDBG(fmt,args...)
+//#define dbg _KDBG
+#define dbg(fmt,args...)
 
 struct fifo_buffer {
 	unsigned char *buf;
@@ -91,6 +91,12 @@ static struct fifo_buffer* alloc_fifo_buffer( int length )
 	return pbuf;
 }
 
+static void free_fifo_buffer( struct fifo_buffer* buf ) 
+{
+	kmem_free( buf->buf );	
+	kmem_free( buf );
+}
+
 static ssize_t
 read(struct file *filep, char __user *ubuf, size_t size, loff_t* off )
 {
@@ -98,7 +104,7 @@ read(struct file *filep, char __user *ubuf, size_t size, loff_t* off )
 	struct fifo_buffer* pbuf = file->buffer;   
 	int num_read = 0;
 
-	_KDBG("id=%d size=%ld\n",current->id,size);
+	//dbg("id=%d size=%ld\n",current->id,size);
 
 	while(1) {
 		int ret = buf_read( pbuf, ubuf, size );
@@ -129,7 +135,7 @@ write(struct file *filep, const char __user *ubuf, size_t size, loff_t* off )
 	struct fifo_buffer* pbuf = file->buffer;   
 	int num_wrote = 0;
 
-	_KDBG("id=%d size=%ld\n",current->id, size);
+	//dbg("id=%d size=%ld\n",current->id, size);
 
 	while(1) {
 		int ret = buf_write( pbuf, ubuf, size );
@@ -159,8 +165,8 @@ static unsigned int poll(struct file *filep, struct poll_table_struct *table)
 	unsigned int key = 0;
 	if ( table ) key = table->key;
 
-	_KDBG("wait table=%p %d %d want events %#x\n",  table,
-			pfile->buffer->avail, pfile->buffer->length, key );
+	//dbg("wait table=%p %d %d want events %#x\n",  table,
+//			pfile->buffer->avail, pfile->buffer->length, key );
 	
 	poll_wait(filep, &pfile->poll_wait, table);
 
@@ -174,7 +180,7 @@ static unsigned int poll(struct file *filep, struct poll_table_struct *table)
 		mask |= POLLWRNORM; 
 	}
 
-	_KDBG("mask=%#x\n",mask);
+//	dbg("mask=%#x\n",mask);
 	return mask;
 }
 
@@ -183,8 +189,8 @@ static unsigned int poll(struct file *filep, struct poll_table_struct *table)
 
 static int open(struct inode * inodep, struct file * filep)
 {
-	_KDBG("flags %#x\n",filep->f_flags);
-	struct fifo_inode_priv* priv = inodep->priv;
+	dbg("flags %#x\n",filep->f_flags);
+	struct fifo_inode_priv* priv = inodep->i_private;
 	if ( filep->f_flags == O_RDONLY  ) {
 		filep->private_data = priv->read;
 	} else if ( filep->f_flags == O_WRONLY  ) {
@@ -197,7 +203,7 @@ static int open(struct inode * inodep, struct file * filep)
 
 static int close(struct file *filep)
 {
-	_KDBG("\n");
+	dbg("\n");
 	return 0;
 }
 
@@ -209,22 +215,23 @@ static struct kfs_fops fifo_fops = {
 	.close = close,
 };
 
-static struct fifo_inode_priv* create_fifo_priv( void )
+
+static int create(struct inode *inode, int mode )
 {
 	struct fifo_inode_priv* priv = kmem_alloc( sizeof( *priv ) ); 
 	if ( ! priv ) { 
-		return NULL;
+		return -1;
 	}
 
-	_KDBG("\n");
+	dbg("\n");
 	priv->read = kmem_alloc(sizeof(struct fifo_file));
-	if ( ! priv->read  ) return NULL;
+	if ( ! priv->read  ) return -1;
 
 	priv->write = kmem_alloc(sizeof(struct fifo_file));
-	if ( ! priv->write  ) return NULL;
+	if ( ! priv->write  ) return -1;
 
 	priv->write->buffer = alloc_fifo_buffer( FIFO_SIZE );
-	if ( ! priv->write->buffer ) return NULL;
+	if ( ! priv->write->buffer ) return -1;
 
 	priv->read->buffer = priv->write->buffer; 
 
@@ -234,20 +241,33 @@ static struct fifo_inode_priv* create_fifo_priv( void )
 	waitq_init(&priv->write->poll_wait);
 	waitq_init(&priv->read->poll_wait);
 
-	return priv;
+	inode->i_private = priv;
+        return 0;
 }
+
+static int unlink(struct inode *inode )
+{
+        dbg("\n");
+	struct fifo_inode_priv* priv = inode->i_private;
+	free_fifo_buffer( priv->write->buffer );
+
+	kmem_free(priv->write);
+	kmem_free(priv->read);
+	kmem_free(priv);
+        return 0;
+}
+
+
+static struct inode_operations fifo_iops = {
+	.create = create,
+	.unlink = unlink,
+};
 
 int mkfifo( const char* name, mode_t mode )
 {
-
-	struct inode* inode;
-	struct fifo_inode_priv* priv = create_fifo_priv();
-	if ( ! priv ) return -ENOMEM;
-	_KDBG("\n");
-	inode = kfs_create( name, &fifo_fops, mode, priv, sizeof(*priv) );
-	if ( ! inode ) {
+	dbg("\n");
+	if ( ! kfs_create( name, &fifo_iops, &fifo_fops, mode, NULL, 0 ) )
 		 return -ENOMEM;
-	}
 	
 	return 0;
 }
