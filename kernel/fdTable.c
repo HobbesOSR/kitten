@@ -16,13 +16,13 @@ void fdTableClose( struct fdTable* tbl )
 
 	        	if ( atomic_dec_and_test( &file->f_count ) ) {
                 		if ( file->f_op->release ) {
-                        		dbg( "release %p\n", file->f_op->release );
+                        		dbg( "release %p\n",
+							file->f_op->release );
                         		file->f_op->release( file->inode, file);
 				}
                 	}
-			kmem_free( file );
+			kfs_close( file );
         	}
-		tbl->files[i] = NULL;
 	}
 	dbg("\n");
 	spin_unlock( &tbl->lock );

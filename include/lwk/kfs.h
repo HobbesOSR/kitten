@@ -145,4 +145,6 @@ extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 /* generally useful file ops */
 extern int kfs_readdir(struct file *, uaddr_t, unsigned int);
 
+extern void kfs_close( struct file* );
+
 #endif /* _lwk_kfs_h_ */
