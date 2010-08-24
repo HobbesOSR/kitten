@@ -42,7 +42,6 @@ static inline void __unlock( spinlock_t *lock )
 static char*
 get_full_path(struct inode *inode, char *buf) __attribute__((unused));
 
-
 //#define dbg _KDBG
 #define dbg(fmt,args...)
 
@@ -269,15 +268,6 @@ struct kfs_fops kfs_default_fops =
 	.readdir	= kfs_readdir,
 };
 
-static struct file *
-kfs_alloc_file(void)
-{
-	struct file *file = kmem_alloc(sizeof(struct file));
-	memset(file, 0x00, sizeof(struct file));
-
-	return file;
-}
-
 static struct inode *
 kfs_create_inode(void)
 {
@@ -297,7 +287,7 @@ kfs_mkdirent(struct inode *          parent,
 	     void *                  priv,
 	     size_t                  priv_len)
 {
-	char buf[MAX_PATHLEN]; memset(buf,0,MAX_PATHLEN);
+	char buf[MAX_PATHLEN];
 	if ( parent ) {
 		get_full_path(parent, buf);
 	}
@@ -369,20 +359,18 @@ kfs_mkdirent(struct inode *          parent,
 	return inode;
 }
 
-
 static void
 kfs_destroy(struct inode *inode)
 {
 	// Should we check ref counts?
 	/* TODO: yes, we should. but not right now. */
-	dbg("\n");
-#if 0
-	if ( inode->files )
-		htable_destroy( inode->files );
-	kmem_free( inode );
-#endif
+	//_KDBG("%p %d\n",inode,atomic_read(&inode->i_count));
+	if ( atomic_read(&inode->i_count ) == 0 ) {
+		if ( inode->files )
+			htable_destroy( inode->files );
+		kmem_free( inode );
+	}
 }
-
 
 static struct inode *
 kfs_lookup(struct inode *       root,
@@ -505,24 +493,6 @@ kfs_mkdir(char *   name,
 			  0);
 }
 
-static struct file *
-kfs_open(struct inode *inode, int flags, mode_t mode)
-{
-	struct file *file = kfs_alloc_file();
-	if(NULL == file)
-		return NULL;
-
-	file->f_flags = flags;
-
-	file->f_mode = mode;
-	file->f_op = inode->i_fop;
-	file->inode = inode;
-	atomic_set(&file->f_count,1);
-	atomic_inc(&inode->i_count);
-
-	return file;
-}
-
 static char*
 get_full_path2(struct inode *inode, char *buf, int flag )
 {
@@ -540,6 +510,8 @@ get_full_path2(struct inode *inode, char *buf, int flag )
 static char*
 get_full_path(struct inode *inode, char *buf)
 {
+	buf[0] = 0;
+	if ( ! inode ) return "no inode";
 	return  get_full_path2( inode, buf, 0 );
 }
 
@@ -583,19 +555,37 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 	return link;
 }
 
-static void
+static struct file *
+kfs_open(struct inode *inode, int flags, mode_t mode)
+{
+	struct file *file = kmem_alloc(sizeof(struct file));
+
+	if(NULL == file)
+		return NULL;
+
+	memset(file, 0x00, sizeof(struct file));
+
+	file->f_flags = flags;
+	file->f_mode = mode;
+	file->f_op = inode->i_fop;
+	file->inode = inode;
+	atomic_set(&file->f_count,1);
+	atomic_inc(&inode->i_count);
+
+	return file;
+}
+
+//static void
+void
 kfs_close(struct file *file)
 {
-	char buff[MAX_PATHLEN]; memset(buff,0,MAX_PATHLEN);
-#if 0
-	dbg("%p\n",file);
-        dbg("name=`%s`\n", file->inode ? 
-
-				get_full_path(file->inode,buff) : "");
-#endif
-	if (file->inode)
+	// if this file was allocated with alloc_file it will not have 
+	// an inode
+	if ( file->inode ) {
+		char __attribute__((unused)) buff[MAX_PATHLEN];
+        	dbg("name=`%s`\n", get_full_path( file->inode, buff) );
 		atomic_dec(&file->inode->i_count);
-
+	}
 	kmem_free(file);
 }
 
@@ -611,8 +601,7 @@ kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
 	if(NULL == file)
 		return -ENOMEM;
 
-	if( file->f_op->open
-	    &&  file->f_op->open( file->inode , file ) < 0 ) {
+	if( file->f_op->open && file->f_op->open( file->inode , file ) < 0 ) {
 		kfs_close(file);
 		return -EACCES;
 	}
@@ -739,9 +728,8 @@ sys_close(int fd)
 		goto out;
 	}
 
-	char buff[MAX_PATHLEN]; memset(buff,0,MAX_PATHLEN);
-        dbg("name=`%s` fd=%d\n", file->inode ? 
-				get_full_path(file->inode,buff) : "", fd);
+	char __attribute__((unused)) buff[MAX_PATHLEN];
+        dbg("name=`%s` fd=%d\n", get_full_path(file->inode,buff), fd );
 
 	if( file->f_op && file->f_op->close )
 		ret = file->f_op->close( file );
@@ -899,6 +887,7 @@ __lock(&_lock);
 		ret = -EISDIR;
 		goto out;
 	}
+
 	if ( inode->i_op && inode->i_op->unlink )  {
 		if ( inode->i_op->unlink( inode ) ) {
 			printk("%s:%d() ????\n",__FUNCTION__,__LINE__);
