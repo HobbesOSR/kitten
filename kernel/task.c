@@ -136,8 +136,12 @@ __task_create(
 
 	// TODO: fix this stuff, it is broken
 	if (tsk->aspace->id !=  KERNEL_ASPACE_ID ) {
-        	tsk->fdTable = fdTableAlloc();
-		kfs_init_stdio( tsk->fdTable );
+		if ( tsk->aspace->id == tsk->id ) {
+        		tsk->fdTable = fdTableAlloc();
+			kfs_init_stdio( tsk->fdTable );
+		} else {
+        		tsk->fdTable = fdTableClone(current->fdTable);
+		}
 		// Setup aliases needed for Linux compatibility layer
 		tsk->comm = tsk->name;
 		tsk->mm	  = tsk->aspace;
