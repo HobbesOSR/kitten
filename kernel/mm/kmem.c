@@ -49,7 +49,7 @@ static unsigned long kmem_bytes_managed;
 /**
  * Total number of bytes allocated from the kernel memory pool.
  */
-static unsigned long kmem_bytes_allocated;
+static unsigned long kmem_bytes_allocated = 0;
 
 
 /**
@@ -198,8 +198,8 @@ kmem_free(
 
 	/* Return block to the underlying buddy system */
 	spin_lock_irqsave(&kmem_lock, flags);
-	buddy_free(kmem, hdr, hdr->order);
 	kmem_bytes_allocated -= (1UL << hdr->order);
+	buddy_free(kmem, hdr, hdr->order);
 	spin_unlock_irqrestore(&kmem_lock, flags);
 }
 
@@ -264,8 +264,8 @@ kmem_free_pages(
 	unsigned long flags;
 
 	spin_lock_irqsave(&kmem_lock, flags);
-	buddy_free(kmem, addr, order + ilog2(PAGE_SIZE));
 	kmem_bytes_allocated -= (1UL << order);
+	buddy_free(kmem, addr, order + ilog2(PAGE_SIZE));
 	spin_unlock_irqrestore(&kmem_lock, flags);
 }
 
