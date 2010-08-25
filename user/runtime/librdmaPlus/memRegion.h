@@ -16,7 +16,8 @@ class MemRegion
 	    typedef int Id;	
 	    typedef unsigned long Addr;
 	    typedef MemRegion* Handle;	
-	    MemRegion( struct ibv_pd* pd, void *addr, Size );
+	    MemRegion( struct ibv_pd* pd, void *addr, Size,
+						bool wantEvents = false );
 	    ~MemRegion();
         RemoteEntry& remoteEntry();
 	    int popEvent( Event* );
@@ -29,7 +30,8 @@ class MemRegion
         RemoteEntry         m_remoteEntry;
 };
 
-inline MemRegion::MemRegion( struct ibv_pd* pd, void *addr, Size length )
+inline MemRegion::MemRegion( struct ibv_pd* pd, void *addr, Size length, 
+			bool wantEvents )
 {
     dbg(MemRegion,"pd=%p addr=%p length=%#lx\n", pd, addr, length );
 
@@ -44,6 +46,7 @@ inline MemRegion::MemRegion( struct ibv_pd* pd, void *addr, Size length )
     m_remoteEntry.addr = (uint64_t) m_mr->addr;
     m_remoteEntry.length = m_mr->length;
     m_remoteEntry.key = m_mr->rkey;
+    m_remoteEntry.wantEvents = wantEvents;
 
 	pthread_mutex_init( &m_lock, NULL );
 }
@@ -53,6 +56,10 @@ inline MemRegion::~MemRegion( )
     if ( ibv_dereg_mr( m_mr ) ) {
         terminal( MemRegion, "ibv_dereg_mr()\n");
     }
+    while ( ! m_eventQ.empty() ) {
+        delete m_eventQ.front();
+        m_eventQ.pop_front();
+    }	
 }
 
 inline RemoteEntry& MemRegion::remoteEntry()

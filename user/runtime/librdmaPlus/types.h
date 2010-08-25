@@ -39,6 +39,7 @@ struct RemoteEntry {
     uint64_t    addr;
     uint32_t    key;
     uint32_t    length;
+    bool	wantEvents;
 };
 
 } // namespace rdmaPlus

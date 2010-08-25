@@ -167,20 +167,22 @@ inline int MemOp::memOp( Connection& conn, memOp_t op, MemRegion::Id region,
         terminal( MemOp, "ibv_dereg_mr()\n" );
     }
 
-    MsgObj* msgObj = new MsgObj( m_pd, MsgHdr::RdmaResp );
+    if ( tmp->wantEvents ) {
+        MsgObj* msgObj = new MsgObj( m_pd, MsgHdr::RdmaResp );
 
-    msgObj->msg().hdr.u.rdmaResp.id = region;
-    msgObj->msg().hdr.u.rdmaResp.op = op;
-    msgObj->msg().hdr.u.rdmaResp.addr = addr;
-    msgObj->msg().hdr.u.rdmaResp.length = length;
+        msgObj->msg().hdr.u.rdmaResp.id = region;
+        msgObj->msg().hdr.u.rdmaResp.op = op;
+        msgObj->msg().hdr.u.rdmaResp.addr = addr;
+        msgObj->msg().hdr.u.rdmaResp.length = length;
 
-    struct ibv_sge msg_sge;
-    msg_sge.addr = (uintptr_t) &msgObj->msg();
-    msg_sge.length = sizeof msgObj->msg();
-    msg_sge.lkey = msgObj->lkey(); 
+        struct ibv_sge msg_sge;
+        msg_sge.addr = (uintptr_t) &msgObj->msg();
+        msg_sge.length = sizeof msgObj->msg();
+        msg_sge.lkey = msgObj->lkey(); 
 
-    conn.send( &msg_sge, 
+        conn.send( &msg_sge, 
             new cleanUpHandler_t( this, &MemOp::cleanUpHandler, msgObj ) );
+    }
     return 0;
 }
 
