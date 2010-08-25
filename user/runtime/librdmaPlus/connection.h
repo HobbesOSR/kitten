@@ -795,7 +795,9 @@ inline bool Connection::recvHandler( struct ibv_wc& wc,
     if ( wc.status != IBV_WC_SUCCESS ) {
         
         //dbgFail( Connection, "[%#x,%d]\n", m_farId.nid, m_farId.pid );
-        return false;
+        delete wr->sg_list;
+        delete wr;
+        return true;
     }
 
     dbg(Connection,"buf=%#lx\n", wr->sg_list->addr );
