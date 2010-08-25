@@ -322,6 +322,7 @@ bool Job::sendCtrlMsg( CtrlMsg& msg, ProcId& dest )
     return false;
 }
 
+#if 0
 void* Job::sendCallback( void* obj, void *data )
 {
     return ( ( Job*)obj)->sendCallback( (sendCbData_t*) data );
@@ -341,6 +342,7 @@ void* Job::sendCallback( sendCbData_t* data  )
         delete data;
         return NULL;
 }
+#endif
 
 
 bool Job::fanoutLoadMsg( struct JobMsg::Load& _msg, NidRnk& parentNidRnk )
