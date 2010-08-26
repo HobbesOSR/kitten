@@ -285,11 +285,11 @@ find_and_delete_pte(
 	/* Traverse the Page Table Entry Directory */
 	ptd = __va(pme->base_paddr << 12);
 	pte = &ptd[ptd_index];
-	if (pte->present) {
+	if (!pte->present) {
 		return;
 	} else {
 		/* Unmap the 4KB page that this PTE was mapping */
-		memset(pme, 0, sizeof(xpte_t));
+		memset(pte, 0, sizeof(xpte_t));
 
 		/* Try to free the PTD that the PTE was in */
 		if (try_to_free_table(ptd, pme))
