@@ -217,7 +217,6 @@ void Orte::thread( )
     int ret;
     Debug(Orte,"nfds=%d\n",nfds);
     while ( m_threadAlive ) {
-	//printf("Orte calling poll\n");
         if ( ( ret = poll( &fds[0], nfds, -1 ) ) > 0 ) {
             for ( int i = 0; i < nfds; i++ ) { 
                 if ( fds[i].revents & POLLIN ) {
@@ -265,7 +264,8 @@ void Orte::processOOBMsg( OrteMsg* orteMsg )
             msg->u.oob.peer.vpid, msg->u.oob.tag, msg->u.oob.nBytes );
 
     if ( msg->u.oob.peer.vpid >= m_baseRank &&
-                msg->u.oob.peer.vpid < m_baseRank + m_ranksPer ) { 
+                msg->u.oob.peer.vpid < m_baseRank + m_ranksPer )
+    { 
 
 #if 0
         m_log.write( "%d:%s:%d: recvd from %d\n",pthread_self(),
@@ -273,12 +273,12 @@ void Orte::processOOBMsg( OrteMsg* orteMsg )
 #endif
 	    // should this be non-blocking?
         int fd = m_pid2fdM[ m_rank2PidM[msg->u.oob.peer.vpid] ].second;
-pthread_mutex_lock(&m_mutex);
-	    if ( (size_t) write( fd, msg, nbytes ) != nbytes ) {
+        pthread_mutex_lock(&m_mutex);
+        if ( (size_t) write( fd, msg, nbytes ) != nbytes ) {
             Debug( Orte, " write failed\n" );
             exit(-1);
-	    }
-pthread_mutex_unlock(&m_mutex);
+        }
+        pthread_mutex_unlock(&m_mutex);
 
     } else {
 
@@ -391,12 +391,12 @@ void Orte::barrierFanout()
     for ( ; iter != m_pid2fdM.end(); ++iter ) {
         int fd = iter->second.second;
         Debug( Orte, "write() fd=%d \n", fd );
-pthread_mutex_lock(&m_mutex);
+        pthread_mutex_lock(&m_mutex);
         if ( write( fd, &msg, sizeof( msg ) ) != sizeof( msg ) ) {
             Warn( Orte, "write() fd=%d \n", fd );
             abort();
         }	 
-pthread_mutex_unlock(&m_mutex);
+        pthread_mutex_unlock(&m_mutex);
     }
 }
 
@@ -424,20 +424,27 @@ void Orte::sendOOBMsg( LwkOrteRmlMsg* hdr, unsigned char * body )
 #endif
 
     if ( hdr->u.oob.peer.vpid >= m_baseRank && 
-                hdr->u.oob.peer.vpid < m_baseRank + m_ranksPer ) {
-	    // should this be non-blocking?
+                hdr->u.oob.peer.vpid < m_baseRank + m_ranksPer ) 
+    {
+        // should this be non-blocking?
         Debug( Orte, "local\n" );
         int fd = m_pid2fdM[ m_rank2PidM[hdr->u.oob.peer.vpid] ].second;
-pthread_mutex_lock(&m_mutex);
-	    if ( (size_t) write( fd, hdr, sizeof(*hdr)  ) != sizeof(*hdr) ) {
+
+        pthread_mutex_lock(&m_mutex);
+
+        if ( (size_t) write( fd, hdr, sizeof(*hdr)  ) != sizeof(*hdr) ) {
             Debug( Orte, " write failed\n" );
             exit(-1);
-	    }
-	    if ( write( fd, body, hdr->u.oob.nBytes  ) != hdr->u.oob.nBytes ) {
+        }
+        if ( write( fd, body, hdr->u.oob.nBytes  ) != hdr->u.oob.nBytes ) {
             Debug( Orte, " write failed\n" );
             exit(-1);
-	    }
-pthread_mutex_unlock(&m_mutex);
+        }
+
+        pthread_mutex_unlock(&m_mutex);
+
+        delete hdr;
+        delete[] body;
         return;
     }
 
