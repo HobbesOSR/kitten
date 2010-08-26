@@ -840,6 +840,10 @@ elf_load(
 		print("Failed to initialize stack (status=%d).", status);
 		return status;
 	}
+	/* Unmap the segment from this address space */
+	status = aspace_del_region(my_aspace_id, local_stack_start, stack_extent);
+	if (status)
+		return status;
 
 	start_state->aspace_id   = aspace_id;
 	start_state->entry_point = elf_entry_point(elf_image);
