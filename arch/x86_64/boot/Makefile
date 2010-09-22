@@ -67,11 +67,14 @@ FDINITRD = $(shell echo $(CONFIG_INIT_TASK_IMAGE))
 FDARGS = $(KERNEL_ARGS) init_argv=$(CONFIG_INIT_TASK_ARGS) init_envp=$(CONFIG_INIT_TASK_ENVS)
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
+gimage_cmdline = default 0\ntimeout 5\n\ntitle Kitten\nroot (cd)\nkernel /boot/lwk ro $(FDARGS)\n$(if $(FDINITRD),initrd /boot/initrd.img,)
 
 # This requires being root or having syslinux 2.02 or higher installed
 isoimage: $(BOOTIMAGE) $(FDINITRD)
 	-rm -rf $(obj)/isoimage
 	mkdir $(obj)/isoimage
+
+ifeq ($(CONFIG_BOOT_SYSLINUX),y)
 	for i in lib lib64 share end ; do \
 		if [ -f /usr/$$i/syslinux/isolinux.bin ] ; then \
 			cp /usr/$$i/syslinux/isolinux.bin $(obj)/isoimage ; \
@@ -94,4 +97,31 @@ isoimage: $(BOOTIMAGE) $(FDINITRD)
 		-no-emul-boot -boot-load-size 4 -boot-info-table \
 		$(obj)/isoimage
 	rm -rf $(obj)/isoimage
+else
+	model=`uname -m`; \
+	if [ "$$model" = "i486" -o "$$model" = "i586" -o "$$model" = "i686" ]; then \
+		model="i386"; \
+	fi; \
+	if [ -d /usr/lib/grub/$${model}-pc ] ; then \
+		mkdir -p $(obj)/isoimage/boot/grub; \
+		mkdir -p $(obj)/isoimage/etc; \
+		echo '$(gimage_cmdline)'  > $(obj)/isoimage/boot/grub/menu.lst; \
+		ln -sf /boot/grub/menu.lst $(obj)/isoimage/etc/grub.conf; \
+		cp /usr/lib/grub/$${model}-pc/stage2_eltorito $(obj)/isoimage/boot/grub ; \
+	fi ; \
+	cp $(BOOTIMAGE) $(obj)/isoimage/boot/lwk
+	@if [ -f '$(FDINITRD)' ] ; then \
+		echo 'initrd: $(FDINITRD)'; \
+		cp $(FDINITRD) $(obj)/isoimage/boot/initrd.img ; \
+	elif [ -z '$(FDINITRD)' ]; then \
+		echo "initrd: None"; \
+	else \
+		echo >&2 'initrd: $(FDINITRD) not found!'; \
+		exit 1; \
+	fi
+	mkisofs -J -R -o $(obj)/image.iso -b boot/grub/stage2_eltorito -c boot.cat \
+		-no-emul-boot -boot-load-size 4 -boot-info-table \
+		$(obj)/isoimage
+	rm -rf $(obj)/isoimage
+endif
 
