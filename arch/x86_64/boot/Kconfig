@@ -30,12 +30,26 @@ config INIT_TASK_ENVS
 	help
 	  Environment to be passed to the initial task.
 
-config BOOT_SYSLINUX
-	bool "Use syslinux instead of grub"
-	default "y"
+choice
+	prompt "Bootloader"
+	default SYSLINUX
+
+config SYSLINUX_BOOTLOADER
+	bool "Syslinux"
 	help
-	  When building the isoimage, selects between the syslinux
-	  and grub bootloaders.
+	  When building the isoimage, use Syslinux as the bootloader.
+
+config GRUB_BOOTLOADER
+	bool "GRUB"
+	help
+	  When building the isoimage, use GRUB or GRUB2 as the bootloader.
+
+endchoice
+
+config GRUB2_MODS
+	string "GRUB2 modules to be included"
+	depends on GRUB_BOOTLOADER
+	default ""
 
 endmenu
 

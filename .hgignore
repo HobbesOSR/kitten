@@ -21,6 +21,7 @@ arch/x86_64/boot/bootsect
 arch/x86_64/boot/bzImage
 arch/x86_64/boot/setup
 arch/x86_64/boot/tools/build
+arch/x86_64/boot/bootprep
 arch/x86_64/kernel/asm-offsets.s
 bochs/bochsout.txt
 include/arch-x86_64/asm-offsets.h
