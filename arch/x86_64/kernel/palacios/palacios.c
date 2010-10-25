@@ -468,7 +468,7 @@ static int
 palacios_run_guest(void *arg)
 {
 	unsigned int mask;
-	struct v3_vm_info * vm_info = v3_create_vm((void *) __va(guest_iso_start));
+	struct v3_vm_info * vm_info = v3_create_vm((void *) __va(guest_iso_start), NULL);
 	
 	if (!vm_info) {
 		printk(KERN_ERR "Could not create guest context\n");
