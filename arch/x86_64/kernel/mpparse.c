@@ -284,7 +284,7 @@ MP_intsrc_info(struct mpc_config_intsrc *m)
 	}
 
 	if (m->mpc_dstirq >= MAX_IO_APIC_PINS)
-		panic("Int entry specifies INTIN# > MAX_IO_APICS.");
+		panic("Int entry specifies INTIN# > MAX_IO_APIC_PINS.");
 
 	struct ioapic_pin_info *pin_info = &ioapic_info->pin_info[m->mpc_dstirq];
 
