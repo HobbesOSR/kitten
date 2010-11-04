@@ -88,7 +88,8 @@ ifeq ($(CONFIG_SYSLINUX_BOOTLOADER),y)
 		if [ $$i = end ] ; then exit 1 ; fi ; \
 	done
 	cp $(BOOTIMAGE) $(obj)/isoimage/lwk
-	echo '$(image_cmdline)' > $(obj)/isoimage/isolinux.cfg
+	echo 'TIMEOUT 1' > $(obj)/isoimage/isolinux.cfg
+	echo '$(image_cmdline)' >> $(obj)/isoimage/isolinux.cfg
 	@if [ -f '$(FDINITRD)' ] ; then \
 		echo 'initrd: $(FDINITRD)'; \
 		cp $(FDINITRD) $(obj)/isoimage/initrd.img ; \
