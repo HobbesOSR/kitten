@@ -99,9 +99,18 @@ ifeq ($(CONFIG_SYSLINUX_BOOTLOADER),y)
 		echo >&2 'initrd: $(FDINITRD) not found!'; \
 		exit 1; \
 	fi
-	mkisofs -J -r -o $(obj)/image.iso -b isolinux.bin -c boot.cat \
-		-no-emul-boot -boot-load-size 4 -boot-info-table \
-		$(obj)/isoimage
+	if which mkisofs 2>&1 1>/dev/null; then \
+		mkisofs -J -r -o $(obj)/image.iso -b isolinux.bin -c boot.cat \
+			-no-emul-boot -boot-load-size 4 -boot-info-table \
+			$(obj)/isoimage; \
+	elif which genisoimage 2>&1 1>/dev/null; then \
+		genisoimage -J -r -o $(obj)/image.iso -b isolinux.bin -c boot.cat \
+			-no-emul-boot -boot-load-size 4 -boot-info-table \
+			$(obj)/isoimage; \
+	else \
+		echo >&2 'mkisofs or genisoimage not found!'; \
+		exit 1; \
+	fi
 	rm -rf $(obj)/isoimage
 else
 	@ver=`grub-install -v | sed "s,.* \([0-9]\).[0-9].*,\1,"`; \
