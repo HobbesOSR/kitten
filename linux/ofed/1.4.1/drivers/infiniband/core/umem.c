@@ -135,7 +135,9 @@ struct ib_umem *ib_umem_get(struct ib_ucontext *context, unsigned long addr,
 	struct vm_area_struct **vma_list;
 	struct ib_umem_chunk *chunk;
 	unsigned long locked;
+#if 0
 	unsigned long lock_limit;
+#endif
 	unsigned long cur_base;
 	unsigned long npages;
 	int ret;
@@ -193,12 +195,15 @@ struct ib_umem *ib_umem_get(struct ib_ucontext *context, unsigned long addr,
 	down_write(&current->mm->mmap_sem);
 
 	locked     = npages + current->mm->locked_vm;
+#if 0
+	/* we'll do no checking against lock limit */
 	lock_limit = current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur >> PAGE_SHIFT;
 
 	if ((locked > lock_limit) && !capable(CAP_IPC_LOCK)) {
 		ret = -ENOMEM;
 		goto out;
 	}
+#endif
 
 	cur_base = addr & PAGE_MASK;
 

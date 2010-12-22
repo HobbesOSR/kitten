@@ -224,6 +224,7 @@ task_api_test(void)
 
 	printf("  Waiting for threads to exit:\n");
 	for (i = 0; i < nthr; i++) {
+		printf("joining thread %lu\n", pthread_id[i]);
 		status = pthread_join(pthread_id[i], &value_ptr);
 		if (status) {
 			printf("    ERROR: pthread_join() status=%d\n", status);
