@@ -125,7 +125,7 @@ config GUEST_OS_ISOIMAGE_PATH
 
 endmenu
 
-source user/iofwd/Kconfig
+# source user/iofwd/Kconfig
 
 config HAS_IOMEM
 	bool
