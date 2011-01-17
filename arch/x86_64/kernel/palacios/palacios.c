@@ -148,8 +148,9 @@ palacios_allocate_pages(
  * a single call while palacios_free_page() only frees a single page.
  */
 static void
-palacios_free_page(
-	void *			page_paddr
+palacios_free_pages(
+        void *			page_paddr,
+	int                     num_pages
 ) 
 {
 	struct pmem_region	query;
@@ -441,7 +442,7 @@ palacios_mutex_unlock(
 struct v3_os_hooks palacios_os_hooks = {
 	.print			= palacios_print,
 	.allocate_pages		= palacios_allocate_pages,
-	.free_page		= palacios_free_page,
+	.free_pages		= palacios_free_pages,
 	.malloc			= palacios_alloc,
 	.free			= palacios_free,
 	.vaddr_to_paddr		= palacios_vaddr_to_paddr,
