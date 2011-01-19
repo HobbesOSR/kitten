@@ -78,8 +78,8 @@ __queue_work(struct workqueue_struct *wq, struct work_struct *work)
     insert_work(wq, work, 1);
     spin_unlock_irqrestore(&wq->lock, flags);
 
-	/* wake up linux worker thread */
-	linux_wakeup();
+    /* wake up linux worker thread */
+    linux_wakeup();
 }
 
 int

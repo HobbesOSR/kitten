@@ -257,7 +257,7 @@ __SYSCALL(__NR_setreuid, syscall_not_implemented)
 #define __NR_setregid                          114
 __SYSCALL(__NR_setregid, syscall_not_implemented)
 #define __NR_getgroups                         115
-__SYSCALL(__NR_getgroups, syscall_not_implemented)
+__SYSCALL(__NR_getgroups, sys_getgroups)
 #define __NR_setgroups                         116
 __SYSCALL(__NR_setgroups, syscall_not_implemented)
 #define __NR_setresuid                         117

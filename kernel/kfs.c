@@ -18,6 +18,8 @@
 #  include <lwk/poll.h>
 #endif /* CONFIG_LINUX */
 
+#include <linux/uio.h>
+
 #include <arch/uaccess.h>
 #include <arch/vsyscall.h>
 #include <arch/atomic.h>
@@ -50,6 +52,15 @@ struct dirent {
 	long d_ino;                 /* inode number */
 	off_t d_off;                /* offset to next dirent */
 	unsigned short d_reclen;    /* length of this dirent */
+	char d_name [1];            /* filename (var-length, null-terminated) */
+	/* d_type follows d_name */
+};
+
+struct dirent64 {
+	long d_ino;                 /* inode number */
+	off_t d_off;                /* offset to next dirent */
+	unsigned short d_reclen;    /* length of this dirent */
+	char d_type;                /* oops, a subtle difference */
 	char d_name [1];            /* filename (null-terminated) */
 };
 
@@ -110,6 +121,7 @@ kfs_stat(struct inode *inode, uaddr_t buf)
 	memset(&rv, 0x00, sizeof(struct stat));
 	rv.st_mode = inode->mode;
 	rv.st_rdev = inode->i_rdev;
+	rv.st_ino = (ino_t)inode;
 	/* TODO: plenty of stuff to report back via stat, but we just
 	   don't need it atm ... */
 
@@ -202,8 +214,39 @@ kfs_fill_dirent(uaddr_t buf, unsigned int count,
 	return len;
 }
 
+static int
+kfs_fill_dirent64(uaddr_t buf, unsigned int count,
+		  struct inode *inode, const char *name, int namelen,
+		  loff_t offset, unsigned int type)
+{
+	struct dirent64 __user *de;
+	unsigned short len = ALIGN(offsetof(struct dirent, d_name)
+				   + namelen + 2, sizeof(long));
+	dbg("name=`%s`\n",name);
+
+	if(count < len)
+		return -EINVAL;
+
+	de = (struct dirent64 *)buf;
+	if(__put_user(offset, &de->d_off))
+		return -EFAULT;
+	if(__put_user((long)inode, &de->d_ino)) /* fake inode # */
+		return -EFAULT;
+	if(__put_user(len, &de->d_reclen))
+		return -EFAULT;
+	if(__put_user(type, &de->d_type))
+		return -EFAULT;
+	if(copy_to_user(de->d_name, name, namelen))
+		return -EFAULT;
+	if(__put_user(0, de->d_name + namelen))
+		return -EFAULT;
+
+	return len;
+}
+
 int
-kfs_readdir(struct file * filp, uaddr_t buf, unsigned int count)
+kfs_readdir(struct file * filp, uaddr_t buf, unsigned int count,
+	    dirent_filler f)
 {
 	struct inode *child;
 __lock(&_lock);
@@ -215,9 +258,9 @@ __lock(&_lock);
 	   linux uses 0 and 1 for . and .., then inodes for the
 	   rest */
 	if(filp->pos == 0) {
-		rv = kfs_fill_dirent(buf, count, filp->inode,
-				     ".", 1, filp->pos + 1,
-				     4 /* DT_DIR */);
+		rv = f(buf, count, filp->inode,
+		       ".", 1, filp->pos + 1,
+		       4 /* DT_DIR */);
 		if(rv < 0)
 			goto out;
 		res += rv;
@@ -226,9 +269,9 @@ __lock(&_lock);
 		buf += rv;
 	}
 	if(filp->pos == 1) {
-		rv = kfs_fill_dirent(buf, count, filp->inode,
-				     "..", 2, filp->pos + 1,
-				     4 /* DT_DIR */);
+		rv = f(buf, count, filp->inode,
+		       "..", 2, filp->pos + 1,
+		       4 /* DT_DIR */);
 		if(rv < 0)
 			goto out;
 		res += rv;
@@ -241,11 +284,11 @@ __lock(&_lock);
 	{
 		if(filp->pos > i++)
 			continue;
-		rv = kfs_fill_dirent(buf, count, child,
-				     child->name,
-				     strlen(child->name),
-				     filp->pos + 1,
-				     (child->mode >> 12) & 15);
+		rv = f(buf, count, child,
+		       child->name,
+		       strlen(child->name),
+		       filp->pos + 1,
+		       (child->mode >> 12) & 15);
 		if(rv < 0)
 			goto out;
 		res += rv;
@@ -260,12 +303,54 @@ __unlock(&_lock);
 	return res;
 }
 
+off_t
+kfs_lseek( struct file *filp, off_t offset, int whence )
+{
+	loff_t new_offset = 0;
+	int rv = 0;
+
+	switch(whence) {
+	case 0 /* SEEK_SET */:
+		new_offset = offset;
+		break;
+	case 1 /* SEEK_CUR */:
+		new_offset = filp->pos + offset;
+		break;
+	case 2 /* SEEK_END */:
+		if(!filp->inode) {
+			printk(KERN_WARNING "lseek(..., SEEK_END) invoked on "
+			       "a file with no inode.\n");
+			rv = -EINVAL;
+		}
+		else {
+			new_offset = filp->inode->size + offset;
+		}
+		break;
+	default:
+		rv = -EINVAL;
+		break;
+	}
+
+	if(new_offset < 0)
+		rv = -EINVAL;
+
+	/* TODO: more sanity checks; especially wrt. file size */
+
+	if(rv == 0) {
+		rv = filp->pos;
+		filp->pos = new_offset;
+	}
+
+	return rv;
+}
+
 struct kfs_fops kfs_default_fops =
 {
 	.read		= kfs_default_read,
 	.write		= kfs_default_write,
 	.close		= kfs_default_close,
 	.readdir	= kfs_readdir,
+	.lseek          = kfs_lseek,
 };
 
 static struct inode *
@@ -409,8 +494,10 @@ kfs_lookup(struct inode *       root,
 
 		// If we have a mount point descend into its lookup routine
 		if( root->i_op && root->i_op->lookup )
-			return root->i_op->lookup( root, (struct dentry*) dirname, 
-					(struct nameidata*) (unsigned long) create_mode );
+			return (struct inode *)
+				root->i_op->lookup( root, 
+						    (struct dentry*) dirname, 
+						    (struct nameidata*) (unsigned long) create_mode );
 
 		/* current entry is not a directory, so we can't search any
 		   further */
@@ -486,7 +573,7 @@ kfs_mkdir(char *   name,
 {
 	dbg("name=`%s`\n",name);
 	return kfs_create(name,
-				NULL,
+			  NULL,
 			  &kfs_default_fops,
 			  (mode & ~S_IFMT) | S_IFDIR,
 			  0,
@@ -507,7 +594,7 @@ get_full_path2(struct inode *inode, char *buf, int flag )
 	return buf;
 }
 
-static char*
+static char *
 get_full_path(struct inode *inode, char *buf)
 {
 	buf[0] = 0;
@@ -521,6 +608,7 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 	struct inode *link;
 
 	dbg("name=`%s`\n",name);
+
 #if 0
 	char p1[2048], p2[2048];
 
@@ -545,7 +633,7 @@ kfs_link(struct inode *target, struct inode *parent, const char *name)
 
 	link->mode = 0666 | S_IFLNK;
 	if(S_ISDIR(target->mode))
-		link->mode |= 0111 | S_IFDIR;
+		link->mode |= 0111;
 
 	link->link_target = target;
 
@@ -655,7 +743,7 @@ __lock(&_lock);
 		extern struct kfs_fops in_mem_fops;
 		extern struct inode_operations in_mem_iops;
 		if ( kfs_create( pathname, &in_mem_iops, &in_mem_fops, 0777, 0, 0 ) 
-							== NULL ) {
+		     == NULL ) {
 			fd = -EFAULT;
 			goto out;
        		}
@@ -686,15 +774,51 @@ sys_write(int     fd,
 
 	if( file->f_op->write ) {
 		ret = file->f_op->write( file,
-						 (const char __user *)buf,
-						 len , (loff_t *) NULL );
+					 (const char __user *)buf,
+					 len , NULL );
 	} else {
-
 		printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
 		__func__, fd, file->inode->name);
 	}
 
 out:
+	return ret;
+}
+
+static ssize_t
+sys_writev(int fd, uaddr_t uvec, int count)
+{
+	struct iovec vector;
+	struct file * const file = get_current_file( fd );
+	ssize_t ret = 0, tret;
+
+	if(!file)
+		return -EBADF;
+	if(count < 0)
+		return -EINVAL;
+	if(!file->f_op->write) {
+		printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
+			__func__, fd, file->inode->name);
+		return -EINVAL;
+	}
+
+	while(count-- > 0) {
+		if(copy_from_user(&vector, (char *)uvec,
+				  sizeof(struct iovec)))
+			return -EFAULT;
+		uvec += sizeof(struct iovec);
+		tret = file->f_op->write(file,
+					 (char *)vector.iov_base,
+					 vector.iov_len,
+					 NULL);
+		if(tret < 0)
+			return -tret;
+		else if(tret == 0)
+			break;
+		else
+			ret += tret;
+	}
+
 	return ret;
 }
 
@@ -711,9 +835,46 @@ sys_read(int     fd,
 	if( file->f_op->read )
 		ret = file->f_op->read( file, (char *)buf, len, NULL );
 	else 
-		printk( KERN_WARNING "%s: fd %d has no read operation\n",
-				__func__, fd );
+		printk( KERN_WARNING "%s: fd %d (%s) has no read operation\n",
+			__func__, fd, file->inode->name );
 out:
+	return ret;
+}
+
+static ssize_t
+sys_readv(int fd, uaddr_t uvec, int count)
+{
+	struct iovec vector;
+	struct file * const file = get_current_file( fd );
+	ssize_t ret = 0, tret;
+
+	if(!file)
+		return -EBADF;
+	if(count < 0)
+		return -EINVAL;
+	if(!file->f_op->read) {
+		printk( KERN_WARNING "%s: fd %d (%s) has no read operation\n",
+			__func__, fd, file->inode->name );
+		return -EINVAL;
+	}
+
+	while(count-- > 0) {
+		if(copy_from_user(&vector, (char *)uvec,
+				  sizeof(struct iovec)))
+			return -EFAULT;
+		uvec += sizeof(struct iovec);
+		tret = file->f_op->read(file,
+					(char *)vector.iov_base,
+					vector.iov_len,
+					NULL);
+		if(tret < 0)
+			return -tret;
+		else if(tret == 0)
+			break;
+		else
+			ret += tret;
+	}
+
 	return ret;
 }
 
@@ -838,16 +999,14 @@ sys_lseek( int fd, off_t offset, int whence )
 
 	if( file->f_op->lseek )
 		ret = file->f_op->lseek( file, offset, whence );
-	else
-		printk( KERN_WARNING "%s: fd %d has no lseek operation\n",
-			__func__, fd );
+
 out:
 	return ret;
 }
 
 static int
 sys_mkdir(uaddr_t u_pathname,
-         mode_t  mode)
+	  mode_t  mode)
 {
         char pathname[ MAX_PATHLEN ];
         if( strncpy_from_user( pathname, (void*) u_pathname,
@@ -867,7 +1026,8 @@ __unlock(&_lock);
 static int
 sys_unlink(uaddr_t u_pathname)
 {
-// Note that this function is hack 
+        // Note that this function is hack 
+	// jaKa: noted ;)
 	char pathname[ MAX_PATHLEN ];
 	if( strncpy_from_user( pathname, (void*) u_pathname,
                                sizeof(pathname) ) < 0 )
@@ -960,7 +1120,6 @@ __unlock(&_lock);
 	return ret;
 }
 
-
 static int
 sys_getdents(unsigned int fd, uaddr_t dirp, unsigned int count)
 {
@@ -975,7 +1134,27 @@ sys_getdents(unsigned int fd, uaddr_t dirp, unsigned int count)
 		goto out;
 	}
 
-	ret = file->f_op->readdir(file, dirp, count);
+	ret = file->f_op->readdir(file, dirp, count, kfs_fill_dirent);
+out:
+
+	return ret;
+}
+
+static int
+sys_getdents64(unsigned int fd, uaddr_t dirp, unsigned int count)
+{
+	int ret = -EBADF;
+	struct file * const file = get_current_file( fd );
+
+	if(NULL == file)
+		goto out;
+
+	if(!S_ISDIR(file->inode->mode)) {
+		ret = -ENOTDIR;
+		goto out;
+	}
+
+	ret = file->f_op->readdir(file, dirp, count, kfs_fill_dirent64);
 out:
 
 	return ret;
@@ -1020,6 +1199,25 @@ __lock(&_lock);
 out:
 __unlock(&_lock);
 	return ret;
+}
+
+static int
+sys_readlink(const char __user *path, char __user *buf, size_t bufsiz)
+{
+	char p[2048];
+	size_t len;
+	struct inode * const inode = kfs_lookup(NULL, path, 0);
+	if(!inode)
+		return -ENOENT;
+	if(!S_ISLNK(inode->mode) || !inode->link_target)
+		return -EINVAL;
+	get_full_path(inode->link_target, p);
+	len = strlen(p);
+	if(len > bufsiz)
+		return -ENAMETOOLONG;
+	if(copy_to_user(buf, p, len))
+		return -EFAULT;
+	return len;
 }
 
 #ifdef CONFIG_LINUX
@@ -1077,7 +1275,6 @@ static struct poll_table_entry *poll_get_entry(struct poll_wqueues *p)
 static int __pollwake(waitq_entry_t *wait, unsigned mode, int sync, void *key)
 {
 	struct poll_wqueues *pwq = wait->private;
-	//DECLARE_WAITQUEUE(dummy_wait, pwq->polling_task);
 
 	/*
 	 * Although this function is called under waitqueue lock, LOCK
@@ -1112,7 +1309,7 @@ static int pollwake(waitq_entry_t *wait, unsigned mode, int sync, void *key)
 
 /* Add a new entry */
 static void __pollwait(struct file *filp, waitq_t *wait_address,
-				poll_table *p)
+		       poll_table *p)
 {
 	struct poll_wqueues *pwq = container_of(p, struct poll_wqueues, pt);
 	struct poll_table_entry *entry = poll_get_entry(pwq);
@@ -1177,7 +1374,7 @@ void poll_freewait(struct poll_wqueues *pwq)
 }
 
 int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
-						  ktime_t *expires, unsigned long slack)
+			  ktime_t *expires, unsigned long slack)
 {
 	int rc = -EINTR;
 
@@ -1251,7 +1448,7 @@ static inline unsigned int do_pollfd(struct pollfd *pollfd, poll_table *pwait)
 }
 
 static int do_poll(unsigned int nfds,  struct poll_list *list,
-				   struct poll_wqueues *wait, struct timespec *end_time)
+		   struct poll_wqueues *wait, struct timespec *end_time)
 {
 	poll_table* pt = &wait->pt;
 	ktime_t expire, *to = NULL;
@@ -1407,17 +1604,25 @@ kfs_init( void )
 	syscall_register( __NR_close, (syscall_ptr_t) sys_close );
 	syscall_register( __NR_write, (syscall_ptr_t) sys_write );
 	syscall_register( __NR_read, (syscall_ptr_t) sys_read );
+	syscall_register( __NR_writev, (syscall_ptr_t) sys_writev );
+	syscall_register( __NR_readv, (syscall_ptr_t) sys_readv );
 	syscall_register( __NR_lseek, (syscall_ptr_t) sys_lseek );
 	syscall_register( __NR_dup2, (syscall_ptr_t) sys_dup2 );
 	syscall_register( __NR_ioctl, (syscall_ptr_t) sys_ioctl );
 	syscall_register( __NR_fcntl, (syscall_ptr_t) sys_fcntl );
 	syscall_register( __NR_getdents, (syscall_ptr_t) sys_getdents );
+	syscall_register( __NR_getdents64, (syscall_ptr_t) sys_getdents64 );
+	syscall_register( __NR_readlink, (syscall_ptr_t) sys_readlink );
 	syscall_register( __NR_stat, (syscall_ptr_t) sys_stat );
+	/* TODO: implement real lstat(), as this does not provide proper
+	   semantics, but does the trick for now */
+	syscall_register( __NR_lstat, (syscall_ptr_t) sys_stat );
 	syscall_register( __NR_fstat, (syscall_ptr_t) sys_fstat );
 	syscall_register( __NR_mkdir, (syscall_ptr_t) sys_mkdir );
 	syscall_register( __NR_mknod, (syscall_ptr_t) sys_mknod );
 	syscall_register( __NR_unlink, (syscall_ptr_t) sys_unlink);
 	syscall_register( __NR_rmdir, (syscall_ptr_t) sys_rmdir);
+
 #ifdef CONFIG_LINUX
 	syscall_register( __NR_poll, (syscall_ptr_t) sys_poll );
 #endif /* CONFIG_LINUX */

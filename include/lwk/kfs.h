@@ -30,7 +30,8 @@ struct inode_operations {
 		unsigned		create_mode
 	);
 #endif
-	struct dentry * (*lookup) (struct inode *,struct dentry *, struct nameidata *);
+	struct dentry * (*lookup) (struct inode *, struct dentry *,
+				   struct nameidata *);
 
         int (*create) (struct inode *, int mode );
         int (*unlink) (struct inode * );
@@ -73,6 +74,10 @@ struct inode
 };
 struct vm_area_struct;
 
+typedef int (*dirent_filler)(uaddr_t buf, unsigned int count,
+			     struct inode *inode, const char *name, int namelen,
+			     loff_t offset, unsigned int type);
+
 struct file;
 struct kfs_fops
 {
@@ -94,8 +99,9 @@ struct kfs_fops
 	int (*ioctl)(struct file *, int request, uaddr_t);
 	unsigned int (*poll) (struct file *, struct poll_table_struct *);
 	int (*release) (struct inode *, struct file *);
-	int (*readdir) (struct file *, uaddr_t, unsigned int);
-	ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
+	int (*readdir) (struct file *, uaddr_t, unsigned int, dirent_filler f);
+	ssize_t (*aio_write) (struct kiocb *, const struct iovec *,
+			      unsigned long, loff_t);
 
 	struct module *owner; /* can we get rid of the module stuff? */
 };
@@ -143,7 +149,7 @@ extern struct inode *kfs_create(const char *,
 extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 
 /* generally useful file ops */
-extern int kfs_readdir(struct file *, uaddr_t, unsigned int);
+extern int kfs_readdir(struct file *, uaddr_t, unsigned int, dirent_filler f);
 
 extern void kfs_close( struct file* );
 
