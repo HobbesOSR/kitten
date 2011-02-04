@@ -143,9 +143,7 @@ palacios_allocate_pages(
 }
 
 /**
- * Frees a page previously allocated via palacios_allocate_page().
- * Note that palacios_allocate_page() can allocate multiple pages with
- * a single call while palacios_free_page() only frees a single page.
+ * Frees pages previously allocated via palacios_allocate_pages().
  */
 static void
 palacios_free_pages(
@@ -160,7 +158,7 @@ palacios_free_pages(
 	pmem_region_unset_all(&query);
 
 	query.start		= (uintptr_t) page_paddr;
-	query.end		= (uintptr_t) page_paddr + PAGE_SIZE;
+	query.end		= (uintptr_t) page_paddr + num_pages * PAGE_SIZE;
 	query.allocated		= true;
 	query.allocated_is_set	= true;
 
