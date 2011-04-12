@@ -18,7 +18,7 @@
  * full text of the license.
  */
 
-#include <palacios/vmm_socket.h>
+#include <interfaces/vmm_socket.h>
 #include <lwip/init.h>
 #include <lwip/tcp.h>
 #include <lwip/api.h>
