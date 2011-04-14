@@ -1200,7 +1200,7 @@ define all-sources
 	            -name '*.[chS]' -print; \
 	  done ; \
 	  find $(__srctree)include/arch-generic $(RCS_FIND_IGNORE) \
-	       -name '*.[chS]' -print )
+	       -name '*.[chS]' -print; \
 	  for ARCH in $(ALLINCLUDE_ARCHS) ; do \
 	       find $(__srctree)linux/include/asm-$${ARCH} $(RCS_FIND_IGNORE) \
 	            -name '*.[chS]' -print; \
