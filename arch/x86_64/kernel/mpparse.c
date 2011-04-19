@@ -245,7 +245,9 @@ MP_intsrc_info(struct mpc_config_intsrc *m)
 					polarity = ioapic_active_low;
 					break;
 				default:
-					panic("Default for bus type unknown.");
+					printk("%s:%d WARNING ignoring unknown bus type unknown (%d).\n",
+					      __FILE__, __LINE__, mp_bus_id_to_type[m->mpc_srcbus]);
+					return;
 			}
 			break;
 		case 1:
@@ -270,7 +272,10 @@ MP_intsrc_info(struct mpc_config_intsrc *m)
 					trigger = ioapic_level_sensitive;
 					break;
 				default:
-					panic("Default for bus type unknown.");
+					printk("%s:%d WARNING ignoring unknown bus type unknown (%d).\n",
+					      __FILE__, __LINE__, mp_bus_id_to_type[m->mpc_srcbus]);
+					return;
+
 			}
 			break;
 		case 1:
