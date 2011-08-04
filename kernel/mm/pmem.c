@@ -364,7 +364,7 @@ __pmem_alloc(size_t size, size_t alignment,
 		if (alignment) {
 			candidate.start = round_up(candidate.start, alignment);
 			if (candidate.start >= candidate.end)
-				continue;
+				candidate.start = candidate.end;
 		}
 
 		if ((candidate.end - candidate.start) >= size) {
