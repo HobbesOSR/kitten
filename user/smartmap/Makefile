@@ -10,7 +10,7 @@ INCLUDES += \
 	-I$O/../../include2 \
 
 loader_SOURCES = loader.c
-loader_LDADD   = ../liblwk/liblwk.a
+loader_LDADD   = ../liblwk/liblwk.a -lpthread
 
 smartmap_app_SOURCES = smartmap_app.c
 

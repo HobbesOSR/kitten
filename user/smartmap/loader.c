@@ -1,7 +1,9 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
+#include <pthread.h>
 #include <lwk/liblwk.h>
 
 
@@ -14,7 +16,7 @@ main(int argc, char *argv[], char *envp[])
 {
 	volatile vaddr_t elf_image = (vaddr_t) &_binary_loader_rawdata_start;
 	start_state_t *start_state;
-	user_cpumask_t cpumask;
+	cpu_set_t cpuset;
 	int num_ranks=0;
 	int status;
 	int cpu, rank;
@@ -22,9 +24,9 @@ main(int argc, char *argv[], char *envp[])
 
 	/* Figure out how many CPUs are available */
 	printf("Available cpus:\n    ");
-	task_get_cpumask(&cpumask);
-	for (cpu = CPU_MIN_ID; cpu <= CPU_MAX_ID; cpu++) {
-		if (cpu_isset(cpu, cpumask)) {
+	pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+	for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+		if (CPU_ISSET(cpu, &cpuset)) {
 			printf("%d ", cpu);
 			++num_ranks;
 		}
@@ -40,15 +42,14 @@ main(int argc, char *argv[], char *envp[])
 
 	/* Create an address space for each rank, one per CPU */
 	printf("Creating address spaces...\n");
-	for (cpu = CPU_MIN_ID, rank = 0; cpu <= CPU_MAX_ID; cpu++, rank++) {
-		if (!cpu_isset(cpu, cpumask))
+	for (cpu = 0, rank = 0; cpu <= CPU_SETSIZE; cpu++, rank++) {
+		if (!CPU_ISSET(cpu, &cpuset))
 			continue;
 
-		start_state[rank].task_id  = UTASK_MIN_ID + rank;
+		start_state[rank].task_id  = 0x1000 + rank;
 		start_state[rank].cpu_id   = cpu;
 		start_state[rank].user_id  = 1; /* anything but 0(=root) */
 		start_state[rank].group_id = 1;
-		start_state[rank].cpumask  = cpumask;
 
 		sprintf(start_state[rank].task_name, "RANK%d", rank);
 
@@ -56,8 +57,8 @@ main(int argc, char *argv[], char *envp[])
 		elf_load(
 			(void *)elf_image,
 			"smartmap_app",
-			UASPACE_MIN_ID + rank,
-			PAGE_SIZE,
+			0x1000 + rank,
+			VM_PAGE_4KB,
 			(1024 * 1024 * 16),  /* heap_size  = 16 MB */
 			(1024 * 256),        /* stack_size = 256 KB */
 			"",                  /* argv_str */
@@ -78,9 +79,6 @@ main(int argc, char *argv[], char *envp[])
 	printf("Creating SMARTMAP mappings...\n");
 	for (dst = 0; dst < num_ranks; dst++) {
 		for (src = 0; src < num_ranks; src++) {
-			if (src == dst)
-				continue;
-
 			status =
 			aspace_smartmap(
 				start_state[src].aspace_id,

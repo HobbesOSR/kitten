@@ -814,18 +814,26 @@ aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
 	struct aspace *src_spc, *dst_spc;
 	unsigned long irqstate;
 
-	/* Don't allow self SMARTMAP'ing */
-	if (src == dst)
-		return -EINVAL;
-
 	local_irq_save(irqstate);
-	if ((status = lookup_and_lock_two(src, dst, &src_spc, &dst_spc))) {
-		local_irq_restore(irqstate);
-		return status;
+
+	if (src == dst) {
+		if ((src_spc = lookup_and_lock(src)) == NULL) {
+			local_irq_restore(irqstate);
+			return -ENOENT;
+		}
+		dst_spc = src_spc;
+	} else {
+		if ((status = lookup_and_lock_two(src, dst, &src_spc, &dst_spc))) {
+			local_irq_restore(irqstate);
+			return status;
+		}
 	}
+
 	status = __aspace_smartmap(src_spc, dst_spc, start, extent);
+
 	spin_unlock(&src_spc->lock);
-	spin_unlock(&dst_spc->lock);
+	if (src != dst)
+		spin_unlock(&dst_spc->lock);
 	local_irq_restore(irqstate);
 	return status;
 }
