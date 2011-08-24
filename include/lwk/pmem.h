@@ -27,8 +27,8 @@ struct pmem_region {
 	bool            type_is_set;       /* type field is set? */
 	pmem_type_t     type;              /* physical memory type */
 
-	bool            lgroup_is_set;     /* lgroup field is set? */
-	lgroup_t        lgroup;            /* locality group region is in */
+	bool            numa_node_is_set;  /* numa_node field is set? */
+	numa_node_t     numa_node;         /* locality group region is in */
 
 	bool            allocated_is_set;  /* allocated field set? */
 	bool            allocated;         /* region is allocated? */ 

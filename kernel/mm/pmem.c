@@ -128,9 +128,9 @@ regions_are_mergeable(const struct pmem_region *a, const struct pmem_region *b)
 	if (a->type_is_set && (a->type != b->type))
 		return false;
 
-	if (a->lgroup_is_set != b->lgroup_is_set)
+	if (a->numa_node_is_set != b->numa_node_is_set)
 		return false;
-	if (a->lgroup_is_set && (a->lgroup != b->lgroup))
+	if (a->numa_node_is_set && (a->numa_node != b->numa_node))
 		return false;
 
 	if (a->allocated_is_set != b->allocated_is_set)
@@ -156,8 +156,8 @@ region_matches(const struct pmem_region *query, const struct pmem_region *rgn)
 	      && (!rgn->type_is_set || (rgn->type != query->type)))
 		return false;
 
-	if (query->lgroup_is_set
-	      && (!rgn->lgroup_is_set || (rgn->lgroup != query->lgroup)))
+	if (query->numa_node_is_set
+	      && (!rgn->numa_node_is_set || (rgn->numa_node != query->numa_node)))
 		return false;
 
 	if (query->allocated_is_set

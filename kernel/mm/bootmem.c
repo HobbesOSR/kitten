@@ -380,7 +380,7 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	pmem_region_unset_all(&rgn);
 	rgn.type_is_set = true;
 	rgn.allocated_is_set = true;
-	rgn.lgroup_is_set = true;
+	rgn.numa_node_is_set = true;
 	for (i = 0; i < max_idx; ) {
 		unsigned long v = ~map[i / BITS_PER_LONG];
 		unsigned long paddr = (unsigned long) pfn << PAGE_SHIFT;
@@ -393,18 +393,18 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 				if (i < kmem_max_idx) {
 					rgn.type = PMEM_TYPE_KMEM;
 					rgn.allocated = true;
-					rgn.lgroup = 0;
+					rgn.numa_node = 0;
 					++kmem_total;
 				} else {
 					rgn.type = PMEM_TYPE_UMEM;
 					rgn.allocated = false;
-					rgn.lgroup = 0;
+					rgn.numa_node = 0;
 					++umem_total;
 				}
 			} else {
 				rgn.type = PMEM_TYPE_BOOTMEM;
 				rgn.allocated = true;
-				rgn.lgroup = 0;
+				rgn.numa_node = 0;
 				++bootmem_total;
 			}
 
@@ -424,7 +424,7 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	pmem_region_unset_all(&rgn);
 	rgn.type_is_set = true;
 	rgn.allocated_is_set = true;
-	rgn.lgroup_is_set = true;
+	rgn.numa_node_is_set = true;
 	for (i = 0; i < ((bdata->node_low_pfn-(bdata->node_boot_start >> PAGE_SHIFT))/8 + PAGE_SIZE-1)/PAGE_SIZE; i++,vaddr+=PAGE_SIZE) {
 		count++;
 
@@ -435,11 +435,11 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 			kmem_add_memory(vaddr, PAGE_SIZE);
 			rgn.type = PMEM_TYPE_KMEM;
 			rgn.allocated = true;
-			rgn.lgroup = 0;
+			rgn.numa_node = 0;
 		} else {
 			rgn.type = PMEM_TYPE_UMEM;
 			rgn.allocated = false;
-			rgn.lgroup = 0;
+			rgn.numa_node = 0;
 		}
 
 		pmem_add(&rgn);

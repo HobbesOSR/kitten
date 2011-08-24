@@ -71,12 +71,15 @@ pmem_api_test(void)
 
 	printf("  Physical Memory Map:\n");
 	while ((status = pmem_query(&query, &result)) == 0) {
-		printf("    [%#016lx, %#016lx) %-11s\n",
+		printf("    [%#016lx, %#016lx) %-10s numa_node=%u\n",
 			result.start,
 			result.end,
 			(result.type_is_set)
 				? pmem_type_to_string(result.type)
-				: "UNSET"
+				: "UNSET",
+			(result.numa_node_is_set)
+				? result.numa_node
+				: 0
 		);
 
 		if (result.type == PMEM_TYPE_UMEM)

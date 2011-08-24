@@ -142,7 +142,7 @@ typedef	__kernel_uintptr_t	kaddr_t;	/* kernel virtual address */
 typedef	__kernel_uintptr_t	uaddr_t;	/* user virtual address */
 
 /* Locality group ID */
-typedef unsigned int		lgroup_t;
+typedef unsigned int		numa_node_t;
 
 #ifdef __CHECKER__
 #define __bitwise__ __attribute__((bitwise))

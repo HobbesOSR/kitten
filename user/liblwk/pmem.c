@@ -20,7 +20,7 @@ void
 pmem_region_unset_all(struct pmem_region *rgn)
 {
 	rgn->type_is_set      = false;
-	rgn->lgroup_is_set    = false;
+	rgn->numa_node_is_set = false;
 	rgn->allocated_is_set = false;
 	rgn->name_is_set      = false;
 }
