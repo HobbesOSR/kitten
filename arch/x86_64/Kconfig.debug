@@ -12,4 +12,6 @@ config DEBUG_RODATA
 	 of the kernel code won't be covered by a 2MB TLB anymore.
 	 If in doubt, say "N".
 
+source "drivers/acpi/Kconfig.debug"
+
 endmenu

@@ -1,0 +1,25 @@
+if ACPI
+
+# This macro is observed in drivers/acpi/Makefile and translated to a
+# compile-time MACRO definition that enables or disables debug print statements
+# within the code.
+config ACPI_DEBUG
+	bool "ACPI Debugging (NOT YET FUNCTIONAL)"
+	default n
+	help
+		Enable debug print statements from the ACPI system.
+
+		This option NOT yet functioning. utglobal.c needs to be
+		'imported' from Linux source code to resolve linker errors.
+
+config ACPI_DEBUG_FUNC_TRACE
+	bool "ACPI Function call tracing (NOT YET FUNCTIONAL)"
+	default n
+	depends on ACPI_DEBUG
+	help
+		Enable debug print statements of the call flow within ACPI.
+
+		This option NOT yet functioning. utglobal.c needs to be
+		'imported' from Linux source code to resolve linker errors.
+
+endif	# ACPI

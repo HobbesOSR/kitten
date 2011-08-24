@@ -4,6 +4,7 @@
 #include <lwk/bootmem.h>
 #include <lwk/smp.h>
 #include <lwk/sched.h>
+#include <lwk/acpi.h>
 #include <arch/bootsetup.h>
 #include <arch/e820.h>
 #include <arch/page.h>
@@ -260,6 +261,11 @@ setup_arch(void)
 	 * number of CPUs, PCI bus info, APIC info, etc.
 	 */
 	get_mp_config();
+
+	/*
+	 * Initialize the ACPI subsystem.
+	 */
+	acpi_init();
 
 	/*
 	 * Initialize resources.  Resources reserve sections of normal memory

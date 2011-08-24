@@ -57,6 +57,16 @@
 /* TODO: move this */
 #define COMMAND_LINE_SIZE       1024
 
+/* Linux has compile-time checks for non-init code referencing init code,
+ * Kitten does not currently.  This is needed for the ACPI code ported from
+ * Linux, and possibly other things. */
+#define __ref
+#define __refdata
+#define __refconst
+#define __init_refok
+#define __initdata_refok
+#define __exit_refok
+
 #ifndef __ASSEMBLY__
 
 #include <lwk/types.h>

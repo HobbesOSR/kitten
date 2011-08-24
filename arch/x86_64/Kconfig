@@ -139,6 +139,10 @@ config SMP
 	bool
 	default "y"
 
+config ACPI
+	bool
+	default "y"
+
 source "drivers/Kconfig"
 source "arch/x86_64/boot/Kconfig"
 source "arch/x86_64/Kconfig.debug"

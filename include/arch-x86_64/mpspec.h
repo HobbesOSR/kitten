@@ -179,7 +179,6 @@ extern unsigned char apic_version [MAX_APICS];
 extern unsigned long mp_lapic_addr;
 extern int pic_mode;
 
-#ifdef CONFIG_ACPI
 extern void mp_register_lapic (u8 id, u8 enabled);
 extern void mp_register_lapic_address (u64 address);
 
@@ -189,7 +188,6 @@ extern void mp_override_legacy_irq (u8 bus_irq, u8 polarity, u8 trigger, u32 gsi
 extern void mp_config_acpi_legacy_irqs (void);
 extern int mp_register_gsi (u32 gsi, int triggering, int polarity);
 #endif /*CONFIG_X86_IO_APIC*/
-#endif
 
 extern int using_apic_timer;
 
