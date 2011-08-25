@@ -880,9 +880,9 @@ struct acpi_srat_mem_affinity {
 	u16 reserved;		/* Reserved, must be zero */
 	u64 base_address;
 	u64 length;
-       u32 reserved1;
+        u32 memory_type;	/* See acpi_address_range_id */
 	u32 flags;
-       u64 reserved2;	       /* Reserved, must be zero */
+	u64 reserved2;		/* Reserved, must be zero */
 };
 
 /* Flags */

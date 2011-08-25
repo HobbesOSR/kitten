@@ -98,14 +98,15 @@ void __init acpi_init(void)
 		return; 
 	}
 
-	/*
-	 * Initialize the ACPI boot-time table parser.
-	 */
+	/* Initialize the ACPI boot-time table parser. */
 	if (acpi_table_init()) {
 		printk(KERN_WARNING PREFIX "ACPI initialization failed, disabling ACPI.\n");
 		disable_acpi();
 		return;
 	}
+
+	/* Parse the SRAT/SLIT NUMA-related tables */
+	acpi_numa_init();
 }
 
 #if 0

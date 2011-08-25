@@ -54,6 +54,12 @@ enum acpi_interrupt_id {
 
 #define	ACPI_SPACE_MEM		0
 
+enum acpi_srat_entry_id {
+	ACPI_SRAT_PROCESSOR_AFFINITY = 0,
+	ACPI_SRAT_MEMORY_AFFINITY,
+	ACPI_SRAT_ENTRY_COUNT
+};
+
 enum acpi_address_range_id {
 	ACPI_ADDRESS_RANGE_MEMORY = 1,
 	ACPI_ADDRESS_RANGE_RESERVED = 2,
@@ -62,14 +68,14 @@ enum acpi_address_range_id {
 	ACPI_ADDRESS_RANGE_COUNT
 };
 
+typedef int (*acpi_madt_entry_handler) (struct acpi_subtable_header *header,
+		        const unsigned long end);
 
 /* Table Handlers */
 
 typedef int (*acpi_table_handler) (struct acpi_table_header *table);
 
-#ifdef ACPI_USES_ACTBL1_H
 typedef int (*acpi_table_entry_handler) (struct acpi_subtable_header *header, const unsigned long end);
-#endif
 
 char * __acpi_map_table (unsigned long phys_addr, unsigned long size);
 void __acpi_unmap_table(char *map, unsigned long size);
@@ -81,24 +87,19 @@ int acpi_numa_init (void);
 
 int acpi_table_init (void);
 int acpi_table_parse (char *id, acpi_table_handler handler);
-#ifdef ACPI_USES_ACTBL1_H
 int __init acpi_table_parse_entries(char *id, unsigned long table_size,
 	int entry_id, acpi_table_entry_handler handler, unsigned int max_entries);
 int acpi_table_parse_madt (enum acpi_madt_type id, acpi_table_entry_handler handler, unsigned int max_entries);
-#endif
 int acpi_parse_mcfg (struct acpi_table_header *header);
-#ifdef ACPI_USES_ACTBL1_H
 void acpi_table_print_madt_entry (struct acpi_subtable_header *madt);
-#endif
 
 /* the following four functions are architecture-dependent */
-#ifdef ACPI_USES_ACTBL1_H
 void acpi_numa_slit_init (struct acpi_table_slit *slit);
 void acpi_numa_processor_affinity_init (struct acpi_srat_cpu_affinity *pa);
 void acpi_numa_x2apic_affinity_init(struct acpi_srat_x2apic_cpu_affinity *pa);
 void acpi_numa_memory_affinity_init (struct acpi_srat_mem_affinity *ma);
-#endif
 void acpi_numa_arch_fixup(void);
+void acpi_set_pmem_numa_info(void);
 
 int acpi_register_ioapic(acpi_handle handle, u64 phys_addr, u32 gsi_base);
 int acpi_unregister_ioapic(acpi_handle handle, u32 gsi_base);

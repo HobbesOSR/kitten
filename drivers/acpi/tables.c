@@ -44,10 +44,10 @@ static char *mps_inti_flags_trigger[] = { "dfl", "edge", "res", "level" };
 
 static struct acpi_table_desc initial_tables[ACPI_MAX_TABLES] __initdata;
 
-/* IF ZERO */
-#if 0
 static int acpi_apic_instance __initdata;
 
+/* IF ZERO */
+#if 0
 void acpi_table_print_madt_entry(struct acpi_subtable_header *header)
 {
 	if (!header)
@@ -202,6 +202,7 @@ void acpi_table_print_madt_entry(struct acpi_subtable_header *header)
 		break;
 	}
 }
+#endif
 
 
 int __init
@@ -261,6 +262,7 @@ acpi_table_parse_entries(char *id,
 	return count;
 }
 
+#if 0
 int __init
 acpi_table_parse_madt(enum acpi_madt_type id,
 		      acpi_table_entry_handler handler, unsigned int max_entries)
@@ -291,12 +293,9 @@ int __init acpi_table_parse(char *id, acpi_table_handler handler)
 	if (!handler)
 		return -EINVAL;
 
-	/* IF ZERO */
-#if 0
 	if (strncmp(id, ACPI_SIG_MADT, 4) == 0)
 		acpi_get_table_with_size(id, acpi_apic_instance, &table, &tbl_size);
 	else
-#endif
 		acpi_get_table_with_size(id, 0, &table, &tbl_size);
 
 	if (table) {

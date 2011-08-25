@@ -22,3 +22,4 @@ obj-y				+= acpi.o \
 
 # All the builtin files are in the "acpi." module_param namespace.
 acpi-y				+= osl.o
+acpi-y				+= numa.o
