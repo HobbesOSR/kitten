@@ -71,7 +71,7 @@ __SYSCALL(__NR_msync, syscall_not_implemented)
 #define __NR_mincore                            27
 __SYSCALL(__NR_mincore, syscall_not_implemented)
 #define __NR_madvise                            28
-__SYSCALL(__NR_madvise, syscall_not_implemented)
+__SYSCALL(__NR_madvise, sys_madvise)
 #define __NR_shmget                             29
 __SYSCALL(__NR_shmget, syscall_not_implemented)
 #define __NR_shmat                              30

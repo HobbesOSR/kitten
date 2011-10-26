@@ -454,8 +454,8 @@ futex(
 			break;
 		default:
 			printk(KERN_WARNING
-			       "Futex op=%d not supported (task=%u, %s)\n",
-			       op, current->id, current->name);
+			       "sys_futex() op=%d not supported (task=%u.%u, %s)\n",
+			       op, current->aspace->id, current->id, current->name);
 			status = -ENOSYS;
 	}
 

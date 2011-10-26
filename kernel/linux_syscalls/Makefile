@@ -30,3 +30,4 @@ obj-y := \
 	sethostname.o \
 	clock_gettime.o \
 	getcpu.o \
+	madvise.o \
