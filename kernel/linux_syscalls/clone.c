@@ -54,7 +54,7 @@ sys_clone(
 		.user_id	= current->uid,
 		.group_id	= current->gid,
 		.aspace_id	= current->aspace->id,
-		.cpu_id		= current->cpu_id, //ANY_ID,
+		.cpu_id		= ANY_ID,
 		.stack_ptr	= new_stack_ptr,
 		.entry_point	= USE_PARENT_IP,
 		.use_args	= 0,
