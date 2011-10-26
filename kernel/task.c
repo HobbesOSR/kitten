@@ -114,6 +114,7 @@ __task_create(
 	tsk->cpu_id = alloc_cpu_id(aspace, start_state->cpu_id);
 	if (tsk->cpu_id == ERROR_ID)
 		goto fail_cpu_id_alloc;
+	tsk->cpu_target_id = tsk->cpu_id;
 
 	// Fill in and initialize the rest of the task structure
 	tsk->state	=	TASK_RUNNING;
@@ -196,7 +197,7 @@ task_create(
 // This function does not return to the caller.
 void
 task_exit(
-	int	exit_status
+	int			exit_status
 )
 {
 	unsigned long irqstate;
@@ -276,7 +277,7 @@ task_exit(
 
 void
 task_exit_group(
-	int	exit_status
+	int			exit_status
 )
 {
 	struct task_struct *tsk;
@@ -309,4 +310,27 @@ task_exit_group(
 
 	// Terminate the calling task, this call does not return
 	task_exit(exit_status);
+}
+
+
+// Migrates the caller (current) to cpu_id.
+//
+// Caller must not hold any locks.
+// Caller must have local interrupts enabled.
+int
+task_switch_cpus(id_t cpu_id)
+{
+	BUG_ON(irqs_disabled());
+
+	/* Make sure target CPU is valid */
+	if ((cpu_id >= NR_CPUS) || !cpu_isset(cpu_id, current->cpu_mask))
+		return -EINVAL;
+
+	/* Migrate to the target CPU */
+	current->cpu_target_id = cpu_id;
+	schedule();
+
+	BUG_ON(this_cpu != cpu_id);
+
+	return 0;
 }

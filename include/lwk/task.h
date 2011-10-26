@@ -41,8 +41,8 @@ task_create(
 );
 
 extern int
-task_destroy(
-	id_t			task_id
+task_switch_cpus(
+	id_t			cpu_id
 );
 
 // End core task management API
@@ -106,6 +106,7 @@ struct task_struct {
 
 	id_t			cpu_id;		// CPU this task is executing on
 	cpumask_t		cpu_mask;	// CPUs this task may migrate to
+	id_t			cpu_target_id;	// CPU this task should migrate to
 
 	struct list_head	sched_link;	// For per-CPU scheduling lists
 	bool			sched_irqs_on;	// IRQs on at schedule() entry?
@@ -151,7 +152,9 @@ arch_task_create(
 // Syscall wrappers for task creation
 extern int sys_task_create(const start_state_t __user *start_state,
                            id_t __user *task_id);
-extern int sys_task_destroy( id_t id );
+
+
+extern int sys_task_switch_cpus(id_t cpu_id);
 
 
 extern struct task_struct *

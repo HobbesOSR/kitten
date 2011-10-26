@@ -16,4 +16,5 @@ obj-y := \
 	aspace_dump2console.o \
 	aspace_virt_to_phys.o \
 	task_create.o \
+	task_switch_cpus.o \
 	elf_hwcap.o \

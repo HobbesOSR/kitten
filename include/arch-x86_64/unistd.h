@@ -668,18 +668,20 @@ __SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
 __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
 #define __NR_aspace_dump2console 301
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
-#define __NR_task_create        302
+#define __NR_task_create	302
 __SYSCALL(__NR_task_create, sys_task_create)
-#define __NR_elf_hwcap          303
+#define __NR_task_switch_cpus	303
+__SYSCALL(__NR_task_switch_cpus, sys_task_switch_cpus)
+#define __NR_elf_hwcap		304
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
-#define __NR_v3_start_guest	304
+#define __NR_v3_start_guest	305
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
-#define __NR_getcpu		305
+#define __NR_getcpu		306
 __SYSCALL(__NR_getcpu, sys_getcpu)
 
 
-#define __NR_lwk_arp            306
-#define __NR_lwk_ifconfig       307
+#define __NR_lwk_arp            307
+#define __NR_lwk_ifconfig       308
 
 
 #ifdef CONFIG_LINUX 
