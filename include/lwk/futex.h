@@ -8,10 +8,13 @@
 #define FUTEX_WAKE		1
 #define FUTEX_CMP_REQUEUE	4
 #define FUTEX_WAKE_OP		5
+#define FUTEX_WAIT_BITSET	9
+#define FUTEX_WAKE_BITSET	10
 // @}
 
 #define FUTEX_PRIVATE_FLAG	128
-#define FUTEX_CMD_MASK		~FUTEX_PRIVATE_FLAG
+#define FUTEX_CLOCK_REALTIME	256
+#define FUTEX_CMD_MASK		~(FUTEX_PRIVATE_FLAG | FUTEX_CLOCK_REALTIME)
 
 /** \name Futex Operations, used for FUTEX_WAKE_OP
  * @{
@@ -41,6 +44,12 @@
   (((op & 0xf) << 28) | ((cmp & 0xf) << 24)		\
    | ((oparg & 0xfff) << 12) | (cmparg & 0xfff))
 
+/*
+ * bitset with all bits set for the FUTEX_xxx_BITSET OPs to request a
+ * match of any bit.
+ */
+#define FUTEX_BITSET_MATCH_ANY	0xffffffff
+
 #ifdef __KERNEL__
 
 #include <lwk/spinlock.h>
@@ -62,6 +71,7 @@ struct futex {
 	struct waitq			waitq;
 	spinlock_t *			lock_ptr;
 	uint32_t __user *		uaddr;
+	uint32_t			bitset;
 };
 
 struct futex_queue {

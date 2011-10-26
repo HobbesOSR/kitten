@@ -78,12 +78,14 @@ uaddr_is_valid(
 static int
 futex_init(
 	struct futex *			futex,
-	uint32_t __user *		uaddr
+	uint32_t __user *		uaddr,
+	uint32_t			bitset
 )
 {
 	if (!uaddr_is_valid(uaddr))
 		return -EINVAL;
 	futex->uaddr = uaddr;
+	futex->bitset = bitset;
 	waitq_init(&futex->waitq);
 	return 0;
 }
@@ -194,7 +196,8 @@ static int
 futex_wait(
 	uint32_t __user *		uaddr,
 	uint32_t			val,
-	uint64_t			timeout
+	uint64_t			timeout,
+	uint32_t			bitset
 )
 {
 	DECLARE_WAITQ_ENTRY(wait, current);
@@ -204,8 +207,11 @@ futex_wait(
 	struct futex_queue *queue;
 	uint64_t time_remain = 0;
 
+	if (!bitset)
+		return -EINVAL;
+
 	/* This verifies that uaddr is sane */
-	if ((status = futex_init(&futex, uaddr)) != 0)
+	if ((status = futex_init(&futex, uaddr, bitset)) != 0)
 		return status;
 
 	/* Lock the futex queue corresponding to uaddr */
@@ -289,13 +295,17 @@ wake_futex(
 static int
 futex_wake(
 	uint32_t __user *		uaddr,
-	int				nr_wake
+	int				nr_wake,
+	uint32_t			bitset
 )
 {
 	struct futex_queue *queue;
 	struct list_head *head;
 	struct futex *this, *next;
 	int nr_woke = 0;
+
+	if (!bitset)
+		return -EINVAL;
 
 	if (!uaddr_is_valid(uaddr))
 		return -EINVAL;
@@ -305,7 +315,7 @@ futex_wake(
 	head = &queue->futex_list;
 
 	list_for_each_entry_safe(this, next, head, link) {
-		if (this->uaddr == uaddr) {
+		if ((this->uaddr == uaddr) && (this->bitset & bitset)) {
 			wake_futex(this);
 			if (++nr_woke >= nr_wake)
 				break;
@@ -441,10 +451,14 @@ futex(
 
 	switch (op) {
 		case FUTEX_WAIT:
-			status = futex_wait(uaddr, val, timeout);
+			val3 = FUTEX_BITSET_MATCH_ANY;
+		case FUTEX_WAIT_BITSET:
+			status = futex_wait(uaddr, val, timeout, val3);
 			break;
 		case FUTEX_WAKE:
-			status = futex_wake(uaddr, val);
+			val3 = FUTEX_BITSET_MATCH_ANY;
+		case FUTEX_WAKE_BITSET:
+			status = futex_wake(uaddr, val, val3);
 			break;
 		case FUTEX_WAKE_OP:
 			status = futex_wake_op(uaddr, uaddr2, val, val2, val3);
