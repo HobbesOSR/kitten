@@ -21,6 +21,7 @@
 static int pmem_api_test(void);
 static int aspace_api_test(void);
 static int task_api_test(void);
+static int task_migrate_test(void);
 static int fd_test(void);
 static int hypervisor_api_test(void);
 
@@ -43,8 +44,13 @@ main(int argc, char *argv[], char *envp[])
 	aspace_api_test();
 	fd_test();
 	task_api_test();
+	task_migrate_test();
 	hypervisor_api_test();
 
+	printf("\n");
+	printf("ALL TESTS COMPLETE\n");
+
+	printf("\n");
 	printf("Spinning forever...\n");
 	for (i = 0; i < 10; i++) {
 		sleep(5);
@@ -63,7 +69,8 @@ pmem_api_test(void)
 	unsigned long bytes_umem = 0;
 	int status;
 
-	printf("\nTEST BEGIN: Physical Memory Management\n");
+	printf("\n");
+	printf("TEST BEGIN: Physical Memory Management\n");
 
 	query.start = 0;
 	query.end = ULONG_MAX;
@@ -95,7 +102,7 @@ pmem_api_test(void)
 
 	printf("  Total User-Level Managed Memory: %lu bytes\n", bytes_umem);
 
-	printf("TEST END: Physical Memory Management\n");
+	printf("TEST END:   Physical Memory Management\n");
 	return 0;
 }
 
@@ -105,7 +112,8 @@ aspace_api_test(void)
 	int status;
 	id_t my_id, new_id;
 
-	printf("\nTEST BEGIN: Address Space Management\n");
+	printf("\n");
+	printf("TEST BEGIN: Address Space Management\n");
 
 	status = aspace_get_myid(&my_id);
 	if (status) {
@@ -145,7 +153,7 @@ aspace_api_test(void)
 	}
 	printf("OK\n");
 
-	printf("TEST END: Address Space Management\n");
+	printf("TEST END:   Address Space Management\n");
 	return 0;
 }
 
@@ -165,8 +173,8 @@ hello_world_thread(void *arg)
 
 	sleep(1);
 
-	printf("Hello from thread %d: pid=%d, tid=%d\n",
-		my_id, getpid(), gettid());
+	printf("Hello from thread %d: pid=%d, tid=%d, cpu=%d\n",
+		my_id, getpid(), gettid(), sched_getcpu());
 
 	sleep(1);
 
@@ -186,6 +194,7 @@ task_api_test(void)
 	int status, i, nthr=0;
 	void *value_ptr;
 
+	printf("\n");
 	printf("TEST BEGIN: Task Management\n");
 
 	printf("  My Linux process id (PID) is:       %d\n",  getpid());
@@ -193,7 +202,7 @@ task_api_test(void)
 	
 	status = pthread_getaffinity_np(pthread_self(), sizeof(cpu_mask), &cpu_mask);
 	if (status) {
-		printf("ERROR: pthread_getaffinity_np() status=%d\n", status);
+		printf("    ERROR: pthread_getaffinity_np() status=%d\n", status);
 		return -1;
 	}
 
@@ -237,7 +246,94 @@ task_api_test(void)
 		}
 	}
 
-	printf("TEST END: Task Management\n");
+	printf("TEST END:   Task Management\n");
+	return 0;
+}
+
+
+// Returns the current time in seconds, as a double
+static double
+now()
+{
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return ((double)tv.tv_sec + (double)tv.tv_usec * 1.e-6);
+}
+
+
+// This test migrates the hello_world process to every other available CPU,
+// then back to the starting CPU. The first time through the ring prints
+// out what is happening. After that, 100K ring traversals are performed
+// and the average time per migration is printed.
+static int 
+task_migrate_test(void)
+{
+	int status, i, cur, cpu, home_cpu, home_index=-1, ncpus=0;
+	int cpus[CPU_SETSIZE];
+	cpu_set_t cpu_mask;
+	int ntrips = 100000;
+	double start, end;
+
+	printf("\n");
+	printf("TEST BEGIN: Task Migration Test\n");
+
+	home_cpu = sched_getcpu();
+	printf("  My home CPU is: %d\n",  home_cpu);
+
+	status = pthread_getaffinity_np(pthread_self(), sizeof(cpu_mask), &cpu_mask);
+	if (status) {
+		printf("    ERROR: pthread_getaffinity_np() status=%d\n", status);
+		return -1;
+	}
+
+	printf("  My CPU mask is: ");
+	for (i = 0; i < CPU_SETSIZE; i++) {
+		if (CPU_ISSET(i, &cpu_mask)) {
+			printf("%d ", i);
+			cpus[ncpus] = i;
+			++ncpus;
+		}
+	}
+	printf("\n");
+
+	printf("  Total # CPUs:   %d\n", ncpus);
+
+	for (i = 0; i < ncpus; i++) {
+		if (cpus[i] == home_cpu) {
+			home_index = i;
+			break;
+		}
+	}
+
+	printf("  Begin Warm Up Trip Around Ring:\n");
+	cur = (home_index + 1) % ncpus;
+	printf("      Initial CPU is %d\n", home_cpu);
+	for (i = 0; i < ncpus; i++) {
+		printf("      Migrating to CPU %d: ", cpus[cur]);
+
+		task_switch_cpus(cpus[cur]);
+
+		cpu = sched_getcpu();
+		if (cpu == cpus[cur])
+			printf("Success\n");
+		else
+			printf("Failure (current CPU = %d)\n", cpu);
+
+		cur = (cur + 1) % ncpus;
+	}
+	printf("      Trip Complete\n");
+
+	printf("  Begin Benchmark (%d Trips Around Ring):\n", ntrips);
+	start = now();
+	cur = (home_index + 1) % ncpus;
+	for (i = 0; i < (ntrips * ncpus); i++) {
+		task_switch_cpus(cpus[cur]);
+		cur = (cur + 1) % ncpus;
+	}
+	end = now();
+	printf("      Average Time/Migrate: %.0f ns\n", (end - start) * 1.e9 / (ntrips * ncpus * 1.0));
+
+	printf("TEST END:   Task Migration Test\n");
 	return 0;
 }
 
@@ -249,7 +345,9 @@ fd_test( void )
 	int fd;
 	ssize_t rc;
 
-	printf( "Testing open\n" );
+	printf("\n");
+	printf("TEST BEGIN: File Test\n");
+
 	fd = open( "/sys", O_RDONLY );
 	rc = read( fd, buf, sizeof(buf) );
 	if( rc >= 0 )
@@ -282,6 +380,9 @@ fd_test( void )
 		printf( "fd %d rc=%ld '%s'\n", fd, rc, buf );
 	close( fd );
 
+	printf("    Success.\n");
+	printf("TEST END:   File Test\n");
+
 	return 0;
 }
 
@@ -301,15 +402,16 @@ hypervisor_api_test(void)
 	id_t my_aspace;
 	int status;
 
-	printf("\nTEST BEGIN: Hypervisor API\n");
-
-	printf("  Starting a guest OS...\n");
-
 	/* Make sure there is an embedded ISO image */
 	if (iso_size != (iso_end - iso_start)) {
-		printf("    Failed, no ISO image available.\n");
+		//printf("    Failed, no ISO image available.\n");
 		return -1;
 	}
+
+	printf("\n");
+	printf("TEST BEGIN: Hypervisor API\n");
+
+	printf("  Starting a guest OS...\n");
 
 	/* Determine the physical address of the ISO image */
 	aspace_get_myid(&my_aspace);
@@ -324,6 +426,6 @@ hypervisor_api_test(void)
 
 	printf("    Success.\n");
 
-	printf("TEST END: Hypervisor API\n");
+	printf("TEST END:   Hypervisor API\n");
 	return 0;
 }
