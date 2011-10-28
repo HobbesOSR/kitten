@@ -66,7 +66,7 @@ sys_clone(
 
 	/* Name the new task something semi-sensible */
 	snprintf(tsk->name, sizeof(tsk->name),
-		 "%s.thread_%u",
+		 "%s.thread_%02u",
 		 strlen(current->name) ? current->name : "noname",
 		 tsk->id - tsk->aspace->id);
 

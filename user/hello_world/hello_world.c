@@ -166,21 +166,54 @@ gettid(void)
 }
 
 
+// This stores how many hello_world_thread() pthreads were
+// actually created by the task_api_test() (below)
+int num_threads = 0;
+pthread_mutex_t num_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+// Simple barrier implementation
+int barrier_count = 0;
+pthread_mutex_t barrier_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  barrier_cond  = PTHREAD_COND_INITIALIZER;
+void
+barrier(void)
+{
+	pthread_mutex_lock(&barrier_mutex);
+
+	// All threads, including the main() thread increment this
+	barrier_count++;
+
+	// First num_threads-1 go to sleep, last thread wakes everyone up
+	if (barrier_count != num_threads) {
+		pthread_cond_wait(&barrier_cond, &barrier_mutex);
+	} else {
+		printf("All threads barrier\n");
+		barrier_count = 0;
+		pthread_cond_broadcast(&barrier_cond);
+	}
+
+	pthread_mutex_unlock(&barrier_mutex);
+}
+
+
 static void *
 hello_world_thread(void *arg)
 {
 	int my_id = (int)(uintptr_t) arg;
 
-	sleep(1);
+	// Wait for num_threads to be set by task_api_test()
+	pthread_mutex_lock(&num_threads_mutex);
+	pthread_mutex_unlock(&num_threads_mutex);
 
-	printf("Hello from thread %d: pid=%d, tid=%d, cpu=%d\n",
-		my_id, getpid(), gettid(), sched_getcpu());
+	printf("Hello from thread %2d: pid=%2d tid=%2d cpu=%2d #threads=%d\n",
+		my_id, getpid(), gettid(), sched_getcpu(), num_threads);
 
-	sleep(1);
+	barrier();
 
 	printf("Goodbye from thread %d\n", my_id);
 
-	sleep(1);
+	barrier();
 
 	pthread_exit((void *)(uintptr_t)my_id);
 }
@@ -191,14 +224,19 @@ task_api_test(void)
 {
 	pthread_t pthread_id[CPU_SETSIZE];
 	cpu_set_t cpu_mask;
-	int status, i, nthr=0;
+	int status, i;
 	void *value_ptr;
+	pthread_attr_t attr;
 
 	printf("\n");
 	printf("TEST BEGIN: Task Management\n");
 
-	printf("  My Linux process id (PID) is:       %d\n",  getpid());
-	printf("  My Linux thread id  (TID) is:       %d\n",  gettid());
+	// Set stack size to something small to avoid running out of heap
+	pthread_attr_init(&attr);
+	pthread_attr_setstacksize(&attr, 1024 * 32);
+
+	printf("  My Linux process id (PID) is: %d\n",  getpid());
+	printf("  My Linux thread id  (TID) is: %d\n",  gettid());
 	
 	status = pthread_getaffinity_np(pthread_self(), sizeof(cpu_mask), &cpu_mask);
 	if (status) {
@@ -206,7 +244,7 @@ task_api_test(void)
 		return -1;
 	}
 
-	printf("  My CPU mask is:                     ");
+	printf("  My CPU mask is:               ");
 	for (i = 0; i < CPU_SETSIZE; i++) {
 		if (CPU_ISSET(i, &cpu_mask))
 			printf("%d ", i);
@@ -214,29 +252,30 @@ task_api_test(void)
 	printf("\n");
 
 	printf("  Creating one thread for each CPU:\n");
+	pthread_mutex_lock(&num_threads_mutex);
 	for (i = 0; i < CPU_SETSIZE; i++) {
 		if (!CPU_ISSET(i, &cpu_mask))
 			continue;
 
 		status = pthread_create(
-			&pthread_id[nthr],
-			NULL,
+			&pthread_id[num_threads],
+			&attr,
 			&hello_world_thread,
-			(void *)(uintptr_t)nthr+1
+			(void *)(uintptr_t)num_threads+1
 		);
 
 		if (status) {
 			printf("    ERROR: pthread_create() status=%d\n", status);
 			continue;
 		} else {
-			printf("    created thread %d\n", nthr+1);
-			++nthr;
+			printf("    created thread %d\n", num_threads+1);
+			++num_threads;
 		}
 	}
+	pthread_mutex_unlock(&num_threads_mutex);
 
 	printf("  Waiting for threads to exit:\n");
-	for (i = 0; i < nthr; i++) {
-		printf("joining thread %lu\n", pthread_id[i]);
+	for (i = 0; i < num_threads; i++) {
 		status = pthread_join(pthread_id[i], &value_ptr);
 		if (status) {
 			printf("    ERROR: pthread_join() status=%d\n", status);
