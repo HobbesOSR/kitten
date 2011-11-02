@@ -55,7 +55,7 @@ __mutex_init(struct mutex *lock, const char *name)
  * We also put the fastpath first in the kernel image, to make sure the
  * branch is predicted by the CPU as default-untaken.
  */
-static void noinline
+static __used noinline void
 __mutex_lock_slowpath(atomic_t *lock_count);
 
 /***
@@ -89,7 +89,7 @@ void inline mutex_lock(struct mutex *lock)
 }
 
 
-static noinline void __mutex_unlock_slowpath(atomic_t *lock_count);
+static __used noinline void __mutex_unlock_slowpath(atomic_t *lock_count);
 
 /***
  * mutex_unlock - release the mutex
@@ -226,7 +226,7 @@ __mutex_unlock_common_slowpath(atomic_t *lock_count, int nested)
 /*
  * Release the lock, slowpath:
  */
-static noinline void
+static __used noinline void
 __mutex_unlock_slowpath(atomic_t *lock_count)
 {
 	__mutex_unlock_common_slowpath(lock_count, 1);
@@ -256,7 +256,7 @@ int mutex_lock_interruptible(struct mutex *lock)
 			(&lock->count, __mutex_lock_interruptible_slowpath);
 }
 
-static noinline void
+static __used noinline void
 __mutex_lock_slowpath(atomic_t *lock_count)
 {
 	struct mutex *lock = container_of(lock_count, struct mutex, count);
