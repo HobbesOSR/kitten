@@ -380,6 +380,7 @@ elf_init_stack(
 	write_aux(auxv, auxc++, AT_GID, gid);
 	write_aux(auxv, auxc++, AT_EGID, gid);
 	write_aux(auxv, auxc++, AT_SECURE, 0);
+	write_aux(auxv, auxc++, AT_RANDOM, stack_start); // not actually random
 	if (platform_str) {
 		platform_str_sp = strings_sp;
 		write_aux(

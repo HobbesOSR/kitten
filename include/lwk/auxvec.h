@@ -37,6 +37,8 @@ struct aux_ent {
 
 #define AT_SECURE 23   /* secure mode boolean */
 
+#define AT_RANDOM 25	/* address of 16 random bytes */
+
 #define AT_ENTRIES  22 /* Number of entries in the auxiliary table */
 
 #endif /* _LWK_AUXVEC_H */
