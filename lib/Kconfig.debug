@@ -1,5 +1,6 @@
 config DEBUG_KERNEL
 	bool "Kernel debugging"
+	default y
 	help
 	  Say Y here if you are developing drivers or trying to debug and
 	  identify kernel problems.
@@ -55,6 +56,7 @@ config DEBUG_BUGVERBOSE
 config DEBUG_INFO
 	bool "Compile the kernel with debug info"
 	depends on DEBUG_KERNEL
+	default y
 	help
           If you say Y here the resulting kernel image will include
 	  debugging info resulting in a larger kernel image.
@@ -65,7 +67,7 @@ config DEBUG_INFO
 config DEBUG_HW_NOISE
         bool "Measure noise in the underlying hardware/vmm at boot time"
 	depends on DEBUG_KERNEL
-        default "n"
+        default n
         help
            Measures interruption of the CPU by the underlying
            hardware/bios/virtual machine monitor at boot just after
@@ -95,7 +97,7 @@ config KGDB_SERIAL_CONSOLE
 config FRAME_POINTER
 	bool "Compile the kernel with frame pointers"
 	depends on DEBUG_KERNEL
-	default y if DEBUG_INFO && UML
+	default y if DEBUG_INFO
 	help
 	  If you say Y here the resulting kernel image will be slightly larger
 	  and slower, but it might give very useful debugging information on
@@ -104,6 +106,7 @@ config FRAME_POINTER
 
 config UNWIND_INFO
 	bool "Compile the kernel with frame unwind information"
+	default n
 	depends on !IA64
 	depends on !MODULES || !(MIPS || PARISC || PPC || SUPERH || V850)
 	help
