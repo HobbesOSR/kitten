@@ -28,6 +28,9 @@ return (to);
    function. */
 
 #define __HAVE_ARCH_MEMCPY 1
+#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4
+extern void *memcpy(void *to, const void *from, size_t len); 
+#else
 extern void *__memcpy(void *to, const void *from, size_t len); 
 #define memcpy(dst,src,len) \
 	({ size_t __len = (len);				\
@@ -37,6 +40,7 @@ extern void *__memcpy(void *to, const void *from, size_t len);
 	   else							\
 		 __ret = __builtin_memcpy((dst),(src),__len);	\
 	   __ret; }) 
+#endif
 
 
 #define __HAVE_ARCH_MEMSET
