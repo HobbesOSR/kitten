@@ -38,8 +38,9 @@ sys_mmap(
 		spin_lock(&as->lock);
 		mmap_brk = round_down(as->mmap_brk - len, PAGE_SIZE);
 
-		/* Protect against extending into the UNIX data segment */
-		if (mmap_brk <= as->brk) {
+		/* Protect against extending into the UNIX data segment,
+		   or becoming negative (which wraps around to large addr) */
+		if ((mmap_brk <= as->brk) || (mmap_brk >= as->mmap_brk)) {
 			spin_unlock(&as->lock);
 			return -ENOMEM;
 		}
