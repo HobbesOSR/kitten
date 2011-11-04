@@ -162,11 +162,11 @@ static unsigned int poll(struct file *filep, struct poll_table_struct *table)
 {
 	struct fifo_file *pfile = filep->private_data;
 	unsigned int mask = 0;
-	unsigned int key = 0;
-	if ( table ) key = table->key;
 
+	//unsigned int key = 0;
+	//if ( table ) key = table->key;
 	//dbg("wait table=%p %d %d want events %#x\n",  table,
-//			pfile->buffer->avail, pfile->buffer->length, key );
+	//	pfile->buffer->avail, pfile->buffer->length, key );
 	
 	poll_wait(filep, &pfile->poll_wait, table);
 

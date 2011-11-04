@@ -10,9 +10,10 @@
 int
 elf_check_hdr(const struct elfhdr *hdr)
 {
+	unsigned int *e_ident = (unsigned int *)hdr->e_ident;
+
 	if (memcmp(hdr->e_ident, ELFMAG, SELFMAG) != 0) {
-		print(TYPE_ERR "bad e_ident %#x\n",
-		               *((unsigned int *)hdr->e_ident));
+		print(TYPE_ERR "bad e_ident %#x\n", *e_ident);
 		return -1;
 	}
 	if (hdr->e_ident[EI_CLASS] != ELF_CLASS) {
