@@ -9,7 +9,7 @@ INCLUDES += \
 	-I$O/../../include \
 	-I$O/../../include2 \
 
-hello_world_SOURCES = hello_world.c
+hello_world_SOURCES = hello_world.c sched_getcpu.c
 hello_world_LDADD   = ../liblwk/liblwk.a -lpthread
 
 # Embed an ISO image to use for booting guest OSes in the hello_world

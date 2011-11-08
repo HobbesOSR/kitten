@@ -197,6 +197,12 @@ barrier(void)
 }
 
 
+// The glibc in RHEL5 does not support sched_getcpu() even though
+// the RHEL5 kernel does. To workaround, we implement our own
+// sched_getcpu() in sched_getcpu.c and provide this prototype.
+int sched_getcpu(void);
+
+
 static void *
 hello_world_thread(void *arg)
 {
