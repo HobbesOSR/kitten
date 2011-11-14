@@ -378,13 +378,13 @@ palacios_yield_cpu(void)
 /**
  * Creates a kernel thread.
  */
-static void 
+static void *
 palacios_start_kernel_thread(
 	int (*fn)		(void *arg),
 	void *			arg,
 	char *			thread_name)
 {
-    kthread_create(fn, arg, thread_name);
+    return kthread_create(fn, arg, thread_name);
 }
 
 /**
