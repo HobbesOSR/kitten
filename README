@@ -1,6 +1,6 @@
 Quick Start
 ===========
-    make config  (or make menuconfig, chosing all defaults will work)
+    make config  (or make menuconfig, choosing all defaults will work)
     make isoimage
     qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio -smp 4
 
@@ -19,7 +19,7 @@ Quick Start
             <8>(init_task)   envp[0] = one=1
             <8>(init_task)   envp[1] = two=2
             <8>(init_task)   envp[2] = three=3
-            [... A bunch of test messages, ommitted here]
+            [... A bunch of test messages, omitted here]
             <8>(init_task) Spinning forever...
             <8>(init_task) main: Meow 0!
             <8>(init_task) main: Meow 1!
@@ -82,7 +82,7 @@ Supported Target (Execution) Platforms
           Intel Xeon X5570, 24 GB RAM, no disk
         * HP ProLiant BL465c G7 BladeSystem with dual-socket 12-core
           AMD Opteron 6172, 32 GB RAM, no disk
-        * Cray XT4 compute nodes with single-socket quad-core AMD Opteron 1354, 
+        * Cray XT4 compute nodes with single-socket quad-core AMD Opteron 1354,
           8 GB RAM, SeaStar 2.1 network interface, no disk
 
 
@@ -143,13 +143,13 @@ Instructions for Building with Palacios VMM Support
 
     3. Build Palacios:
            > cd palacios
-           > make config (or make menuconfig, chosing all defaults will work)
+           > make config (or make menuconfig, choosing all defaults will work)
            > make
            > cd ..
 
     4. Configure Kitten to link with Palacios:
            > cd kitten
-           > make config (or make menuconfig, chosing all defaults will work)
+           > make config (or make menuconfig, choosing all defaults will work)
 
              Answer 'Y' when prompted for:
                "Include Palacios virtual machine monitor:"
@@ -157,11 +157,17 @@ Instructions for Building with Palacios VMM Support
              Specify "../palacios" when prompted for:
                "Path to pre-built Palacios tree: "
 
-             Specify the path to the guest ISO image to boot when prompted for:
-               "Path to guest OS ISO image:"
+             Specify the path to the guest image to boot when prompted for:
+               "Path to guest OS image:"
 
-             Puppy Linux 3.01 is an example guest OS ISO image that is known to work:
-                http://www.puppylinux.org/downloads/official-releases
+             NOTE: Palacios previously booted an ISO image directly. It now
+                   boots a custom image format that consists of an XML header
+                   describing the virtual hardware environment, followed by
+                   an ISO image of the guest OS to boot. Instructions for
+                   building this image are provided in the Palacios Deverloper
+                   Manual available at http://www.v3vee.org/palacios. After an
+                   image has been built, the Kitten "Path to guest OS image: "
+                   config option should be set to the path of the image.
 
     5. Build Kitten
            > make kitten isoimage
