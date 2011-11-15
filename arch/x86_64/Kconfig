@@ -115,13 +115,15 @@ config PALACIOS_PATH
 	  linked with the Kitten kernel image.
 
 config GUEST_OS_ISOIMAGE_PATH
-	string "Path to guest OS ISO image"
+	string "Path to guest OS image"
 	depends on PALACIOS
-	default "/opt/vmm-tools/isos/puppy.iso"
+	default "/opt/vmm-tools/isos/puppy.img"
 	help
-	  Path to an ISO image to link with the example user/hello_world
-	  init task.  The hello_world init task will use this ISO image
-	  to spawn a guest OS virtual machine via Palacios.
+	  Path to a guest image to link with the example user/hello_world
+	  init task.  The hello_world init task will use this image
+	  to spawn a guest OS virtual machine via Palacios.  The guest
+          image must be built with the build_vm tool included with
+          the Palacios source code (in palacios/utils/guest_creator).
 
 endmenu
 

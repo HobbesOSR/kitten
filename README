@@ -1,6 +1,6 @@
 Quick Start
 ===========
-    make config  (or make menuconfig)
+    make config  (or make menuconfig, chosing all defaults will work)
     make isoimage
     qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio -smp 4
 
@@ -9,7 +9,6 @@ Quick Start
         followed by:
 
             <6>Loading initial user-level task (init_task)...
-            <0>Unhandled Interrupt! (vector=52, isa_irq=4)
             <8>(init_task) Hello, world!
             <8>(init_task) Arguments:
             <8>(init_task)   argv[0] = init_task
@@ -22,11 +21,17 @@ Quick Start
             <8>(init_task)   envp[2] = three=3
             [... A bunch of test messages, ommitted here]
             <8>(init_task) Spinning forever...
-            <8>(cpu0-task)    Meow!
-            <8>(init_task)    Meow!
-            <8>(cpu1-task)    Meow!
-            <8>(cpu2-task)    Meow!
-            <8>(cpu3-task)    Meow!
+            <8>(init_task) main: Meow 0!
+            <8>(init_task) main: Meow 1!
+            <8>(init_task) main: Meow 2!
+            <8>(init_task) main: Meow 3!
+            <8>(init_task) main: Meow 4!
+            <8>(init_task) main: Meow 5!
+            <8>(init_task) main: Meow 6!
+            <8>(init_task) main: Meow 7!
+            <8>(init_task) main: Meow 8!
+            <8>(init_task) main: Meow 9!
+            <8>(init_task)    That's all, folks!
 
         The source code for the hello world init_task is at
         user/hello_world/hello_world.c
@@ -34,97 +39,51 @@ Quick Start
 
 Overview
 ========
-    Kitten is a lightweight kernel (LWK) operating system designed to be used
-    on the compute nodes of distributed memory supercomputers. At this point,
-    Kitten is, well, still a kitten, but eventually our intent is for it to
-    be used on systems consisting of tens or hundreds of thousands of
-    multi-socket, multi-core compute nodes (i.e., mega-core systems). The
-    primary goal of Kitten is to enable supercomputer applications to scale
-    to significantly higher node counts and perform substantially better
-    than is possible with general-purpose compute node operating systems,
-    such as Linux. Kitten is based on Linux in part, but makes different
-    design choices that are targeted at scalability (low noise, deterministic
-    behavior) and performance (physically contiguous memory layout,
-    transparent large pages, novel techniques for taking better advantage of
-    multi-core processors, like SMARTMAP).
+    Kitten is a lightweight kernel (LWK) compute node operating system, 
+    similar to previous LWKs such as SUNMOS, Puma, Cougar, and Catamount.
+    Kitten distinguishes itself from these prior LWKs by providing a
+    Linux-compatible user environment, a more modern and extendable codebase,
+    and a virtual machine monitor capability via Palacios that allows
+    full-featured guest operating systems to be loaded on-demand.
 
     Please see our wiki at http://software.sandia.gov/trac/kitten for more
     information.
 
-    Features:
-        * Open Source (GPL)
-        * New LWK codebase partially derived from Linux, familiar
-          organization and build process
-        * Fully symmetric kernel, locking used to protect shared data
-        * Multiple processes and threads per core
-        * Partial Linux ABI support (what matters, similar to IBM's CNK)
-        * User-space uses standard system Glibc
-        * SMARTMAP memory mapping (see SC08 paper) to enable single-copy
-          intra-node MPI messaging. This significantly reduces intra-node
-          memory bandwidth requirements.
-        * Guest OS support (when linked with the V3VEE project's
-          Palacios hypervisor, http://v3vee.org/download)
-        * lwIP TCP/IP stack (http://www.sics.se/~adam/lwip/) with
-          ne2k and SeaStar drivers
+
+Supported Host (Build) Platforms
+================================
+    The Kitten kernel and user applications are compiled on a standard
+    x86_64 (64-bit only, no 32-bit support) Linux host. The following
+    distributions have been verified to work:
+
+      * Fedora Core 15
+          Must install glibc-static and syslinux packages
+          Known Issue: The "mktemp is dangerous" link warnings can be ignored
+      * RedHat Enterprise Linux 6 (RHEL 6)
+          Must install glibc-static, syslinux, and syslinux-devel packages
+          Known Issue: The "mktemp is dangerous" link warnings can be ignored
+      * Ubuntu 10.10
+      * RedHat Enterprise Linux 5 (RHEL 5)
 
 
-Platforms Supported
-===================
-    Emulators:
-       qemu-system-x86_64
-       kvm (running on a 64-bit x86 system)
-       virtualbox (with a bit of configuration, be sure to enable IO APIC)
-    Real Hardware:
-       Standard PC-compatible 64-bit x86 systems
-           - Tested on a Core2 Duo Laptop (2 CPUs)
-           - Tested on a 4 socket dual-core Opteron system (8 CPUs)
-       Cray XT
-           - XT3: 1 socket dual-core Opteron compute nodes (2 CPUs)
-           - XT4: 1 socket quad-core Opteron compute nodes (4 CPUs)
-           - XT5: 2 socket quad-core Opteron compute nodes (8 CPUs)
+Supported Target (Execution) Platforms
+======================================
+    The Kitten kernel should boot on any x86_64 PC-compatible system.
+    By default, console output is to both the VGA device and COM1 serial port.
+    The following platforms have been verified to work:
 
+      Emulators:
+        * qemu-system-x86_64
+        * kvm (running on a 64-bit x86 system)
+        * virtualbox (with a bit of configuration, be sure to enable IO APIC)
 
-External builds
-===============
-
-It is possible to build object files separate from the source tree
-using the Linux kbuild system.
-
-	mkdir /tmp/lwk-build
-	make O=/tmp/lwk-build menuconfig
-	make -C /tmp/lwk-build vmlwk.bin init_task
-
-There will be some warnings about targets being over-ridden,
-but you can ignore them.
-
-
-Modules
-=======
-
-Large pieces of code that do not have any direct down-calls from the
-rest of the kernel can be built as external modules.  The init functions
-in the modules will be called at the appropriate time for the different
-device classes, or in a catch-all "module" class before the late init.
-
-To build a module, create a Makefile in the module directory:
-
-	obj-y := foo.o bar.o
-
-And run:
-
-	make -C $PATH_TO_KITTEN_OBJ M=`pwd`
-
-This will create built-in.o that can then be copied to
-$PATH_TO_KITTEN_OBJ/modules/foo.o and then kitten should be
-rebuilt.
-
-If you want to get fancier, you can also add this target to allow
-a local build via 'make install O=$PATH_TO_KITTEN_OBJ':
-
-install:
-	@if [ -z "$O" ]; then echo >&2 "O must be defined"; exit 1; fi
-	$(MAKE) -C $O M=`pwd`
-	cp built-in.o $O/modules/palacios-mod.o
+      Real Hardware:
+        * HP ProLiant BL460c G6 BladeSystem with dual-socket quad-core
+          Intel Xeon X5570, 24 GB RAM, no disk
+        * HP ProLiant BL465c G7 BladeSystem with dual-socket 12-core
+          AMD Opteron 6172, 32 GB RAM, no disk
+        * Cray XT4 compute nodes with single-socket quad-core AMD Opteron 1354, 
+          8 GB RAM, SeaStar 2.1 network interface, no disk
 
 
 Instructions for Booting on Real Hardware
@@ -143,8 +102,8 @@ Instructions for Booting on Real Hardware
             console=serial serial.port=0x2f8 serial.baud=9600
 
     Cray XT hardware:
-	These instructions are for 2.0 management system; 2.1 requires
-	a different set of steps.
+        These instructions are for 2.0 management system; 2.1 requires
+        a different set of steps.
 
         Do 'make config' and choose:
             System Architecture ---> Red Storm (Cray XT3/XT4)
@@ -152,29 +111,24 @@ Instructions for Booting on Real Hardware
             kernel image: ./vmlwk.bin
             initrd:       ./init_task
         Update the /bootimages/cageN/CNL0.load file:
-CNL0/vmlwk.bin 0x100000
-CNL0/parameters-vmlwk 0x90800
-CNL0/init_task 0xFA00000
+            CNL0/vmlwk.bin 0x100000
+            CNL0/parameters-vmlwk 0x90800
+            CNL0/init_task 0xFA00000
 
-	Create the /bootimages/cageN/CNL0/parameters-vmlwk:
-console=rcal0 net=seastar
+        Create the /bootimages/cageN/CNL0/parameters-vmlwk:
+            console=rcal0 net=seastar
 
-	Run 'create_bi cageN'
-	Reboot the nodes 'xtbootsys --reboot --partition p4 c5-0c0s1n0'
+        Run 'create_bi cageN'
+        Reboot the nodes 'xtbootsys --reboot --partition p4 c5-0c0s1n0'
 
 
 Instructions for Building with Palacios VMM Support
 ===================================================
-Palacios is a virtual machine monitor (VMM) being developed by the V3VEE
-project (http://v3vee.org).  Palacios is distributed and built separately
-from Kitten, but can be linked with Kitten as part of the normal Kitten
-build process.  The Kitten+Palacios combination allows full guest operating
-system images to be launched and managed similarly to native Kitten tasks.
-
-Palacios currently supports AMD x86_64 systems with hardware support for
-virtualization (SVM).  This includes most recent AMD Opteron processors
-as well as versions 0.9.1 or newer of the QEMU full system simulator
-(http://www.qemu.org).  Intel processors are currently not supported.
+    Palacios is a virtual machine monitor (VMM) being developed by the V3VEE
+    project (http://v3vee.org). Palacios is distributed and built separately
+    from Kitten, but can be linked with Kitten as part of the normal Kitten
+    build process. The Kitten+Palacios combination allows full guest operating
+    system images to be launched and managed similarly to native Kitten tasks.
 
     Installation Steps:
 
@@ -188,37 +142,45 @@ as well as versions 0.9.1 or newer of the QEMU full system simulator
            > tar xzvf downloaded-file-locaiton/kitten.tar.gz
 
     3. Build Palacios:
-           > make -C palacios/build palacios-full64
+           > cd palacios
+           > make config (or make menuconfig, chosing all defaults will work)
+           > make
+           > cd ..
 
     4. Configure Kitten to link with Palacios:
-           > make -C kitten config # or menuconfig or xconfig
+           > cd kitten
+           > make config (or make menuconfig, chosing all defaults will work)
 
-       Answer 'Y' when prompted for:
-           "Include Palacios virtual machine monitor:"
-       Specify the path to the guest ISO image to boot when prompted for:
-           "Path to guest OS ISO image:"
+             Answer 'Y' when prompted for:
+               "Include Palacios virtual machine monitor:"
 
-       Puppy Linux 3.01 is an example guest OS ISO image that is known to work:
-           http://www.puppylinux.org/downloads/official-releases
+             Specify "../palacios" when prompted for:
+               "Path to pre-built Palacios tree: "
+
+             Specify the path to the guest ISO image to boot when prompted for:
+               "Path to guest OS ISO image:"
+
+             Puppy Linux 3.01 is an example guest OS ISO image that is known to work:
+                http://www.puppylinux.org/downloads/official-releases
 
     5. Build Kitten
-           > make -C kitten isoimage
+           > make kitten isoimage
 
-       If successful, a bootable ISO image will be located at:
-           kitten/arch/x86_64/boot/image.iso
+             If successful, a bootable ISO image will be located at:
+                kitten/arch/x86_64/boot/image.iso
 
-       This requires the "syslinux" package to create a bootable ISO image.
-       Most Linux distributions include a syslinux package, but it is usually
-       not part of the standard install.
+             This requires the "syslinux" package to create a bootable ISO
+             image. Most Linux distributions include a syslinux package, but
+             it is usually not part of the standard install.
 
     6. Boot the resulting image:
-           > qemu-system-x86_64 -cdrom kitten/arch/x86_64/boot/image.iso -m 1024 -serial stdio
+           > qemu-system-x86_64 -cdrom kitten/arch/x86_64/boot/image.iso -m 1024 -serial stdio -smp 4
 
-       By default the guest OS's console is output to the VGA device and
-       Kitten's console is output to the serial port.
+             By default the guest OS's console is output to the VGA device and
+             Kitten's console is output to the serial port.
 
-       If booting Puppy Linux, type "puppy acpi=off pfix=nox" at the boot prompt.
-       This turns ACPI off and disables X windows.
+             If booting Puppy Linux, type "puppy acpi=off pfix=nox" at the
+             boot prompt. This turns ACPI off and disables X windows.
 
-       Instructions for booting on real hardware are given above.
+             Instructions for booting on real hardware are given above.
 
