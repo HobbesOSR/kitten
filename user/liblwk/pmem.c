@@ -65,3 +65,32 @@ pmem_is_type(pmem_type_t type, paddr_t start, size_t extent)
 	}
 	return (status) ? false : true;
 }
+
+void
+pmem_dump2console(void)
+{
+	struct pmem_region query, result;
+	int status;
+
+	query.start = 0;
+	query.end = 0xfffffffffffffffful; /* ULONG_MAX */
+	pmem_region_unset_all(&query);
+
+	print("  Physical Memory Map:\n");
+	while ((status = pmem_query(&query, &result)) == 0) {
+		print("    [%#016lx, %#016lx) %-10s numa_node=%d alloc=%d\n",
+			result.start,
+			result.end,
+			(result.type_is_set)
+				? pmem_type_to_string(result.type)
+				: "UNSET",
+			(result.numa_node_is_set)
+				? (int) result.numa_node
+				: -1,
+			(result.allocated_is_set)
+				? (int) result.allocated
+				: -1 
+		);
+		query.start = result.end;
+	}
+}
