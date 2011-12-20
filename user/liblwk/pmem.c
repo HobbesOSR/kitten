@@ -76,9 +76,9 @@ pmem_dump2console(void)
 	query.end = 0xfffffffffffffffful; /* ULONG_MAX */
 	pmem_region_unset_all(&query);
 
-	print("  Physical Memory Map:\n");
+	print("Physical Memory Map:\n");
 	while ((status = pmem_query(&query, &result)) == 0) {
-		print("    [%#016lx, %#016lx) %-10s numa_node=%d alloc=%d\n",
+		print("  [%#016lx, %#016lx) %-10s numa_node=%d alloc=%d\n",
 			result.start,
 			result.end,
 			(result.type_is_set)
