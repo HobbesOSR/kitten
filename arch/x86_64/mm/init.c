@@ -321,28 +321,58 @@ arch_memsys_init(size_t kmem_size)
 	initrd_size = initrd_end - initrd_start;
 	umem_size   = round_up(initrd_size, PAGE_SIZE);
 
-	/* Relocate the initrd image to an unallocated chunk of umem */
-	if (pmem_alloc_umem(umem_size, PAGE_SIZE, &result))
-		panic("Failed to allocate umem for initrd image.");
-	result.type = PMEM_TYPE_INITRD;
-	pmem_update(&result);
-	memmove(__va(result.start), __va(initrd_start), initrd_size);
-
-	new_initrd_start = result.start;
-	new_initrd_end   = new_initrd_start + initrd_size;
-
-	/* Free the memory used by the old initrd location */
+	/* Step 1: Mark any umem that the initrd image is currently occupying
+	 *         as free.
+	 *         NOTE: This doesn't actually affect the initrd image in any
+	 *               way, but is necessary so that the allocation in step 2
+	 *               succeeds and returns memory at the beginning of umem.
+	 */
 	pmem_region_unset_all(&query);
 	query.start = round_down( initrd_start, PAGE_SIZE );
 	query.end   = round_up(   initrd_end,   PAGE_SIZE );
 	while (pmem_query(&query, &result) == 0) {
-		result.type = (result.start < kmem_size) ? PMEM_TYPE_KMEM
-		                                         : PMEM_TYPE_UMEM;
-		result.allocated = false;
-		BUG_ON(pmem_update(&result));
+		/* Only umem needs to be marked free at this point */
+		if (result.start >= kmem_size) {
+			result.type      = PMEM_TYPE_UMEM;
+			result.allocated = false;
+			BUG_ON(pmem_update(&result));
+		}
 		query.start = result.end;
 	}
-	
+
+	/* Step 2: Move the initrd image to the start of umem.
+	 *         NOTE: At this point, no umem should be allocated...
+	 *               we are the first users of umem.
+	 */
+	if (pmem_alloc_umem(umem_size, PAGE_SIZE, &result))
+		panic("Failed to allocate umem for initrd image.");
+	result.type = PMEM_TYPE_INITRD;
+	pmem_update(&result);
+	new_initrd_start = result.start;
+	new_initrd_end   = result.start + initrd_size;
+	memmove(__va(new_initrd_start), __va(initrd_start), initrd_size);
+
+	/* Step 3: Mark any kmem that the original initrd image (before
+	 *         being moved) was occupying as free and add it to the
+	 *         kmem pool.
+	 *         NOTE: We can't do this in step 1 because step 2 may
+	 *               cause kmem to be allocated, which might result
+	 *               in the initrd image being corrupted.
+	 */
+	pmem_region_unset_all(&query);
+	query.start = round_down( initrd_start, PAGE_SIZE );
+	query.end   = round_up(   initrd_end,   PAGE_SIZE );
+	while (pmem_query(&query, &result) == 0) {
+		if (result.start < kmem_size) {
+			result.type      = PMEM_TYPE_KMEM;
+			result.allocated = false;
+			BUG_ON(pmem_update(&result));
+			kmem_add_memory((unsigned long)__va(result.start),
+			                result.end - result.start);
+		}
+		query.start = result.end;
+	}
+
 	/* Update initrd_start and initrd_end to their new values */
 	initrd_start = new_initrd_start;
 	initrd_end   = new_initrd_end;
