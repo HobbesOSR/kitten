@@ -60,7 +60,7 @@ create_init_task(void)
 		.task_name	= "init_task",
 		.user_id	= 0,
 		.group_id	= 0,
-		.cpu_id		= this_cpu,
+		.cpu_id		= ANY_ID,
 		.use_args	= false,
 	};
 
