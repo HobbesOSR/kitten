@@ -537,7 +537,7 @@ palacios_init(void)
 	printk(KERN_INFO "---- Initializing Palacios hypervisor support\n");
 	printk(KERN_INFO "cpus_weight(cpu_online_map)=0x%x\n",cpus_weight(cpu_online_map));
 
-	Init_V3(&palacios_os_hooks, cpus_weight(cpu_online_map));
+	Init_V3(&palacios_os_hooks, NULL, cpus_weight(cpu_online_map));
 
 	irq_request(
 		IRQ1_VECTOR,
