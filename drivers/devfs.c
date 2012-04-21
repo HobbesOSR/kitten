@@ -1,16 +1,30 @@
 /** \file
  * Device drivers for common /dev files
  */
+
+/*
+ * Console read functionality added by:
+ * Jedidiah R. McClurg
+ * Northwestern University
+ * 4-18-2012
+ */
+
 #include <lwk/kfs.h>
+#include <lwk/console.h>
 #include <lwk/driver.h>
 #include <lwk/dev.h>
 #include <lwk/stat.h>
+#include <lwk/spinlock.h>
+#include <lwk/waitq.h>
+#include <lwk/sched.h>
 #include <arch/uaccess.h>
 
 
-/** Write a user string to the console */
+/**
+ * Writes a string to the console.
+ */
 static ssize_t
-console_write(
+devfs_console_write(
 	struct file *	file,
 	const char *	buf,
 	size_t		len,
@@ -38,9 +52,35 @@ console_write(
 }
 
 
+/**
+ * Reads a string from the console.
+ */
+static ssize_t
+devfs_console_read(
+	struct file *	file,
+	char *		buf,
+	size_t		len,
+	loff_t *	off
+)
+{
+	char tmp[512];
+	ssize_t n;
+
+	n = console_inbuf_read(tmp, sizeof(tmp));
+	if (n > 0) {
+		// Copy the characters to userspace.
+		if (copy_to_user(buf, tmp, n))
+			return -EFAULT;
+	}
+
+	return n;
+}
+
+
 static struct kfs_fops
 console_fops = {
-	.write		= console_write
+	.write		= devfs_console_write,
+	.read		= devfs_console_read,
 };
 
 

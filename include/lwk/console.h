@@ -22,6 +22,8 @@ struct console {
 
 extern void console_register(struct console *);
 extern void console_write(const char *);
+extern void console_inbuf_add(char c);
+extern ssize_t console_inbuf_read(char *buf, size_t len);
 extern void console_init(void);
 
 #endif
