@@ -1191,7 +1191,8 @@ void pcibios_penalize_isa_irq(int irq, int active)
 {
 #ifdef CONFIG_ACPI
 	if (!acpi_noirq)
-		acpi_penalize_isa_irq(irq, active);
+        panic("%s()\n",__func__);
+//		acpi_penalize_isa_irq(irq, active);
 	else
 #endif
 		pirq_penalize_isa_irq(irq, active);

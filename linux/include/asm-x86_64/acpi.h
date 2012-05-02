@@ -3,4 +3,6 @@
 
 static inline void acpi_noirq_set(void) { }
 
+#include <arch/acpi.h>
+
 #endif
