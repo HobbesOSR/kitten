@@ -4,6 +4,7 @@
 #include <lwk/init.h>
 #include <lwk/elf.h>
 #include <lwk/kfs.h>
+#include <lwk/sched.h>
 
 /**
  * Maximum number of arguments and environment variables that may

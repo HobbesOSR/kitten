@@ -11,6 +11,7 @@
 #include <lwk/pmem.h>
 #include <lwk/tlbflush.h>
 #include <lwk/waitq.h>
+#include <lwk/sched.h>
 
 /**
  * Hash table used to lookup address space structures by ID.

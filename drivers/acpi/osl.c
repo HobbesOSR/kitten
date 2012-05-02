@@ -67,7 +67,6 @@ ACPI_MODULE_NAME("osl");
 struct acpi_os_dpc {
 	acpi_osd_exec_callback function;
 	void *context;
-	struct work_struct work;
 	int wait;
 };
 

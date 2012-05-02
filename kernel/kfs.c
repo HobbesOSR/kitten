@@ -18,7 +18,7 @@
 #  include <lwk/poll.h>
 #endif /* CONFIG_LINUX */
 
-#include <linux/uio.h>
+#include <lwk/uio.h>
 
 #include <arch/uaccess.h>
 #include <arch/vsyscall.h>
@@ -39,7 +39,7 @@ static inline void __unlock( spinlock_t *lock )
 	spin_unlock(lock);
 }
 
-#include <asm-generic/fcntl.h>
+#include <arch-generic/fcntl.h>
 
 static char*
 get_full_path(struct inode *inode, char *buf) __attribute__((unused));

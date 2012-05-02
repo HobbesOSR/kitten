@@ -297,12 +297,13 @@ AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  = -r
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
+LINUX_INCLUDE   = #-Ilinux/include
 
 
 # Use LWKINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
 LWKINCLUDE      := -Iinclude \
-		   -Ilinux/include \
+			$(LINUX_INCLUDE) \
 		   $(if $(KBUILD_SRC),-Iinclude2 -I$(srctree)/include) \
 		   -include include/lwk/autoconf.h
 

@@ -2,6 +2,7 @@
 #include <lwk/task.h>
 #include <lwk/aspace.h>
 #include <lwk/xcall.h>
+#include <lwk/sched.h>
 
 
 // Tests if the input value is a valid signal number

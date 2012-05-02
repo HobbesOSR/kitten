@@ -1,6 +1,8 @@
 #include <lwk/kernel.h>
 #include <lwk/task.h>
 #include <lwk/aspace.h>
+#include <lwk/sched.h>
+#include <lwk/smp.h>
 
 
 static void

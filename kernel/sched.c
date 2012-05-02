@@ -10,6 +10,7 @@
 #include <lwk/xcall.h>
 #include <lwk/timer.h>
 #include <lwk/bootstrap.h>
+#include <lwk/params.h>
 
 
 /**

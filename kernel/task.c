@@ -5,6 +5,8 @@
 #include <lwk/task.h>
 #include <lwk/xcall.h>
 #include <lwk/kfs.h>
+#include <lwk/sched.h>
+#include <lwk/smp.h>
 
 
 // Caller must have aspace->lock locked
