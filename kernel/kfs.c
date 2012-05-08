@@ -945,7 +945,7 @@ sys_ioctl(int fd,
 		ret = file->f_op->ioctl( file, request, arg );
 
 	else {
-		printk("sys_ioctl %s : no ioctl!",file->inode->name);
+		printk("sys_ioctl %s : no ioctl!\n",file->inode->name);
 		ret = -ENOTTY;
 	}
 out:
