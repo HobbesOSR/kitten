@@ -14,6 +14,10 @@
 #define O_NONBLOCK      00004000
 #endif
 
+#ifndef O_EXCL
+#define O_EXCL      00000200
+#endif
+
 struct iovec;
 struct kiocb;
 struct poll_table_struct;
