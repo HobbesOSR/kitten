@@ -137,7 +137,7 @@ typedef struct {
 #error "NR_CPUS must be <= CPU_MAX_ID"
 #endif
 
-typedef struct { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
+typedef struct cpumask { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
 extern cpumask_t _unused_cpumask_arg_;
 
 static inline user_cpumask_t
@@ -284,6 +284,11 @@ static inline void __cpus_shift_left(cpumask_t *dstp,
 					const cpumask_t *srcp, int n, int nbits)
 {
 	bitmap_shift_left(dstp->bits, srcp->bits, n, nbits);
+}
+
+static inline void cpumask_copy(cpumask_t *dstp, const cpumask_t *srcp)
+{
+    bitmap_copy(dstp->bits, srcp->bits, NR_CPUS);
 }
 
 int __first_cpu(const cpumask_t *srcp);
