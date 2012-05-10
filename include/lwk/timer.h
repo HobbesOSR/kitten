@@ -39,6 +39,11 @@ struct timer {
 extern void
 timer_add(struct timer *timer);
 
+/** 
+ * Same as timer_add but on a CPU
+ */
+extern void
+timer_add_on( struct timer *timer, int cpu );
 
 /** Cancel a pending timer.
  *

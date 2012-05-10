@@ -9,6 +9,7 @@
 #include <lwk/time.h>
 #include <lwk/timer.h>
 #include <lwk/sched.h>
+#include <lwk/xcall.h>
 
 struct timer_queue {
 	spinlock_t       lock;
@@ -55,6 +56,20 @@ timer_add(struct timer *timer)
 	list_add_tail(&timer->link, pos);
 
 	spin_unlock_irqrestore(&timerq->lock, irqstate);
+}
+
+
+void 
+timer_add_on( struct timer *timer, int cpu )
+{
+    printk("%s() XXXXXXXXXX\n",__func__);
+    timer->cpu = cpu;
+
+    cpumask_t   cpu_mask;
+    cpus_clear( cpu_mask );
+    cpu_set( cpu, cpu_mask );
+
+    xcall_function( cpu_mask, (void*) timer_add, timer, 1 );
 }
 
 
