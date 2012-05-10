@@ -20,4 +20,7 @@ kthread_create_on_cpu(
 	...
 );
 
+int kthread_bind( struct task_struct* tsk, int cpu );
+int kthread_should_stop(void);
+
 #endif

@@ -95,3 +95,19 @@ kthread_create_on_cpu(
 
 	return __kthread_create_on_cpu(cpu_id, entry_point, arg, name);
 }
+
+int kthread_bind( struct task_struct* tsk, int cpu_id )
+{
+    /* Make sure target CPU is valid */
+    if ((cpu_id >= NR_CPUS) || !cpu_isset(cpu_id, tsk->cpu_mask))
+        return -EINVAL;
+
+    /* Migrate to the target CPU */
+    tsk->cpu_target_id = cpu_id;
+    return 0;
+}
+
+int kthread_should_stop(void)
+{
+    return 0;
+}
