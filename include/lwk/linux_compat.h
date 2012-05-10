@@ -15,6 +15,7 @@ extern void linux_wakeup(void);
 
 #define EXPORT_SYMBOL(sym)
 #define EXPORT_SYMBOL_GPL(sym)
+#define MODULE_LICENSE(x)
 
 typedef paddr_t resource_size_t;
 
