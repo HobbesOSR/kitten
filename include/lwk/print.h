@@ -22,6 +22,13 @@
 #define USER_DEBUG	"<7>"	/* debug-level messages                 */
 #define USER_USERMSG	"<8>"	/* message from user-space		*/
 #define USER_NORM	""	/* a "normal" message, nothing special	*/
+/*
+ * Annotation for a "continued" line of log printout (only done after a
+ * line that had no enclosing \n). Only to be used by core/arch code
+ * during early bootup (a continued line is not SMP-safe otherwise).
+ */
+#define KERN_CONT   "<c>"
+
 
 #ifdef __KERNEL__
 #define TYPE_EMERG	KERN_EMERG
@@ -66,6 +73,17 @@ extern int vprintk(const char *fmt, va_list args)
         __attribute__ ((format (printf, 1, 0)));
 extern int printk(const char * fmt, ...)
         __attribute__ ((format (printf, 1, 2)));
+
+#define pr_emerg(fmt, ...) \
+    printk(KERN_EMERG fmt, ##__VA_ARGS__)
+#define pr_err(fmt, ...) \
+    printk(KERN_ERR fmt, ##__VA_ARGS__)
+#define pr_cont(fmt, ...) \
+    printk(KERN_CONT fmt, ##__VA_ARGS__)
+#define pr_info(fmt, ...) \
+    printk(KERN_INFO fmt, ##__VA_ARGS__)
+
+
 #define print printk
 #else
 #include <stdio.h>
