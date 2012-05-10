@@ -48,7 +48,7 @@ int smp_call_function(void(*func)(void *info), void *info, int retry, int wait);
 /*
  * Call a function on all processors
  */
-int on_each_cpu(void (*func) (void *info), void *info, int retry, int wait);
+int on_each_cpu(void (*func) (void *info), void *info, int wait);
 
 #define MSG_ALL_BUT_SELF	0x8000	/* Assume <32768 CPU's */
 #define MSG_ALL			0x8001
