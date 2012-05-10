@@ -9,6 +9,7 @@
 #define NSEC_PER_USEC 1000L
 #define NSEC_PER_MSEC 1000000L
 #define MSEC_PER_SEC  1000L
+#define USEC_PER_SEC  1000000L
 
 #define TIME_T_MAX    (time_t)((1UL << ((sizeof(time_t) << 3) - 1)) - 1)
 
