@@ -397,6 +397,15 @@ static inline void __cpus_remap(cpumask_t *dstp, const cpumask_t *srcp,
 	bitmap_remap(dstp->bits, srcp->bits, oldp->bits, newp->bits, nbits);
 }
 
+#if NR_CPUS <= 64
+
+#define for_each_cpu_mask_nr(cpu, mask) for_each_cpu_mask(cpu, mask)
+
+#else /* NR_CPUS > 64 */
+    #error "for_each_cpu_mask_nr not supported for NR_CPUS > 64 "
+#endif
+
+
 #define for_each_cpu_mask(cpu, mask)		\
 	for ((cpu) = first_cpu(mask);		\
 		(cpu) < NR_CPUS;		\
@@ -473,7 +482,7 @@ int highest_possible_processor_id(void);
 #define any_online_cpu(mask) __any_online_cpu(&(mask))
 int __any_online_cpu(const cpumask_t *mask);
 
-#define for_each_cpu(cpu)  for_each_cpu_mask((cpu), cpu_possible_map)
+#define for_each_cpu(cpu)  for_each_cpu_mask((cpu), cpu_present_map)
 #define for_each_possible_cpu(cpu)  for_each_cpu_mask((cpu), cpu_possible_map)
 #define for_each_online_cpu(cpu)  for_each_cpu_mask((cpu), cpu_online_map)
 #define for_each_present_cpu(cpu) for_each_cpu_mask((cpu), cpu_present_map)
