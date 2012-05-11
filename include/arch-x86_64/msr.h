@@ -2,6 +2,8 @@
 #define _X86_64_MSR_H
 
 #ifndef __ASSEMBLY__
+
+#include <arch-generic/errno-base.h>
 /*
  * Access to machine-specific registers (available on 586 and better only)
  * Note: the rd* operations modify the parameters directly (without using
@@ -60,6 +62,13 @@
                       :"c"(msr), "i"(-EIO), "0"(0));		\
 	  ret__; })		
 
+static inline int 
+rdmsrl_safe(uint32_t msr, uint64_t *v) {
+    uint64_t a, b;
+    int ret = rdmsr_safe(msr,&a,&b);
+    *v = (b << 32) | a;
+    return ret;
+}
 
 static inline uint64_t
 rdtsc( void )
@@ -322,6 +331,11 @@ static inline unsigned int cpuid_edx(unsigned int op)
 #define MSR_IA32_MC0_STATUS		0x401
 #define MSR_IA32_MC0_ADDR		0x402
 #define MSR_IA32_MC0_MISC		0x403
+
+#define MSR_IA32_MCx_CTL(x)     (MSR_IA32_MC0_CTL + 4*(x))
+#define MSR_IA32_MCx_STATUS(x)      (MSR_IA32_MC0_STATUS + 4*(x))
+#define MSR_IA32_MCx_ADDR(x)        (MSR_IA32_MC0_ADDR + 4*(x))
+#define MSR_IA32_MCx_MISC(x)        (MSR_IA32_MC0_MISC + 4*(x))
 
 /* Pentium IV performance counter MSRs */
 #define MSR_P4_BPU_PERFCTR0 		0x300
