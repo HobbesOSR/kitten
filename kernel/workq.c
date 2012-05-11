@@ -10,6 +10,9 @@
 #include <lwk/waitq.h>
 #include <lwk/sched.h>
 
+#undef _KDBG
+#define _KDBG(...)
+
 static struct workqueue_struct *keventd_wq;
 
 #define dump_stack()
@@ -54,7 +57,7 @@ static const cpumask_t *wq_cpu_map(struct workqueue_struct *wq)
 static
 struct cpu_workqueue_struct *wq_per_cpu(struct workqueue_struct *wq, int cpu)
 {
-    return per_cpu_ptr(wq->cpu_wq, cpu);
+    return percpu_ptr(wq->cpu_wq, cpu);
 }
 
 /*
@@ -245,7 +248,7 @@ static int worker_thread(void *__cwq)
 static struct cpu_workqueue_struct *
 init_cpu_workqueue(struct workqueue_struct *wq, int cpu)
 {
-    struct cpu_workqueue_struct *cwq = per_cpu_ptr(wq->cpu_wq, cpu);
+    struct cpu_workqueue_struct *cwq = percpu_ptr(wq->cpu_wq, cpu);
 
 	_KDBG("\n");
     cwq->wq = wq;
@@ -304,7 +307,7 @@ struct workqueue_struct *create_workqueue(const char *name)
     if (!wq)
         return NULL;
         
-    wq->cpu_wq = alloc_percpu(struct cpu_workqueue_struct);
+    wq->cpu_wq = percpu_alloc(sizeof(struct cpu_workqueue_struct));
     if (!wq->cpu_wq) {
         kmem_free(wq);
         return NULL;
@@ -329,7 +332,7 @@ struct workqueue_struct *create_workqueue(const char *name)
      * cpu_up() can hit the uninitialized cwq once we drop the
      * lock.
      */
-    for_each_possible_cpu(cpu) {
+    for_each_present_cpu(cpu) {
         cwq = init_cpu_workqueue(wq, cpu);
         if (err || !cpu_online(cpu))
             continue;
