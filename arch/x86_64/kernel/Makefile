@@ -10,3 +10,5 @@ obj-$(CONFIG_KGDB) += kgdb.o
 obj-$(CONFIG_CRAY_XT) += rca/
 
 obj-$(CONFIG_PALACIOS) += palacios/
+
+obj-$(CONFIG_X86_MCE) += mcheck/

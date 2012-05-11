@@ -14,6 +14,7 @@
 #include <arch/pda.h>
 #include <arch/io_apic.h>
 #include <arch/pgtable.h>
+#include <arch/mce.h>
 
 /**
  * Bitmap of of PTE/PMD entry flags that are supported.
@@ -319,6 +320,8 @@ setup_arch(void)
 	ioapic_init();
 
 	lapic_set_timer_freq(sched_hz);
+    
+    mcheck_init();
 }
 
 void disable_APIC_timer(void)

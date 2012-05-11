@@ -10,6 +10,14 @@ config X86
 	bool
 	default y
 
+config X86_MCE 
+	bool
+	default y
+
+config X86_MCE_INJECT
+	bool
+	default y
+
 source "kernel/Kconfig"
 
 menu "Target Configuration"

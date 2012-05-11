@@ -678,10 +678,11 @@ __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
 #define __NR_getcpu		306
 __SYSCALL(__NR_getcpu, sys_getcpu)
+#define __NR_mce_inject		    307
+__SYSCALL(__NR_mce_inject, syscall_not_implemented)
 
-
-#define __NR_lwk_arp            307
-#define __NR_lwk_ifconfig       308
+#define __NR_lwk_arp            308
+#define __NR_lwk_ifconfig       309
 
 
 #ifdef CONFIG_LINUX 

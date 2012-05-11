@@ -23,6 +23,8 @@
 #include <lwk/kfs.h>
 #include <lwk/random.h>
 #include <lwk/linux_compat.h>
+#include <lwk/workq.h>
+#include <arch/mce.h>
 
 
 /**
@@ -127,6 +129,8 @@ start_kernel()
 	 */
 	rand_init();
 
+    workq_init();
+
 	/*
 	 * Boot all of the other CPUs in the system, one at a time.
 	 */
@@ -157,6 +161,7 @@ start_kernel()
 	 */
 	local_irq_enable();
 
+    mcheck_init_late();
 	/*
 	 * And any modules that need to be started.
 	 */

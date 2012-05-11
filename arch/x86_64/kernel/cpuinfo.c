@@ -5,6 +5,7 @@
 #include <lwk/aspace.h>
 #include <arch/processor.h>
 #include <arch/proto.h>
+#include <arch/mce.h>
 
 /**
  * Information about the boot CPU.
@@ -560,6 +561,8 @@ identify_cpu(void)
 		for (i = 0 ; i < NCAPINTS ; i++)
 			boot_cpu_data.arch.x86_capability[i] &= c->arch.x86_capability[i];
 	}
+
+    mcheck_cpu_init();
 }
 
 /**

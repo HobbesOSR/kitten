@@ -192,6 +192,10 @@ do_alignment_check(struct pt_regs *regs, unsigned int vector)
 	while (1) {}
 }
 
+#ifdef CONFIG_X86_MCE 
+void
+do_machine_check(struct pt_regs *regs, unsigned int vector);
+#else
 void
 do_machine_check(struct pt_regs *regs, unsigned int vector)
 {
@@ -199,6 +203,7 @@ do_machine_check(struct pt_regs *regs, unsigned int vector)
 	show_registers(regs);
 	while (1) {}
 }
+#endif
 
 void
 do_simd_coprocessor_error(struct pt_regs *regs, unsigned int vector)
