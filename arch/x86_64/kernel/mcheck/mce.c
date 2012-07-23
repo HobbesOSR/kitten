@@ -1297,8 +1297,8 @@ int sys_mce_inject( unsigned long mcg_status,
 {
     wrmsrl( MSR_IA32_MCG_STATUS, mcg_status );
     wrmsrl( MSR_IA32_MCx_STATUS( bank ), status );
-    wrmsrl( MSR_IA32_MCx_MISC( bank ), addr );
-    wrmsrl( MSR_IA32_MCx_ADDR( bank ), misc );
+    wrmsrl( MSR_IA32_MCx_MISC( bank ), misc );
+    wrmsrl( MSR_IA32_MCx_ADDR( bank ), addr );
 
     asm("int $18\n");
 
