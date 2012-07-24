@@ -11,6 +11,10 @@ sys_getrlimit(
 	struct rlimit rlimit;
 
 	switch (resource) {
+		case RLIMIT_AS:
+			rlimit.rlim_cur = RLIM_INFINITY;
+			rlimit.rlim_max = RLIM_INFINITY;
+			break;
 		case RLIMIT_STACK:
 			rlimit.rlim_cur = RLIM_INFINITY;
 			rlimit.rlim_max = RLIM_INFINITY;
