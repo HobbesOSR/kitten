@@ -69,3 +69,11 @@ xcall_reschedule(id_t cpu)
 {
 	arch_xcall_reschedule(cpu);
 }
+
+/**
+ * Call a function on all processors.
+ */
+int on_each_cpu(void (*func) (void *info), void *info, int wait)
+{
+    return xcall_function(cpu_online_map, func, info, wait);
+}

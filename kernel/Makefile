@@ -33,7 +33,6 @@ obj-y := \
 	fdTable.o \
 	workq.o \
 	percpu.o \
-	smp.o \
 
 obj-$(CONFIG_KGDB) += kgdb.o 
 obj-$(CONFIG_KGDB_SERIAL_CONSOLE) += kgdboc.o
