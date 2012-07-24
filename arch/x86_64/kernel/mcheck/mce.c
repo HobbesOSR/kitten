@@ -459,7 +459,7 @@ static void mce_schedule_work(void)
 
 DEFINE_PER_CPU(struct irq_work, mce_irq_work);
 
-static void mce_irq_work_cb(struct irq_work *entry)
+void mce_irq_work_cb(struct irq_work *entry)
 {
 	mce_notify_irq();
 	mce_schedule_work();
