@@ -102,7 +102,7 @@ create_init_task(void)
 
 	/* Assign stdout and stderr */
 
-	kfs_init_stdio( new_task->fdTable );
+	kfs_init_stdio(new_task);
 
 	sched_add_task(new_task);
 

@@ -15,7 +15,7 @@
 #include <linux/smp.h>
 #include <asm/io_apic.h>
 #include <linux/irq.h>
-#include <linux/acpi.h>
+#include <arch/acpi.h> 
 
 #include "pci.h"
 

@@ -141,7 +141,7 @@ __task_create(
 	if (tsk->aspace->id !=  KERNEL_ASPACE_ID ) {
 		if ( tsk->aspace->id == tsk->id ) {
         		tsk->fdTable = fdTableAlloc();
-			kfs_init_stdio( tsk->fdTable );
+			kfs_init_stdio(tsk);
 		} else {
         		tsk->fdTable = fdTableClone(current->fdTable);
 		}

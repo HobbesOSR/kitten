@@ -19,6 +19,8 @@ sys_wait4(
 
 	if (pid == -1)
 		_child_id = ANY_ID;
+	else if (pid == 0)
+		_child_id = MY_ID;
 	else if ((pid >= UASPACE_MIN_ID) && (pid <= UASPACE_MAX_ID))
 		_child_id = pid;
 	else

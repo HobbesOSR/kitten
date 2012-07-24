@@ -3,6 +3,7 @@
  *
  * 
  */
+#include <lwk/aspace.h>
 #include <lwk/kernel.h>
 #include <lwk/init.h>
 #include <lwk/kallsyms.h>
@@ -152,20 +153,25 @@ do_general_protection(struct pt_regs *regs, unsigned int vector)
 void
 do_page_fault(struct pt_regs *regs, unsigned int vector)
 {
-        /* Kernel space exception fixup check */
-        if (fixup_exception(regs)) {
-                return;
-	} else {
-		printk("Failed to fixup page fault exception!\n");
-	}
+	/* Kernel space exception fixup check */
+	if (fixup_exception(regs))
+		return;
 
-	printk("Page Fault Exception: %016lx\n", read_cr2());
+	unsigned long cr2 = read_cr2();
+
 #ifdef CONFIG_KGDB
-        kgdb_breakpoint();
-#else
-	show_registers(regs);
+	kgdb_breakpoint();
 #endif
-	while (1) {}
+
+	struct siginfo s;
+	memset(&s, 0, sizeof(struct siginfo));
+	s.si_signo = SIGSEGV;
+	s.si_errno = 0;
+	s.si_addr  = (void *)cr2;
+	s.si_code  = SEGV_ACCERR; // SEGV_MAPERR;
+
+	int i = sigsend(current->aspace->id, ANY_ID, SIGSEGV, &s);
+	printk(">> PAGE FAULT! Sent signal %d: CR2 is %p\n", i, s.si_addr);
 }
 
 void

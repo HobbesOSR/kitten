@@ -6,6 +6,7 @@
 
 #include <lwk/list.h>
 #include <lwk/task.h>
+#include <lwk/waitq.h>
 #include <lwk/mutex.h>
 #include <lwk/fdTable.h>
 
@@ -115,6 +116,20 @@ extern struct kfs_fops kfs_default_fops;
 
 #define MAX_PATHLEN		1024
 
+#define PIPE_END_READ  0
+#define PIPE_END_WRITE 1
+
+#define PIPE_BUFFER_MAX 1024
+
+struct pipe {
+   	char *        buffer;
+	int           amount;       // num chars in buffer
+	unsigned char eof;          // EOF?
+	waitq_t       buffer_wait;
+	spinlock_t    buffer_lock;
+	int           ref_count;
+};
+
 struct file
 {
 	struct inode *          inode;
@@ -122,10 +137,24 @@ struct file
         const struct kfs_fops * f_op;
         unsigned int            f_mode;
 	unsigned int            f_flags;
-	struct dentry *f_dentry;
+	struct dentry *         f_dentry;
 	void *                  private_data;
 	atomic_t		f_count;
+	unsigned char		pipe_end_type;
+	struct pipe *		pipe;          // if this is NULL, it's not a pipe
 };
+
+static inline bool pipe_buffer_full(struct pipe *p) {
+   return (p->amount >= PIPE_BUFFER_MAX);
+}
+
+static inline bool pipe_buffer_empty(struct pipe *p) {
+   return (p->amount == 0);
+}
+
+static inline int pipe_amount_free(struct pipe *p) {
+   return (PIPE_BUFFER_MAX - p->amount);
+}
 
 static inline struct file *get_current_file(int fd)
 {
@@ -133,7 +162,7 @@ static inline struct file *get_current_file(int fd)
 }
 
 extern void kfs_init(void);
-extern void kfs_init_stdio( struct fdTable* );
+extern void kfs_init_stdio(struct task_struct *);
 
 /* kfs inode manipulation */
 extern struct inode *kfs_mkdirent(struct inode *,

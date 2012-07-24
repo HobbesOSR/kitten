@@ -13,6 +13,7 @@
 #include <lwk/dev.h>
 #include <lwk/stat.h>
 #include <lwk/aspace.h>
+#include <lwk/waitq.h>
 
 #ifdef CONFIG_LINUX
 #  include <lwk/poll.h>
@@ -699,13 +700,16 @@ kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
 	return 0;
 }
 
-void kfs_init_stdio( struct fdTable* tbl )
+void kfs_init_stdio(struct task_struct *task)
 {
-        /* TODO: should really do a kfs_open() once for each of the
-           std fds ... and use appropriate flags and mode for each */
+	struct fdTable *tbl = task->fdTable;
+	/* TODO: should really do a kfs_open() once for each of the
+	   std fds ... and use appropriate flags and mode for each */
+
+	printk("kfs_init_stdio(): task_id=%d, user_id=%d\n", task->id, task->uid);
 
 	dbg("\n");
-        struct file * console;
+	struct file * console;
         if(kfs_open_path("/dev/console", 0, 0, &console ))
                 panic( "Unable to open /dev/console?" );
         tbl->files[ 0 ] = console;
@@ -715,6 +719,26 @@ void kfs_init_stdio( struct fdTable* tbl )
         if(kfs_open_path("/dev/console", 0, 0, &console ))
                 panic( "Unable to open /dev/console?" );
         tbl->files[ 2 ] = console;
+
+	/* the process's pipes are stored here */
+	// TODO - the permissions are probably wrong
+	struct inode *inode;
+	char buffer[64];
+	sprintf(buffer, "/proc/%d", task->id);
+	inode = kfs_mkdir("/proc", 0666);
+	if (!inode)
+		panic("Failed to 'mkdir /proc'.");
+	inode = kfs_mkdir(buffer, 0666);
+	if (!inode) {
+		sprintf(buffer, "Failed to 'mkdir /proc/%d'.", task->id);
+		panic(buffer);
+	}
+	sprintf(buffer, "/proc/%d/fd", task->id);
+	inode = kfs_mkdir(buffer, 0666);
+	if (!inode) {
+		sprintf(buffer, "Failed to 'mkdir /proc/%d/fd'.", task->id);
+		panic(buffer);
+	}
 }
 
 
@@ -733,6 +757,8 @@ sys_open(uaddr_t u_pathname,
 	if( strncpy_from_user( pathname, (void*) u_pathname,
 			       sizeof(pathname) ) < 0 )
 		return -EFAULT;
+
+	//printk("sys_open(%s): %08x %03x\n", pathname, flags, mode);
 
 	dbg( "name='%s' flags %x mode %x\n", pathname, flags, mode);
 	//_KDBG( "name='%s' flags %x mode %x\n", pathname, flags, mode);
@@ -756,6 +782,8 @@ __lock(&_lock);
 	fd = fdTableGetUnused( current->fdTable );
 	fdTableInstallFd( current->fdTable, fd, file );
 
+	// TODO XXX - check to see if the file's path identifies it as a pipe, and set the pipe stuff
+
         dbg("name=`%s` fd=%d \n",pathname,fd );
 out:
 __unlock(&_lock);
@@ -767,35 +795,91 @@ sys_write(int     fd,
 	  uaddr_t buf,
 	  size_t  len)
 {
-	ssize_t ret = -EBADF;
-	struct file * const file = get_current_file( fd );
-	if( !file ) 
-		goto out;
+	unsigned long flags;
+	//int orig_fd = fd;
+	ssize_t ret;
+	char buffer[PIPE_BUFFER_MAX+1];
+	struct file * const file = get_current_file(fd);
 
-	if( file->f_op->write ) {
+	//if (file != NULL && file->pipe_end_type == PIPE_END_WRITE) {
+	//	fd = file->pipe_other_fd;
+	//	file = get_current_file(fd);
+	//}
+
+	if (!file) {
+		ret = -EBADF;
+	} else if (file->pipe != NULL) {
+		int result = min((size_t)PIPE_BUFFER_MAX, len);
+		if (strncpy_from_user(buffer, (void*) buf, result) < 0)
+			return -EFAULT;
+		buffer[result] = 0; // make sure it's null-terminated
+
+		int n = 0;
+
+		//printk("sys_write(%d): writing (%d) '%s' via pipe to %d\n", orig_fd, result, buffer, fd);
+		//printk("sys_write: LOCKING\n");
+		spin_lock_irqsave(&file->pipe->buffer_lock, flags);
+
+		while (n < result) {
+			// If the buffer is full, wait until it empties a bit
+			while (pipe_buffer_full(file->pipe)) {
+				//printk("sys_write: UNLOCKING and waiting\n");
+				spin_unlock_irqrestore(&file->pipe->buffer_lock, flags);
+				if (wait_event_interruptible(file->pipe->buffer_wait,
+				     (!pipe_buffer_full(file->pipe))))
+					return -ERESTARTSYS;
+				//printk("sys_write: LOCKING\n");
+				spin_lock_irqsave(&file->pipe->buffer_lock, flags);
+			}
+
+			// write into the pipe
+			int num_to_write = min(result-n, pipe_amount_free(file->pipe));
+			strncat(file->pipe->buffer, buffer+n, num_to_write);
+			file->pipe->buffer[num_to_write] = 0; // make sure it's null-terminated
+			n += num_to_write;
+			// notify everybody about our addition to the buffer
+			file->pipe->amount += num_to_write;
+			waitq_wakeup(&file->pipe->buffer_wait);
+			//break;
+		}
+		result = n;
+
+		//printk("sys_write(%d): pipe buffer: '%s'\n", orig_fd, file->pipe->buffer);
+		//printk("sys_write: UNLOCKING\n");
+		spin_unlock_irqrestore(&file->pipe->buffer_lock, flags);
+		ret = result;
+	} else if (file->f_op->write) {
 		ret = file->f_op->write( file,
 					 (const char __user *)buf,
 					 len , NULL );
 	} else {
 		printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
 		__func__, fd, file->inode->name);
+		ret = -EBADF;
 	}
 
-out:
+	//printk("sys_write(%d): returning %d\n", fd, ret);
 	return ret;
 }
 
 static ssize_t
 sys_writev(int fd, uaddr_t uvec, int count)
 {
+	//int orig_fd = fd;
 	struct iovec vector;
 	struct file * const file = get_current_file( fd );
 	ssize_t ret = 0, tret;
+	//if (file != NULL && file->pipe_end_type == PIPE_END_WRITE) {
+	//	fd = file->pipe_other_fd;
+	//	file = get_current_file( fd );
+	//}
 
 	if(!file)
 		return -EBADF;
+
 	if(count < 0)
 		return -EINVAL;
+
 	if(!file->f_op->write) {
 		printk( KERN_WARNING "%s: fd %d (%s) has no write operation\n",
 			__func__, fd, file->inode->name);
@@ -823,21 +907,69 @@ sys_writev(int fd, uaddr_t uvec, int count)
 }
 
 static ssize_t
-sys_read(int     fd,
-	 uaddr_t buf,
-	 size_t  len)
+sys_read(int           fd,
+	 char __user * buf,
+	 size_t        len)
 {
-	ssize_t ret = -EBADF;
-	struct file * const file = get_current_file( fd );
-	if( !file )
-		goto out;
+	char buffer[PIPE_BUFFER_MAX+1];
+	char temp[PIPE_BUFFER_MAX+1];
+	unsigned long flags;
+	//int orig_fd = fd;
+	ssize_t ret;
+	struct file * file = get_current_file(fd);
 
-	if( file->f_op->read )
+	if (!file) {
+		ret = -EBADF;
+	} else if (file->pipe != NULL) {
+		int result = min((size_t)PIPE_BUFFER_MAX, len);
+		//printk("sys_read(%d): trying to read %d\n", orig_fd, result);
+		buffer[0] = 0; // make sure it's null-terminated
+
+		int n = 0;
+
+		//printk("sys_read(%d): LOCKING reading via pipe\n", orig_fd);
+		spin_lock_irqsave(&file->pipe->buffer_lock, flags);
+
+		while (n < result) {
+			// If the buffer is empty, wait until it fills a bit
+			while (pipe_buffer_empty(file->pipe)) {
+				//printk("sys_read: UNLOCKING and WAITING\n");
+				spin_unlock_irqrestore(&file->pipe->buffer_lock, flags);
+				if (wait_event_interruptible(file->pipe->buffer_wait,
+				     (!pipe_buffer_empty(file->pipe))))
+					return -ERESTARTSYS;
+				//printk("sys_read: LOCKING\n");
+				spin_lock_irqsave(&file->pipe->buffer_lock, flags);
+			}
+
+			int num_to_read = min(result-n, file->pipe->amount);
+			//printk("sys_read(): read %d = '%s'\n", num_to_read, file->pipe->buffer);
+			strncat(buffer+n, file->pipe->buffer, num_to_read);
+			strncpy(temp, file->pipe->buffer+num_to_read, PIPE_BUFFER_MAX+1-num_to_read); // XXX
+			strncpy(file->pipe->buffer, temp, PIPE_BUFFER_MAX+1);
+			buffer[num_to_read] = 0; // make sure it's null-terminated
+			n += num_to_read;
+			// notify everybody about our deletion from the buffer
+			file->pipe->amount -= num_to_read;
+			waitq_wakeup(&file->pipe->buffer_wait);
+			break;
+		}
+		result = n;
+
+		int rc = copy_to_user(buf, buffer, result);
+		//printk("sys_read(%d): pipe buffer: '%s'\n", orig_fd, file->pipe->buffer);
+		//printk("sys_read: UNLOCKING\n");
+		spin_unlock_irqrestore(&file->pipe->buffer_lock, flags);
+		ret = rc ? -EFAULT : result;
+	} else if (file->f_op->read) {
 		ret = file->f_op->read( file, (char *)buf, len, NULL );
-	else 
+	} else {
 		printk( KERN_WARNING "%s: fd %d (%s) has no read operation\n",
 			__func__, fd, file->inode->name );
-out:
+		ret = -EBADF;
+        }
+
+	//printk("sys_read(%d): returning %d\n", fd, ret);
 	return ret;
 }
 
@@ -889,6 +1021,18 @@ sys_close(int fd)
 		goto out;
 	}
 
+	// if we're closing an end of a pipe...
+	if (file->pipe != NULL) {
+		file->pipe->ref_count--;
+		if (file->pipe->ref_count <= 0) {
+			kmem_free(file->pipe->buffer);
+			kmem_free(file->pipe);
+		} else if (file->pipe_end_type == PIPE_END_WRITE) {
+			// if the write end was closed, that sends an EOF into the pipe
+			file->pipe->eof = 1;
+		}
+	}
+
 	char __attribute__((unused)) buff[MAX_PATHLEN];
         dbg("name=`%s` fd=%d\n", get_full_path(file->inode,buff), fd );
 
@@ -897,7 +1041,7 @@ sys_close(int fd)
 
 	if(ret == 0) {
 		kfs_close(file);
-		fdTableInstallFd( current->fdTable, fd, 0 );
+		fdTableInstallFd(current->fdTable, fd, 0); // remove the fd from the table
 	}
 
 out:
@@ -949,6 +1093,88 @@ sys_ioctl(int fd,
 		ret = -ENOTTY;
 	}
 out:
+	return ret;
+}
+
+static struct file * 
+pipe_open(int     flags,
+          mode_t  mode,
+          int *   result_fd)
+{
+	int fd, fd_temp;
+	struct file *file;
+	char pathname[128];
+	int pid;
+
+	// FIX ME
+__lock(&_lock);
+	pid = current->id;
+	fd_temp = fdTableGetUnused( current->fdTable );
+	sprintf(pathname, "/proc/%d/fd/%d", pid, fd_temp);
+
+	if (!kfs_lookup(kfs_root, pathname, 0) && (flags & O_CREAT)) {
+		extern struct kfs_fops in_mem_fops;
+		extern struct inode_operations in_mem_iops;
+		if (kfs_create( pathname, &in_mem_iops, &in_mem_fops, 0777, 0, 0) == NULL) {
+			fd = -EFAULT;
+			file = NULL;
+			goto out;
+       		}
+    	}
+
+	if ((fd = kfs_open_path(pathname, flags, mode, &file)) < 0) {
+		//printk("sys_open failed : %s (%d)\n",pathname,fd);
+		file = NULL;
+		goto out;
+	}
+	fd = fd_temp;
+	fdTableInstallFd(current->fdTable, fd, file);
+
+        dbg("name=`%s` fd=%d \n",pathname,fd );
+out:
+__unlock(&_lock);
+	*result_fd = fd;
+	return file;
+}
+
+static int
+sys_pipe(int fd[2])
+{
+	int ret = -EFAULT;
+	int fd_read, fd_write;
+
+	// TODO - permissions/mode?
+	struct file * f1 = pipe_open(O_RDONLY | O_CREAT, 0666, &fd_read);
+	struct file * f2 = pipe_open(O_WRONLY | O_CREAT, 0666, &fd_write);
+	struct pipe * p;
+
+ 	if (f1 != NULL && f2 != NULL) {
+		p = kmem_alloc(sizeof(struct pipe));
+
+		if (p == NULL) {
+			return ret;
+		}
+
+		memset(p, 0x00, sizeof(struct pipe));
+		p->buffer = kmem_alloc(sizeof(char)*(PIPE_BUFFER_MAX+1));
+		p->amount = 0;
+		waitq_init(&p->buffer_wait);
+		spin_lock_init(&p->buffer_lock);
+		p->ref_count = 2;
+
+		fd[0] = fd_read;
+		f1->pipe_end_type = PIPE_END_READ;
+		f1->pipe = p;
+
+		fd[1] = fd_write;
+		f2->pipe_end_type = PIPE_END_WRITE;
+		f2->pipe = p;
+
+		printk("sys_pipe(): created pipe (%d,%p) <- (%d,%p)\n", fd_read, f1, fd_write, f2);
+
+		ret = 0;
+	}
+
 	return ret;
 }
 
@@ -1609,6 +1835,7 @@ kfs_init( void )
 	syscall_register( __NR_lseek, (syscall_ptr_t) sys_lseek );
 	syscall_register( __NR_dup2, (syscall_ptr_t) sys_dup2 );
 	syscall_register( __NR_ioctl, (syscall_ptr_t) sys_ioctl );
+	syscall_register( __NR_pipe, (syscall_ptr_t) sys_pipe );
 	syscall_register( __NR_fcntl, (syscall_ptr_t) sys_fcntl );
 	syscall_register( __NR_getdents, (syscall_ptr_t) sys_getdents );
 	syscall_register( __NR_getdents64, (syscall_ptr_t) sys_getdents64 );

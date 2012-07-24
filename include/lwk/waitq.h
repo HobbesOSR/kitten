@@ -4,6 +4,7 @@
 #include <lwk/spinlock.h>
 #include <lwk/list.h>
 #include <lwk/task.h>
+#include <lwk/sched.h>
 
 struct waitq_entry;
 
