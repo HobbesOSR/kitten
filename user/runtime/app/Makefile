@@ -1,6 +1,6 @@
 
 LDFLAGS = 
-LDFLAGS += -L$(OPENIB)/lib64
+LDFLAGS += -L$(OPENIB)/lib64 -L$(OPENID)/lib
 LDFLAGS += -L../libmalloc
 LDFLAGS += -Wl,-whole-archive -lmalloc -Wl,-no-whole-archive
 LDFLAGS	+= -Wl,-whole-archive -lmlx4 -Wl,-no-whole-archive

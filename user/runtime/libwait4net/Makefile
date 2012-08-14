@@ -5,7 +5,7 @@ CPPFLAGS += -I$(OPENIB)/include
 CPPFLAGS += -I../../../include
 CPPFLAGS += -I../../user/liblwk/include
 
-LDFLAGS += -L$(OPENIB)/lib64
+LDFLAGS += -L$(OPENIB)/lib64 -L$(OPENID)/lib
 
 libwait4net_C_SOURCE = wait4net.c getaddrinfo.c
 
