@@ -1,6 +1,6 @@
 
 LDFLAGS =
-LDFLAGS += -L$(OPENIB)/lib
+LDFLAGS += -L$(OPENIB)/lib64
 
 LDFLAGS += -lrdmacm
 LDFLAGS += -libverbs

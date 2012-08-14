@@ -1,5 +1,5 @@
 LDFLAGS = 
-LDFLAGS += -L$(OPENIB)/lib 
+LDFLAGS += -L$(OPENIB)/lib64
 LDFLAGS += -L../libwait4net
 LDFLAGS += -L../libmalloc
 LDFLAGS += -L../libinit_ompi

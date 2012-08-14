@@ -1,6 +1,6 @@
 
 LDFLAGS = 
-LDFLAGS += -L$(OPENIB)/lib 
+LDFLAGS += -L$(OPENIB)/lib64
 LDFLAGS += -L../libmalloc
 LDFLAGS += -Wl,-whole-archive -lmalloc -Wl,-no-whole-archive
 LDFLAGS	+= -Wl,-whole-archive -lmlx4 -Wl,-no-whole-archive
@@ -21,8 +21,8 @@ CPPFLAGS += -I $(OPENMPI)/include
 
 all: hello mpi
 
-CC=pgcc
-CXX=pgcpp
+CC=gcc
+CXX=gcc
 
 hello: hello.o
 	$(CXX) -Bstatic hello.o $(LDFLAGS) -o $@
