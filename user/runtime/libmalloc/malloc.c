@@ -35,7 +35,7 @@ my_free_hook (void *ptr, const void *caller)
 }
 
 #include <stdio.h>
-static __attribute__ ((constructor (101))) void init(void)
+void init_malloc(void)
 {
   __malloc_hook = my_malloc_hook;
   __free_hook = my_free_hook;

@@ -7,6 +7,10 @@
 #include <unistd.h>
 #include <errno.h>
 
+extern void init_malloc();
+extern void init_wait4net();
+extern void init_arp();
+
 static char* mca_btl_openib_hca_params_ini =
 "[default]\n"
 "vendor_id = 0\n"
@@ -46,8 +50,11 @@ static void foo( char* filename, char* data )
         close(fd);
 }
 
-static __attribute__ ((constructor (65535))) void init(void)
+static __attribute__ ((constructor)) void init(void)
 {
+    init_malloc();
+    init_wait4net();
+    init_arp();
 
     if ( mkdir("/etc",0777) ) {
         printf("mkdir( `/etc`, 0777) failed\n");

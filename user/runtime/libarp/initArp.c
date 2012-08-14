@@ -31,7 +31,7 @@ static int arp( char* ip, char *hw )
 	return 0;
 }
 
-static __attribute__ ((constructor (65535))) void init(void)
+void init_arp(void)
 {
 arp( "10.0.0.1","00:00:00:00:00:23:7d:ff:ff:95:75:55" ); 
 arp( "10.0.0.2","00:00:00:00:00:23:7d:ff:ff:95:75:65" );

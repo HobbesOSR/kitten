@@ -9,7 +9,7 @@ static int wait_active( struct ibv_context* ctx, int num_ports, int seconds,
 				int* port, int* lid );
 
 __u32 __ip_addr; 
-static __attribute__ ((constructor (65534))) void init(void)
+void init_wait4net(void)
 {
 	struct ibv_device** list = NULL;
 	int num;
