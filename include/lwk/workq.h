@@ -75,6 +75,12 @@ struct delayed_work {
         init_timer(&(_work)->timer);            \
     } while (0)
 
+#define INIT_DELAYED_WORK_DEFERRABLE(_work, _func)			\
+	do {							\
+		INIT_WORK(&(_work)->work, (_func));		\
+		init_timer(&(_work)->timer);		\
+	} while (0)
+
 /**
  * work_pending - Find out whether a work item is currently pending
  * @work: The work item in question
@@ -135,6 +141,11 @@ static inline int cancel_delayed_work(struct delayed_work *work)
 }
 
 extern int cancel_work_sync(struct work_struct *work);
+
+static inline struct delayed_work *to_delayed_work(struct work_struct *work)
+{
+        return container_of(work, struct delayed_work, work);
+}
 
 #endif
 
