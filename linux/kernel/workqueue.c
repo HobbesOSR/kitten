@@ -6,6 +6,7 @@
 #include <linux/smp.h>
 #include <linux/wait.h>
 
+#if 0
 #undef _KDBG
 #define _KDBG(fmt,arg...)
 
@@ -350,3 +351,4 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 		spin_unlock_irqrestore(&q->lock, flags);
 	}
 }
+#endif

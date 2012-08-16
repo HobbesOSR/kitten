@@ -34,10 +34,4 @@ kthread_stop(struct task_struct *k)
 	panic("In kthread_stop()... needs to be implemented.");
 }
 
-static inline int
-kthread_should_stop(void)
-{
-	panic("In kthread_should_stop()... needs to be implemented.");
-}
-
 #endif /* _LINUX_KTHREAD_H */

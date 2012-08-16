@@ -5,6 +5,9 @@
 #ifndef _LINUX_WORKQUEUE_H
 #define _LINUX_WORKQUEUE_H
 
+#include <lwk/workq.h>
+#include <linux/timer.h>
+#if 0
 #include <linux/timer.h>
 #include <linux/linkage.h>
 #include <linux/bitops.h>
@@ -244,4 +247,5 @@ void cancel_rearming_delayed_work(struct delayed_work *work)
 	cancel_delayed_work_sync(work);
 }
 
+#endif
 #endif

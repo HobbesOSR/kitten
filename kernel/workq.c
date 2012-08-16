@@ -152,6 +152,71 @@ queue_work_on(int cpu, struct workqueue_struct *wq, struct work_struct *work)
     return ret;
 }
 
+static void delayed_work_timer_fn(unsigned long __data)
+{
+    struct delayed_work *dwork = (struct delayed_work *)__data;
+    struct cpu_workqueue_struct *cwq = get_wq_data(&dwork->work);
+    struct workqueue_struct *wq = cwq->wq;
+
+    __queue_work(wq_per_cpu(wq, smp_processor_id()), &dwork->work);
+}
+
+
+/**
+ * queue_delayed_work - queue work on a workqueue after delay
+ * @wq: workqueue to use
+ * @dwork: delayable work to queue
+ * @delay: number of jiffies to wait before queueing
+ *
+ * Returns 0 if @work was already on a queue, non-zero otherwise.
+ */
+int queue_delayed_work(struct workqueue_struct *wq,
+            struct delayed_work *dwork, unsigned long delay)
+{
+    if (delay == 0)
+        return queue_work(wq, &dwork->work);
+
+    return queue_delayed_work_on(-1, wq, dwork, delay);
+}
+
+/**
+ * queue_delayed_work_on - queue work on specific CPU after delay
+ * @cpu: CPU number to execute work on
+ * @wq: workqueue to use
+ * @dwork: work to queue
+ * @delay: number of jiffies to wait before queueing
+ *
+ * Returns 0 if @work was already on a queue, non-zero otherwise.
+ */
+int queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
+            struct delayed_work *dwork, unsigned long delay)
+{
+    int ret = 0;
+    struct timer *timer = &dwork->timer;
+    struct work_struct *work = &dwork->work;
+
+    if (!test_and_set_bit(WORK_STRUCT_PENDING, work_data_bits(work))) {
+        BUG_ON(timer_pending(timer));
+        BUG_ON(!list_empty(&work->entry));
+
+#ifdef CONFIG_TIMER_STATS
+        timer_stats_timer_set_start_info(&dwork->timer);
+#endif
+
+        /* This stores cwq for the moment, for the timer_fn */
+        set_wq_data(work, wq_per_cpu(wq, raw_smp_processor_id()));
+        timer->expires = get_time() + delay;
+        timer->data = (unsigned long)dwork;
+        timer->function = delayed_work_timer_fn;
+
+        if (unlikely(cpu >= 0))
+            timer_add_on(timer, cpu);
+        else
+            timer_add(timer);
+        ret = 1;
+    }
+    return ret;
+}
 
 /* Wait on all pending work on the given worker therad */
 void flush_workqueue(struct workqueue_struct *wq)
@@ -295,6 +360,15 @@ static void start_workqueue_thread(struct cpu_workqueue_struct *cwq, int cpu)
     }
 }
 
+struct workqueue_struct *__create_workqueue_key(const char *name,
+                        int singlethread,
+                        int freezeable,
+                        struct lock_class_key *key,
+                        const char *lock_name)
+{
+       return create_workqueue(name);
+}
+
 /* Create a worker thread */
 struct workqueue_struct *create_workqueue(const char *name)
 {
@@ -375,6 +449,12 @@ void workq_init(void)
 	_KDBG("\n");
 	keventd_wq = create_workqueue("events");
 	BUG_ON(!keventd_wq);
+}
+
+int cancel_work_sync(struct work_struct *work)
+{
+    panic("%s() not implemented\n",__func__);
+    //return __cancel_work_timer(work, NULL);
 }
 
 /* vim: set noexpandtab noai ts=4 sw=4: */

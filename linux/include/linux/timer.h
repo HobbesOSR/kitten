@@ -64,11 +64,12 @@ static inline void setup_timer_on_stack(struct timer_list *timer,
  *
  * return value: 1 if the timer is pending, 0 if not.
  */
+#if 0
 static inline int timer_pending(const struct timer_list * timer)
 {
 	return !list_empty(&timer->link);
 }
-
+#endif
 extern void add_timer_on(struct timer_list *timer, int cpu);
 extern int del_timer(struct timer_list * timer);
 extern int __mod_timer(struct timer_list *timer, unsigned long expires);

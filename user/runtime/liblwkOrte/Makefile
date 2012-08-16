@@ -7,7 +7,7 @@ CPPFLAGS += -I$(OPENMPI_SRC)/orte/include
 CPPFLAGS += -I$(OPENMPI_SRC)/opal/include
 
 CC=gcc
-CXX=gcc
+CXX=g++
 
 liblwkOrte_CPP_SOURCE = lwkOrteRmlBinding.cpp lwkOrteRml.cpp
 

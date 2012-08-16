@@ -297,7 +297,7 @@ AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  = -r
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
-LINUX_INCLUDE   = #-Ilinux/include
+LINUX_INCLUDE   = -Ilinux/include
 
 
 # Use LWKINCLUDE when you must reference the include/ directory.

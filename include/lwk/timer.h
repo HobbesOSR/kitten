@@ -67,6 +67,11 @@ timer_sleep_until(
 	uint64_t		when
 );
 
+static inline int timer_pending(const struct timer * timer)
+{
+    return !list_empty(&timer->link);
+}
+
 // @}
 
 /** \name Internal timer-subsystem functions.
