@@ -254,17 +254,20 @@ for vid in range(len(vid2adj)):
 tf.close()
 
 
-# Step 6: Output the frst portion of the libtopomap routing input file.
-#         The first portion of the file contains an entry for each
-#         host vertex ID (i.e., non-Gemini) along with the host's
-#         x, y, z coordinate in the Gemini network.
+# Step 6: Output the first portion of the libtopomap routing input file.
+#         The first portion of the file associates each host vertex ID
+#         with a Gemini vertex ID and x, y, z coordinate.
 orf = open(out_routes_file, 'w')
-print >>orf, 'type: COMP3DTORUSXYZ'
-for vid in range(len(nid2node)):
-    nid    = vid2nid[vid]
-    xyz    = nid2xyz[nid]
-    fields = re.split('\(|\)|\,', xyz)
-    print >>orf, vid, fields[1], fields[2], fields[3]
+print >>orf, 'type: COMPCRAYXE6'
+print >>orf, 'num:', len(gid2gem)          # number of Gemini routers (not hosts, typically hosts/2)
+print >>orf, 'max:', x_max, y_max, z_max   # maximum dimensions (x, y, z)
+for host_vid in range(len(nid2node)):
+    nid        = vid2nid[host_vid]
+    xyz        = nid2xyz[nid]
+    xyz_fields = re.split('\(|\)|\,', xyz)
+    gem        = nid2gem[nid]
+    gemini_vid = gem2vid[gem]
+    print >>orf, host_vid, gemini_vid, xyz_fields[1], xyz_fields[2], xyz_fields[3]
 
 
 # Step 7: Parse the routes file, looking for exceptions to minimal routing.
