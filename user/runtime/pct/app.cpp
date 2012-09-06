@@ -91,7 +91,7 @@ App::~App()
 
     // we should call finiPid as each rank dies or move this to Orte
     for ( unsigned int i = 0; i < m_pidCpuMap.size(); i++ ) {
-        m_orte.finiPid( m_pidCpuMap[i].pid );
+//        m_orte.finiPid( m_pidCpuMap[i].pid );
     }
 
     m_rdma.memRegionUnregister( ImageId );

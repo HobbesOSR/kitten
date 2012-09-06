@@ -15,7 +15,7 @@ LDFLAGS += -libverbs
 LDFLAGS += -llwk
 LDFLAGS += -lpthread
 
-CPPFLAGS = -Wall
+CPPFLAGS = -Wall -DUSING_LWK
 CPPFLAGS += -Iinclude
 CPPFLAGS += -I../librdmaPlus
 CPPFLAGS += -I$(OPENIB)/include

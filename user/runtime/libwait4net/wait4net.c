@@ -55,7 +55,7 @@ void init_wait4net(void)
        					__be64_to_cpu(gid.global.subnet_prefix),
         				__be64_to_cpu(gid.global.interface_id));
 
-				__ip_addr = 0x0a000000 + lid; 	
+				__ip_addr = 0xac1e0000 + lid; 	
 				__u32 netmask = 0xffffff00;
 
 				char buf[16];

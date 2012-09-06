@@ -25,10 +25,10 @@ CC=gcc
 CXX=g++
 
 hello: hello.o
-	$(CXX) -Bstatic hello.o $(LDFLAGS) -o $@
+	$(CXX) -static hello.o $(LDFLAGS) -o $@
 
 mpi: mpi.o
-	$(CXX) -Bstatic mpi.o $(MPI_LDFLAGS) $(LDFLAGS) -o $@
+	$(CXX) -static mpi.o $(MPI_LDFLAGS) $(LDFLAGS) -o $@
 
 clean:
 	rm -rf mpi.o hello.o mpi hello
