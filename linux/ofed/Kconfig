@@ -24,6 +24,9 @@ config OFED_1_4_2
 config OFED_1_5_1
 	bool "OFED 1.5.1"
 
+config OFED_1_5_3
+	bool "OFED 1.5.3"
+
 endchoice
 
 config INFINIBAND_USER_MAD
@@ -86,6 +89,18 @@ source linux/ofed/1.5.1/drivers/infiniband/hw/qib/Kconfig
 config OFED
 	string
 	default "1.5.1"
+endif
+
+if OFED_1_5_3
+config 64BIT
+	bool
+	default y
+source linux/ofed/1.5.3/drivers/infiniband/hw/mthca/Kconfig
+source linux/ofed/1.5.3/drivers/infiniband/hw/mlx4/Kconfig
+source linux/ofed/1.5.3/drivers/infiniband/hw/ipath/Kconfig
+config OFED
+	string
+	default "1.5.3"
 endif
 
 
