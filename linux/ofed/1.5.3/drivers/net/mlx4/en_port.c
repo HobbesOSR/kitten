@@ -41,107 +41,81 @@
 #include "mlx4_en.h"
 
 
-int mlx4_SET_MCAST_FLTR(struct mlx4_dev *dev, u8 port,
-			u64 mac, u64 clear, u8 mode)
+int mlx4_en_QUERY_PORT(struct mlx4_en_dev *mdev, u8 port)
 {
-	return mlx4_cmd(dev, (mac | (clear << 63)), port, mode,
-			MLX4_CMD_SET_MCAST_FLTR, MLX4_CMD_TIME_CLASS_B);
+	struct mlx4_en_query_port_context *qport_context;
+	struct mlx4_en_priv *priv = netdev_priv(mdev->pndev[port]);
+	struct mlx4_en_port_state *state = &priv->port_state;
+	struct mlx4_cmd_mailbox *mailbox;
+	int err;
+
+	mailbox = mlx4_alloc_cmd_mailbox(mdev->dev);
+	if (IS_ERR(mailbox))
+		return PTR_ERR(mailbox);
+	memset(mailbox->buf, 0, sizeof(*qport_context));
+	err = mlx4_QUERY_PORT(mdev->dev, mailbox, port);
+	if (err)
+		goto out;
+	qport_context = mailbox->buf;
+
+	/* This command is always accessed from Ethtool context
+	 * already synchronized, no need in locking */
+	state->link_state = !!(qport_context->link_up & MLX4_EN_LINK_UP_MASK);
+	if ((qport_context->link_speed & MLX4_EN_SPEED_MASK) ==
+	    MLX4_EN_1G_SPEED)
+		state->link_speed = 1000;
+	else
+		state->link_speed = 10000;
+	state->transciver = qport_context->transceiver;
+	if (be32_to_cpu(qport_context->transceiver_code_hi) & 0x400)
+		state->transciver = 0x80;
+
+out:
+	mlx4_free_cmd_mailbox(mdev->dev, mailbox);
+	return err;
 }
 
-int mlx4_SET_VLAN_FLTR(struct mlx4_dev *dev, u8 port, struct vlan_group *grp)
+static int read_iboe_counters(struct mlx4_dev *dev, int index, u64 counters[])
 {
 	struct mlx4_cmd_mailbox *mailbox;
-	struct mlx4_set_vlan_fltr_mbox *filter;
-	int i;
-	int j;
-	int index = 0;
-	u32 entry;
-	int err = 0;
+	int err;
+	int mode;
+	struct mlx4_counters_ext *ext;
+	struct mlx4_counters *reg;
 
 	mailbox = mlx4_alloc_cmd_mailbox(dev);
 	if (IS_ERR(mailbox))
-		return PTR_ERR(mailbox);
+		return -ENOMEM;
 
-	filter = mailbox->buf;
-	if (grp) {
-		memset(filter, 0, sizeof *filter);
-		for (i = VLAN_FLTR_SIZE - 1; i >= 0; i--) {
-			entry = 0;
-			for (j = 0; j < 32; j++)
-				if (vlan_group_get_device(grp, index++))
-					entry |= 1 << j;
-			filter->entry[i] = cpu_to_be32(entry);
-		}
-	} else {
-		/* When no vlans are configured we block all vlans */
-		memset(filter, 0, sizeof(*filter));
+	err = mlx4_cmd_box(dev, 0, mailbox->dma, index, 0,
+			   MLX4_CMD_QUERY_IF_STAT, MLX4_CMD_TIME_CLASS_C);
+	if (err)
+		goto out;
+
+	mode = be32_to_cpu(((struct mlx4_counters *)mailbox->buf)->counter_mode) & 0xf;
+	switch (mode) {
+	case 0:
+		reg = mailbox->buf;
+		counters[0] = be64_to_cpu(reg->rx_frames);
+		counters[1] = be64_to_cpu(reg->tx_frames);
+		counters[2] = be64_to_cpu(reg->rx_bytes);
+		counters[3] = be64_to_cpu(reg->tx_bytes);
+		break;
+	case 1:
+		ext = mailbox->buf;
+		counters[0] = be64_to_cpu(ext->rx_uni_frames);
+		counters[1] = be64_to_cpu(ext->tx_uni_frames);
+		counters[2] = be64_to_cpu(ext->rx_uni_bytes);
+		counters[3] = be64_to_cpu(ext->tx_uni_bytes);
+		break;
+	default:
+		err = -EINVAL;
 	}
-	err = mlx4_cmd(dev, mailbox->dma, port, 0, MLX4_CMD_SET_VLAN_FLTR,
-		       MLX4_CMD_TIME_CLASS_B);
+
+out:
 	mlx4_free_cmd_mailbox(dev, mailbox);
 	return err;
 }
-
-
-int mlx4_SET_PORT_general(struct mlx4_dev *dev, u8 port, int mtu,
-			  u8 pptx, u8 pfctx, u8 pprx, u8 pfcrx)
-{
-	struct mlx4_cmd_mailbox *mailbox;
-	struct mlx4_set_port_general_context *context;
-	int err;
-	u32 in_mod;
-
-	mailbox = mlx4_alloc_cmd_mailbox(dev);
-	if (IS_ERR(mailbox))
-		return PTR_ERR(mailbox);
-	context = mailbox->buf;
-	memset(context, 0, sizeof *context);
-
-	context->flags = SET_PORT_GEN_ALL_VALID;
-	context->mtu = cpu_to_be16(mtu);
-	context->pptx = (pptx * (!pfctx)) << 7;
-	context->pfctx = pfctx;
-	context->pprx = (pprx * (!pfcrx)) << 7;
-	context->pfcrx = pfcrx;
-
-	in_mod = MLX4_SET_PORT_GENERAL << 8 | port;
-	err = mlx4_cmd(dev, mailbox->dma, in_mod, 1, MLX4_CMD_SET_PORT,
-		       MLX4_CMD_TIME_CLASS_B);
-
-	mlx4_free_cmd_mailbox(dev, mailbox);
-	return err;
-}
-
-int mlx4_SET_PORT_qpn_calc(struct mlx4_dev *dev, u8 port, u32 base_qpn,
-			   u8 promisc)
-{
-	struct mlx4_cmd_mailbox *mailbox;
-	struct mlx4_set_port_rqp_calc_context *context;
-	int err;
-	u32 in_mod;
-
-	mailbox = mlx4_alloc_cmd_mailbox(dev);
-	if (IS_ERR(mailbox))
-		return PTR_ERR(mailbox);
-	context = mailbox->buf;
-	memset(context, 0, sizeof *context);
-
-	context->base_qpn = cpu_to_be32(base_qpn);
-	context->promisc = cpu_to_be32(promisc << SET_PORT_PROMISC_SHIFT | base_qpn);
-	context->mcast = cpu_to_be32(1 << SET_PORT_PROMISC_SHIFT | base_qpn);
-	context->intra_no_vlan = 0;
-	context->no_vlan = MLX4_NO_VLAN_IDX;
-	context->intra_vlan_miss = 0;
-	context->vlan_miss = MLX4_VLAN_MISS_IDX;
-
-	in_mod = MLX4_SET_PORT_RQP_CALC << 8 | port;
-	err = mlx4_cmd(dev, mailbox->dma, in_mod, 1, MLX4_CMD_SET_PORT,
-		       MLX4_CMD_TIME_CLASS_B);
-
-	mlx4_free_cmd_mailbox(dev, mailbox);
-	return err;
-}
-
 
 int mlx4_en_DUMP_ETH_STATS(struct mlx4_en_dev *mdev, u8 port, u8 reset)
 {
@@ -152,6 +126,13 @@ int mlx4_en_DUMP_ETH_STATS(struct mlx4_en_dev *mdev, u8 port, u8 reset)
 	u64 in_mod = reset << 8 | port;
 	int err;
 	int i;
+	int counter;
+	u64 counters[4];
+
+	memset(counters, 0, sizeof counters);
+	counter = mlx4_get_iboe_counter(priv->mdev->dev, port);
+	if (counter >= 0)
+		err = read_iboe_counters(priv->mdev->dev, counter, counters);
 
 	mailbox = mlx4_alloc_cmd_mailbox(mdev->dev);
 	if (IS_ERR(mailbox))
@@ -166,14 +147,14 @@ int mlx4_en_DUMP_ETH_STATS(struct mlx4_en_dev *mdev, u8 port, u8 reset)
 
 	spin_lock_bh(&priv->stats_lock);
 
-	stats->rx_packets = 0;
-	stats->rx_bytes = 0;
+	stats->rx_packets = counters[0];
+	stats->rx_bytes = counters[2];
 	for (i = 0; i < priv->rx_ring_num; i++) {
 		stats->rx_packets += priv->rx_ring[i].packets;
 		stats->rx_bytes += priv->rx_ring[i].bytes;
 	}
-	stats->tx_packets = 0;
-	stats->tx_bytes = 0;
+	stats->tx_packets = counters[1];
+	stats->tx_bytes = counters[3];
 	for (i = 0; i <= priv->tx_ring_num; i++) {
 		stats->tx_packets += priv->tx_ring[i].packets;
 		stats->tx_bytes += priv->tx_ring[i].bytes;

@@ -497,8 +497,10 @@ static void mlx4_free_irqs(struct mlx4_dev *dev)
 	if (eq_table->have_irq)
 		free_irq(dev->pdev->irq, dev);
 	for (i = 0; i < dev->caps.num_comp_vectors + 1; ++i)
-		if (eq_table->eq[i].have_irq)
+		if (eq_table->eq[i].have_irq) {
 			free_irq(eq_table->eq[i].irq, eq_table->eq + i);
+			eq_table->eq[i].have_irq = 0;
+		}
 
 	kfree(eq_table->irq_names);
 }
@@ -522,48 +524,6 @@ static void mlx4_unmap_clr_int(struct mlx4_dev *dev)
 	struct mlx4_priv *priv = mlx4_priv(dev);
 
 	iounmap(priv->clr_base);
-}
-
-int mlx4_map_eq_icm(struct mlx4_dev *dev, u64 icm_virt)
-{
-	struct mlx4_priv *priv = mlx4_priv(dev);
-	int ret;
-
-	/*
-	 * We assume that mapping one page is enough for the whole EQ
-	 * context table.  This is fine with all current HCAs, because
-	 * we only use 32 EQs and each EQ uses 64 bytes of context
-	 * memory, or 1 KB total.
-	 */
-	priv->eq_table.icm_virt = icm_virt;
-	priv->eq_table.icm_page = alloc_page(GFP_HIGHUSER);
-	if (!priv->eq_table.icm_page)
-		return -ENOMEM;
-	priv->eq_table.icm_dma  = pci_map_page(dev->pdev, priv->eq_table.icm_page, 0,
-					       PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
-	if (pci_dma_mapping_error(dev->pdev, priv->eq_table.icm_dma)) {
-		__free_page(priv->eq_table.icm_page);
-		return -ENOMEM;
-	}
-
-	ret = mlx4_MAP_ICM_page(dev, priv->eq_table.icm_dma, icm_virt);
-	if (ret) {
-		pci_unmap_page(dev->pdev, priv->eq_table.icm_dma, PAGE_SIZE,
-			       PCI_DMA_BIDIRECTIONAL);
-		__free_page(priv->eq_table.icm_page);
-	}
-
-	return ret;
-}
-
-void mlx4_unmap_eq_icm(struct mlx4_dev *dev)
-{
-	struct mlx4_priv *priv = mlx4_priv(dev);
-
-	mlx4_UNMAP_ICM(dev, priv->eq_table.icm_virt, 1);
-	pci_unmap_page(dev->pdev, priv->eq_table.icm_dma, PAGE_SIZE,
-		       PCI_DMA_BIDIRECTIONAL);
-	__free_page(priv->eq_table.icm_page);
 }
 
 int mlx4_alloc_eq_table(struct mlx4_dev *dev)
@@ -623,8 +583,10 @@ int mlx4_init_eq_table(struct mlx4_dev *dev)
 		err = mlx4_create_eq(dev, dev->caps.num_cqs + MLX4_NUM_SPARE_EQE,
 				     (dev->flags & MLX4_FLAG_MSI_X) ? i : 0,
 				     &priv->eq_table.eq[i]);
-		if (err)
+		if (err) {
+			--i;
 			goto err_out_unmap;
+		}
 	}
 
 	err = mlx4_create_eq(dev, MLX4_NUM_ASYNC_EQE + MLX4_NUM_SPARE_EQE,
@@ -634,13 +596,13 @@ int mlx4_init_eq_table(struct mlx4_dev *dev)
 		goto err_out_comp;
 
 	if (dev->flags & MLX4_FLAG_MSI_X) {
-		static const char async_eq_name[] = "mlx4-async";
+		static const char async_eq_name[] = DRV_NAME "(async)";
 		const char *eq_name;
 
 		for (i = 0; i < dev->caps.num_comp_vectors + 1; ++i) {
 			if (i < dev->caps.num_comp_vectors) {
 				snprintf(priv->eq_table.irq_names + i * 16, 16,
-					 "mlx4-comp-%d", i);
+					 "eth-mlx4-%d", i);
 				eq_name = priv->eq_table.irq_names + i * 16;
 			} else
 				eq_name = async_eq_name;
@@ -719,3 +681,47 @@ void mlx4_cleanup_eq_table(struct mlx4_dev *dev)
 
 	kfree(priv->eq_table.uar_map);
 }
+
+/* A test that verifies that we can accept interrupts on all
+ * the irq vectors of the device.
+ * Interrupts are checked using the NOP command.
+ */
+int mlx4_test_interrupts(struct mlx4_dev *dev)
+{
+	struct mlx4_priv *priv = mlx4_priv(dev);
+	int i;
+	int err;
+
+	err = mlx4_NOP(dev);
+	/* When not in MSI_X, there is only one irq to check */
+	if (!(dev->flags & MLX4_FLAG_MSI_X))
+		return err;
+
+	/* A loop over all completion vectors, for each vector we will check
+	 * whether it works by mapping command completions to that vector
+	 * and performing a NOP command
+	 */
+	for(i = 0; !err && (i < dev->caps.num_comp_vectors); ++i) {
+		/* Temporary use polling for command completions */
+		mlx4_cmd_use_polling(dev);
+
+		/* Map the new eq to handle all asyncronous events */
+		err = mlx4_MAP_EQ(dev, MLX4_ASYNC_EVENT_MASK, 0,
+				  priv->eq_table.eq[i].eqn);
+		if (err) {
+			mlx4_warn(dev, "Failed mapping eq for interrupt test\n");
+			mlx4_cmd_use_events(dev);
+			break;
+		}
+
+		/* Go back to using events */
+		mlx4_cmd_use_events(dev);
+		err = mlx4_NOP(dev);
+	}
+
+	/* Return to default */
+	mlx4_MAP_EQ(dev, MLX4_ASYNC_EVENT_MASK, 0,
+		    priv->eq_table.eq[dev->caps.num_comp_vectors].eqn);
+	return err;
+}
+EXPORT_SYMBOL(mlx4_test_interrupts);

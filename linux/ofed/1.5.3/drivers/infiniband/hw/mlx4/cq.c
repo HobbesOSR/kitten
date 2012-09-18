@@ -33,9 +33,13 @@
 
 #include <linux/mlx4/cq.h>
 #include <linux/mlx4/qp.h>
+#include <linux/mlx4/srq.h>
 
 #include "mlx4_ib.h"
 #include "user.h"
+
+/* Which firmware version adds support for Resize CQ */
+#define MLX4_FW_VER_RESIZE_CQ  mlx4_fw_ver(2, 5, 0)
 
 static void mlx4_ib_cq_comp(struct mlx4_cq *cq)
 {
@@ -171,10 +175,12 @@ struct ib_cq *mlx4_ib_create_cq(struct ib_device *ibdev, int entries, int vector
 	struct mlx4_uar *uar;
 	int err;
 
-	if (entries < 1 || entries > dev->dev->caps.max_cqes)
+	if (entries < 1 || entries > dev->dev->caps.max_cqes) {
+		mlx4_ib_dbg("invalid num of entries: %d", entries);
 		return ERR_PTR(-EINVAL);
+	}
 
-	cq = kmalloc(sizeof *cq, GFP_KERNEL);
+	cq = kzalloc(sizeof *cq, GFP_KERNEL);
 	if (!cq)
 		return ERR_PTR(-ENOMEM);
 
@@ -222,7 +228,9 @@ struct ib_cq *mlx4_ib_create_cq(struct ib_device *ibdev, int entries, int vector
 	}
 
 	err = mlx4_cq_alloc(dev->dev, entries, &cq->buf.mtt, uar,
-			    cq->db.dma, &cq->mcq, vector, 0);
+			    cq->db.dma, &cq->mcq,
+			    vector == IB_CQ_VECTOR_LEAST_ATTACHED ?
+			    MLX4_LEAST_ATTACHED_VECTOR : vector, 0);
 	if (err)
 		goto err_dbmap;
 
@@ -349,6 +357,9 @@ int mlx4_ib_resize_cq(struct ib_cq *ibcq, int entries, struct ib_udata *udata)
 	int outst_cqe;
 	int err;
 
+	if (dev->dev->caps.fw_ver < MLX4_FW_VER_RESIZE_CQ)
+		return -ENOSYS;
+
 	mutex_lock(&cq->resize_mutex);
 
 	if (entries < 1 || entries > dev->dev->caps.max_cqes) {
@@ -396,10 +407,14 @@ int mlx4_ib_resize_cq(struct ib_cq *ibcq, int entries, struct ib_udata *udata)
 		cq->resize_buf = NULL;
 		cq->resize_umem = NULL;
 	} else {
+		struct mlx4_ib_cq_buf tmp_buf;
+		int tmp_cqe = 0;
+ 
 		spin_lock_irq(&cq->lock);
 		if (cq->resize_buf) {
 			mlx4_ib_cq_resize_copy_cqes(cq);
-			mlx4_ib_free_cq_buf(dev, &cq->buf, cq->ibcq.cqe);
+			tmp_buf = cq->buf;
+			tmp_cqe = cq->ibcq.cqe;
 			cq->buf      = cq->resize_buf->buf;
 			cq->ibcq.cqe = cq->resize_buf->cqe;
 
@@ -407,6 +422,9 @@ int mlx4_ib_resize_cq(struct ib_cq *ibcq, int entries, struct ib_udata *udata)
 			cq->resize_buf = NULL;
 		}
 		spin_unlock_irq(&cq->lock);
+
+		if (tmp_cqe)
+			mlx4_ib_free_cq_buf(dev, &tmp_buf, tmp_cqe);
 	}
 
 	goto out;
@@ -544,9 +562,11 @@ static int mlx4_ib_poll_one(struct mlx4_ib_cq *cq,
 	struct mlx4_qp *mqp;
 	struct mlx4_ib_wq *wq;
 	struct mlx4_ib_srq *srq;
+	struct mlx4_srq *msrq;
 	int is_send;
 	int is_error;
 	u32 g_mlpath_rqpn;
+	int is_xrc_recv = 0;
 	u16 wqe_ctr;
 
 repoll:
@@ -588,7 +608,24 @@ repoll:
 		goto repoll;
 	}
 
-	if (!*cur_qp ||
+	if ((be32_to_cpu(cqe->vlan_my_qpn) & (1 << 23)) && !is_send) {
+		 /*
+		  * We do not have to take the XRC SRQ table lock here,
+		  * because CQs will be locked while XRC SRQs are removed
+		  * from the table.
+		  */
+		 msrq = __mlx4_srq_lookup(to_mdev(cq->ibcq.device)->dev,
+					 be32_to_cpu(cqe->g_mlpath_rqpn) &
+					 0xffffff);
+		 if (unlikely(!msrq)) {
+			 printk(KERN_WARNING "CQ %06x with entry for unknown "
+				"XRC SRQ %06x\n", cq->mcq.cqn,
+				be32_to_cpu(cqe->g_mlpath_rqpn) & 0xffffff);
+			 return -EINVAL;
+		 }
+		 is_xrc_recv = 1;
+		 srq = to_mibsrq(msrq);
+	} else if (!*cur_qp ||
 	    (be32_to_cpu(cqe->vlan_my_qpn) & MLX4_CQE_QPN_MASK) != (*cur_qp)->mqp.qpn) {
 		/*
 		 * We do not have to take the QP table lock here,
@@ -606,7 +643,7 @@ repoll:
 		*cur_qp = to_mibqp(mqp);
 	}
 
-	wc->qp = &(*cur_qp)->ibqp;
+	wc->qp = is_xrc_recv ? NULL: &(*cur_qp)->ibqp;
 
 	if (is_send) {
 		wq = &(*cur_qp)->sq;
@@ -616,6 +653,10 @@ repoll:
 		}
 		wc->wr_id = wq->wrid[wq->tail & (wq->wqe_cnt - 1)];
 		++wq->tail;
+	} else if (is_xrc_recv) {
+		wqe_ctr = be16_to_cpu(cqe->wqe_index);
+		wc->wr_id = srq->wrid[wqe_ctr];
+		mlx4_ib_free_srq_wqe(srq, wqe_ctr);
 	} else if ((*cur_qp)->ibqp.srq) {
 		srq = to_msrq((*cur_qp)->ibqp.srq);
 		wqe_ctr = be16_to_cpu(cqe->wqe_index);
@@ -658,6 +699,14 @@ repoll:
 			break;
 		case MLX4_OPCODE_ATOMIC_FA:
 			wc->opcode    = IB_WC_FETCH_ADD;
+			wc->byte_len  = 8;
+			break;
+		case MLX4_OPCODE_MASKED_ATOMIC_CS:
+			wc->opcode    = IB_WC_MASKED_COMP_SWAP;
+			wc->byte_len  = 8;
+			break;
+		case MLX4_OPCODE_MASKED_ATOMIC_FA:
+			wc->opcode    = IB_WC_MASKED_FETCH_ADD;
 			wc->byte_len  = 8;
 			break;
 		case MLX4_OPCODE_BIND_MW:
@@ -743,7 +792,7 @@ int mlx4_ib_arm_cq(struct ib_cq *ibcq, enum ib_cq_notify_flags flags)
 	mlx4_cq_arm(&to_mcq(ibcq)->mcq,
 		    (flags & IB_CQ_SOLICITED_MASK) == IB_CQ_SOLICITED ?
 		    MLX4_CQ_DB_REQ_NOT_SOL : MLX4_CQ_DB_REQ_NOT,
-		    to_mdev(ibcq->device)->uar_map,
+		    to_mdev(ibcq->device)->priv_uar.map,
 		    MLX4_GET_DOORBELL_LOCK(&to_mdev(ibcq->device)->uar_lock));
 
 	return 0;
@@ -755,6 +804,10 @@ void __mlx4_ib_cq_clean(struct mlx4_ib_cq *cq, u32 qpn, struct mlx4_ib_srq *srq)
 	int nfreed = 0;
 	struct mlx4_cqe *cqe, *dest;
 	u8 owner_bit;
+	int is_xrc_srq = 0;
+
+	if (srq && srq->ibsrq.xrc_cq)
+		is_xrc_srq = 1;
 
 	/*
 	 * First we need to find the current producer index, so we
@@ -773,7 +826,10 @@ void __mlx4_ib_cq_clean(struct mlx4_ib_cq *cq, u32 qpn, struct mlx4_ib_srq *srq)
 	 */
 	while ((int) --prod_index - (int) cq->mcq.cons_index >= 0) {
 		cqe = get_cqe(cq, prod_index & cq->ibcq.cqe);
-		if ((be32_to_cpu(cqe->vlan_my_qpn) & MLX4_CQE_QPN_MASK) == qpn) {
+		if (((be32_to_cpu(cqe->vlan_my_qpn) & 0xffffff) == qpn) ||
+		    (is_xrc_srq &&
+		     (be32_to_cpu(cqe->g_mlpath_rqpn) & 0xffffff) ==
+		      srq->msrq.srqn)) {
 			if (srq && !(cqe->owner_sr_opcode & MLX4_CQE_IS_SEND_MASK))
 				mlx4_ib_free_srq_wqe(srq, be16_to_cpu(cqe->wqe_index));
 			++nfreed;

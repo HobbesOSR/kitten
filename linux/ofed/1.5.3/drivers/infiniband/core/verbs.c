@@ -94,6 +94,22 @@ rdma_node_get_transport(enum rdma_node_type node_type)
 }
 EXPORT_SYMBOL(rdma_node_get_transport);
 
+enum rdma_link_layer rdma_port_get_link_layer(struct ib_device *device, u8 port_num)
+{
+	if (device->get_link_layer)
+		return device->get_link_layer(device, port_num);
+
+	switch (rdma_node_get_transport(device->node_type)) {
+	case RDMA_TRANSPORT_IB:
+		return IB_LINK_LAYER_INFINIBAND;
+	case RDMA_TRANSPORT_IWARP:
+		return IB_LINK_LAYER_ETHERNET;
+	default:
+		return IB_LINK_LAYER_UNSPECIFIED;
+	}
+}
+EXPORT_SYMBOL(rdma_port_get_link_layer);
+
 /* Protection domains */
 
 struct ib_pd *ib_alloc_pd(struct ib_device *device)
@@ -234,6 +250,8 @@ struct ib_srq *ib_create_srq(struct ib_pd *pd,
 		srq->uobject       = NULL;
 		srq->event_handler = srq_init_attr->event_handler;
 		srq->srq_context   = srq_init_attr->srq_context;
+		srq->xrc_cq = NULL;
+		srq->xrcd = NULL;
 		atomic_inc(&pd->usecnt);
 		atomic_set(&srq->usecnt, 0);
 	}
@@ -241,6 +259,36 @@ struct ib_srq *ib_create_srq(struct ib_pd *pd,
 	return srq;
 }
 EXPORT_SYMBOL(ib_create_srq);
+
+struct ib_srq *ib_create_xrc_srq(struct ib_pd *pd,
+				 struct ib_cq *xrc_cq,
+				 struct ib_xrcd *xrcd,
+				 struct ib_srq_init_attr *srq_init_attr)
+{
+	struct ib_srq *srq;
+
+	if (!pd->device->create_xrc_srq)
+		return ERR_PTR(-ENOSYS);
+
+	srq = pd->device->create_xrc_srq(pd, xrc_cq, xrcd, srq_init_attr, NULL);
+
+	if (!IS_ERR(srq)) {
+		srq->device	   = pd->device;
+		srq->pd		   = pd;
+		srq->uobject	   = NULL;
+		srq->event_handler = srq_init_attr->event_handler;
+		srq->srq_context   = srq_init_attr->srq_context;
+		srq->xrc_cq	   = xrc_cq;
+		srq->xrcd	   = xrcd;
+		atomic_inc(&pd->usecnt);
+		atomic_inc(&xrcd->usecnt);
+		atomic_inc(&xrc_cq->usecnt);
+		atomic_set(&srq->usecnt, 0);
+	}
+
+	return srq;
+}
+EXPORT_SYMBOL(ib_create_xrc_srq);
 
 int ib_modify_srq(struct ib_srq *srq,
 		  struct ib_srq_attr *srq_attr,
@@ -263,16 +311,25 @@ EXPORT_SYMBOL(ib_query_srq);
 int ib_destroy_srq(struct ib_srq *srq)
 {
 	struct ib_pd *pd;
+	struct ib_cq *xrc_cq;
+	struct ib_xrcd *xrcd;
 	int ret;
 
 	if (atomic_read(&srq->usecnt))
 		return -EBUSY;
 
 	pd = srq->pd;
+	xrc_cq = srq->xrc_cq;
+	xrcd = srq->xrcd;
 
 	ret = srq->device->destroy_srq(srq);
-	if (!ret)
+	if (!ret) {
 		atomic_dec(&pd->usecnt);
+		if (xrc_cq)
+			atomic_dec(&xrc_cq->usecnt);
+		if (xrcd)
+			atomic_dec(&xrcd->usecnt);
+	}
 
 	return ret;
 }
@@ -297,11 +354,15 @@ struct ib_qp *ib_create_qp(struct ib_pd *pd,
 		qp->event_handler = qp_init_attr->event_handler;
 		qp->qp_context    = qp_init_attr->qp_context;
 		qp->qp_type	  = qp_init_attr->qp_type;
+		qp->xrcd	  = qp->qp_type == IB_QPT_XRC ?
+			qp_init_attr->xrc_domain : NULL;
 		atomic_inc(&pd->usecnt);
 		atomic_inc(&qp_init_attr->send_cq->usecnt);
 		atomic_inc(&qp_init_attr->recv_cq->usecnt);
 		if (qp_init_attr->srq)
 			atomic_inc(&qp_init_attr->srq->usecnt);
+		if (qp->qp_type == IB_QPT_XRC)
+			atomic_inc(&qp->xrcd->usecnt);
 	}
 
 	return qp;
@@ -310,8 +371,8 @@ EXPORT_SYMBOL(ib_create_qp);
 
 static const struct {
 	int			valid;
-	enum ib_qp_attr_mask	req_param[IB_QPT_RAW_ETY + 1];
-	enum ib_qp_attr_mask	opt_param[IB_QPT_RAW_ETY + 1];
+	enum ib_qp_attr_mask	req_param[IB_QPT_RAW_ETH + 1];
+	enum ib_qp_attr_mask	opt_param[IB_QPT_RAW_ETH + 1];
 } qp_state_table[IB_QPS_ERR + 1][IB_QPS_ERR + 1] = {
 	[IB_QPS_RESET] = {
 		[IB_QPS_RESET] = { .valid = 1 },
@@ -321,10 +382,14 @@ static const struct {
 				[IB_QPT_UD]  = (IB_QP_PKEY_INDEX		|
 						IB_QP_PORT			|
 						IB_QP_QKEY),
+				[IB_QPT_RAW_ETH] = IB_QP_PORT,
 				[IB_QPT_UC]  = (IB_QP_PKEY_INDEX		|
 						IB_QP_PORT			|
 						IB_QP_ACCESS_FLAGS),
 				[IB_QPT_RC]  = (IB_QP_PKEY_INDEX		|
+						IB_QP_PORT			|
+						IB_QP_ACCESS_FLAGS),
+				[IB_QPT_XRC] = (IB_QP_PKEY_INDEX		|
 						IB_QP_PORT			|
 						IB_QP_ACCESS_FLAGS),
 				[IB_QPT_SMI] = (IB_QP_PKEY_INDEX		|
@@ -349,6 +414,9 @@ static const struct {
 				[IB_QPT_RC]  = (IB_QP_PKEY_INDEX		|
 						IB_QP_PORT			|
 						IB_QP_ACCESS_FLAGS),
+				[IB_QPT_XRC] = (IB_QP_PKEY_INDEX		|
+						IB_QP_PORT			|
+						IB_QP_ACCESS_FLAGS),
 				[IB_QPT_SMI] = (IB_QP_PKEY_INDEX		|
 						IB_QP_QKEY),
 				[IB_QPT_GSI] = (IB_QP_PKEY_INDEX		|
@@ -368,6 +436,12 @@ static const struct {
 						IB_QP_RQ_PSN			|
 						IB_QP_MAX_DEST_RD_ATOMIC	|
 						IB_QP_MIN_RNR_TIMER),
+				[IB_QPT_XRC] = (IB_QP_AV			|
+						IB_QP_PATH_MTU			|
+						IB_QP_DEST_QPN			|
+						IB_QP_RQ_PSN			|
+						IB_QP_MAX_DEST_RD_ATOMIC	|
+						IB_QP_MIN_RNR_TIMER),
 			},
 			.opt_param = {
 				 [IB_QPT_UD]  = (IB_QP_PKEY_INDEX		|
@@ -378,6 +452,9 @@ static const struct {
 				 [IB_QPT_RC]  = (IB_QP_ALT_PATH			|
 						 IB_QP_ACCESS_FLAGS		|
 						 IB_QP_PKEY_INDEX),
+				 [IB_QPT_XRC] = (IB_QP_ALT_PATH			|
+						IB_QP_ACCESS_FLAGS		|
+						IB_QP_PKEY_INDEX),
 				 [IB_QPT_SMI] = (IB_QP_PKEY_INDEX		|
 						 IB_QP_QKEY),
 				 [IB_QPT_GSI] = (IB_QP_PKEY_INDEX		|
@@ -398,6 +475,11 @@ static const struct {
 						IB_QP_RNR_RETRY			|
 						IB_QP_SQ_PSN			|
 						IB_QP_MAX_QP_RD_ATOMIC),
+				[IB_QPT_XRC] = (IB_QP_TIMEOUT			|
+						IB_QP_RETRY_CNT			|
+						IB_QP_RNR_RETRY			|
+						IB_QP_SQ_PSN			|
+						IB_QP_MAX_QP_RD_ATOMIC),
 				[IB_QPT_SMI] = IB_QP_SQ_PSN,
 				[IB_QPT_GSI] = IB_QP_SQ_PSN,
 			},
@@ -413,6 +495,11 @@ static const struct {
 						 IB_QP_ACCESS_FLAGS		|
 						 IB_QP_MIN_RNR_TIMER		|
 						 IB_QP_PATH_MIG_STATE),
+				 [IB_QPT_XRC] = (IB_QP_CUR_STATE		|
+						IB_QP_ALT_PATH			|
+						IB_QP_ACCESS_FLAGS		|
+						IB_QP_MIN_RNR_TIMER		|
+						IB_QP_PATH_MIG_STATE),
 				 [IB_QPT_SMI] = (IB_QP_CUR_STATE		|
 						 IB_QP_QKEY),
 				 [IB_QPT_GSI] = (IB_QP_CUR_STATE		|
@@ -437,6 +524,11 @@ static const struct {
 						IB_QP_ALT_PATH			|
 						IB_QP_PATH_MIG_STATE		|
 						IB_QP_MIN_RNR_TIMER),
+				[IB_QPT_XRC] = (IB_QP_CUR_STATE			|
+						IB_QP_ACCESS_FLAGS		|
+						IB_QP_ALT_PATH			|
+						IB_QP_PATH_MIG_STATE		|
+						IB_QP_MIN_RNR_TIMER),
 				[IB_QPT_SMI] = (IB_QP_CUR_STATE			|
 						IB_QP_QKEY),
 				[IB_QPT_GSI] = (IB_QP_CUR_STATE			|
@@ -449,6 +541,7 @@ static const struct {
 				[IB_QPT_UD]  = IB_QP_EN_SQD_ASYNC_NOTIFY,
 				[IB_QPT_UC]  = IB_QP_EN_SQD_ASYNC_NOTIFY,
 				[IB_QPT_RC]  = IB_QP_EN_SQD_ASYNC_NOTIFY,
+				[IB_QPT_XRC] = IB_QP_EN_SQD_ASYNC_NOTIFY,
 				[IB_QPT_SMI] = IB_QP_EN_SQD_ASYNC_NOTIFY,
 				[IB_QPT_GSI] = IB_QP_EN_SQD_ASYNC_NOTIFY
 			}
@@ -471,6 +564,11 @@ static const struct {
 						IB_QP_ACCESS_FLAGS		|
 						IB_QP_MIN_RNR_TIMER		|
 						IB_QP_PATH_MIG_STATE),
+				[IB_QPT_XRC] = (IB_QP_CUR_STATE			|
+						IB_QP_ALT_PATH			|
+						IB_QP_ACCESS_FLAGS		|
+						IB_QP_MIN_RNR_TIMER		|
+						IB_QP_PATH_MIG_STATE),
 				[IB_QPT_SMI] = (IB_QP_CUR_STATE			|
 						IB_QP_QKEY),
 				[IB_QPT_GSI] = (IB_QP_CUR_STATE			|
@@ -488,6 +586,18 @@ static const struct {
 						IB_QP_PKEY_INDEX		|
 						IB_QP_PATH_MIG_STATE),
 				[IB_QPT_RC]  = (IB_QP_PORT			|
+						IB_QP_AV			|
+						IB_QP_TIMEOUT			|
+						IB_QP_RETRY_CNT			|
+						IB_QP_RNR_RETRY			|
+						IB_QP_MAX_QP_RD_ATOMIC		|
+						IB_QP_MAX_DEST_RD_ATOMIC	|
+						IB_QP_ALT_PATH			|
+						IB_QP_ACCESS_FLAGS		|
+						IB_QP_PKEY_INDEX		|
+						IB_QP_MIN_RNR_TIMER		|
+						IB_QP_PATH_MIG_STATE),
+				[IB_QPT_XRC] = (IB_QP_PORT			|
 						IB_QP_AV			|
 						IB_QP_TIMEOUT			|
 						IB_QP_RETRY_CNT			|
@@ -583,12 +693,15 @@ int ib_destroy_qp(struct ib_qp *qp)
 	struct ib_pd *pd;
 	struct ib_cq *scq, *rcq;
 	struct ib_srq *srq;
+	struct ib_xrcd *xrcd;
+	enum ib_qp_type	qp_type = qp->qp_type;
 	int ret;
 
 	pd  = qp->pd;
 	scq = qp->send_cq;
 	rcq = qp->recv_cq;
 	srq = qp->srq;
+	xrcd = qp->xrcd;
 
 	ret = qp->device->destroy_qp(qp);
 	if (!ret) {
@@ -597,6 +710,8 @@ int ib_destroy_qp(struct ib_qp *qp)
 		atomic_dec(&rcq->usecnt);
 		if (srq)
 			atomic_dec(&srq->usecnt);
+		if (qp_type == IB_QPT_XRC)
+			atomic_dec(&xrcd->usecnt);
 	}
 
 	return ret;
@@ -887,9 +1002,18 @@ int ib_attach_mcast(struct ib_qp *qp, union ib_gid *gid, u16 lid)
 {
 	if (!qp->device->attach_mcast)
 		return -ENOSYS;
-	if (gid->raw[0] != 0xff || qp->qp_type != IB_QPT_UD)
-		return -EINVAL;
 
+	switch (rdma_node_get_transport(qp->device->node_type)) {
+	case RDMA_TRANSPORT_IB:
+		if ((gid->raw[0] != 0xff || qp->qp_type != IB_QPT_UD) &&
+		    qp->qp_type != IB_QPT_RAW_ETH)
+			return -EINVAL;
+		break;
+	case RDMA_TRANSPORT_IWARP:
+		if (qp->qp_type != IB_QPT_RAW_ETH)
+			return -EINVAL;
+		break;
+	}
 	return qp->device->attach_mcast(qp, gid, lid);
 }
 EXPORT_SYMBOL(ib_attach_mcast);
@@ -898,9 +1022,46 @@ int ib_detach_mcast(struct ib_qp *qp, union ib_gid *gid, u16 lid)
 {
 	if (!qp->device->detach_mcast)
 		return -ENOSYS;
-	if (gid->raw[0] != 0xff || qp->qp_type != IB_QPT_UD)
-		return -EINVAL;
 
+	switch (rdma_node_get_transport(qp->device->node_type)) {
+	case RDMA_TRANSPORT_IB:
+		if ((gid->raw[0] != 0xff || qp->qp_type != IB_QPT_UD) &&
+		    qp->qp_type != IB_QPT_RAW_ETH)
+			return -EINVAL;
+		break;
+	case RDMA_TRANSPORT_IWARP:
+		if (qp->qp_type != IB_QPT_RAW_ETH)
+			return -EINVAL;
+		break;
+	}
 	return qp->device->detach_mcast(qp, gid, lid);
 }
 EXPORT_SYMBOL(ib_detach_mcast);
+
+int ib_dealloc_xrcd(struct ib_xrcd *xrcd)
+{
+	if (atomic_read(&xrcd->usecnt))
+		return -EBUSY;
+
+	return xrcd->device->dealloc_xrcd(xrcd);
+}
+EXPORT_SYMBOL(ib_dealloc_xrcd);
+
+struct ib_xrcd *ib_alloc_xrcd(struct ib_device *device)
+{
+	struct ib_xrcd *xrcd;
+
+	if (!device->alloc_xrcd)
+		return ERR_PTR(-ENOSYS);
+
+	xrcd = device->alloc_xrcd(device, NULL, NULL);
+	if (!IS_ERR(xrcd)) {
+		xrcd->device = device;
+		xrcd->inode = NULL;
+		xrcd->uobject = NULL;
+		atomic_set(&xrcd->usecnt, 0);
+	}
+	return xrcd;
+}
+EXPORT_SYMBOL(ib_alloc_xrcd);
+
