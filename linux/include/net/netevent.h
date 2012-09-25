@@ -9,7 +9,7 @@ enum netevent_notif_type {
 	NETEVENT_REDIRECT,     /* arg is struct netevent_redirect ptr */
 };
 
-struct notifier_bock;
+struct notifier_block;
 
 extern int register_netevent_notifier(struct notifier_block *nb)
 {

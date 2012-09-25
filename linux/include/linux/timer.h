@@ -11,13 +11,6 @@ struct tvec_base;
 
 #define timer_list timer
 
-#define TIMER_INITIALIZER(_function, _expires, _data) {		\
-		/*.link = LIST_HEAD_INIT(.link), */	 \
-		.function = (_function),			\
-		.expires = (_expires),				\
-		.data = (_data),				\
-	}
-
 #define DEFINE_TIMER(_name, _function, _expires, _data)		\
 	struct timer_list _name =				\
 		TIMER_INITIALIZER(_function, _expires, _data)

@@ -60,7 +60,7 @@ int __init pci_subsys_init(void)
 	pci_numaq_init();
 #endif
 #ifdef CONFIG_ACPI
-    panic("%s()\n",__func__);
+    //panic("%s()\n",__func__);
 	//pci_acpi_init();
 #endif
 #ifdef CONFIG_X86_VISWS

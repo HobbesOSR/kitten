@@ -88,14 +88,27 @@ void rdma_addr_unregister_client(struct rdma_addr_client *client)
 }
 EXPORT_SYMBOL(rdma_addr_unregister_client);
 
+static inline void __fixup( unsigned char *addr )
+{
+	int i;
+	unsigned char prefix[] = {0xfe, 0x80, 0, 0, 0, 0, 0, 0 } ;
+
+	for ( i = 0; i < 8; i++ ) {
+		addr[ 4 + 8 + i] = addr[ 4 + i ];
+		addr[ 4 + i ] = prefix[i];
+	}
+}
+
 int rdma_copy_addr(struct rdma_dev_addr *dev_addr, struct net_device *dev,
 		     const unsigned char *dst_dev_addr)
 {
 	dev_addr->dev_type = dev->type;
 	memcpy(dev_addr->src_dev_addr, dev->dev_addr, MAX_ADDR_LEN);
 	memcpy(dev_addr->broadcast, dev->broadcast, MAX_ADDR_LEN);
-	if (dst_dev_addr)
+	if (dst_dev_addr) {
 		memcpy(dev_addr->dst_dev_addr, dst_dev_addr, MAX_ADDR_LEN);
+		__fixup(dev_addr->dst_dev_addr);
+	}
 	dev_addr->bound_dev_if = dev->ifindex;
 	return 0;
 }
@@ -148,7 +161,10 @@ EXPORT_SYMBOL(rdma_translate_ip);
 
 static void set_timeout(unsigned long time)
 {
+	static int set = 0;
 	unsigned long delay;
+
+	if (!set) { work.timer.link.next = work.timer.link.prev = &(work.timer.link); set = 1; }
 
 	cancel_delayed_work(&work);
 

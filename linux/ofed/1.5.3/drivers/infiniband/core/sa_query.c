@@ -427,6 +427,8 @@ static void ib_sa_event(struct ib_event_handler *handler, struct ib_event *event
 
 		schedule_work(&sa_dev->port[event->element.port_num -
 					    sa_dev->start_port].update_task);
+		//FIXME
+		update_sm_ah(&sa_dev->port[event->element.port_num - sa_dev->start_port].update_task);
 	}
 }
 

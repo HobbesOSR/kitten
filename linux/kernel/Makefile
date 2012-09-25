@@ -1,1 +1,1 @@
-obj-y += notifier.o workqueue.o timer.o
+obj-y += notifier.o timer.o

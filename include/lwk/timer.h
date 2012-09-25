@@ -10,6 +10,13 @@
 #include <lwk/idspace.h>
 #include <lwk/list.h>
 
+#define TIMER_INITIALIZER(_function, _expires, _data) {		\
+		/*.link = LIST_HEAD_INIT(.link),*/		\
+		.function = (_function),			\
+		.expires = (_expires),				\
+		.data = (_data),				\
+	}
+
 /**
  * This structure defines a timer, including when the timer should expire
  * and the callback function to call when it expires. The callback function

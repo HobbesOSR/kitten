@@ -40,7 +40,7 @@ Config::Config( int argc, char* argv[]) :
 
         switch( c ) {
             case 'h':
-                Debug( Config, "-nl %s\n",optarg);
+                Debug( Config, "-heap %s\n",optarg);
                 m_heapLen = (long) atoi(optarg) * 1024L*1024L;
                 break;
 
