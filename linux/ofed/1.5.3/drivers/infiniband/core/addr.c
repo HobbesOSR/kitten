@@ -161,10 +161,7 @@ EXPORT_SYMBOL(rdma_translate_ip);
 
 static void set_timeout(unsigned long time)
 {
-	static int set = 0;
 	unsigned long delay;
-
-	if (!set) { work.timer.link.next = work.timer.link.prev = &(work.timer.link); set = 1; }
 
 	cancel_delayed_work(&work);
 

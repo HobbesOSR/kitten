@@ -49,7 +49,7 @@ struct delayed_work {
 
 #define __DELAYED_WORK_INITIALIZER(n, f) {          \
     .work = __WORK_INITIALIZER((n).work, (f)),      \
-    .timer = TIMER_INITIALIZER(NULL, 0, 0),         \
+    .timer = TIMER_INITIALIZER((n).timer, NULL, 0, 0),  \
     }
 #define DECLARE_WORK(n, function)	\
 	struct work_struct n = __WORK_INITIALIZER(n, function)

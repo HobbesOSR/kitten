@@ -13,7 +13,7 @@ struct tvec_base;
 
 #define DEFINE_TIMER(_name, _function, _expires, _data)		\
 	struct timer_list _name =				\
-		TIMER_INITIALIZER(_function, _expires, _data)
+		TIMER_INITIALIZER(_name, _function, _expires, _data)
 
 void init_timer(struct timer_list *timer);
 void init_timer_deferrable(struct timer_list *timer);

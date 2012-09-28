@@ -10,8 +10,8 @@
 #include <lwk/idspace.h>
 #include <lwk/list.h>
 
-#define TIMER_INITIALIZER(_function, _expires, _data) {		\
-		/*.link = LIST_HEAD_INIT(.link),*/		\
+#define TIMER_INITIALIZER(_name, _function, _expires, _data) {	\
+		.link = LIST_HEAD_INIT((_name).link),		\
 		.function = (_function),			\
 		.expires = (_expires),				\
 		.data = (_data),				\
