@@ -1,6 +1,6 @@
 diff -r -c openmpi-1.2.9/configure openmpi-patch/configure
 *** openmpi-1.2.9/configure	2009-01-13 11:05:34.000000000 -0700
---- openmpi-patch/configure	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/configure	2012-10-18 15:14:46.000000000 -0600
 ***************
 *** 77047,77053 ****
   int
@@ -69,9 +69,11 @@ diff -r -c openmpi-1.2.9/configure openmpi-patch/configure
     ;
     return 0;
   }
+Only in openmpi-patch: configure.orig
+Only in openmpi-patch: configure.rej
 diff -r -c openmpi-1.2.9/contrib/platform/redstorm openmpi-patch/contrib/platform/redstorm
 *** openmpi-1.2.9/contrib/platform/redstorm	2008-08-25 13:16:50.000000000 -0600
---- openmpi-patch/contrib/platform/redstorm	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/contrib/platform/redstorm	2012-10-18 14:46:13.000000000 -0600
 ***************
 *** 1,92 ****
   enable_io_romio=no
@@ -89,84 +91,84 @@ diff -r -c openmpi-1.2.9/contrib/platform/redstorm openmpi-patch/contrib/platfor
   enable_mem_profile=no
   enable_debug_symbols=no
   enable_binaries=no
-- 
-- ompi_cv_f77_sizeof_LOGICAL=${ompi_cv_f77_sizeof_LOGICAL=4}
-- ompi_cv_f77_alignment_LOGICAL=${ompi_cv_f77_alignment_LOGICAL=4}
-- ompi_cv_f77_sizeof_INTEGER=${ompi_cv_f77_sizeof_INTEGER=4}
-- ompi_cv_f77_alignment_INTEGER=${ompi_cv_f77_alignment_INTEGER=4}
-- ompi_cv_f77_sizeof_INTEGERp1=${ompi_cv_f77_sizeof_INTEGERp1=1}
-- ompi_cv_f77_alignment_INTEGERp1=${ompi_cv_f77_alignment_INTEGERp1=1}
-- ompi_cv_f77_sizeof_INTEGERp2=${ompi_cv_f77_sizeof_INTEGERp2=2}
-- ompi_cv_f77_alignment_INTEGERp2=${ompi_cv_f77_alignment_INTEGERp2=2}
-- ompi_cv_f77_sizeof_INTEGERp4=${ompi_cv_f77_sizeof_INTEGERp4=4}
-- ompi_cv_f77_alignment_INTEGERp4=${ompi_cv_f77_alignment_INTEGERp4=4}
-- ompi_cv_f77_sizeof_INTEGERp8=${ompi_cv_f77_sizeof_INTEGERp8=8}
-- ompi_cv_f77_alignment_INTEGERp8=${ompi_cv_f77_alignment_INTEGERp8=8}
-- ompi_cv_f77_sizeof_INTEGERp16=${ompi_cv_f77_sizeof_INTEGERp16=16}
-- ompi_cv_f77_alignment_INTEGERp16=${ompi_cv_f77_alignment_INTEGERp16=8}
-- ompi_cv_f77_sizeof_REAL=${ompi_cv_f77_sizeof_REAL=4}
-- ompi_cv_f77_alignment_REAL=${ompi_cv_f77_alignment_REAL=4}
-- ompi_cv_f77_sizeof_REALp2=${ompi_cv_f77_sizeof_REALp2=2}
-- ompi_cv_f77_alignment_REALp2=${ompi_cv_f77_alignment_REALp2=2}
-- ompi_cv_f77_sizeof_REALp4=${ompi_cv_f77_sizeof_REALp4=4}
-- ompi_cv_f77_alignment_REALp4=${ompi_cv_f77_alignment_REALp4=4}
-- ompi_cv_f77_sizeof_REALp8=${ompi_cv_f77_sizeof_REALp8=8}
-- ompi_cv_f77_alignment_REALp8=${ompi_cv_f77_alignment_REALp8=8}
-- ompi_cv_f77_sizeof_REALp16=${ompi_cv_f77_sizeof_REALp16=16}
-- ompi_cv_f77_alignment_REALp16=${ompi_cv_f77_alignment_REALp16=8}
-- ompi_cv_f77_sizeof_DOUBLE_PRECISION=${ompi_cv_f77_sizeof_DOUBLE_PRECISION=8}
-- ompi_cv_f77_alignment_DOUBLE_PRECISION=${ompi_cv_f77_alignment_DOUBLE_PRECISION=8}
-- ompi_cv_f77_sizeof_COMPLEX=${ompi_cv_f77_sizeof_COMPLEX=8}
-- ompi_cv_f77_alignment_COMPLEX=${ompi_cv_f77_alignment_COMPLEX=4}
-- ompi_cv_f77_sizeof_COMPLEXp8=${ompi_cv_f77_sizeof_COMPLEXp8=8}
-- ompi_cv_f77_alignment_COMPLEXp8=${ompi_cv_f77_alignment_COMPLEXp8=4}
-- ompi_cv_f77_sizeof_COMPLEXp16=${ompi_cv_f77_sizeof_COMPLEXp16=16}
-- ompi_cv_f77_alignment_COMPLEXp16=${ompi_cv_f77_alignment_COMPLEXp16=8}
-- ompi_cv_f77_sizeof_COMPLEXp32=${ompi_cv_f77_sizeof_COMPLEXp32=32}
-- ompi_cv_f77_alignment_COMPLEXp32=${ompi_cv_f77_alignment_COMPLEXp32=8}
-- ompi_cv_f77_true_value=${ompi_cv_f77_true_value=-1}
-- 
-- 
-- ompi_cv_f90_sizeof_LOGICAL=${ompi_cv_f90_sizeof_LOGICAL=4}
-- ompi_cv_f90_alignment_LOGICAL=${ompi_cv_f90_alignment_LOGICAL=4}
-- ompi_cv_f90_sizeof_INTEGER=${ompi_cv_f90_sizeof_INTEGER=4}
-- ompi_cv_f90_alignment_INTEGER=${ompi_cv_f90_alignment_INTEGER=4}
-- ompi_cv_f90_sizeof_INTEGERp1=${ompi_cv_f90_sizeof_INTEGERp1=1}
-- ompi_cv_f90_alignment_INTEGERp1=${ompi_cv_f90_alignment_INTEGERp1=1}
-- ompi_cv_f90_sizeof_INTEGERp2=${ompi_cv_f90_sizeof_INTEGERp2=2}
-- ompi_cv_f90_alignment_INTEGERp2=${ompi_cv_f90_alignment_INTEGERp2=2}
-- ompi_cv_f90_sizeof_INTEGERp4=${ompi_cv_f90_sizeof_INTEGERp4=4}
-- ompi_cv_f90_alignment_INTEGERp4=${ompi_cv_f90_alignment_INTEGERp4=4}
-- ompi_cv_f90_sizeof_INTEGERp8=${ompi_cv_f90_sizeof_INTEGERp8=8}
-- ompi_cv_f90_alignment_INTEGERp8=${ompi_cv_f90_alignment_INTEGERp8=8}
-- ompi_cv_f90_sizeof_INTEGERp16=${ompi_cv_f90_sizeof_INTEGERp16=16}
-- ompi_cv_f90_alignment_INTEGERp16=${ompi_cv_f90_alignment_INTEGERp16=8}
-- ompi_cv_f90_sizeof_REAL=${ompi_cv_f90_sizeof_REAL=4}
-- ompi_cv_f90_alignment_REAL=${ompi_cv_f90_alignment_REAL=4}
-- ompi_cv_f90_sizeof_REALp2=${ompi_cv_f90_sizeof_REALp2=2}
-- ompi_cv_f90_alignment_REALp2=${ompi_cv_f90_alignment_REALp2=2}
-- ompi_cv_f90_sizeof_REALp4=${ompi_cv_f90_sizeof_REALp4=4}
-- ompi_cv_f90_alignment_REALp4=${ompi_cv_f90_alignment_REALp4=4}
-- ompi_cv_f90_sizeof_REALp8=${ompi_cv_f90_sizeof_REALp8=8}
-- ompi_cv_f90_alignment_REALp8=${ompi_cv_f90_alignment_REALp8=8}
-- ompi_cv_f90_sizeof_REALp16=${ompi_cv_f90_sizeof_REALp16=16}
-- ompi_cv_f90_alignment_REALp16=${ompi_cv_f90_alignment_REALp16=8}
-- ompi_cv_f90_sizeof_DOUBLE_PRECISION=${ompi_cv_f90_sizeof_DOUBLE_PRECISION=8}
-- ompi_cv_f90_alignment_DOUBLE_PRECISION=${ompi_cv_f90_alignment_DOUBLE_PRECISION=8}
-- ompi_cv_f90_sizeof_COMPLEX=${ompi_cv_f90_sizeof_COMPLEX=8}
-- ompi_cv_f90_alignment_COMPLEX=${ompi_cv_f90_alignment_COMPLEX=4}
-- ompi_cv_f90_sizeof_COMPLEXp8=${ompi_cv_f90_sizeof_COMPLEXp8=8}
-- ompi_cv_f90_alignment_COMPLEXp8=${ompi_cv_f90_alignment_COMPLEXp8=4}
-- ompi_cv_f90_sizeof_COMPLEXp16=${ompi_cv_f90_sizeof_COMPLEXp16=16}
-- ompi_cv_f90_alignment_COMPLEXp16=${ompi_cv_f90_alignment_COMPLEXp16=8}
-- ompi_cv_f90_sizeof_COMPLEXp32=${ompi_cv_f90_sizeof_COMPLEXp32=32}
-- ompi_cv_f90_alignment_COMPLEXp32=${ompi_cv_f90_alignment_COMPLEXp32=8}
-- ompi_cv_f90_true_value=${ompi_cv_f90_true_value=-1}
-- ompi_cv_f90_sizeof_DOUBLE_COMPLEX=${ompi_cv_f90_sizeof_DOUBLE_COMPLEX=16}
-- ompi_cv_f90_alignment_DOUBLE_COMPLEX=${ompi_cv_f90_alignment_DOUBLE_COMPLEX=8}
-- ompi_cv_f90_int_kind_9=${ompi_cv_f90_int_kind_9=4}
-- ompi_cv_f90_int_kind_18=${ompi_cv_f90_int_kind_18=8}
---- 1,14 ----
+! 
+! ompi_cv_f77_sizeof_LOGICAL=${ompi_cv_f77_sizeof_LOGICAL=4}
+! ompi_cv_f77_alignment_LOGICAL=${ompi_cv_f77_alignment_LOGICAL=4}
+! ompi_cv_f77_sizeof_INTEGER=${ompi_cv_f77_sizeof_INTEGER=4}
+! ompi_cv_f77_alignment_INTEGER=${ompi_cv_f77_alignment_INTEGER=4}
+! ompi_cv_f77_sizeof_INTEGERp1=${ompi_cv_f77_sizeof_INTEGERp1=1}
+! ompi_cv_f77_alignment_INTEGERp1=${ompi_cv_f77_alignment_INTEGERp1=1}
+! ompi_cv_f77_sizeof_INTEGERp2=${ompi_cv_f77_sizeof_INTEGERp2=2}
+! ompi_cv_f77_alignment_INTEGERp2=${ompi_cv_f77_alignment_INTEGERp2=2}
+! ompi_cv_f77_sizeof_INTEGERp4=${ompi_cv_f77_sizeof_INTEGERp4=4}
+! ompi_cv_f77_alignment_INTEGERp4=${ompi_cv_f77_alignment_INTEGERp4=4}
+! ompi_cv_f77_sizeof_INTEGERp8=${ompi_cv_f77_sizeof_INTEGERp8=8}
+! ompi_cv_f77_alignment_INTEGERp8=${ompi_cv_f77_alignment_INTEGERp8=8}
+! ompi_cv_f77_sizeof_INTEGERp16=${ompi_cv_f77_sizeof_INTEGERp16=16}
+! ompi_cv_f77_alignment_INTEGERp16=${ompi_cv_f77_alignment_INTEGERp16=8}
+! ompi_cv_f77_sizeof_REAL=${ompi_cv_f77_sizeof_REAL=4}
+! ompi_cv_f77_alignment_REAL=${ompi_cv_f77_alignment_REAL=4}
+! ompi_cv_f77_sizeof_REALp2=${ompi_cv_f77_sizeof_REALp2=2}
+! ompi_cv_f77_alignment_REALp2=${ompi_cv_f77_alignment_REALp2=2}
+! ompi_cv_f77_sizeof_REALp4=${ompi_cv_f77_sizeof_REALp4=4}
+! ompi_cv_f77_alignment_REALp4=${ompi_cv_f77_alignment_REALp4=4}
+! ompi_cv_f77_sizeof_REALp8=${ompi_cv_f77_sizeof_REALp8=8}
+! ompi_cv_f77_alignment_REALp8=${ompi_cv_f77_alignment_REALp8=8}
+! ompi_cv_f77_sizeof_REALp16=${ompi_cv_f77_sizeof_REALp16=16}
+! ompi_cv_f77_alignment_REALp16=${ompi_cv_f77_alignment_REALp16=8}
+! ompi_cv_f77_sizeof_DOUBLE_PRECISION=${ompi_cv_f77_sizeof_DOUBLE_PRECISION=8}
+! ompi_cv_f77_alignment_DOUBLE_PRECISION=${ompi_cv_f77_alignment_DOUBLE_PRECISION=8}
+! ompi_cv_f77_sizeof_COMPLEX=${ompi_cv_f77_sizeof_COMPLEX=8}
+! ompi_cv_f77_alignment_COMPLEX=${ompi_cv_f77_alignment_COMPLEX=4}
+! ompi_cv_f77_sizeof_COMPLEXp8=${ompi_cv_f77_sizeof_COMPLEXp8=8}
+! ompi_cv_f77_alignment_COMPLEXp8=${ompi_cv_f77_alignment_COMPLEXp8=4}
+! ompi_cv_f77_sizeof_COMPLEXp16=${ompi_cv_f77_sizeof_COMPLEXp16=16}
+! ompi_cv_f77_alignment_COMPLEXp16=${ompi_cv_f77_alignment_COMPLEXp16=8}
+! ompi_cv_f77_sizeof_COMPLEXp32=${ompi_cv_f77_sizeof_COMPLEXp32=32}
+! ompi_cv_f77_alignment_COMPLEXp32=${ompi_cv_f77_alignment_COMPLEXp32=8}
+! ompi_cv_f77_true_value=${ompi_cv_f77_true_value=-1}
+! 
+! 
+! ompi_cv_f90_sizeof_LOGICAL=${ompi_cv_f90_sizeof_LOGICAL=4}
+! ompi_cv_f90_alignment_LOGICAL=${ompi_cv_f90_alignment_LOGICAL=4}
+! ompi_cv_f90_sizeof_INTEGER=${ompi_cv_f90_sizeof_INTEGER=4}
+! ompi_cv_f90_alignment_INTEGER=${ompi_cv_f90_alignment_INTEGER=4}
+! ompi_cv_f90_sizeof_INTEGERp1=${ompi_cv_f90_sizeof_INTEGERp1=1}
+! ompi_cv_f90_alignment_INTEGERp1=${ompi_cv_f90_alignment_INTEGERp1=1}
+! ompi_cv_f90_sizeof_INTEGERp2=${ompi_cv_f90_sizeof_INTEGERp2=2}
+! ompi_cv_f90_alignment_INTEGERp2=${ompi_cv_f90_alignment_INTEGERp2=2}
+! ompi_cv_f90_sizeof_INTEGERp4=${ompi_cv_f90_sizeof_INTEGERp4=4}
+! ompi_cv_f90_alignment_INTEGERp4=${ompi_cv_f90_alignment_INTEGERp4=4}
+! ompi_cv_f90_sizeof_INTEGERp8=${ompi_cv_f90_sizeof_INTEGERp8=8}
+! ompi_cv_f90_alignment_INTEGERp8=${ompi_cv_f90_alignment_INTEGERp8=8}
+! ompi_cv_f90_sizeof_INTEGERp16=${ompi_cv_f90_sizeof_INTEGERp16=16}
+! ompi_cv_f90_alignment_INTEGERp16=${ompi_cv_f90_alignment_INTEGERp16=8}
+! ompi_cv_f90_sizeof_REAL=${ompi_cv_f90_sizeof_REAL=4}
+! ompi_cv_f90_alignment_REAL=${ompi_cv_f90_alignment_REAL=4}
+! ompi_cv_f90_sizeof_REALp2=${ompi_cv_f90_sizeof_REALp2=2}
+! ompi_cv_f90_alignment_REALp2=${ompi_cv_f90_alignment_REALp2=2}
+! ompi_cv_f90_sizeof_REALp4=${ompi_cv_f90_sizeof_REALp4=4}
+! ompi_cv_f90_alignment_REALp4=${ompi_cv_f90_alignment_REALp4=4}
+! ompi_cv_f90_sizeof_REALp8=${ompi_cv_f90_sizeof_REALp8=8}
+! ompi_cv_f90_alignment_REALp8=${ompi_cv_f90_alignment_REALp8=8}
+! ompi_cv_f90_sizeof_REALp16=${ompi_cv_f90_sizeof_REALp16=16}
+! ompi_cv_f90_alignment_REALp16=${ompi_cv_f90_alignment_REALp16=8}
+! ompi_cv_f90_sizeof_DOUBLE_PRECISION=${ompi_cv_f90_sizeof_DOUBLE_PRECISION=8}
+! ompi_cv_f90_alignment_DOUBLE_PRECISION=${ompi_cv_f90_alignment_DOUBLE_PRECISION=8}
+! ompi_cv_f90_sizeof_COMPLEX=${ompi_cv_f90_sizeof_COMPLEX=8}
+! ompi_cv_f90_alignment_COMPLEX=${ompi_cv_f90_alignment_COMPLEX=4}
+! ompi_cv_f90_sizeof_COMPLEXp8=${ompi_cv_f90_sizeof_COMPLEXp8=8}
+! ompi_cv_f90_alignment_COMPLEXp8=${ompi_cv_f90_alignment_COMPLEXp8=4}
+! ompi_cv_f90_sizeof_COMPLEXp16=${ompi_cv_f90_sizeof_COMPLEXp16=16}
+! ompi_cv_f90_alignment_COMPLEXp16=${ompi_cv_f90_alignment_COMPLEXp16=8}
+! ompi_cv_f90_sizeof_COMPLEXp32=${ompi_cv_f90_sizeof_COMPLEXp32=32}
+! ompi_cv_f90_alignment_COMPLEXp32=${ompi_cv_f90_alignment_COMPLEXp32=8}
+! ompi_cv_f90_true_value=${ompi_cv_f90_true_value=-1}
+! ompi_cv_f90_sizeof_DOUBLE_COMPLEX=${ompi_cv_f90_sizeof_DOUBLE_COMPLEX=16}
+! ompi_cv_f90_alignment_DOUBLE_COMPLEX=${ompi_cv_f90_alignment_DOUBLE_COMPLEX=8}
+! ompi_cv_f90_int_kind_9=${ompi_cv_f90_int_kind_9=4}
+! ompi_cv_f90_int_kind_18=${ompi_cv_f90_int_kind_18=8}
+--- 1,20 ----
   enable_io_romio=no
   enable_static=yes
   enable_shared=no
@@ -181,9 +183,16 @@ diff -r -c openmpi-1.2.9/contrib/platform/redstorm openmpi-patch/contrib/platfor
   enable_mem_profile=no
   enable_debug_symbols=no
   enable_binaries=no
+! ac_cv_func_poll=no
+! ac_cv_func_select=no
+! ac_cv_header_poll_h=no
+! ac_cv_header_sys_epoll_h=no
+! ac_cv_func_getpwuid=no
+! ac_cv_header_infiniband_driver_h=yes
+Only in openmpi-patch/contrib/platform: redstorm.rej
 diff -r -c openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_component.c openmpi-patch/ompi/mca/btl/openib/btl_openib_component.c
 *** openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_component.c	2009-01-12 08:46:05.000000000 -0700
---- openmpi-patch/ompi/mca/btl/openib/btl_openib_component.c	2012-10-18 13:48:49.000000000 -0600
+--- openmpi-patch/ompi/mca/btl/openib/btl_openib_component.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 929,939 ****
       btl_openib_modex_send();
@@ -209,9 +218,10 @@ diff -r -c openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_component.c openmpi-patc
       return btls;
   }
   
+Only in openmpi-patch/ompi/mca/btl/openib: btl_openib_component.c.rej
 diff -r -c openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_proc.c openmpi-patch/ompi/mca/btl/openib/btl_openib_proc.c
 *** openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_proc.c	2008-08-25 13:17:02.000000000 -0600
---- openmpi-patch/ompi/mca/btl/openib/btl_openib_proc.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/ompi/mca/btl/openib/btl_openib_proc.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 128,133 ****
 --- 128,134 ----
@@ -237,9 +247,10 @@ diff -r -c openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_proc.c openmpi-patch/omp
   
       if((size % sizeof(mca_btl_openib_port_info_t)) != 0) {
           opal_output(0, "[%s:%d] invalid module address for peer [%d,%d,%d]",
+Only in openmpi-patch/ompi/mca/btl/openib: btl_openib_proc.c.rej
 diff -r -c openmpi-1.2.9/ompi/runtime/ompi_mpi_init.c openmpi-patch/ompi/runtime/ompi_mpi_init.c
 *** openmpi-1.2.9/ompi/runtime/ompi_mpi_init.c	2008-08-25 13:16:51.000000000 -0600
---- openmpi-patch/ompi/runtime/ompi_mpi_init.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/ompi/runtime/ompi_mpi_init.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 597,602 ****
 --- 597,603 ----
@@ -250,9 +261,10 @@ diff -r -c openmpi-1.2.9/ompi/runtime/ompi_mpi_init.c openmpi-patch/ompi/runtime
   
       /* Init coll for the comms */
   
+Only in openmpi-patch/ompi/runtime: ompi_mpi_init.c.rej
 diff -r -c openmpi-1.2.9/opal/include/opal_config_bottom.h openmpi-patch/opal/include/opal_config_bottom.h
 *** openmpi-1.2.9/opal/include/opal_config_bottom.h	2008-08-25 13:16:49.000000000 -0600
---- openmpi-patch/opal/include/opal_config_bottom.h	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/opal/include/opal_config_bottom.h	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 55,61 ****
    **********************************************************************/
@@ -271,9 +283,10 @@ diff -r -c openmpi-1.2.9/opal/include/opal_config_bottom.h openmpi-patch/opal/in
   
   /***********************************************************************
    *
+Only in openmpi-patch/opal/include: opal_config_bottom.h.rej
 diff -r -c openmpi-1.2.9/opal/util/if.c openmpi-patch/opal/util/if.c
 *** openmpi-1.2.9/opal/util/if.c	2008-08-25 13:16:50.000000000 -0600
---- openmpi-patch/opal/util/if.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/opal/util/if.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 131,136 ****
 --- 131,137 ----
@@ -303,7 +316,7 @@ diff -r -c openmpi-1.2.9/opal/util/if.c openmpi-patch/opal/util/if.c
       num = 0;
 diff -r -c openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos.c openmpi-patch/orte/mca/pls/cnos/pls_cnos.c
 *** openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos.c	2008-08-25 13:17:22.000000000 -0600
---- openmpi-patch/orte/mca/pls/cnos/pls_cnos.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/orte/mca/pls/cnos/pls_cnos.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 31,37 ****
   #endif
@@ -462,7 +475,7 @@ diff -r -c openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos.c openmpi-patch/orte/mca/pls
   }
 diff -r -c openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos_component.c openmpi-patch/orte/mca/pls/cnos/pls_cnos_component.c
 *** openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos_component.c	2008-08-25 13:17:22.000000000 -0600
---- openmpi-patch/orte/mca/pls/cnos/pls_cnos_component.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/orte/mca/pls/cnos/pls_cnos_component.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 17,23 ****
   #include "orte_config.h"
@@ -482,7 +495,7 @@ diff -r -c openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos_component.c openmpi-patch/or
   #include "orte/orte_constants.h"
 diff -r -c openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos.c openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos.c
 *** openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos.c	2008-08-25 13:17:18.000000000 -0600
---- openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 27,33 ****
   #include <signal.h>
@@ -685,7 +698,7 @@ diff -r -c openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos.c openmpi-patch/orte/mca/r
   }
 diff -r -c openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos_component.c openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos_component.c
 *** openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos_component.c	2008-08-25 13:17:18.000000000 -0600
---- openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos_component.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos_component.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 17,23 ****
   #include "orte_config.h"
@@ -763,7 +776,7 @@ diff -r -c openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos_component.c openmpi-patch/
   }
 diff -r -c openmpi-1.2.9/orte/mca/rml/cnos/rml_cnos.c openmpi-patch/orte/mca/rml/cnos/rml_cnos.c
 *** openmpi-1.2.9/orte/mca/rml/cnos/rml_cnos.c	2008-08-25 13:17:21.000000000 -0600
---- openmpi-patch/orte/mca/rml/cnos/rml_cnos.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/orte/mca/rml/cnos/rml_cnos.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 22,33 ****
   #include "opal/util/output.h"
@@ -1019,7 +1032,7 @@ diff -r -c openmpi-1.2.9/orte/mca/rml/cnos/rml_cnos.c openmpi-patch/orte/mca/rml
           return ORTE_ERR_NOT_SUPPORTED;
 diff -r -c openmpi-1.2.9/orte/mca/sds/cnos/sds_cnos_module.c openmpi-patch/orte/mca/sds/cnos/sds_cnos_module.c
 *** openmpi-1.2.9/orte/mca/sds/cnos/sds_cnos_module.c	2008-08-25 13:17:20.000000000 -0600
---- openmpi-patch/orte/mca/sds/cnos/sds_cnos_module.c	2012-10-18 13:43:34.000000000 -0600
+--- openmpi-patch/orte/mca/sds/cnos/sds_cnos_module.c	2012-10-18 14:42:30.000000000 -0600
 ***************
 *** 19,41 ****
   
