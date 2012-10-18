@@ -14,8 +14,8 @@ int main(int argc, char *argv[], char *envp[] )
     int size;
     //setenv( "OMPI_MCA_orte_debug", "5", 1 );
     //setenv( "OMPI_MCA_btl_base_debug", "5", 1 );
-    //setenv( "OPAL_PKGDATADIR", "/etc/opal", 1 );
-    //setenv( "OPAL_SYSCONFDIR", "/etc/opal", 1 );
+    setenv( "OPAL_PKGDATADIR", "/etc/opal", 1 );
+    setenv( "OPAL_SYSCONFDIR", "/etc/opal", 1 );
 
     printf("calling MPI_Init\n");
     MPI_Init( &argc, & argv);

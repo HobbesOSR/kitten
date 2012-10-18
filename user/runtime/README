@@ -3,9 +3,9 @@ export OPAL_PKGDATADIR=/etc/opal
 export OPAL_SYSCONFDIR=/etc/opal
 
 building apps and pct needs these
-export OPENMPI_SRC=/home/mjleven/hg8/kitten/user/runtime/openmpi-1.2.9
-export OPENMPI=/home/mjleven/hg8/kitten/user/runtime/openmpi-1.2.9/install
-export OPENIB=$HOME/IB/install
+export OPENMPI_SRC=/home/ddeboni/Projects/src/kitten/user/runtime/openmpi-1.2.9
+export OPENIB=/cluster_tools/ofed-1.5.3.1/
+export OPENMPI=/home/ddeboni/Projects/src/kitten/user/runtime/openmpi-1.2.9/install
 
 tar xzvf openmpi-1.2.9.tar.gz
 
@@ -17,27 +17,9 @@ ln -s ../../../../../liblwkOrte/lwkOrteRmlBinding.h orte/mca/rml/cnos/
 
 mkdir build
 cd build
-../configure --with-platform=redstorm --prefix=`pwd`/../install
+../configure --enable-static --with-openib=$OPENIB --with-platform=redstorm --prefix=`pwd`/../install --with-openib-libdir=$OPENIB/lib64
 
-edit opal/event/Makefile
+make
 
-remove poll.c from here
-OMPI_LIBEVENT_SOURCES = signal.c epoll_sub.c epoll.c poll.c select.c 
-
-
-edit opal/include/opal_config.h
-
-comment out
-
-/* Define if your system supports the epoll system calls */
-//#define HAVE_EPOLL 1
-
-/* Define to 1 if you have the `poll' function. */
-//#define HAVE_POLL 1
-
-/* Define to 1 if you have the <poll.h> header file. */
-//#define HAVE_POLL_H 1
-
-/* Define to 1 if you have the `select' function. */
-//#define HAVE_SELECT 1
+make install
 

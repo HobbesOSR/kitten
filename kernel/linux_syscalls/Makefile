@@ -6,6 +6,7 @@ obj-y := \
 	getgroups.o \
 	mmap.o \
 	munmap.o \
+	mremap.o \
 	gettimeofday.o \
 	settimeofday.o \
 	nanosleep.o \
