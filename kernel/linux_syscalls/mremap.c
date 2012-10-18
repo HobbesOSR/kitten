@@ -9,5 +9,5 @@ sys_mremap(
 	int flags
 )
 {
-	return old_address;
+	return (new_size <= old_size) ? old_address : -ENOSYS;
 }

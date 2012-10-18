@@ -1,1177 +1,406 @@
-Only in /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/: build
-Only in /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/: build2
-diff -r -c ./configure /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/configure
-*** ./configure	2009-01-13 11:05:34.000000000 -0700
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/configure	2010-04-22 14:34:02.000000000 -0600
-***************
-*** 77047,77053 ****
-  int
-  main ()
-  {
-! return cnos_barrier ();
-    ;
-    return 0;
-  }
---- 77047,77053 ----
-  int
-  main ()
-  {
-! //return cnos_barrier ();
-    ;
-    return 0;
-  }
-***************
-*** 77141,77147 ****
-  int
-  main ()
-  {
-! return $ac_func ();
-    ;
-    return 0;
-  }
---- 77141,77147 ----
-  int
-  main ()
-  {
-! //return $ac_func ();
-    ;
-    return 0;
-  }
-***************
-*** 93931,93937 ****
-  int
-  main ()
-  {
-! return $ac_func ();
-    ;
-    return 0;
-  }
---- 93931,93937 ----
-  int
-  main ()
-  {
-! //return $ac_func ();
-    ;
-    return 0;
-  }
-***************
-*** 98179,98185 ****
-  int
-  main ()
-  {
-! return cnos_get_rank ();
-    ;
-    return 0;
-  }
---- 98179,98185 ----
-  int
-  main ()
-  {
-! //return cnos_get_rank ();
-    ;
-    return 0;
-  }
-diff -r -c ./contrib/platform/redstorm /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/contrib/platform/redstorm
-*** ./contrib/platform/redstorm	2008-08-25 13:16:50.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/contrib/platform/redstorm	2010-06-21 15:19:19.000000000 -0600
-***************
-*** 1,92 ****
-  enable_io_romio=no
-  enable_static=yes
-  enable_shared=no
-- with_threads=no
-  enable_pretty_print_stacktrace=no
-  enable_dlopen=no
-  with_portals_config=redstorm
-  with_memory_manager=none
-! enable_mca_no_build=maffinity-first_use,maffinity-libnuma,paffinity-linux,timer-linux,gpr-proxy,gpr-replica,iof-svc,ns-proxy,oob-tcp,pls-rsh,ras-dash_host,ras-hostfile,ras-localhost,rds-hostfile,rds-resfile,rmaps-round_robin,rmgr-proxy,rmgr-urm,rml-oob,sds-env,sds-seed,sds-singleton,btl-sm,btl-self,coll-hierarch,coll-sm,common-sm,mpool-sm,pml-dr
-  enable_heterogeneous=no
-  enable_pty_support=no
-  enable_mem_debug=no
-  enable_mem_profile=no
-  enable_debug_symbols=no
-  enable_binaries=no
-- 
-- ompi_cv_f77_sizeof_LOGICAL=${ompi_cv_f77_sizeof_LOGICAL=4}
-- ompi_cv_f77_alignment_LOGICAL=${ompi_cv_f77_alignment_LOGICAL=4}
-- ompi_cv_f77_sizeof_INTEGER=${ompi_cv_f77_sizeof_INTEGER=4}
-- ompi_cv_f77_alignment_INTEGER=${ompi_cv_f77_alignment_INTEGER=4}
-- ompi_cv_f77_sizeof_INTEGERp1=${ompi_cv_f77_sizeof_INTEGERp1=1}
-- ompi_cv_f77_alignment_INTEGERp1=${ompi_cv_f77_alignment_INTEGERp1=1}
-- ompi_cv_f77_sizeof_INTEGERp2=${ompi_cv_f77_sizeof_INTEGERp2=2}
-- ompi_cv_f77_alignment_INTEGERp2=${ompi_cv_f77_alignment_INTEGERp2=2}
-- ompi_cv_f77_sizeof_INTEGERp4=${ompi_cv_f77_sizeof_INTEGERp4=4}
-- ompi_cv_f77_alignment_INTEGERp4=${ompi_cv_f77_alignment_INTEGERp4=4}
-- ompi_cv_f77_sizeof_INTEGERp8=${ompi_cv_f77_sizeof_INTEGERp8=8}
-- ompi_cv_f77_alignment_INTEGERp8=${ompi_cv_f77_alignment_INTEGERp8=8}
-- ompi_cv_f77_sizeof_INTEGERp16=${ompi_cv_f77_sizeof_INTEGERp16=16}
-- ompi_cv_f77_alignment_INTEGERp16=${ompi_cv_f77_alignment_INTEGERp16=8}
-- ompi_cv_f77_sizeof_REAL=${ompi_cv_f77_sizeof_REAL=4}
-- ompi_cv_f77_alignment_REAL=${ompi_cv_f77_alignment_REAL=4}
-- ompi_cv_f77_sizeof_REALp2=${ompi_cv_f77_sizeof_REALp2=2}
-- ompi_cv_f77_alignment_REALp2=${ompi_cv_f77_alignment_REALp2=2}
-- ompi_cv_f77_sizeof_REALp4=${ompi_cv_f77_sizeof_REALp4=4}
-- ompi_cv_f77_alignment_REALp4=${ompi_cv_f77_alignment_REALp4=4}
-- ompi_cv_f77_sizeof_REALp8=${ompi_cv_f77_sizeof_REALp8=8}
-- ompi_cv_f77_alignment_REALp8=${ompi_cv_f77_alignment_REALp8=8}
-- ompi_cv_f77_sizeof_REALp16=${ompi_cv_f77_sizeof_REALp16=16}
-- ompi_cv_f77_alignment_REALp16=${ompi_cv_f77_alignment_REALp16=8}
-- ompi_cv_f77_sizeof_DOUBLE_PRECISION=${ompi_cv_f77_sizeof_DOUBLE_PRECISION=8}
-- ompi_cv_f77_alignment_DOUBLE_PRECISION=${ompi_cv_f77_alignment_DOUBLE_PRECISION=8}
-- ompi_cv_f77_sizeof_COMPLEX=${ompi_cv_f77_sizeof_COMPLEX=8}
-- ompi_cv_f77_alignment_COMPLEX=${ompi_cv_f77_alignment_COMPLEX=4}
-- ompi_cv_f77_sizeof_COMPLEXp8=${ompi_cv_f77_sizeof_COMPLEXp8=8}
-- ompi_cv_f77_alignment_COMPLEXp8=${ompi_cv_f77_alignment_COMPLEXp8=4}
-- ompi_cv_f77_sizeof_COMPLEXp16=${ompi_cv_f77_sizeof_COMPLEXp16=16}
-- ompi_cv_f77_alignment_COMPLEXp16=${ompi_cv_f77_alignment_COMPLEXp16=8}
-- ompi_cv_f77_sizeof_COMPLEXp32=${ompi_cv_f77_sizeof_COMPLEXp32=32}
-- ompi_cv_f77_alignment_COMPLEXp32=${ompi_cv_f77_alignment_COMPLEXp32=8}
-- ompi_cv_f77_true_value=${ompi_cv_f77_true_value=-1}
-- 
-- 
-- ompi_cv_f90_sizeof_LOGICAL=${ompi_cv_f90_sizeof_LOGICAL=4}
-- ompi_cv_f90_alignment_LOGICAL=${ompi_cv_f90_alignment_LOGICAL=4}
-- ompi_cv_f90_sizeof_INTEGER=${ompi_cv_f90_sizeof_INTEGER=4}
-- ompi_cv_f90_alignment_INTEGER=${ompi_cv_f90_alignment_INTEGER=4}
-- ompi_cv_f90_sizeof_INTEGERp1=${ompi_cv_f90_sizeof_INTEGERp1=1}
-- ompi_cv_f90_alignment_INTEGERp1=${ompi_cv_f90_alignment_INTEGERp1=1}
-- ompi_cv_f90_sizeof_INTEGERp2=${ompi_cv_f90_sizeof_INTEGERp2=2}
-- ompi_cv_f90_alignment_INTEGERp2=${ompi_cv_f90_alignment_INTEGERp2=2}
-- ompi_cv_f90_sizeof_INTEGERp4=${ompi_cv_f90_sizeof_INTEGERp4=4}
-- ompi_cv_f90_alignment_INTEGERp4=${ompi_cv_f90_alignment_INTEGERp4=4}
-- ompi_cv_f90_sizeof_INTEGERp8=${ompi_cv_f90_sizeof_INTEGERp8=8}
-- ompi_cv_f90_alignment_INTEGERp8=${ompi_cv_f90_alignment_INTEGERp8=8}
-- ompi_cv_f90_sizeof_INTEGERp16=${ompi_cv_f90_sizeof_INTEGERp16=16}
-- ompi_cv_f90_alignment_INTEGERp16=${ompi_cv_f90_alignment_INTEGERp16=8}
-- ompi_cv_f90_sizeof_REAL=${ompi_cv_f90_sizeof_REAL=4}
-- ompi_cv_f90_alignment_REAL=${ompi_cv_f90_alignment_REAL=4}
-- ompi_cv_f90_sizeof_REALp2=${ompi_cv_f90_sizeof_REALp2=2}
-- ompi_cv_f90_alignment_REALp2=${ompi_cv_f90_alignment_REALp2=2}
-- ompi_cv_f90_sizeof_REALp4=${ompi_cv_f90_sizeof_REALp4=4}
-- ompi_cv_f90_alignment_REALp4=${ompi_cv_f90_alignment_REALp4=4}
-- ompi_cv_f90_sizeof_REALp8=${ompi_cv_f90_sizeof_REALp8=8}
-- ompi_cv_f90_alignment_REALp8=${ompi_cv_f90_alignment_REALp8=8}
-- ompi_cv_f90_sizeof_REALp16=${ompi_cv_f90_sizeof_REALp16=16}
-- ompi_cv_f90_alignment_REALp16=${ompi_cv_f90_alignment_REALp16=8}
-- ompi_cv_f90_sizeof_DOUBLE_PRECISION=${ompi_cv_f90_sizeof_DOUBLE_PRECISION=8}
-- ompi_cv_f90_alignment_DOUBLE_PRECISION=${ompi_cv_f90_alignment_DOUBLE_PRECISION=8}
-- ompi_cv_f90_sizeof_COMPLEX=${ompi_cv_f90_sizeof_COMPLEX=8}
-- ompi_cv_f90_alignment_COMPLEX=${ompi_cv_f90_alignment_COMPLEX=4}
-- ompi_cv_f90_sizeof_COMPLEXp8=${ompi_cv_f90_sizeof_COMPLEXp8=8}
-- ompi_cv_f90_alignment_COMPLEXp8=${ompi_cv_f90_alignment_COMPLEXp8=4}
-- ompi_cv_f90_sizeof_COMPLEXp16=${ompi_cv_f90_sizeof_COMPLEXp16=16}
-- ompi_cv_f90_alignment_COMPLEXp16=${ompi_cv_f90_alignment_COMPLEXp16=8}
-- ompi_cv_f90_sizeof_COMPLEXp32=${ompi_cv_f90_sizeof_COMPLEXp32=32}
-- ompi_cv_f90_alignment_COMPLEXp32=${ompi_cv_f90_alignment_COMPLEXp32=8}
-- ompi_cv_f90_true_value=${ompi_cv_f90_true_value=-1}
-- ompi_cv_f90_sizeof_DOUBLE_COMPLEX=${ompi_cv_f90_sizeof_DOUBLE_COMPLEX=16}
-- ompi_cv_f90_alignment_DOUBLE_COMPLEX=${ompi_cv_f90_alignment_DOUBLE_COMPLEX=8}
-- ompi_cv_f90_int_kind_9=${ompi_cv_f90_int_kind_9=4}
-- ompi_cv_f90_int_kind_18=${ompi_cv_f90_int_kind_18=8}
---- 1,14 ----
-  enable_io_romio=no
-  enable_static=yes
-  enable_shared=no
-  enable_pretty_print_stacktrace=no
-  enable_dlopen=no
-  with_portals_config=redstorm
-  with_memory_manager=none
-! enable_mca_no_build=maffinity-first_use,maffinity-libnuma,paffinity-linux,timer-linux,gpr-proxy,gpr-replica,iof-svc,ns-proxy,oob-tcp,pls-rsh,ras-dash_host,ras-hostfile,ras-localhost,rds-hostfile,rds-resfile,rmaps-round_robin,rmgr-proxy,rmgr-urm,rml-oob,sds-env,sds-seed,sds-singleton,btl-sm,coll-hierarch,coll-sm,common-sm,mpool-sm,pml-dr
-  enable_heterogeneous=no
-  enable_pty_support=no
-  enable_mem_debug=no
-  enable_mem_profile=no
-  enable_debug_symbols=no
-  enable_binaries=no
-Only in /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/: install
-Only in /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/: install.old
-diff -r -c ./ompi/mca/btl/openib/btl_openib_proc.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_proc.c
-*** ./ompi/mca/btl/openib/btl_openib_proc.c	2008-08-25 13:17:02.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_proc.c	2010-04-27 14:00:07.000000000 -0600
-***************
-*** 128,133 ****
---- 128,134 ----
-  
-      
-      /* query for the peer address info */ 
-+ #if 0
-      rc = mca_pml_base_modex_recv(
-                                   &mca_btl_openib_component.super.btl_version, 
-                                   ompi_proc, 
-***************
-*** 143,148 ****
---- 144,155 ----
-          OBJ_RELEASE(module_proc);
-          return NULL;
-      }
-+ #endif
-+ 
-+ // this is a memory leak
-+ 	size =  sizeof( struct mca_btl_openib_port_info_t );
-+ 	module_proc->proc_ports = malloc( size );
-+ 	module_proc->proc_ports[0].subnet_id = 0xfe80000000000000;
-  
-      if((size % sizeof(mca_btl_openib_port_info_t)) != 0) {
-          opal_output(0, "[%s:%d] invalid module address for peer [%d,%d,%d]",
-diff -r -c ./ompi/runtime/ompi_mpi_init.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/ompi/runtime/ompi_mpi_init.c
-*** ./ompi/runtime/ompi_mpi_init.c	2008-08-25 13:16:51.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/ompi/runtime/ompi_mpi_init.c	2010-06-21 15:51:02.000000000 -0600
-***************
-*** 597,602 ****
---- 597,603 ----
-          opal_set_using_threads(true);
-          using_progress_threads = true;
-      }
-+         opal_set_using_threads(true);
-  
-      /* Init coll for the comms */
-  
-Only in ./opal/asm/generated: atomic-alpha-linux.s
-Only in ./opal/asm/generated: atomic-amd64-linux-nongas.s
-Only in ./opal/asm/generated: atomic-amd64-linux.s
-Only in ./opal/asm/generated: atomic-ia32-cygwin-nongas.s
-Only in ./opal/asm/generated: atomic-ia32-cygwin.s
-Only in ./opal/asm/generated: atomic-ia32-linux-nongas.s
-Only in ./opal/asm/generated: atomic-ia32-linux.s
-Only in ./opal/asm/generated: atomic-ia32-osx.s
-Only in ./opal/asm/generated: atomic-ia64-linux-nongas.s
-Only in ./opal/asm/generated: atomic-ia64-linux.s
-Only in ./opal/asm/generated: atomic-mips-irix.s
-Only in ./opal/asm/generated: atomic-powerpc32-64-osx.s
-Only in ./opal/asm/generated: atomic-powerpc32-aix.s
-Only in ./opal/asm/generated: atomic-powerpc32-linux-nongas.s
-Only in ./opal/asm/generated: atomic-powerpc32-linux.s
-Only in ./opal/asm/generated: atomic-powerpc32-osx.s
-Only in ./opal/asm/generated: atomic-powerpc64-aix.s
-Only in ./opal/asm/generated: atomic-powerpc64-linux-nongas.s
-Only in ./opal/asm/generated: atomic-powerpc64-linux.s
-Only in ./opal/asm/generated: atomic-powerpc64-osx.s
-Only in ./opal/asm/generated: atomic-sparc-solaris.s
-Only in ./opal/asm/generated: atomic-sparcv9-32-solaris.s
-Only in ./opal/asm/generated: atomic-sparcv9-64-solaris.s
-diff -r -c ./opal/include/opal_config_bottom.h /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/opal/include/opal_config_bottom.h
-*** ./opal/include/opal_config_bottom.h	2008-08-25 13:16:49.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/opal/include/opal_config_bottom.h	2010-06-21 15:03:58.000000000 -0600
-***************
-*** 55,61 ****
-   **********************************************************************/
-  
-  /* Do we have thread support? */
-! #define OMPI_HAVE_THREAD_SUPPORT (OMPI_ENABLE_MPI_THREADS || OMPI_ENABLE_PROGRESS_THREADS)
-  
-  /***********************************************************************
-   *
---- 55,62 ----
-   **********************************************************************/
-  
-  /* Do we have thread support? */
-! //#define OMPI_HAVE_THREAD_SUPPORT (OMPI_ENABLE_MPI_THREADS || OMPI_ENABLE_PROGRESS_THREADS)
-! #define OMPI_HAVE_THREAD_SUPPORT 1
-  
-  /***********************************************************************
-   *
-diff -r -c ./opal/util/if.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/opal/util/if.c
-*** ./opal/util/if.c	2008-08-25 13:16:50.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/opal/util/if.c	2010-04-22 12:58:11.000000000 -0600
-***************
-*** 131,136 ****
---- 131,137 ----
-          return OPAL_SUCCESS;
-      }
-      already_done = true;
-+     OBJ_CONSTRUCT(&opal_if_list, opal_list_t);
-  
-      /* create the internet socket to test off */
-      if((sd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-***************
-*** 207,213 ****
-      /* 
-       * Setup indexes 
-       */
-!     OBJ_CONSTRUCT(&opal_if_list, opal_list_t);
-      ptr = (char*) ifconf.ifc_req;
-      rem = ifconf.ifc_len;
-      num = 0;
---- 208,214 ----
-      /* 
-       * Setup indexes 
-       */
-!     //OBJ_CONSTRUCT(&opal_if_list, opal_list_t);
-      ptr = (char*) ifconf.ifc_req;
-      rem = ifconf.ifc_len;
-      num = 0;
-Only in /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte: a.out
-Only in /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/oob/base: i
-diff -r -c ./orte/mca/pls/cnos/pls_cnos.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos.c
-*** ./orte/mca/pls/cnos/pls_cnos.c	2008-08-25 13:17:22.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos.c	2010-06-23 16:01:10.000000000 -0600
-***************
-*** 31,37 ****
-  #endif
-  
-  #ifdef HAVE_CNOS_PM_BARRIER
-! #include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "orte/orte_constants.h"
---- 31,37 ----
-  #endif
-  
-  #ifdef HAVE_CNOS_PM_BARRIER
-! //#include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "orte/orte_constants.h"
-***************
-*** 40,45 ****
---- 40,48 ----
-  #include "orte/util/proc_info.h"
-  #include "pls_cnos.h"
-  
-+ #undef printf
-+ #define printf(arg,...)
-+ 
-  
-  static int orte_pls_cnos_launch_job(orte_jobid_t jobid);
-  static int orte_pls_cnos_terminate_job(orte_jobid_t jobid, struct timeval *timeout, opal_list_t *attrs);
-***************
-*** 65,83 ****
-  
-  static int orte_pls_cnos_launch_job(orte_jobid_t jobid)
-  {
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  #ifdef HAVE_KILLRANK
-! #include "catamount/types.h"
-  /* secret sauce on the Cray machine */
-! extern int killrank(rank_t RANK, int SIG);
-  #endif
-  
-  static int orte_pls_cnos_terminate_job(orte_jobid_t jobid, struct timeval *timeout, opal_list_t *attrs)
-  {
-      orte_jobid_t my_jobid = ORTE_PROC_MY_NAME->jobid;
-  
-      /* make sure it's my job */
-      if (jobid == my_jobid) {
-  #ifdef HAVE_KILLRANK
---- 68,90 ----
-  
-  static int orte_pls_cnos_launch_job(orte_jobid_t jobid)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  #ifdef HAVE_KILLRANK
-! //#include "catamount/types.h"
-  /* secret sauce on the Cray machine */
-! //extern int killrank(rank_t RANK, int SIG);
-  #endif
-  
-  static int orte_pls_cnos_terminate_job(orte_jobid_t jobid, struct timeval *timeout, opal_list_t *attrs)
-  {
-      orte_jobid_t my_jobid = ORTE_PROC_MY_NAME->jobid;
-  
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-+ 
-+ #if 0
-      /* make sure it's my job */
-      if (jobid == my_jobid) {
-  #ifdef HAVE_KILLRANK
-***************
-*** 86,91 ****
---- 93,99 ----
-          exit(0);
-  #endif
-      }
-+ #endif
-  
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-***************
-*** 95,100 ****
---- 103,111 ----
-  {
-      orte_jobid_t my_jobid = ORTE_PROC_MY_NAME->jobid;
-      
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-+ 
-+ #if 0
-      /* make sure it's my job */
-      if (jobid == my_jobid) {
-  #ifdef HAVE_KILLRANK
-***************
-*** 103,108 ****
---- 114,120 ----
-          exit(0);
-  #endif
-      }
-+ #endif
-  
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-***************
-*** 113,120 ****
---- 125,134 ----
-      orte_jobid_t his_jobid = proc_name->jobid;
-      orte_vpid_t his_vpid = proc_name->vpid;
-  
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      /* make sure it's my job.  This may end up killing me, but what
-         the heck. */
-+ #if 0
-      if (his_jobid == my_jobid) {
-  #ifdef HAVE_KILLRANK
-          killrank((int) his_vpid, SIGKILL);
-***************
-*** 122,127 ****
---- 136,142 ----
-          exit(0);
-  #endif
-      }
-+ #endif
-  
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-***************
-*** 129,148 ****
---- 144,167 ----
-  
-  static int orte_pls_cnos_signal_job(orte_jobid_t jobid, int32_t signal, opal_list_t *attrs)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_pls_cnos_signal_proc(const orte_process_name_t* proc_name, int32_t signal)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  int orte_pls_cnos_cancel_operation(void)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_pls_cnos_finalize(void)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_SUCCESS;
-  }
-diff -r -c ./orte/mca/pls/cnos/pls_cnos_component.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos_component.c
-*** ./orte/mca/pls/cnos/pls_cnos_component.c	2008-08-25 13:17:22.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos_component.c	2010-04-22 12:58:46.000000000 -0600
-***************
-*** 17,23 ****
-  #include "orte_config.h"
-  
-  #ifdef HAVE_CNOS_PM_BARRIER
-! #include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "orte/orte_constants.h"
---- 17,23 ----
-  #include "orte_config.h"
-  
-  #ifdef HAVE_CNOS_PM_BARRIER
-! //#include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "orte/orte_constants.h"
-diff -r -c ./orte/mca/rmgr/cnos/rmgr_cnos.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos.c
-*** ./orte/mca/rmgr/cnos/rmgr_cnos.c	2008-08-25 13:17:18.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos.c	2010-06-23 16:00:24.000000000 -0600
-***************
-*** 27,33 ****
-  #include <signal.h>
-  #endif
-  #ifdef HAVE_CNOS_PM_BARRIER
-! #include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "opal/class/opal_list.h"
---- 27,33 ----
-  #include <signal.h>
-  #endif
-  #ifdef HAVE_CNOS_PM_BARRIER
-! //#include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "opal/class/opal_list.h"
-***************
-*** 38,43 ****
---- 38,45 ----
-  #include "orte/util/proc_info.h"
-  #include "rmgr_cnos.h"
-  
-+ #undef printf
-+ #define printf(arg,...)
-  
-  static int orte_rmgr_cnos_setup_job(orte_app_context_t** app_context,
-                                      orte_std_cntr_t num_context,
-***************
-*** 121,126 ****
---- 123,129 ----
-      orte_std_cntr_t num_context,
-      orte_jobid_t* jobid, opal_list_t *attrs)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 135,163 ****
-      orte_proc_state_t cb_conditions,
-      opal_list_t *attributes)
-  {
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_connect(orte_std_cntr_t num_connect,
-                                    orte_process_name_t *connect)
-  {
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_disconnect(orte_std_cntr_t num_connect,
-                                       orte_process_name_t *connect)
-  {
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  
-  static int orte_rmgr_cnos_finalize(void)
-  {
-  #ifdef HAVE_CNOS_PM_BARRIER
-      /* register with the process manager so that everyone aborts if
-         any one process aborts.  This is a bit slower than it needs to
-         be, but useful. */
-!     cnos_pm_barrier(1);
-  #endif
-  
-      return ORTE_SUCCESS;
---- 138,171 ----
-      orte_proc_state_t cb_conditions,
-      opal_list_t *attributes)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_connect(orte_std_cntr_t num_connect,
-                                    orte_process_name_t *connect)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_disconnect(orte_std_cntr_t num_connect,
-                                       orte_process_name_t *connect)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  
-  static int orte_rmgr_cnos_finalize(void)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-+ 
-  #ifdef HAVE_CNOS_PM_BARRIER
-      /* register with the process manager so that everyone aborts if
-         any one process aborts.  This is a bit slower than it needs to
-         be, but useful. */
-! //    cnos_pm_barrier(1);
-  #endif
-  
-      return ORTE_SUCCESS;
-***************
-*** 167,172 ****
---- 175,181 ----
-                                            orte_app_context_t*** app_context,
-                                            orte_std_cntr_t* num_context)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 174,190 ****
---- 183,202 ----
-                                            orte_app_context_t** app_context,
-                                            orte_std_cntr_t num_context)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_check_context_app(orte_app_context_t *context)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_check_context_cwd(orte_app_context_t *context,
-                                              bool want_chdir)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 192,197 ****
---- 204,210 ----
-                                           orte_vpid_t start,
-                                           orte_vpid_t range)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 199,209 ****
---- 212,224 ----
-                                           orte_vpid_t *start,
-                                           orte_vpid_t *range)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static orte_gpr_keyval_t* orte_rmgr_cnos_find_attribute(opal_list_t* attr_list, char* key)
-  {
-+ printf("%s %d %s\n",__FUNCTION__,__LINE__, key);
-      return NULL;
-  }
-  
-***************
-*** 211,226 ****
-                                          orte_data_type_t type, void *data,
-                                          bool overwrite)
-  {
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_merge_attributes(opal_list_t* target, opal_list_t* source, bool override)
-  {
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_delete_attribute(opal_list_t* attr_list, char* key)
-  {
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-- 
---- 226,243 ----
-                                          orte_data_type_t type, void *data,
-                                          bool overwrite)
-  {
-+ printf("%s %d %s\n",__FUNCTION__,__LINE__, key);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_merge_attributes(opal_list_t* target, opal_list_t* source, bool override)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  static int orte_rmgr_cnos_delete_attribute(opal_list_t* attr_list, char* key)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-diff -r -c ./orte/mca/rmgr/cnos/rmgr_cnos_component.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos_component.c
-*** ./orte/mca/rmgr/cnos/rmgr_cnos_component.c	2008-08-25 13:17:18.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos_component.c	2010-06-23 16:04:06.000000000 -0600
-***************
-*** 17,23 ****
-  #include "orte_config.h"
-  
-  #ifdef HAVE_CNOS_PM_BARRIER
-! #include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "orte/orte_constants.h"
---- 17,23 ----
-  #include "orte_config.h"
-  
-  #ifdef HAVE_CNOS_PM_BARRIER
-! //#include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  #include "orte/orte_constants.h"
-***************
-*** 31,36 ****
---- 31,39 ----
-  #include "orte/mca/pls/base/base.h"
-  #include "rmgr_cnos.h"
-  
-+ #undef printf
-+ #define printf(arg,...)
-+ 
-  /*
-   * Local functions
-   */
-***************
-*** 73,78 ****
---- 76,82 ----
-    */
-  static int orte_rmgr_cnos_open(void)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_SUCCESS;
-  }
-  
-***************
-*** 82,92 ****
-      /* set a priority higher than the proxy component */
-      *priority = 10;
-  
-  #ifdef HAVE_CNOS_PM_BARRIER
-      /* register with the process manager so that everyone aborts if
-         any one process aborts.  This is a bit slower than it needs to
-         be, but useful. */
-!     cnos_pm_barrier(0);
-  #endif
-  
-      return &orte_rmgr_cnos_module;
---- 86,98 ----
-      /* set a priority higher than the proxy component */
-      *priority = 10;
-  
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-+ 
-  #ifdef HAVE_CNOS_PM_BARRIER
-      /* register with the process manager so that everyone aborts if
-         any one process aborts.  This is a bit slower than it needs to
-         be, but useful. */
-! //    cnos_pm_barrier(0);
-  #endif
-  
-      return &orte_rmgr_cnos_module;
-***************
-*** 98,102 ****
---- 104,109 ----
-   */
-  static int orte_rmgr_cnos_close(void)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_SUCCESS;
-  }
-Only in /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/rml/cnos: lwkOrteRmlBinding.h
-diff -r -c ./orte/mca/rml/cnos/rml_cnos.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/rml/cnos/rml_cnos.c
-*** ./orte/mca/rml/cnos/rml_cnos.c	2008-08-25 13:17:21.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/rml/cnos/rml_cnos.c	2010-06-23 15:59:21.000000000 -0600
-***************
-*** 22,33 ****
-  #include "opal/util/output.h"
-  #include "orte/mca/rml/base/base.h"
-  #include "rml_cnos.h"
-  #include "orte/mca/errmgr/errmgr.h"
-  
-  #if OMPI_RML_CNOS_HAVE_BARRIER
-! #include <catamount/cnos_mpi_os.h>
-  #endif
-  
-  orte_rml_component_t mca_rml_cnos_component = {
-      /* First, the mca_base_component_t struct containing meta
-       * information about the component itself */
---- 22,37 ----
-  #include "opal/util/output.h"
-  #include "orte/mca/rml/base/base.h"
-  #include "rml_cnos.h"
-+ #include "lwkOrteRmlBinding.h"
-  #include "orte/mca/errmgr/errmgr.h"
-  
-  #if OMPI_RML_CNOS_HAVE_BARRIER
-! //#include <catamount/cnos_mpi_os.h>
-  #endif
-  
-+ #undef printf
-+ #define printf(arg,...)
-+ 
-  orte_rml_component_t mca_rml_cnos_component = {
-      /* First, the mca_base_component_t struct containing meta
-       * information about the component itself */
-***************
-*** 76,85 ****
---- 80,91 ----
-  };
-  
-  
-+ static void* _boo;
-  
-  int
-  orte_rml_cnos_open(void)
-  {
-+     _boo = lwkOrteRmlAlloc();
-      return ORTE_SUCCESS;
-  }
-  
-***************
-*** 88,93 ****
---- 94,100 ----
-  orte_rml_cnos_init(int *priority)
-  {
-      *priority = 0;
-+     printf("%s %d\n",__FUNCTION__,__LINE__);
-      return &orte_rml_cnos_module;
-  }
-  
-***************
-*** 95,124 ****
---- 102,137 ----
-  int
-  orte_rml_cnos_close(void)
-  {
-+     lwkOrteRmlFree( _boo );
-      return ORTE_SUCCESS;
-  }
-  
-  int
-  orte_rml_cnos_module_init(void)
-  {
-+     printf("%s %d\n",__FUNCTION__,__LINE__);
-+     lwkOrteRmlInit( _boo, orte_process_info.my_name );
-      return ORTE_SUCCESS;
-  }
-  
-  int
-  orte_rml_cnos_module_fini(void)
-  {
-+     printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_SUCCESS;
-  }
-  
-  char *
-  orte_rml_cnos_get_uri(void)
-  {
-+     printf("%s %d\n",__FUNCTION__,__LINE__);
-      return "(none)";
-  }
-  
-  int
-  orte_rml_cnos_set_uri(const char *name)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 126,137 ****
---- 139,152 ----
-  orte_rml_cnos_parse_uris(const char *uri,
-  			   orte_process_name_t * peer, char ***uris)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  int
-  orte_rml_cnos_ping(const char *uri, const struct timeval *tv)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 139,144 ****
---- 154,160 ----
-  orte_rml_cnos_send(orte_process_name_t * peer,
-  		     struct iovec *msg, int count, int tag, int flags)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 147,152 ****
---- 163,169 ----
-  			    orte_buffer_t * buffer,
-  			    orte_rml_tag_t tag, int flags)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 155,160 ****
---- 172,178 ----
-  		     struct iovec *msg,
-  		     int count, orte_rml_tag_t tag, int flags)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 162,167 ****
---- 180,186 ----
-  orte_rml_cnos_recv_buffer(orte_process_name_t * peer,
-  			    orte_buffer_t * buf, orte_rml_tag_t tag)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-***************
-*** 172,177 ****
---- 191,197 ----
-  			orte_rml_tag_t tag,
-  			int flags, orte_rml_callback_fn_t cbfunc, void *cbdata)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      return ORTE_SUCCESS;
-  }
-  
-***************
-*** 183,189 ****
-  			       orte_rml_buffer_callback_fn_t
-  			       cbfunc, void *cbdata)
-  {
-!     return ORTE_SUCCESS;
-  }
-  
-  int
---- 203,211 ----
-  			       orte_rml_buffer_callback_fn_t
-  			       cbfunc, void *cbdata)
-  {
-! 
-!     return lwkOrteRmlSendBufferNB( _boo, peer, buffer,
-! 						tag, flags, cbfunc, cbdata );
-  }
-  
-  int
-***************
-*** 193,199 ****
-  			orte_rml_tag_t tag,
-  			int flags, orte_rml_callback_fn_t cbfunc, void *cbdata)
-  {
-!     return ORTE_SUCCESS;
-  }
-  
-  int
---- 215,221 ----
-  			orte_rml_tag_t tag,
-  			int flags, orte_rml_callback_fn_t cbfunc, void *cbdata)
-  {
-!     return lwkOrteRmlRecvNB( _boo, peer, tag, flags, cbfunc, cbdata );
-  }
-  
-  int
-***************
-*** 203,225 ****
-  			       orte_rml_buffer_callback_fn_t
-  			       cbfunc, void *cbdata)
-  {
-!     return ORTE_SUCCESS;
-  }
-  
-  int
-  orte_rml_cnos_recv_cancel(orte_process_name_t * peer, orte_rml_tag_t tag)
-  {
-!     return ORTE_ERR_NOT_SUPPORTED;
-  }
-  
-  int
-  orte_rml_cnos_barrier(void)
-  {
-! #if OMPI_RML_CNOS_HAVE_BARRIER
-!     cnos_barrier();
-! #endif
-! 
-!     return ORTE_SUCCESS;
-  }
-  
-  int
---- 225,243 ----
-  			       orte_rml_buffer_callback_fn_t
-  			       cbfunc, void *cbdata)
-  {
-!     return lwkOrteRmlRecvBufferNB( _boo, peer, tag, flags, cbfunc, cbdata );
-  }
-  
-  int
-  orte_rml_cnos_recv_cancel(orte_process_name_t * peer, orte_rml_tag_t tag)
-  {
-!     return lwkOrteRmlRecvCancel( _boo, peer, tag );
-  }
-  
-  int
-  orte_rml_cnos_barrier(void)
-  {
-!     return lwkOrteRmlBarrier( _boo );
-  }
-  
-  int
-***************
-*** 230,235 ****
---- 248,254 ----
-                      orte_gpr_trigger_cb_fn_t cbfunc,
-                      void *user_tag)
-  {
-+ printf("%s %d\n",__FUNCTION__,__LINE__);
-      if (NULL != root || NULL != peers || 0 != num_peers || 
-          NULL != buffer || NULL != user_tag) {
-          return ORTE_ERR_NOT_SUPPORTED;
-diff -r -c ./orte/mca/sds/cnos/sds_cnos_module.c /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/sds/cnos/sds_cnos_module.c
-*** ./orte/mca/sds/cnos/sds_cnos_module.c	2008-08-25 13:17:20.000000000 -0600
---- /home/mjleven/hg3/kitten/user/libs/openmpi-1.2.9/orte/mca/sds/cnos/sds_cnos_module.c	2010-06-25 13:22:18.000000000 -0600
-***************
-*** 19,41 ****
-  
-  #include "orte_config.h"
-  
-! #include <catamount/cnos_mpi_os.h>
-  
-  #include "orte/orte_constants.h"
-  #include "orte/mca/sds/sds.h"
-  #include "orte/mca/sds/base/base.h"
-! #include "orte/mca/sds/cnos/sds_cnos.h"
-  #include "orte/util/proc_info.h"
-  #include "orte/mca/ns/base/base.h"
-  #include "orte/mca/errmgr/base/base.h"
-  
-! orte_sds_base_module_t orte_sds_cnos_module = {
-!     orte_sds_cnos_contact_universe,
-!     orte_sds_cnos_set_name,
-!     orte_sds_cnos_finalize,
-! };
-  
-! int
-  orte_sds_cnos_contact_universe(void)
-  {
-      orte_process_info.seed = false;
---- 19,38 ----
-  
-  #include "orte_config.h"
-  
-! //#include <catamount/cnos_mpi_os.h>
-  
-  #include "orte/orte_constants.h"
-  #include "orte/mca/sds/sds.h"
-  #include "orte/mca/sds/base/base.h"
-! //#include "orte/mca/sds/cnos/sds_cnos.h"
-  #include "orte/util/proc_info.h"
-  #include "orte/mca/ns/base/base.h"
-  #include "orte/mca/errmgr/base/base.h"
-  
-! #undef printf
-! #define printf(arg,...)
-  
-! static int
-  orte_sds_cnos_contact_universe(void)
-  {
-      orte_process_info.seed = false;
-***************
-*** 62,68 ****
-      return ORTE_SUCCESS;
-  }
-  
-! int
-  orte_sds_cnos_set_name(void)
-  {
-      int rc;
---- 59,67 ----
-      return ORTE_SUCCESS;
-  }
-  
-! #include <stdio.h>
-! 
-! static int
-  orte_sds_cnos_set_name(void)
-  {
-      int rc;
-***************
-*** 70,75 ****
---- 69,96 ----
-      orte_jobid_t jobid;
-      orte_vpid_t vpid;
-  
-+ 	printf("%s():%d: \n",__FUNCTION__,__LINE__);
-+ 
-+     FILE* fp;
-+ 
-+     #define BUF_LEN 100
-+     char buf[BUF_LEN];
-+     snprintf(buf,BUF_LEN,"/proc/%d/app-info", getpid() );
-+     if ( ( fp = fopen( buf, "r" ) ) == -1 ) {
-+ 	    printf("%s():%d:  fopen( %s) failed: %s \n",__FUNCTION__,__LINE__,
-+                     buf,strerror(errno));
-+ 	    return ORTE_ERROR;
-+     }
-+ 
-+     int nRanks, myRank; 
-+     if ( fscanf( fp, "%d\n%d\n", &nRanks, &myRank ) != 2 ) {
-+ 	printf("%s():%d:  fscanf app-info failed\n",__FUNCTION__,__LINE__);
-+ 	return ORTE_ERROR;
-+     }
-+ 
-+     fclose( fp );
-+ 
-+     printf("%s %d nRanks=%d myRank=%d\n",__FUNCTION__,__LINE__,nRanks,myRank);
-      /* Get our process information
-       *
-       * we're going to make up the cellid and jobid.  find our vpid,
-***************
-*** 77,83 ****
-       */
-      cellid = 0;
-      jobid = 1; /* not 0, since it has special meaning */
-!     vpid = (orte_vpid_t) cnos_get_rank();
-      if (ORTE_SUCCESS != (rc = orte_ns.create_process_name(&(orte_process_info.my_name),
-                                                            cellid,
-                                                            jobid,
---- 98,104 ----
-       */
-      cellid = 0;
-      jobid = 1; /* not 0, since it has special meaning */
-!     vpid = (orte_vpid_t) myRank;//cnos_get_rank();
-      if (ORTE_SUCCESS != (rc = orte_ns.create_process_name(&(orte_process_info.my_name),
-                                                            cellid,
-                                                            jobid,
-***************
-*** 87,100 ****
-      }
-      
-      orte_process_info.vpid_start = (orte_vpid_t) 0;
-!     orte_process_info.num_procs = (size_t) cnos_get_size();
-  
-      return ORTE_SUCCESS;
-  }
-  
-  
-! int 
-  orte_sds_cnos_finalize(void)
-  {
-      return ORTE_SUCCESS;
-  }
---- 108,130 ----
-      }
-      
-      orte_process_info.vpid_start = (orte_vpid_t) 0;
-!     orte_process_info.num_procs = (size_t) nRanks;//cnos_get_size();
-  
-      return ORTE_SUCCESS;
-  }
-  
-  
-! static int 
-  orte_sds_cnos_finalize(void)
-  {
-+ 	printf("%s():%d: \n",__FUNCTION__,__LINE__);
-      return ORTE_SUCCESS;
-  }
-+ 
-+ 
-+ orte_sds_base_module_t orte_sds_cnos_module = {
-+     orte_sds_cnos_contact_universe,
-+     orte_sds_cnos_set_name,
-+     orte_sds_cnos_finalize,
-+ };
-+ 
+diff -r openmpi-1.2.9/configure openmpi-patch/configure
+77050c77050
+< return cnos_barrier ();
+---
+> //return cnos_barrier ();
+77144c77144
+< return $ac_func ();
+---
+> //return $ac_func ();
+93934c93934
+< return $ac_func ();
+---
+> //return $ac_func ();
+98182c98182
+< return cnos_get_rank ();
+---
+> //return cnos_get_rank ();
+diff -r openmpi-1.2.9/contrib/platform/redstorm openmpi-patch/contrib/platform/redstorm
+4d3
+< with_threads=no
+9c8
+< enable_mca_no_build=maffinity-first_use,maffinity-libnuma,paffinity-linux,timer-linux,gpr-proxy,gpr-replica,iof-svc,ns-proxy,oob-tcp,pls-rsh,ras-dash_host,ras-hostfile,ras-localhost,rds-hostfile,rds-resfile,rmaps-round_robin,rmgr-proxy,rmgr-urm,rml-oob,sds-env,sds-seed,sds-singleton,btl-sm,btl-self,coll-hierarch,coll-sm,common-sm,mpool-sm,pml-dr
+---
+> enable_mca_no_build=maffinity-first_use,maffinity-libnuma,paffinity-linux,timer-linux,gpr-proxy,gpr-replica,iof-svc,ns-proxy,oob-tcp,pls-rsh,ras-dash_host,ras-hostfile,ras-localhost,rds-hostfile,rds-resfile,rmaps-round_robin,rmgr-proxy,rmgr-urm,rml-oob,sds-env,sds-seed,sds-singleton,btl-sm,coll-hierarch,coll-sm,common-sm,mpool-sm,pml-dr
+16,98d14
+< ac_cv_func_poll=no
+< ac_cv_func_select=no
+< ac_cv_header_poll_h=no
+< ac_cv_header_sys_epoll_h=no
+< ac_cv_func_getpwuid=no
+< ac_cv_header_infiniband_driver_h=yes
+< 
+< ompi_cv_f77_sizeof_LOGICAL=${ompi_cv_f77_sizeof_LOGICAL=4}
+< ompi_cv_f77_alignment_LOGICAL=${ompi_cv_f77_alignment_LOGICAL=4}
+< ompi_cv_f77_sizeof_INTEGER=${ompi_cv_f77_sizeof_INTEGER=4}
+< ompi_cv_f77_alignment_INTEGER=${ompi_cv_f77_alignment_INTEGER=4}
+< ompi_cv_f77_sizeof_INTEGERp1=${ompi_cv_f77_sizeof_INTEGERp1=1}
+< ompi_cv_f77_alignment_INTEGERp1=${ompi_cv_f77_alignment_INTEGERp1=1}
+< ompi_cv_f77_sizeof_INTEGERp2=${ompi_cv_f77_sizeof_INTEGERp2=2}
+< ompi_cv_f77_alignment_INTEGERp2=${ompi_cv_f77_alignment_INTEGERp2=2}
+< ompi_cv_f77_sizeof_INTEGERp4=${ompi_cv_f77_sizeof_INTEGERp4=4}
+< ompi_cv_f77_alignment_INTEGERp4=${ompi_cv_f77_alignment_INTEGERp4=4}
+< ompi_cv_f77_sizeof_INTEGERp8=${ompi_cv_f77_sizeof_INTEGERp8=8}
+< ompi_cv_f77_alignment_INTEGERp8=${ompi_cv_f77_alignment_INTEGERp8=8}
+< ompi_cv_f77_sizeof_INTEGERp16=${ompi_cv_f77_sizeof_INTEGERp16=16}
+< ompi_cv_f77_alignment_INTEGERp16=${ompi_cv_f77_alignment_INTEGERp16=8}
+< ompi_cv_f77_sizeof_REAL=${ompi_cv_f77_sizeof_REAL=4}
+< ompi_cv_f77_alignment_REAL=${ompi_cv_f77_alignment_REAL=4}
+< ompi_cv_f77_sizeof_REALp2=${ompi_cv_f77_sizeof_REALp2=2}
+< ompi_cv_f77_alignment_REALp2=${ompi_cv_f77_alignment_REALp2=2}
+< ompi_cv_f77_sizeof_REALp4=${ompi_cv_f77_sizeof_REALp4=4}
+< ompi_cv_f77_alignment_REALp4=${ompi_cv_f77_alignment_REALp4=4}
+< ompi_cv_f77_sizeof_REALp8=${ompi_cv_f77_sizeof_REALp8=8}
+< ompi_cv_f77_alignment_REALp8=${ompi_cv_f77_alignment_REALp8=8}
+< ompi_cv_f77_sizeof_REALp16=${ompi_cv_f77_sizeof_REALp16=16}
+< ompi_cv_f77_alignment_REALp16=${ompi_cv_f77_alignment_REALp16=8}
+< ompi_cv_f77_sizeof_DOUBLE_PRECISION=${ompi_cv_f77_sizeof_DOUBLE_PRECISION=8}
+< ompi_cv_f77_alignment_DOUBLE_PRECISION=${ompi_cv_f77_alignment_DOUBLE_PRECISION=8}
+< ompi_cv_f77_sizeof_COMPLEX=${ompi_cv_f77_sizeof_COMPLEX=8}
+< ompi_cv_f77_alignment_COMPLEX=${ompi_cv_f77_alignment_COMPLEX=4}
+< ompi_cv_f77_sizeof_COMPLEXp8=${ompi_cv_f77_sizeof_COMPLEXp8=8}
+< ompi_cv_f77_alignment_COMPLEXp8=${ompi_cv_f77_alignment_COMPLEXp8=4}
+< ompi_cv_f77_sizeof_COMPLEXp16=${ompi_cv_f77_sizeof_COMPLEXp16=16}
+< ompi_cv_f77_alignment_COMPLEXp16=${ompi_cv_f77_alignment_COMPLEXp16=8}
+< ompi_cv_f77_sizeof_COMPLEXp32=${ompi_cv_f77_sizeof_COMPLEXp32=32}
+< ompi_cv_f77_alignment_COMPLEXp32=${ompi_cv_f77_alignment_COMPLEXp32=8}
+< ompi_cv_f77_true_value=${ompi_cv_f77_true_value=-1}
+< 
+< 
+< ompi_cv_f90_sizeof_LOGICAL=${ompi_cv_f90_sizeof_LOGICAL=4}
+< ompi_cv_f90_alignment_LOGICAL=${ompi_cv_f90_alignment_LOGICAL=4}
+< ompi_cv_f90_sizeof_INTEGER=${ompi_cv_f90_sizeof_INTEGER=4}
+< ompi_cv_f90_alignment_INTEGER=${ompi_cv_f90_alignment_INTEGER=4}
+< ompi_cv_f90_sizeof_INTEGERp1=${ompi_cv_f90_sizeof_INTEGERp1=1}
+< ompi_cv_f90_alignment_INTEGERp1=${ompi_cv_f90_alignment_INTEGERp1=1}
+< ompi_cv_f90_sizeof_INTEGERp2=${ompi_cv_f90_sizeof_INTEGERp2=2}
+< ompi_cv_f90_alignment_INTEGERp2=${ompi_cv_f90_alignment_INTEGERp2=2}
+< ompi_cv_f90_sizeof_INTEGERp4=${ompi_cv_f90_sizeof_INTEGERp4=4}
+< ompi_cv_f90_alignment_INTEGERp4=${ompi_cv_f90_alignment_INTEGERp4=4}
+< ompi_cv_f90_sizeof_INTEGERp8=${ompi_cv_f90_sizeof_INTEGERp8=8}
+< ompi_cv_f90_alignment_INTEGERp8=${ompi_cv_f90_alignment_INTEGERp8=8}
+< ompi_cv_f90_sizeof_INTEGERp16=${ompi_cv_f90_sizeof_INTEGERp16=16}
+< ompi_cv_f90_alignment_INTEGERp16=${ompi_cv_f90_alignment_INTEGERp16=8}
+< ompi_cv_f90_sizeof_REAL=${ompi_cv_f90_sizeof_REAL=4}
+< ompi_cv_f90_alignment_REAL=${ompi_cv_f90_alignment_REAL=4}
+< ompi_cv_f90_sizeof_REALp2=${ompi_cv_f90_sizeof_REALp2=2}
+< ompi_cv_f90_alignment_REALp2=${ompi_cv_f90_alignment_REALp2=2}
+< ompi_cv_f90_sizeof_REALp4=${ompi_cv_f90_sizeof_REALp4=4}
+< ompi_cv_f90_alignment_REALp4=${ompi_cv_f90_alignment_REALp4=4}
+< ompi_cv_f90_sizeof_REALp8=${ompi_cv_f90_sizeof_REALp8=8}
+< ompi_cv_f90_alignment_REALp8=${ompi_cv_f90_alignment_REALp8=8}
+< ompi_cv_f90_sizeof_REALp16=${ompi_cv_f90_sizeof_REALp16=16}
+< ompi_cv_f90_alignment_REALp16=${ompi_cv_f90_alignment_REALp16=8}
+< ompi_cv_f90_sizeof_DOUBLE_PRECISION=${ompi_cv_f90_sizeof_DOUBLE_PRECISION=8}
+< ompi_cv_f90_alignment_DOUBLE_PRECISION=${ompi_cv_f90_alignment_DOUBLE_PRECISION=8}
+< ompi_cv_f90_sizeof_COMPLEX=${ompi_cv_f90_sizeof_COMPLEX=8}
+< ompi_cv_f90_alignment_COMPLEX=${ompi_cv_f90_alignment_COMPLEX=4}
+< ompi_cv_f90_sizeof_COMPLEXp8=${ompi_cv_f90_sizeof_COMPLEXp8=8}
+< ompi_cv_f90_alignment_COMPLEXp8=${ompi_cv_f90_alignment_COMPLEXp8=4}
+< ompi_cv_f90_sizeof_COMPLEXp16=${ompi_cv_f90_sizeof_COMPLEXp16=16}
+< ompi_cv_f90_alignment_COMPLEXp16=${ompi_cv_f90_alignment_COMPLEXp16=8}
+< ompi_cv_f90_sizeof_COMPLEXp32=${ompi_cv_f90_sizeof_COMPLEXp32=32}
+< ompi_cv_f90_alignment_COMPLEXp32=${ompi_cv_f90_alignment_COMPLEXp32=8}
+< ompi_cv_f90_true_value=${ompi_cv_f90_true_value=-1}
+< ompi_cv_f90_sizeof_DOUBLE_COMPLEX=${ompi_cv_f90_sizeof_DOUBLE_COMPLEX=16}
+< ompi_cv_f90_alignment_DOUBLE_COMPLEX=${ompi_cv_f90_alignment_DOUBLE_COMPLEX=8}
+< ompi_cv_f90_int_kind_9=${ompi_cv_f90_int_kind_9=4}
+< ompi_cv_f90_int_kind_18=${ompi_cv_f90_int_kind_18=8}
+diff -r openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_component.c openmpi-patch/ompi/mca/btl/openib/btl_openib_component.c
+932,936c932,936
+< #if OMPI_MCA_BTL_OPENIB_HAVE_DEVICE_LIST
+<     ibv_free_device_list(ib_devs);
+< #else
+<     free(ib_devs);
+< #endif
+---
+> //#if OMPI_MCA_BTL_OPENIB_HAVE_DEVICE_LIST
+> //    ibv_free_device_list(ib_devs);
+> //#else
+> //    free(ib_devs);
+> //#endif
+diff -r openmpi-1.2.9/ompi/mca/btl/openib/btl_openib_proc.c openmpi-patch/ompi/mca/btl/openib/btl_openib_proc.c
+130a131
+> #if 0
+145a147,152
+> #endif
+> 
+> // this is a memory leak
+> 	size =  sizeof( struct mca_btl_openib_port_info_t );
+> 	module_proc->proc_ports = malloc( size );
+> 	module_proc->proc_ports[0].subnet_id = 0xfe80000000000000;
+diff -r openmpi-1.2.9/ompi/runtime/ompi_mpi_init.c openmpi-patch/ompi/runtime/ompi_mpi_init.c
+599a600
+>         opal_set_using_threads(true);
+diff -r openmpi-1.2.9/opal/include/opal_config_bottom.h openmpi-patch/opal/include/opal_config_bottom.h
+58c58,59
+< #define OMPI_HAVE_THREAD_SUPPORT (OMPI_ENABLE_MPI_THREADS || OMPI_ENABLE_PROGRESS_THREADS)
+---
+> //#define OMPI_HAVE_THREAD_SUPPORT (OMPI_ENABLE_MPI_THREADS || OMPI_ENABLE_PROGRESS_THREADS)
+> #define OMPI_HAVE_THREAD_SUPPORT 1
+diff -r openmpi-1.2.9/opal/util/if.c openmpi-patch/opal/util/if.c
+133a134
+>     OBJ_CONSTRUCT(&opal_if_list, opal_list_t);
+210c211
+<     OBJ_CONSTRUCT(&opal_if_list, opal_list_t);
+---
+>     //OBJ_CONSTRUCT(&opal_if_list, opal_list_t);
+diff -r openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos.c openmpi-patch/orte/mca/pls/cnos/pls_cnos.c
+34c34
+< #include <catamount/cnos_mpi_os.h>
+---
+> //#include <catamount/cnos_mpi_os.h>
+42a43,45
+> #undef printf
+> #define printf(arg,...)
+> 
+67a71
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+72c76
+< #include "catamount/types.h"
+---
+> //#include "catamount/types.h"
+74c78
+< extern int killrank(rank_t RANK, int SIG);
+---
+> //extern int killrank(rank_t RANK, int SIG);
+80a85,87
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+> 
+> #if 0
+88a96
+> #endif
+97a106,108
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+> 
+> #if 0
+105a117
+> #endif
+115a128
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+117a131
+> #if 0
+124a139
+> #endif
+131a147
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+136a153
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+141a159
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+146a165
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+diff -r openmpi-1.2.9/orte/mca/pls/cnos/pls_cnos_component.c openmpi-patch/orte/mca/pls/cnos/pls_cnos_component.c
+20c20
+< #include <catamount/cnos_mpi_os.h>
+---
+> //#include <catamount/cnos_mpi_os.h>
+diff -r openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos.c openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos.c
+30c30
+< #include <catamount/cnos_mpi_os.h>
+---
+> //#include <catamount/cnos_mpi_os.h>
+40a41,42
+> #undef printf
+> #define printf(arg,...)
+123a126
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+137a141
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+143a148
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+149a155
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+155a162,163
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+> 
+160c168
+<     cnos_pm_barrier(1);
+---
+> //    cnos_pm_barrier(1);
+169a178
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+176a186
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+181a192
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+187a199
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+194a207
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+201a215
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+206a221
+> printf("%s %d %s\n",__FUNCTION__,__LINE__, key);
+213a229
+> printf("%s %d %s\n",__FUNCTION__,__LINE__, key);
+218a235
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+223a241
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+226d243
+< 
+diff -r openmpi-1.2.9/orte/mca/rmgr/cnos/rmgr_cnos_component.c openmpi-patch/orte/mca/rmgr/cnos/rmgr_cnos_component.c
+20c20
+< #include <catamount/cnos_mpi_os.h>
+---
+> //#include <catamount/cnos_mpi_os.h>
+33a34,36
+> #undef printf
+> #define printf(arg,...)
+> 
+75a79
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+84a89,90
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+> 
+89c95
+<     cnos_pm_barrier(0);
+---
+> //    cnos_pm_barrier(0);
+100a107
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+diff -r openmpi-1.2.9/orte/mca/rml/cnos/rml_cnos.c openmpi-patch/orte/mca/rml/cnos/rml_cnos.c
+24a25
+> #include "lwkOrteRmlBinding.h"
+28c29
+< #include <catamount/cnos_mpi_os.h>
+---
+> //#include <catamount/cnos_mpi_os.h>
+30a32,34
+> #undef printf
+> #define printf(arg,...)
+> 
+78a83
+> static void* _boo;
+82a88
+>     _boo = lwkOrteRmlAlloc();
+90a97
+>     printf("%s %d\n",__FUNCTION__,__LINE__);
+97a105
+>     lwkOrteRmlFree( _boo );
+103a112,113
+>     printf("%s %d\n",__FUNCTION__,__LINE__);
+>     lwkOrteRmlInit( _boo, orte_process_info.my_name );
+109a120
+>     printf("%s %d\n",__FUNCTION__,__LINE__);
+115a127
+>     printf("%s %d\n",__FUNCTION__,__LINE__);
+121a134
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+128a142
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+134a149
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+141a157
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+149a166
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+157a175
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+164a183
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+174a194
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+186c206,208
+<     return ORTE_SUCCESS;
+---
+> 
+>     return lwkOrteRmlSendBufferNB( _boo, peer, buffer,
+> 						tag, flags, cbfunc, cbdata );
+196c218
+<     return ORTE_SUCCESS;
+---
+>     return lwkOrteRmlRecvNB( _boo, peer, tag, flags, cbfunc, cbdata );
+206c228
+<     return ORTE_SUCCESS;
+---
+>     return lwkOrteRmlRecvBufferNB( _boo, peer, tag, flags, cbfunc, cbdata );
+212c234
+<     return ORTE_ERR_NOT_SUPPORTED;
+---
+>     return lwkOrteRmlRecvCancel( _boo, peer, tag );
+218,222c240
+< #if OMPI_RML_CNOS_HAVE_BARRIER
+<     cnos_barrier();
+< #endif
+< 
+<     return ORTE_SUCCESS;
+---
+>     return lwkOrteRmlBarrier( _boo );
+232a251
+> printf("%s %d\n",__FUNCTION__,__LINE__);
+diff -r openmpi-1.2.9/orte/mca/sds/cnos/sds_cnos_module.c openmpi-patch/orte/mca/sds/cnos/sds_cnos_module.c
+22c22
+< #include <catamount/cnos_mpi_os.h>
+---
+> //#include <catamount/cnos_mpi_os.h>
+27c27
+< #include "orte/mca/sds/cnos/sds_cnos.h"
+---
+> //#include "orte/mca/sds/cnos/sds_cnos.h"
+32,36c32,33
+< orte_sds_base_module_t orte_sds_cnos_module = {
+<     orte_sds_cnos_contact_universe,
+<     orte_sds_cnos_set_name,
+<     orte_sds_cnos_finalize,
+< };
+---
+> #undef printf
+> #define printf(arg,...)
+38c35
+< int
+---
+> static int
+65c62,64
+< int
+---
+> #include <stdio.h>
+> 
+> static int
+72a72,93
+> 	printf("%s():%d: \n",__FUNCTION__,__LINE__);
+> 
+>     FILE* fp;
+> 
+>     #define BUF_LEN 100
+>     char buf[BUF_LEN];
+>     snprintf(buf,BUF_LEN,"/proc/%d/app-info", getpid() );
+>     if ( ( fp = fopen( buf, "r" ) ) == -1 ) {
+> 	    printf("%s():%d:  fopen( %s) failed: %s \n",__FUNCTION__,__LINE__,
+>                     buf,strerror(errno));
+> 	    return ORTE_ERROR;
+>     }
+> 
+>     int nRanks, myRank; 
+>     if ( fscanf( fp, "%d\n%d\n", &nRanks, &myRank ) != 2 ) {
+> 	printf("%s():%d:  fscanf app-info failed\n",__FUNCTION__,__LINE__);
+> 	return ORTE_ERROR;
+>     }
+> 
+>     fclose( fp );
+> 
+>     printf("%s %d nRanks=%d myRank=%d\n",__FUNCTION__,__LINE__,nRanks,myRank);
+80c101
+<     vpid = (orte_vpid_t) cnos_get_rank();
+---
+>     vpid = (orte_vpid_t) myRank;//cnos_get_rank();
+90c111
+<     orte_process_info.num_procs = (size_t) cnos_get_size();
+---
+>     orte_process_info.num_procs = (size_t) nRanks;//cnos_get_size();
+96c117
+< int 
+---
+> static int 
+98a120
+> 	printf("%s():%d: \n",__FUNCTION__,__LINE__);
+100a123,130
+> 
+> 
+> orte_sds_base_module_t orte_sds_cnos_module = {
+>     orte_sds_cnos_contact_universe,
+>     orte_sds_cnos_set_name,
+>     orte_sds_cnos_finalize,
+> };
+> 
