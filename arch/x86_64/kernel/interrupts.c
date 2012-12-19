@@ -172,6 +172,7 @@ do_page_fault(struct pt_regs *regs, unsigned int vector)
 
 	int i = sigsend(current->aspace->id, ANY_ID, SIGSEGV, &s);
 	printk(">> PAGE FAULT! Sent signal %d: CR2 is %p\n", i, s.si_addr);
+	show_registers(regs);
 }
 
 void
