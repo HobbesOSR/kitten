@@ -24,6 +24,7 @@ obj-y := \
 	set_tid_address.o \
 	sched_getaffinity.o \
 	getrlimit.o \
+	getrusage.o \
 	exit.o \
 	exit_group.o \
 	getpid.o \

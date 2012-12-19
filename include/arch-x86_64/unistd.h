@@ -220,7 +220,7 @@ __SYSCALL(__NR_gettimeofday, sys_gettimeofday)
 #define __NR_getrlimit                          97
 __SYSCALL(__NR_getrlimit, sys_getrlimit)
 #define __NR_getrusage                          98
-__SYSCALL(__NR_getrusage, syscall_not_implemented)
+__SYSCALL(__NR_getrusage, sys_getrusage)
 #define __NR_sysinfo                            99
 __SYSCALL(__NR_sysinfo, syscall_not_implemented)
 #define __NR_times                             100
