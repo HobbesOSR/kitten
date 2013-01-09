@@ -100,10 +100,6 @@ create_init_task(void)
 
 	struct task_struct *new_task = __task_create(&start_state, NULL);
 
-	/* Assign stdout and stderr */
-
-	kfs_init_stdio(new_task);
-
 	sched_add_task(new_task);
 
 	return 0;
