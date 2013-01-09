@@ -1159,6 +1159,9 @@ static int __cpuinit __mcheck_cpu_cap_init(void)
 	if (!banks)
 		printk(KERN_INFO "mce: CPU supports %d MCE banks\n", b);
 
+	if (banks == 0)
+		return -1;
+
 	if (b > MAX_NR_BANKS) {
 		printk(KERN_WARNING
 		       "MCE: Using only %u machine check banks out of %u\n",
