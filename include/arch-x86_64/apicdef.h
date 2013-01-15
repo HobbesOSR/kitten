@@ -119,7 +119,7 @@
 #define MAX_LOCAL_APIC 256
 
 #define MAX_IO_APIC_PINS 32   /* Max pins per I/O APIC */
-#define MAX_IO_APIC_SRCS 16   /* Max devices sharing an I/O APIC pin */
+#define MAX_IO_APIC_SRCS 32   /* Max devices sharing an I/O APIC pin */
 
 /*
  * All x86-64 systems are xAPIC compatible.
