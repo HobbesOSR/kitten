@@ -189,8 +189,6 @@ merge_pmem_list(void)
 }
 
 static void
-zero_pmem(const struct pmem_region *rgn) __attribute__((unused));
-static void
 zero_pmem(const struct pmem_region *rgn)
 {
 	/* access pmem region via the kernel's identity map */
@@ -373,6 +371,7 @@ __pmem_alloc(size_t size, size_t alignment,
 			candidate.allocated = true;
 			status = __pmem_update(&candidate);
 			BUG_ON(status);
+			zero_pmem(&candidate);
 			if (result)
 				*result = candidate;
 			return 0;
