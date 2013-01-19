@@ -12,5 +12,6 @@ struct arch_aspace {
 #endif
 
 #define SMARTMAP_ALIGN	0x8000000000UL  /* Each PML4T entry covers 512 GB */
+#define SMARTMAP_SHIFT  39
 
 #endif
