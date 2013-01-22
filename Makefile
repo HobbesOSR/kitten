@@ -734,12 +734,12 @@ ifeq ($(CONFIG_CRAY_XT),y)
 # Generate the necessary padding to push the executable image
 # to the start address since the XT3 bootloader always loads
 # at 0x10000.
-vmlwk.bin: vmlwk FORCE
+vmlwk.bin: vmlwk
 	$(OBJCOPY) -O binary $< $@.tmp
 	( perl -e 'print chr(0x90) x (1<<20)' ; cat $@.tmp ) > $@
 	$(RM) $@.tmp
 else
-vmlwk.bin: vmlwk FORCE
+vmlwk.bin: vmlwk
 	$(OBJCOPY) -O binary $< $@
 endif
 
@@ -972,10 +972,11 @@ $(clean-dirs):
 clean: archclean $(clean-dirs)
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
-	@find . $(RCS_FIND_IGNORE) \
+	@find . -path ./user -prune -o $(RCS_FIND_IGNORE) \
 	 	\( -name '*.[oas]' -o -name '*.ko' -o -name '.*.cmd' \
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \) \
 		-type f -print | xargs rm -f
+	$(Q)$(MAKE) -s -C user clean
 	@rm -f init_task
 
 # mrproper - Delete all generated files, including .config
@@ -1365,8 +1366,9 @@ endif	# skip-makefile
 user init_task: O:=$(if $O,$O,$(objtree))
 # Build LWK user-space libraries and example programs
 user: FORCE
-	if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
-	$(MAKE) \
+	@if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
+	$(Q)$(MAKE) \
+		-s \
 		-C $(src)/$@ \
 		O=$O/$@ \
 		src=$(src)/$@ \
@@ -1374,7 +1376,7 @@ user: FORCE
 
 # A simple user-space app for the LWK to launch at boot
 init_task: user FORCE
-	cp $O/user/hello_world/hello_world $O/init_task
+	@cp $O/user/hello_world/hello_world $O/init_task
 
 PHONY += FORCE
 FORCE:
