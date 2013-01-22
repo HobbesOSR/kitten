@@ -13,7 +13,7 @@ int xpmem_version(void)
 }
 
 
-/*
+/**
  * On Kitten, the convention is that SMARTMAP slot 0 is used by the PCT
  * and SMARTMAP slots 1 to N are used for app processes 0 to N-1.
  * Furthermore, app processes 0 to N-1 have their pids (process IDs) offset
@@ -79,7 +79,7 @@ void *xpmem_attach(struct xpmem_addr addr, size_t size, void *vaddr)
 		return (void *) -1;
 	}
 
-	return addr.apid + addr.offset;
+	return (void *)(addr.apid + addr.offset);
 }
 
 
