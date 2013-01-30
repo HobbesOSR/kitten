@@ -2,6 +2,7 @@
 syntax: glob
 
 *.o
+*.a
 *.cmd
 *.out
 vmlwk
@@ -43,9 +44,10 @@ include/arch
 init_task
 user/hello_world/hello_world
 user/liblwk/liblwk.a
-user/smartmap/loader
+user/smartmap/smartmap_loader
 user/smartmap/smartmap_app
 user/test_app/test_app
+user/install
 docs/html/*
 docs/latex/*
 *.orig

@@ -1,21 +1,15 @@
-CONFIG=../../.config
-include ../Makefile.header
+BASE=..
+include $(BASE)/Makefile.header
 
-PROGRAMS = smartmap_app loader
+PROGRAMS = smartmap_app smartmap_loader
 
-INCLUDES += \
-	-I../liblwk/include \
-	-I../../include \
-	-I$O/../../include \
-	-I$O/../../include2 \
-
-loader_SOURCES = loader.c
-loader_LDADD   = ../liblwk/liblwk.a -lpthread
+smartmap_loader_SOURCES = loader.c
+smartmap_loader_LDADD   = -llwk -lpthread
 
 smartmap_app_SOURCES = smartmap_app.c
 
 # Embed the smartmap_app ELF executable in the loader's ELF image
-loader_RAWDATA = smartmap_app
-CC_LDFLAGS     += -Wl,--section-start -Wl,.rawdata=0x1000000
+smartmap_loader_RAWDATA = smartmap_app
+CC_LDFLAGS += -Wl,--section-start -Wl,.rawdata=0x1000000
 
-include ../Makefile.footer
+include $(BASE)/Makefile.footer

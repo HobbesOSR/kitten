@@ -2,7 +2,7 @@
 CC=gcc
 CPPFLAGS = -Wall
 CPPFLAGS += -I../../../include
-CPPFLAGS += -I../../liblwk/include
+CPPFLAGS += -I../../install/include
 
 libinitArp_C_SOURCE = initArp.c 
 

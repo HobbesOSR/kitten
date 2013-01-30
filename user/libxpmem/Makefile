@@ -1,14 +1,9 @@
-include ../Makefile.header
+BASE=..
+include $(BASE)/Makefile.header
 
 LIBRARIES = libxpmem.a
+HEADERS   = xpmem.h
 
 libxpmem_SOURCES = xpmem.c
 
-INCLUDES += \
-	-I. \
-	-I../liblwk/include \
-	-I../../include \
-	-I$O/../../include \
-	-I$O/../../include2 \
-
-include ../Makefile.footer
+include $(BASE)/Makefile.footer

@@ -3,11 +3,43 @@
 # Must tack on an $O prefix to support external builds
 OPROGRAMS  = $(addprefix $O/,$(PROGRAMS))
 OLIBRARIES = $(addprefix $O/,$(LIBRARIES))
+OHEADERS   = $(addprefix $O/,$(HEADERS))
+
+# Install directory
+OPREFIX=$(O)/$(BASE)/install
+
+# Tack on default include paths
+INCDIRS += \
+	-I. \
+	-I$(OPREFIX)/include \
+	-I../../include \
+	-I$O/../../include \
+	-I$O/../../include2 \
+
+# Tack on default lib paths
+LIBDIRS += -L$(OPREFIX)/lib
 
 # The default target(s)
 .PHONY: all
 all:: $(OPROGRAMS) $(OLIBRARIES)
 
+# The 'make install' target
+.PHONY: install
+install:: $(OPROGRAMS) $(OLIBRARIES)
+	@test -d $(OPREFIX)             || mkdir $(OPREFIX)
+	@test -d $(OPREFIX)/bin         || mkdir $(OPREFIX)/bin
+	@test -d $(OPREFIX)/lib         || mkdir $(OPREFIX)/lib
+	@test -d $(OPREFIX)/include     || mkdir $(OPREFIX)/include
+	@test -d $(OPREFIX)/include/lwk || mkdir $(OPREFIX)/include/lwk
+	@for prog in $(OPROGRAMS); do \
+		install -m 0755 $$prog $(OPREFIX)/bin; \
+	done
+	@for lib in $(OLIBRARIES); do \
+		install -m 0644 $$lib $(OPREFIX)/lib; \
+	done
+	@for hdr in $(OHEADERS); do \
+		install -m 0644 $$hdr $(OPREFIX)/include/$(HEADERS_SUBDIR); \
+	done
 
 #
 # Template used to generate the make rule for each program
@@ -103,7 +135,7 @@ buildlib = \
 buildprog = \
 	$(call build,LD      $1,				\
 		$(RM) $1;					\
-		$(CC) -static $(CC_LDFLAGS) -o $1 $2;		\
+		$(CC) -static $(CC_LDFLAGS) $(LIBDIRS) -o $1 $2;		\
 	)
 
 buildrawobj = \
@@ -122,7 +154,7 @@ buildrawobj = \
 #
 $O/%.o: %.c $(CONFIG)
 	$(call build,CC      $@,				\
-		$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<		\
+		$(CC) $(CFLAGS) $(INCDIRS) -c -o $@ $<		\
 	)
 
 FORCE:

@@ -4,17 +4,19 @@ CFLAGS=-O2 -Wall
 # overridden by the calling Makefile or on the command line.
 O=$(shell pwd)
 
-all: liblwk hello_world test_app smartmap libxpmem
+all: liblwk libxpmem hello_world smartmap test_app
 
-liblwk hello_world test_app smartmap libxpmem: FORCE
+liblwk libxpmem hello_world smartmap test_app: FORCE
 	@if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
 	make O=$O/$@ -C $@
+	make O=$O/$@ -C $@ install
 
 clean:
 	make O=$O/liblwk -C liblwk clean
+	make O=$O/libxpmem -C libxpmem clean
 	make O=$O/hello_world -C hello_world clean
 	make O=$O/test_app -C test_app clean
 	make O=$O/smartmap -C smartmap clean
-	make O=$O/libxpmem -C libxpmem clean
+	rm -rf $O/install
 
 FORCE:

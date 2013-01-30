@@ -1,1 +1,1 @@
-../../user/liblwk/include/lwk/liblwk.h
+../../user/liblwk/liblwk.h

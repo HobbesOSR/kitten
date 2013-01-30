@@ -1,13 +1,12 @@
-include ../Makefile.header
+BASE=..
+include $(BASE)/Makefile.header
 
 LIBRARIES = liblwk.a
+HEADERS   = liblwk.h
+
+# Put liblwk.h in include/lwk dir
+HEADERS_SUBDIR = lwk
 
 liblwk_SOURCES = syscalls.c pmem.c elf.c aspace.c
 
-INCLUDES += \
-	-Iinclude \
-	-I../../include \
-	-I$O/../../include \
-	-I$O/../../include2 \
-
-include ../Makefile.footer
+include $(BASE)/Makefile.footer
