@@ -1368,6 +1368,7 @@ user init_task: O:=$(if $O,$O,$(objtree))
 user: FORCE
 	@if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
 	$(Q)$(MAKE) \
+		-j 1 \
 		-s \
 		-C $(src)/$@ \
 		O=$O/$@ \
