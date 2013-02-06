@@ -441,7 +441,7 @@ static int mce_ring_add(unsigned long pfn)
 	return 0;
 }
 
-int mce_available(struct cpuinfo_x86 *c)
+int mce_available(struct cpuinfo *c)
 {
 	if (mce_disabled)
 		return 0;
@@ -1218,7 +1218,7 @@ static void __mcheck_cpu_init_generic(void)
 }
 
 /* Add per CPU specific workarounds here */
-static int __cpuinit __mcheck_cpu_apply_quirks(struct cpuinfo_x86 *c)
+static int __cpuinit __mcheck_cpu_apply_quirks(struct cpuinfo *c)
 {
 	if (c->arch.x86_vendor == X86_VENDOR_UNKNOWN) {
 		pr_info("MCE: unknown CPU type - not enabling MCE support.\n");
@@ -1309,7 +1309,7 @@ int sys_mce_inject( unsigned long mcg_status,
 }
 
 
-static void __mcheck_cpu_init_vendor(struct cpuinfo_x86 *c)
+static void __mcheck_cpu_init_vendor(struct cpuinfo *c)
 {
 	switch (c->arch.x86_vendor) {
 	case X86_VENDOR_INTEL:
