@@ -8,9 +8,7 @@ typedef struct cpumask cpumask_var_t[1];
 #define FW_BUG "[Firmware Bug]: " 
 #define HW_ERR "[Hardware Error]: " 
 
-#define cpuinfo_x86 cpuinfo
 #define __this_cpu_ptr( xxx ) xxx[this_cpu]
-#define cpu_data(cpu) cpu_info[cpu].arch
 
 enum severity_level {
 	MCE_NO_SEVERITY,

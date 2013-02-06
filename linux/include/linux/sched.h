@@ -3,7 +3,7 @@
 
 #define pid id
 #define tgid gid
-#define cpus_allowed cpumask
+#define cpus_allowed cpu_mask
 
 
 #include <lwk/sched.h>

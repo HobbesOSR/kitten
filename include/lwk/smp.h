@@ -41,11 +41,6 @@ extern int __cpu_up(unsigned int cpunum);
 extern void smp_cpus_done(unsigned int max_cpus);
 
 /*
- * Call a function on all other processors
- */
-int smp_call_function(void(*func)(void *info), void *info, int retry, int wait);
-
-/*
  * Call a function on all processors
  */
 int on_each_cpu(void (*func) (void *info), void *info, int wait);

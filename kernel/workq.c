@@ -13,7 +13,7 @@
 #undef _KDBG
 #define _KDBG(...)
 
-static struct workqueue_struct *keventd_wq;
+struct workqueue_struct *keventd_wq;
 
 #define dump_stack()
 
@@ -232,6 +232,11 @@ void flush_workqueue(struct workqueue_struct *wq)
     for_each_cpu_mask_nr(cpu, *cpu_map)
         flush_cpu_workqueue(per_cpu_ptr(wq->cpu_wq, cpu));
 #endif
+}
+
+int flush_work(struct work_struct *work)
+{
+	panic("%s() not implemented\n",__func__);
 }
 
 /* Schedule work to the default worker thread */

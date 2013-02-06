@@ -76,6 +76,8 @@ struct inode
 
 	void 			*priv;
 	int			priv_len;
+
+	struct mutex		i_mutex;
 };
 struct vm_area_struct;
 

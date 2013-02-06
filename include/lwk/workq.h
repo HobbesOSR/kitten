@@ -125,6 +125,8 @@ extern int queue_delayed_work(struct workqueue_struct *wq,
 extern int queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
             struct delayed_work *work, unsigned long delay);
 
+extern int flush_work(struct work_struct *work);
+
 /*
  * Kill off a pending schedule_delayed_work().  Note that the work callback
  * function may still be running on return from cancel_delayed_work(), unless

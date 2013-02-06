@@ -6,7 +6,6 @@
 #define simple_dir_operations kfs_default_fops
 
 #define file_operations kfs_fops
-#define i_fop fops
 #include <linux/namei.h>
 #include <linux/kdev_t.h>
 #include <linux/file.h>
