@@ -14,7 +14,7 @@
 #include <lwk/elf.h>
 #include <lwk/auxvec.h>
 #include <lwk/palacios.h>
-#include <lwk/if_arp.h>
-#include <lwk/if.h>
+//#include <lwk/if_arp.h>
+//#include <lwk/if.h>
 
 #endif
