@@ -21,6 +21,7 @@ obj-y := \
 	waitq.o \
 	timer.o \
 	init_task.o \
+	netdev.o \
 	kfs.o \
 	interrupt.o \
 	semaphore.o \

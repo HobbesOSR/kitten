@@ -161,6 +161,11 @@ start_kernel()
 	 */
 	local_irq_enable();
 
+        /*
+         * Bring up any network devices.
+         */
+        netdev_init();
+
     mcheck_init_late();
 	/*
 	 * And any modules that need to be started.

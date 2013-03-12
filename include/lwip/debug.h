@@ -88,7 +88,6 @@
                                  } \
                                } \
                              } while(0)
-
 #else  /* LWIP_DEBUG */
 #define LWIP_DEBUGF(debug,x) 
 #endif /* LWIP_DEBUG */
