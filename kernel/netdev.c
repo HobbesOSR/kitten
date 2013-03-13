@@ -16,6 +16,7 @@
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
 #include <lwk/kfs.h>
+#include <lwk/fdTable.h>
 #include <lwip/stats.h>
 
 
@@ -112,17 +113,21 @@ struct kfs_fops kfs_socket_fops = {
 	.close		= socket_close,
 };
 
+
 static int
 socket_allocate( void )
 {
-	int fd = socket_allocate();
-	struct file * file = get_current_file( fd );
+	int fd = fdTableGetUnused(current->fdTable);
+
+	struct file * file = kmem_alloc( sizeof(*file));
 	if( !file )
 		return -EMFILE;
 
 	file->f_op = &kfs_socket_fops;
+	memset(file,0,sizeof(*file));
+	atomic_set(&file->f_count,1);
 
-	current->fdTable->files[fd] = file;
+        fdTableInstallFd( current->fdTable, fd, file );
 
 	printk( "%s: New socket fd %d file %p\n", __func__, fd, file );
 
@@ -144,12 +149,12 @@ sys_socket(
 	if( !file )
 		return -EMFILE;
 
-	current->fdTable->files[fd] = file;
+        fdTableInstallFd( current->fdTable, fd, file );
 
 	int conn = lwip_socket( domain, type, protocol );
 	if( conn < 0 )
 	{
-		current->fdTable->files[ fd ] = 0;
+        	fdTableInstallFd( current->fdTable, fd, 0 );
 		kmem_free( file );
 		return conn;
 	}
@@ -225,7 +230,7 @@ sys_accept(
 	int conn = lwip_accept( lwip_from_fd(fd), addr, addrlen );
 	if( conn < 0 )
 	{
-		current->fdTable->files[new_fd] = 0;
+        	fdTableInstallFd( current->fdTable, new_fd, 0 );
 		kmem_free( new_file );
 		return conn;
 	}
