@@ -137,6 +137,14 @@ static int
 lookup_and_lock_two(id_t a, id_t b,
                     struct aspace **aspace_a, struct aspace **aspace_b)
 {
+	/* As a convenience, handle case where a and b are the same */
+	if (a == b) {
+		if ((*aspace_a = lookup_and_lock(a)) == NULL)
+			return -ENOENT;
+		*aspace_b = *aspace_a;
+		return 0;
+	}
+
 	/* Lock the hash table, lookup aspace objects by ID */
 	spin_lock(&htable_lock);
 	if ((*aspace_a = htable_lookup(htable, &a)) == NULL) {
@@ -817,17 +825,9 @@ aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
 
 	local_irq_save(irqstate);
 
-	if (src == dst) {
-		if ((src_spc = lookup_and_lock(src)) == NULL) {
-			local_irq_restore(irqstate);
-			return -ENOENT;
-		}
-		dst_spc = src_spc;
-	} else {
-		if ((status = lookup_and_lock_two(src, dst, &src_spc, &dst_spc))) {
-			local_irq_restore(irqstate);
-			return status;
-		}
+	if ((status = lookup_and_lock_two(src, dst, &src_spc, &dst_spc))) {
+		local_irq_restore(irqstate);
+		return status;
 	}
 
 	status = __aspace_smartmap(src_spc, dst_spc, start, extent);
@@ -835,6 +835,7 @@ aspace_smartmap(id_t src, id_t dst, vaddr_t start, size_t extent)
 	spin_unlock(&src_spc->lock);
 	if (src != dst)
 		spin_unlock(&dst_spc->lock);
+
 	local_irq_restore(irqstate);
 	return status;
 }
@@ -866,18 +867,19 @@ aspace_unsmartmap(id_t src, id_t dst)
 	struct aspace *src_spc, *dst_spc;
 	unsigned long irqstate;
 
-	/* Don't allow self SMARTMAP'ing */
-	if (src == dst)
-		return -EINVAL;
-
 	local_irq_save(irqstate);
+
 	if ((status = lookup_and_lock_two(src, dst, &src_spc, &dst_spc))) {
 		local_irq_restore(irqstate);
 		return status;
 	}
+
 	status = __aspace_unsmartmap(src_spc, dst_spc);
+
 	spin_unlock(&src_spc->lock);
-	spin_unlock(&dst_spc->lock);
+	if (src != dst)
+		spin_unlock(&dst_spc->lock);
+
 	local_irq_restore(irqstate);
 	flush_tlb();
 	return status;

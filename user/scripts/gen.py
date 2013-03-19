@@ -1,8 +1,5 @@
 #! /usr/bin/env python
 
-# Usage: gen.py system-map.txt interconnect.txt logical-routes.txt
-# Outputs: topomap.txt and routes.txt in libtopomap format
-
 import sys
 import re
 
@@ -20,6 +17,7 @@ nid2xyz  = {}  # Maps NID          -> (x,y,z) coordinate
 nid2node = {}  # Maps NID          -> Node_CNAME   (e.g., c0-0c0s0n0)
 nid2gem  = {}  # Maps NID          -> Gemini_CNAME (e.g., c0-0c0s0g0)
 nid2vid  = {}  # Maps NID          -> Vertex ID
+vid2nid  = {}  # Maps Vertex ID    -> NID
 node2nid = {}  # Maps Node_CNAME   -> NID
 gem2nids = {}  # Maps Gemini_CNAME -> the 2 NIDs attached to it
 gem2xyz  = {}  # Maps Gemini_CNAME -> (x,y,z) coordinate
@@ -30,6 +28,10 @@ xyz2gem  = {}  # Maps (x,y,z)      -> Gemini_CNAME
 vid2name = []  # Maps Vertex ID    -> CNAME
 vid2adj  = []  # Maps Vertex ID    -> Adjacency List
                #                      (the other VIDs the VID is connected to)
+x_max    = -1  # Maximum coordinate in x dimension
+y_max    = -1  # Maximum coordinate in y dimension
+z_max    = -1  # Maximum coordinate in z dimension
+non_mins = []  # Non minimal routes. Each entry is a string.
 
 def xyz_str(x, y, z):
     """Takes x, y, and z integer coordinates and returns (x,y,z) string"""
@@ -85,6 +87,45 @@ def calc_edge_string(links):
             string += ','
     return string
 
+def is_minimal(ros):
+    """Returns true if the input route order string is a minimal route"""
+
+    # First, verify that we only move in each direction once and in order
+    if not re.match('^[X|x]*[Y|y]*[Z|z]*$', ros):
+        return False
+
+    # Next, verify that the route is minimal
+    x_hops = y_hops = z_hops = 0
+
+    x_run = re.findall('[X|x]+', ros)
+    if len(x_run) == 1:
+        x_hops = len(x_run[0])
+    elif len(x_run) > 1:
+        raise NameError('x_run list has more than 1 entry')
+
+    if x_hops > (x_max+1)/2:
+        return False
+
+    y_run = re.findall('[Y|y]+', ros)
+    if len(y_run) == 1:
+        y_hops = len(y_run[0])
+    elif len(y_run) > 1:
+        raise NameError('y_run list has more than 1 entry')
+
+    if y_hops > (y_max+1)/2:
+        return False
+
+    z_run = re.findall('[Z|z]+', ros)
+    if len(z_run) == 1:
+        z_hops = len(z_run[0])
+    elif len(z_run) > 1:
+        raise NameError('z_run list has more than 1 entry')
+
+    if z_hops > (z_max+1)/2:
+        return False
+
+    return True
+
 
 # Step 1: Read the System Map input file.
 #         This file has one entry per node (host), and defines
@@ -117,6 +158,14 @@ for line in smf:
     if nid % 2 == 0:
         gid2gem[nid] = gem
 
+    # Keep track of maximum x, y, and z coordinates
+    if fields[4] > x_max:
+        x_max = int(fields[4])
+    if fields[5] > y_max:
+        y_max = int(fields[5])
+    if fields[6] > z_max:
+        z_max = int(fields[6])
+
 
 # Step 2: Assign a Vertex ID (VID) to each host and gemini.
 #         VID space will be constructed to list all hosts first,
@@ -126,6 +175,7 @@ for nid, name in sorted(nid2node.iteritems()):
     vid2adj.append({})
     vid = len(vid2name) - 1
     nid2vid[nid] = vid
+    vid2nid[vid] = nid
 for gid, name in sorted(gid2gem.iteritems()):
     vid2name.append(name)
     vid2adj.append({})
@@ -204,32 +254,116 @@ for vid in range(len(vid2adj)):
 tf.close()
 
 
-# Step 6: Read the Routes input file, and output routes file at same time.
-#         The Routes input file specifies the route from each source gemini
-#         to each destination gemini. Libtopomap wants the routes from each
-#         source node to each destination node, so the output routes file
-#         will be four times larger than the input routes file.
-irf = open(in_routes_file, 'r')
+# Step 6: Output the first portion of the libtopomap routing input file.
+#         The first portion of the file associates each host vertex ID
+#         with a Gemini vertex ID and x, y, z coordinate.
 orf = open(out_routes_file, 'w')
+print >>orf, 'type: COMPCRAYXE6'
+print >>orf, 'num:', len(gid2gem)          # number of Gemini routers (not hosts, typically hosts/2)
+print >>orf, 'max:', x_max, y_max, z_max   # maximum dimensions (x, y, z)
+for host_vid in range(len(nid2node)):
+    nid        = vid2nid[host_vid]
+    xyz        = nid2xyz[nid]
+    xyz_fields = re.split('\(|\)|\,', xyz)
+    gem        = nid2gem[nid]
+    gemini_vid = gem2vid[gem]
+    print >>orf, host_vid, gemini_vid, xyz_fields[1], xyz_fields[2], xyz_fields[3]
+
+
+# Step 7: Parse the routes file, looking for exceptions to minimal routing.
+irf = open(in_routes_file, 'r')
+num_routes = 0
 for line in irf:
+    num_routes += 1
+
+    # Print out a progress indication...
+    # This script can take a long time for big systems.
+    if num_routes % 100000 == 0:
+        expected_routes = len(gem2vid) * len(gem2vid)
+        print 'Processed', num_routes, 'lines from routes file,', expected_routes, 'expected'
+
+    # Build the route order string from source Gemini to destination Gemini
     hops = re.findall('\([0-9]+,[0-9]+,[0-9]+\)', line)
-    src_xyz     = hops[0];
-    dst_xyz     = hops[-1];
-    src_gem     = xyz2gem[src_xyz]
-    dst_gem     = xyz2gem[dst_xyz]
-    src_gem_vid = gem2vid[src_gem]
-    dst_gem_vid = gem2vid[dst_gem]
-    src_nids    = gem2nids[src_gem]
-    dst_nids    = gem2nids[dst_gem]
-    for src_nid in src_nids:
-        for dst_nid in dst_nids:
-            src_vid = nid2vid[src_nid]
-            dst_vid = nid2vid[dst_nid]
-            print >>orf, src_vid, dst_vid,
-            if src_vid != dst_vid:
-                for hop_xyz in hops:
-                    hop_gem     = xyz2gem[hop_xyz]
-                    hop_gem_vid = gem2vid[hop_gem]
-                    print >>orf, hop_gem_vid,
-            print >>orf, dst_vid
+    ros  = ''  # starts out empty, will tack on one character at a time
+    prev = hops[0]
+    for curr in hops[1: ]:
+        prev_fields = re.split('\(|\)|\,', prev)
+        curr_fields = re.split('\(|\)|\,', curr)
+
+        x_delta    = int(curr_fields[1]) - int(prev_fields[1])
+        y_delta    = int(curr_fields[2]) - int(prev_fields[2])
+        z_delta    = int(curr_fields[3]) - int(prev_fields[3])
+
+        if x_delta != 0 and y_delta == 0 and z_delta == 0:
+            if x_delta == 1:
+                ros += 'X'
+            elif x_delta == -1:
+                ros += 'x'
+            elif x_delta > 1:
+                ros += 'x'
+            elif x_delta < -1:
+                ros += 'X'
+        elif x_delta == 0 and y_delta != 0 and z_delta == 0:
+            if y_delta == 1:
+                ros += 'Y'
+            elif y_delta == -1:
+                ros += 'y'
+            elif y_delta > 1:
+                ros += 'y'
+            elif y_delta < -1:
+                ros += 'Y'
+        elif x_delta == 0 and y_delta == 0 and z_delta != 0:
+            if z_delta == 1:
+                ros += 'Z'
+            elif z_delta == -1:
+                ros += 'z'
+            elif z_delta > 1:
+                ros += 'z'
+            elif z_delta < -1:
+                ros += 'Z'
+        else:
+            print prev, curr, x_delta, y_delta, z_delta
+            raise NameError('Bogus route detected.')
+
+        prev = curr
+
+    if is_minimal(ros) == False:
+        print 'Found non-minimal route:', ros
+
+        # Store the non-minimal route, will be output in next step
+        src_xyz     = hops[0];
+        dst_xyz     = hops[-1];
+        src_gem     = xyz2gem[src_xyz]
+        dst_gem     = xyz2gem[dst_xyz]
+        src_gem_vid = gem2vid[src_gem]
+        dst_gem_vid = gem2vid[dst_gem]
+        src_nids    = gem2nids[src_gem]
+        dst_nids    = gem2nids[dst_gem]
+        for src_nid in src_nids:
+            for dst_nid in dst_nids:
+                src_vid = nid2vid[src_nid]
+                dst_vid = nid2vid[dst_nid]
+                route = str(src_vid) + ' ' + str(dst_vid)
+                if src_vid != dst_vid:
+                    for hop_xyz in hops:
+                        hop_gem     = xyz2gem[hop_xyz]
+                        hop_gem_vid = gem2vid[hop_gem]
+                        route = route + ' ' + str(hop_gem_vid)
+                route = route + ' ' + str(dst_vid)
+                non_mins.append(route)
+
+
+# Sanity check:
+# The number of routes in the logical routes file must equal num_geminis^2
+if num_routes != len(gem2vid) * len(gem2vid):
+    raise NameError('Wrong number of lines in logical-routes input file.')
+
+
+# Step 8: Output the second portion of the libtopomap routing input file.
+#         The second portion contains just the routes that are non-minimal.
+#         All other routes are assumed to be minimal and are computed
+#         algorithmically by libtopomap.
+print >>orf, 'num:', len(non_mins)
+for route in non_mins:
+    print >>orf, route
 
