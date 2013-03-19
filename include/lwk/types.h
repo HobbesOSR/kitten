@@ -136,6 +136,7 @@ typedef _Bool			bool;
  */
 
 /* Address types */
+typedef	__kernel_uintptr_t	 addr_t;	/* general address */
 typedef	__kernel_uintptr_t	paddr_t;	/* physical address */
 typedef	__kernel_uintptr_t	vaddr_t;	/* virtual address */
 typedef	__kernel_uintptr_t	kaddr_t;	/* kernel virtual address */

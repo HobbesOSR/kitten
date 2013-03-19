@@ -70,7 +70,7 @@ struct futex {
 	struct list_head		link;
 	struct waitq			waitq;
 	spinlock_t *			lock_ptr;
-	uint32_t __user *		uaddr;
+	addr_t				key;
 	uint32_t			bitset;
 };
 
