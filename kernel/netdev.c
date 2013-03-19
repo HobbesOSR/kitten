@@ -123,8 +123,8 @@ socket_allocate( void )
 	if( !file )
 		return -EMFILE;
 
-	file->f_op = &kfs_socket_fops;
 	memset(file,0,sizeof(*file));
+	file->f_op = &kfs_socket_fops;
 	atomic_set(&file->f_count,1);
 
         fdTableInstallFd( current->fdTable, fd, file );

@@ -1,6 +1,7 @@
 #ifndef _LWK_IF_ARP_H
 #define _LWK_IF_ARP_H
 
+#include <lwk/socket.h>
 #include <lwk/netdevice.h>
 
 #define ARPHRD_INFINIBAND 32      /* InfiniBand           */

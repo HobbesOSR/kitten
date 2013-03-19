@@ -265,7 +265,7 @@ tcpip_thread(void *arg)
 	rtl8139_netif = netif_find("ne0");
 	rtl8139_netif->ip_addr.addr = 0x0101a8c0;
 	rtl8139_netif->netmask.addr = 0x00ffffff;
-	rtl8139_netif->gw.addr = 0xfe01a881;
+	rtl8139_netif->gw.addr = 0xfe01a8c0;
 	netif_set_default(rtl8139_netif);
 	netif_set_up(rtl8139_netif);
 

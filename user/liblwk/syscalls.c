@@ -2,6 +2,8 @@
 
 #include <lwk/unistd.h>
 #include <lwk/liblwk.h>
+#include <lwk/if_arp.h>
+#include <lwk/if.h>
 
 /**
  * There is no way to specify inline assembly constraints for %r10 (arg4),

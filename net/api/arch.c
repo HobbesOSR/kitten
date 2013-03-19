@@ -7,6 +7,7 @@
 #include <lwk/aspace.h>
 #include <lwk/sched.h>
 #include <lwk/string.h>
+#include <lwk/kthread.h>
 #include <lwip/sys.h>
 
 
