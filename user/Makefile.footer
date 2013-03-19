@@ -12,9 +12,9 @@ OPREFIX=$(O)/$(BASE)/install
 INCDIRS += \
 	-I. \
 	-I$(OPREFIX)/include \
-	-I../../include \
-	-I$O/../../include \
-	-I$O/../../include2 \
+	-I$(BASE)/../include \
+	-I$O/$(BASE)/../include \
+	-I$O/$(BASE)/../include2 \
 
 # Tack on default lib paths
 LIBDIRS += -L$(OPREFIX)/lib
