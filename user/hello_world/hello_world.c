@@ -139,11 +139,14 @@ aspace_api_test(void)
 
 	aspace_dump2console(new_id);
 
+	printf("  Unmapping myself from aspace %u\n", new_id);
 	status = aspace_unsmartmap(my_id, new_id);
 	if (status) {
 		printf("ERROR: aspace_unsmartmap() status=%d\n", status);
 		return -1;
 	}
+
+	aspace_dump2console(new_id);
 
 	printf("  Destroying a aspace %u: ", new_id);
 	status = aspace_destroy(new_id);
@@ -152,6 +155,24 @@ aspace_api_test(void)
 		return -1;
 	}
 	printf("OK\n");
+
+	printf("  Using SMARTMAP to do a self-mapping\n");
+	status = aspace_smartmap(my_id, my_id, SMARTMAP_ALIGN, SMARTMAP_ALIGN);
+	if (status) {
+		printf("ERROR: aspace_smartmap() status=%d\n", status);
+		return -1;
+	}
+
+	aspace_dump2console(my_id);
+
+	printf("  Unmapping my self-mapping\n");
+	status = aspace_unsmartmap(my_id, my_id);
+	if (status) {
+		printf("ERROR: aspace_unsmartmap() status=%d\n", status);
+		return -1;
+	}
+
+	aspace_dump2console(my_id);
 
 	printf("TEST END:   Address Space Management\n");
 	return 0;
