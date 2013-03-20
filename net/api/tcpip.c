@@ -328,6 +328,7 @@ tcpip_thread(void *arg)
       break;
     }
   }
+  return -1;
 }
 
 /**
