@@ -26,32 +26,32 @@ push(@packages, \%ompi);
 
 # Download and build external packages
 for (my $i=0; $i < @packages; $i++) {
-    chdir "$BASEDIR";
+	chdir "$BASEDIR";
 
 	# Get the package
-    my %pkg = %{$packages[$i]};
-    if (! -d "$pkg{directory}") {
-        print "[EX] Getting $pkg{name}.\n";
-        system ($pkg{get_cmd});
-    } else {
+	my %pkg = %{$packages[$i]};
+	if (! -d "$pkg{directory}") {
+		print "[EX] Getting $pkg{name}.\n";
+		system ($pkg{get_cmd});
+	} else {
 		print "[EX] Already got $pkg{name}.\n";
 	}
 
-    chdir "$pkg{directory}";
+	chdir "$pkg{directory}";
 
 	# Pre-configure the package
 	if (! -e "configure") {
-	    print "[EX] Running preconfig command for $pkg{name}.\n";
-        system ($pkg{preconfig_cmd});
+		print "[EX] Running preconfig command for $pkg{name}.\n";
+		system ($pkg{preconfig_cmd});
 	} else {
-	    print "[EX] Already ran preconfig command for $pkg{name}.\n";
+		print "[EX] Already ran preconfig command for $pkg{name}.\n";
 	}
 
 	# Configure the package
 	if (! -e "Makefile") {
-	    print "[EX] Running config command for $pkg{name}.\n";
-        system ($pkg{config_cmd});
+		print "[EX] Running config command for $pkg{name}.\n";
+		system ($pkg{config_cmd});
 	} else {
-	    print "[EX] Already ran config command for $pkg{name}.\n";
+		print "[EX] Already ran config command for $pkg{name}.\n";
 	}
 }
