@@ -1,9 +1,8 @@
 obj-$(CONFIG_NETWORK) += \
+	autoip.o \
 	icmp.o \
-	inet.o \
-	inet_chksum.o \
-	ip_addr.o \
-	ip.o \
+	ip4_addr.o \
+	ip4.o \
 	ip_frag.o \
 
 obj-$(CONFIG_LWIP_AUTOIP) += autoip.o

@@ -57,11 +57,21 @@ netbuf *netbuf_new(void)
 {
   struct netbuf *buf;
 
-  buf = memp_malloc(MEMP_NETBUF);
+  buf = (struct netbuf *)memp_malloc(MEMP_NETBUF);
   if (buf != NULL) {
     buf->p = NULL;
     buf->ptr = NULL;
-    buf->addr = NULL;
+    ipX_addr_set_any(LWIP_IPV6, &buf->addr);
+    buf->port = 0;
+#if LWIP_NETBUF_RECVINFO || LWIP_CHECKSUM_ON_COPY
+#if LWIP_CHECKSUM_ON_COPY
+    buf->flags = 0;
+#endif /* LWIP_CHECKSUM_ON_COPY */
+    buf->toport_chksum = 0;
+#if LWIP_NETBUF_RECVINFO
+    ipX_addr_set_any(LWIP_IPV6, &buf->toaddr);
+#endif /* LWIP_NETBUF_RECVINFO */
+#endif /* LWIP_NETBUF_RECVINFO || LWIP_CHECKSUM_ON_COPY */
     return buf;
   } else {
     return NULL;
@@ -158,14 +168,14 @@ netbuf_ref(struct netbuf *buf, const void *dataptr, u16_t size)
  * Chain one netbuf to another (@see pbuf_chain)
  *
  * @param head the first netbuf
- * @param tail netbuf to chain after head
+ * @param tail netbuf to chain after head, freed by this function, may not be reference after returning
  */
 void
 netbuf_chain(struct netbuf *head, struct netbuf *tail)
 {
   LWIP_ERROR("netbuf_ref: invalid head", (head != NULL), return;);
   LWIP_ERROR("netbuf_chain: invalid tail", (tail != NULL), return;);
-  pbuf_chain(head->p, tail->p);
+  pbuf_cat(head->p, tail->p);
   head->ptr = head->p;
   memp_free(MEMP_NETBUF, tail);
 }

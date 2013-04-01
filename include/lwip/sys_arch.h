@@ -23,8 +23,8 @@ struct mbox
 
 typedef struct mbox * sys_mbox_t;
 
-#define SYS_SEM_NULL 0
-#define SYS_MBOX_NULL 0
+#define SYS_SEM_NULL NULL
+#define SYS_MBOX_NULL NULL
 
 #define FD_ZERO(x) __FD_ZERO(x)
 #define FD_ISSET(x,y) __FD_ISSET(x,y)

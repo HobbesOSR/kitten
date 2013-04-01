@@ -37,42 +37,42 @@ sys_init( void )
 }
 
 
-sys_sem_t
-sys_sem_new(
+err_t
+sys_sem_new(sys_sem_t *		sem,
 	u8_t			count
 )
 {
-	int * lock = kmem_alloc( sizeof( *lock ) );
-	*lock = count;
+	*sem = kmem_alloc( sizeof( **sem ) );
+	**sem = count;
 
 	if( sem_debug >= 1 )
-	printk( "%s: sem %p value %d\n", __func__, lock, count );
+	printk( "%s: sem %p value %d\n", __func__, *sem, count );
 
-	return lock;
+        return 0;
 }
 
 
 void
 sys_sem_free(
-	sys_sem_t		sem
+	sys_sem_t *		sem
 )
 {
-	kmem_free( (void*) sem );
+	kmem_free( (void*) (*sem) );
 }
 
 
 void
 sys_sem_signal(
-	sys_sem_t		sem
+	sys_sem_t *		sem
 )
 {
 	unsigned long irqstate;
 	spin_lock_irqsave( &sem_lock, irqstate );
-	(*sem)++;
+	(**sem)++;
 	spin_unlock_irqrestore( &sem_lock, irqstate );
 
 	if( sem_debug >= 3 )
-	printk( "%s: sem %p value %d\n", __func__, sem, *sem );
+	printk( "%s: sem %p value %d\n", __func__, *sem, **sem );
 }
 
 
@@ -82,14 +82,14 @@ sys_sem_signal(
  */
 u32_t
 sys_arch_sem_trywait(
-	sys_sem_t		sem
+	sys_sem_t *		sem
 )
 {
 	unsigned long irqstate;
 	spin_lock_irqsave( &sem_lock, irqstate );
-	const int value = *sem;
+	const int value = **sem;
 	if( value )
-		(*sem)--;
+		(**sem)--;
 	spin_unlock_irqrestore( &sem_lock, irqstate );
 
 	return value;
@@ -99,7 +99,7 @@ sys_arch_sem_trywait(
 
 u32_t
 sys_arch_sem_wait(
-	sys_sem_t		sem,
+	sys_sem_t *		sem,
 	u32_t			timeout
 )
 {
@@ -107,7 +107,7 @@ sys_arch_sem_wait(
 	const uint64_t timeout_ticks = timeout * cpu_hz;
 
 	if( sem_debug >= 3 )
-	printk( "%s: waiting for sem %p value %d\n", __func__, sem, *sem );
+	printk( "%s: waiting for sem %p value %d\n", __func__, *sem, **sem );
 
 	while( 1 )
 	{
@@ -125,10 +125,21 @@ sys_arch_sem_wait(
 
 		// We got it.
 		if( sem_debug >= 3 )
-		printk( "%s: sem %p\n", __func__, sem );
+		printk( "%s: sem %p\n", __func__, *sem );
 
 		return delta_ticks / cpu_hz;
 	}
+}
+
+
+int sys_sem_valid(sys_sem_t *sem)
+{
+    return 1;
+}
+
+
+void sys_sem_set_invalid(sys_sem_t *sem)
+{
 }
 
 
@@ -151,73 +162,72 @@ sys_arch_unprotect(
 }
 
 
-sys_mbox_t
+err_t
 sys_mbox_new(
+        sys_mbox_t *		mbox,
 	int			size
 )
 {
 	if( size <= 0 )
 		size = 8;
 
-	sys_mbox_t mbox = kmem_alloc( sizeof(*mbox) + sizeof(void*) * size );
-	mbox->size = size;
-	mbox->read = mbox->write = 0;
+	(*mbox) = kmem_alloc( sizeof(**mbox) + sizeof(void*) * size );
+	(*mbox)->size = size;
+	(*mbox)->read = (*mbox)->write = 0;
 
 	if( sem_debug >= 1 )
-	printk( "%s: %p @ %d\n", __func__, mbox, size );
+	printk( "%s: %p @ %d\n", __func__, *mbox, size );
 
-	return mbox;
+	return 0;
 }
 
 
 void
 sys_mbox_free(
-	sys_mbox_t		mbox
+	sys_mbox_t *		mbox
 )
 {
-	if( mbox->read != mbox->write )
+	if( (*mbox)->read != (*mbox)->write )
 		printk( "%s: mbox has remaining elements %d/%d\n",
 			__func__,
-			mbox->read,
-			mbox->write
+			(*mbox)->read,
+			(*mbox)->write
 		);
 
-	kmem_free( mbox );
+	kmem_free( *mbox );
 }
 
 
 
 err_t
 _sys_mbox_post(
-	sys_mbox_t		mbox,
+	sys_mbox_t *		mbox,
 	void *			msg,
 	int			try_once
 )
 {
 	unsigned long irqstate;
-
 	while(1)
 	{
 		spin_lock_irqsave( &mbox_lock, irqstate );
-		const int write = mbox->write;
-		const int next = (write + 1) % mbox->size;
-		if( next != mbox->read )
+		const int write = (*mbox)->write;
+		const int next = (write + 1) % (*mbox)->size;
+		if( next != (*mbox)->read )
 		{
-			mbox->msgs[ write ] = msg;
-			mbox->write = next;
+			(*mbox)->msgs[ write ] = msg;
+			(*mbox)->write = next;
 			spin_unlock_irqrestore( &mbox_lock, irqstate );
 
 			if( sem_debug >= 2 )
 			printk( "%s: mbox %p[%d] posting %p\n",
 				__func__,
-				mbox,
+				*mbox,
 				write,
 				msg
 			);
 
 			return ERR_OK;
 		}
-
 		spin_unlock_irqrestore( &mbox_lock, irqstate );
 
 		if( try_once )
@@ -231,7 +241,7 @@ _sys_mbox_post(
 
 void
 sys_mbox_post(
-	sys_mbox_t		mbox,
+	sys_mbox_t *		mbox,
 	void *			msg
 )
 {
@@ -241,7 +251,7 @@ sys_mbox_post(
 
 err_t
 sys_mbox_trypost(
-	sys_mbox_t		mbox,
+	sys_mbox_t *		mbox,
 	void *			msg
 )
 {
@@ -251,27 +261,27 @@ sys_mbox_trypost(
 
 u32_t
 sys_arch_mbox_tryfetch(
-	sys_mbox_t		mbox,
+	sys_mbox_t *		mbox,
 	void **			msg
 )
 {
 	unsigned long irqstate;
 	spin_lock_irqsave( &mbox_lock, irqstate );
-	const int read = mbox->read;
-	if( read == mbox->write )
+	const int read = (*mbox)->read;
+	if( read == (*mbox)->write )
 	{
 		spin_unlock_irqrestore( &mbox_lock, irqstate );
 		return SYS_MBOX_EMPTY;
 	}
 
-	*msg = mbox->msgs[ read ];
-	mbox->read = ( read + 1 ) % mbox->size;
+	*msg = (*mbox)->msgs[ read ];
+	(*mbox)->read = ( read + 1 ) % (*mbox)->size;
 	spin_unlock_irqrestore( &mbox_lock, irqstate );
 
 	if( sem_debug >= 2 )
 	printk( "%s: mbox %p[%d] read %p\n",
 		__func__,
-		mbox,
+		*mbox,
 		read,
 		*msg
 	);
@@ -282,7 +292,7 @@ sys_arch_mbox_tryfetch(
 
 u32_t
 sys_arch_mbox_fetch(
-	sys_mbox_t		mbox,
+	sys_mbox_t *		mbox,
 	void **			msg,
 	u32_t			timeout
 )
@@ -314,31 +324,26 @@ sys_arch_mbox_fetch(
 }
 
 
-
-
-/* Timeouts */
-struct sys_timeouts timeouts[ 32 ];
-
-struct sys_timeouts *
-sys_arch_timeouts( void )
-{
-	return timeouts;
-}
-
-
-
-
 /* Threads */
 sys_thread_t
 sys_thread_new(
-	char *			name,
-	int 			(*entry_point)( void * arg ),
+	const char *		name,
+	void 			(*entry_point)( void * arg ),
 	void *			arg,
 	int			stacksize,
 	int			prio
 )
 {
 	struct task_struct *kthread =
-		kthread_create(entry_point, arg, "ip:%s", name);
+		kthread_create((int (*)(void *))entry_point, arg, "ip:%s", name);
 	return (kthread) ? kthread->id : ERROR_ID;
+}
+
+int sys_mbox_valid(sys_mbox_t *mbox)
+{
+    return *mbox != NULL;
+}
+
+void sys_mbox_set_invalid(sys_mbox_t *mbox)
+{
 }

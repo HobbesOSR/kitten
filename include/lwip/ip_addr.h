@@ -33,138 +33,95 @@
 #define __LWIP_IP_ADDR_H__
 
 #include "lwip/opt.h"
+#include "lwip/def.h"
+
+#include "lwip/ip4_addr.h"
+#include "lwip/ip6_addr.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/bpstruct.h"
-#endif
-PACK_STRUCT_BEGIN
-struct ip_addr {
-  PACK_STRUCT_FIELD(u32_t addr);
-} PACK_STRUCT_STRUCT;
-PACK_STRUCT_END
-#ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/epstruct.h"
-#endif
+#if LWIP_IPV6
+/* A union struct for both IP version's addresses. */
+typedef union {
+  ip_addr_t ip4;
+  ip6_addr_t ip6;
+} ipX_addr_t;
 
-/*
- * struct ipaddr2 is used in the definition of the ARP packet format in
- * order to support compilers that don't have structure packing.
- */
-#ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/bpstruct.h"
-#endif
-PACK_STRUCT_BEGIN
-struct ip_addr2 {
-  PACK_STRUCT_FIELD(u16_t addrw[2]);
-} PACK_STRUCT_STRUCT;
-PACK_STRUCT_END
-#ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/epstruct.h"
-#endif
+/** These functions only exist for type-safe conversion from ip_addr_t to
+    ip6_addr_t and back */
+#ifdef LWIP_ALLOW_STATIC_FN_IN_HEADER
+static ip6_addr_t* ip_2_ip6(ip_addr_t *ipaddr)
+{ return (ip6_addr_t*)ipaddr;}
+static ip_addr_t* ip6_2_ip(ip6_addr_t *ip6addr)
+{ return (ip_addr_t*)ip6addr; }
+static ipX_addr_t* ip_2_ipX(ip_addr_t *ipaddr)
+{ return (ipX_addr_t*)ipaddr; }
+static ipX_addr_t* ip6_2_ipX(ip6_addr_t *ip6addr)
+{ return (ipX_addr_t*)ip6addr; }
+#else /* LWIP_ALLOW_STATIC_FN_IN_HEADER */
+#define ip_2_ip6(ipaddr)   ((ip6_addr_t*)(ipaddr))
+#define ip6_2_ip(ip6addr)  ((ip_addr_t*)(ip6addr))
+#define ip_2_ipX(ipaddr)   ((ipX_addr_t*)ipaddr)
+#define ip6_2_ipX(ip6addr) ((ipX_addr_t*)ip6addr)
+#endif /* LWIP_ALLOW_STATIC_FN_IN_HEADER*/
+#define ipX_2_ip6(ip6addr) (&((ip6addr)->ip6))
+#define ipX_2_ip(ipaddr)   (&((ipaddr)->ip4))
 
-/* For compatibility with BSD code */
-struct in_addr {
-  u32_t s_addr;
-};
+#define ipX_addr_copy(is_ipv6, dest, src)      do{if(is_ipv6){ \
+  ip6_addr_copy((dest).ip6, (src).ip6); }else{ \
+  ip_addr_copy((dest).ip4, (src).ip4); }}while(0)
+#define ipX_addr_set(is_ipv6, dest, src) do{if(is_ipv6){ \
+  ip6_addr_set(ipX_2_ip6(dest), ipX_2_ip6(src)); }else{ \
+  ip_addr_set(ipX_2_ip(dest), ipX_2_ip(src)); }}while(0)
+#define ipX_addr_set_ipaddr(is_ipv6, dest, src) do{if(is_ipv6){ \
+  ip6_addr_set(ipX_2_ip6(dest), ip_2_ip6(src)); }else{ \
+  ip_addr_set(ipX_2_ip(dest), src); }}while(0)
+#define ipX_addr_set_zero(is_ipv6, ipaddr)     do{if(is_ipv6){ \
+  ip6_addr_set_zero(ipX_2_ip6(ipaddr)); }else{ \
+  ip_addr_set_zero(ipX_2_ip(ipaddr)); }}while(0)
+#define ipX_addr_set_any(is_ipv6, ipaddr)      do{if(is_ipv6){ \
+  ip6_addr_set_any(ipX_2_ip6(ipaddr)); }else{ \
+  ip_addr_set_any(ipX_2_ip(ipaddr)); }}while(0)
+#define ipX_addr_set_loopback(is_ipv6, ipaddr) do{if(is_ipv6){ \
+  ip6_addr_set_loopback(ipX_2_ip6(ipaddr)); }else{ \
+  ip_addr_set_loopback(ipX_2_ip(ipaddr)); }}while(0)
+#define ipX_addr_set_hton(is_ipv6, dest, src)  do{if(is_ipv6){ \
+  ip6_addr_set_hton(ipX_2_ip6(ipaddr), (src)) ;}else{ \
+  ip_addr_set_hton(ipX_2_ip(ipaddr), (src));}}while(0)
+#define ipX_addr_cmp(is_ipv6, addr1, addr2)    ((is_ipv6) ? \
+  ip6_addr_cmp(ipX_2_ip6(addr1), ipX_2_ip6(addr2)) : \
+  ip_addr_cmp(ipX_2_ip(addr1), ipX_2_ip(addr2)))
+#define ipX_addr_isany(is_ipv6, ipaddr)        ((is_ipv6) ? \
+  ip6_addr_isany(ipX_2_ip6(ipaddr)) : \
+  ip_addr_isany(ipX_2_ip(ipaddr)))
+#define ipX_addr_ismulticast(is_ipv6, ipaddr)  ((is_ipv6) ? \
+  ip6_addr_ismulticast(ipX_2_ip6(ipaddr)) : \
+  ip_addr_ismulticast(ipX_2_ip(ipaddr)))
+#define ipX_addr_debug_print(is_ipv6, debug, ipaddr) do { if(is_ipv6) { \
+  ip6_addr_debug_print(debug, ipX_2_ip6(ipaddr)); } else { \
+  ip_addr_debug_print(debug, ipX_2_ip(ipaddr)); }}while(0)
 
-struct netif;
+#else /* LWIP_IPV6 */
 
-extern const struct ip_addr ip_addr_any;
-extern const struct ip_addr ip_addr_broadcast;
+typedef ip_addr_t ipX_addr_t;
+#define ipX_2_ip(ipaddr) (ipaddr)
+#define ip_2_ipX(ipaddr) (ipaddr)
 
-/** IP_ADDR_ can be used as a fixed IP address
- *  for the wildcard and the broadcast address
- */
-#define IP_ADDR_ANY         ((struct ip_addr *)&ip_addr_any)
-#define IP_ADDR_BROADCAST   ((struct ip_addr *)&ip_addr_broadcast)
+#define ipX_addr_copy(is_ipv6, dest, src)       ip_addr_copy(dest, src)
+#define ipX_addr_set(is_ipv6, dest, src)        ip_addr_set(dest, src)
+#define ipX_addr_set_ipaddr(is_ipv6, dest, src) ip_addr_set(dest, src)
+#define ipX_addr_set_zero(is_ipv6, ipaddr)      ip_addr_set_zero(ipaddr)
+#define ipX_addr_set_any(is_ipv6, ipaddr)       ip_addr_set_any(ipaddr)
+#define ipX_addr_set_loopback(is_ipv6, ipaddr)  ip_addr_set_loopback(ipaddr)
+#define ipX_addr_set_hton(is_ipv6, dest, src)   ip_addr_set_hton(dest, src)
+#define ipX_addr_cmp(is_ipv6, addr1, addr2)     ip_addr_cmp(addr1, addr2)
+#define ipX_addr_isany(is_ipv6, ipaddr)         ip_addr_isany(ipaddr)
+#define ipX_addr_ismulticast(is_ipv6, ipaddr)   ip_addr_ismulticast(ipaddr)
+#define ipX_addr_debug_print(is_ipv6, debug, ipaddr) ip_addr_debug_print(debug, ipaddr)
 
-#define INADDR_NONE         ((u32_t)0xffffffffUL)  /* 255.255.255.255 */
-#define INADDR_LOOPBACK     ((u32_t)0x7f000001UL)  /* 127.0.0.1 */
-
-/* Definitions of the bits in an Internet address integer.
-
-   On subnets, host and network parts are found according to
-   the subnet mask, not these masks.  */
-
-#define IN_CLASSA(a)        ((((u32_t)(a)) & 0x80000000UL) == 0)
-#define IN_CLASSA_NET       0xff000000
-#define IN_CLASSA_NSHIFT    24
-#define IN_CLASSA_HOST      (0xffffffff & ~IN_CLASSA_NET)
-#define IN_CLASSA_MAX       128
-
-#define IN_CLASSB(a)        ((((u32_t)(a)) & 0xc0000000UL) == 0x80000000UL)
-#define IN_CLASSB_NET       0xffff0000
-#define IN_CLASSB_NSHIFT    16
-#define IN_CLASSB_HOST      (0xffffffff & ~IN_CLASSB_NET)
-#define IN_CLASSB_MAX       65536
-
-#define IN_CLASSC(a)        ((((u32_t)(a)) & 0xe0000000UL) == 0xc0000000UL)
-#define IN_CLASSC_NET       0xffffff00
-#define IN_CLASSC_NSHIFT    8
-#define IN_CLASSC_HOST      (0xffffffff & ~IN_CLASSC_NET)
-
-#define IN_CLASSD(a)        (((u32_t)(a) & 0xf0000000UL) == 0xe0000000UL)
-#define IN_CLASSD_NET       0xf0000000          /* These ones aren't really */
-#define IN_CLASSD_NSHIFT    28                  /*   net and host fields, but */
-#define IN_CLASSD_HOST      0x0fffffff          /*   routing needn't know. */
-#define IN_MULTICAST(a)     IN_CLASSD(a)
-
-#define IN_EXPERIMENTAL(a)  (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
-#define IN_BADCLASS(a)      (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
-
-#define IN_LOOPBACKNET      127                 /* official! */
-
-#define IP4_ADDR(ipaddr, a,b,c,d) \
-        (ipaddr)->addr = htonl(((u32_t)((a) & 0xff) << 24) | \
-                               ((u32_t)((b) & 0xff) << 16) | \
-                               ((u32_t)((c) & 0xff) << 8) | \
-                                (u32_t)((d) & 0xff))
-
-#define ip_addr_set(dest, src) (dest)->addr = \
-                               ((src) == NULL? 0:\
-                               (src)->addr)
-/**
- * Determine if two address are on the same network.
- *
- * @arg addr1 IP address 1
- * @arg addr2 IP address 2
- * @arg mask network identifier mask
- * @return !0 if the network identifiers of both address match
- */
-#define ip_addr_netcmp(addr1, addr2, mask) (((addr1)->addr & \
-                                              (mask)->addr) == \
-                                             ((addr2)->addr & \
-                                              (mask)->addr))
-#define ip_addr_cmp(addr1, addr2) ((addr1)->addr == (addr2)->addr)
-
-#define ip_addr_isany(addr1) ((addr1) == NULL || (addr1)->addr == 0)
-
-u8_t ip_addr_isbroadcast(struct ip_addr *, struct netif *);
-
-#define ip_addr_ismulticast(addr1) (((addr1)->addr & ntohl(0xf0000000UL)) == ntohl(0xe0000000UL))
-
-#define ip_addr_islinklocal(addr1) (((addr1)->addr & ntohl(0xffff0000UL)) == ntohl(0xa9fe0000UL))
-
-static inline void
-ip_addr_debug_print(unsigned int debug, struct ip_addr *ipaddr)
-{
-        LWIP_DEBUGF(debug, ("%"U16_F".%"U16_F".%"U16_F".%"U16_F,
-                ipaddr ? (u16_t)(ntohl(ipaddr->addr) >> 24) & 0xff : 0,
-                ipaddr ? (u16_t)(ntohl(ipaddr->addr) >> 16) & 0xff : 0,
-                ipaddr ? (u16_t)(ntohl(ipaddr->addr) >> 8) & 0xff : 0,
-                ipaddr ? (u16_t)ntohl(ipaddr->addr) & 0xff : 0));
-}
-
-/* These are cast to u16_t, with the intent that they are often arguments
- * to printf using the U16_F format from cc.h. */
-#define ip4_addr1(ipaddr) ((u16_t)(ntohl((ipaddr)->addr) >> 24) & 0xff)
-#define ip4_addr2(ipaddr) ((u16_t)(ntohl((ipaddr)->addr) >> 16) & 0xff)
-#define ip4_addr3(ipaddr) ((u16_t)(ntohl((ipaddr)->addr) >> 8) & 0xff)
-#define ip4_addr4(ipaddr) ((u16_t)(ntohl((ipaddr)->addr)) & 0xff)
+#endif /* LWIP_IPV6 */
 
 #ifdef __cplusplus
 }
