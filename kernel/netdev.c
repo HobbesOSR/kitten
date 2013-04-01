@@ -1,6 +1,3 @@
-/** \file
- * Network device and TCP/IP stack initialization.
- */
 #include <lwk/kernel.h>
 #include <lwk/spinlock.h>
 #include <lwk/params.h>
@@ -416,7 +413,7 @@ netdev_init(void)
 	driver_init_list( "net", netdev_str );
 
 #ifdef CONFIG_LWIP_SOCKET
-	// Full scokets are enabled.  Bring up the entire system
+	// Full sockets are enabled.  Bring up the entire system
 	tcpip_init( 0, 0 );
 
 	// Install the socket system calls

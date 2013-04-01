@@ -50,7 +50,6 @@ user/test_app/test_app
 user/install
 user/external/portals4*
 user/external/ompi*
-user/runtime2*/
 docs/html/*
 docs/latex/*
 *.orig

@@ -196,8 +196,11 @@ SYSCALL1(aspace_dump2console, id_t);
 SYSCALL2(task_create, const start_state_t *, id_t *);
 SYSCALL1(task_switch_cpus, id_t);
 
-SYSCALL1(lwk_arp, struct lwk_arpreq * );
-SYSCALL1(lwk_ifconfig, struct lwk_ifreq * );
+/**
+ * Network related system calls.
+ */
+SYSCALL1(lwk_arp, struct lwk_arpreq *);
+SYSCALL1(lwk_ifconfig, struct lwk_ifreq *);
 
 /**
  * ELF related system calls.
