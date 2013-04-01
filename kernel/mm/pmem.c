@@ -140,7 +140,7 @@ regions_are_mergeable(const struct pmem_region *a, const struct pmem_region *b)
 
 	if (a->name_is_set != b->name_is_set)
 		return false;
-	if (a->name_is_set && !strcmp(a->name, b->name))
+	if (a->name_is_set && strncmp(a->name, b->name, sizeof(a->name)))
 		return false;
 
 	return true;
@@ -165,7 +165,7 @@ region_matches(const struct pmem_region *query, const struct pmem_region *rgn)
 		return false;
 
 	if (query->name_is_set
-	      && (!rgn->name_is_set || strcmp(rgn->name, query->name)))
+	      && (!rgn->name_is_set || strncmp(rgn->name, query->name, sizeof(rgn->name))))
 		return false;
 
 	return true;
