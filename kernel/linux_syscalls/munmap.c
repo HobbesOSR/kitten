@@ -12,6 +12,8 @@ sys_munmap(
 {
 	struct aspace *as = current->aspace;
 
+	/* printk("[%s] SYS_MUNMAP: addr=%lx, len=%lu\n", current->name, addr, len); */
+
 	/* TODO: add a million checks here that we'll simply ignore now */
 
 	/* TODO: this won't munmap() anonymous mapping - need to take care
