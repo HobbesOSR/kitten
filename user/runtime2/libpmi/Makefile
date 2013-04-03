@@ -13,5 +13,6 @@ test_pmi_hello_LDADD   = -lpmi -lportals_util -lportals -lxpmem -lrt -lpthread
 
 CFLAGS  += -std=gnu99
 INCDIRS += -I../pct
+LIBDIRS += -L.
 
 include $(BASE)/Makefile.footer

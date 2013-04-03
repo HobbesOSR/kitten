@@ -21,7 +21,7 @@ LIBDIRS += -L$(OPREFIX)/lib
 
 # The default target(s)
 .PHONY: all
-all:: $(OPROGRAMS) $(OLIBRARIES)
+all:: $(OLIBRARIES) $(OPROGRAMS)
 
 # The 'make install' target
 .PHONY: install
