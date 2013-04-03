@@ -11,6 +11,7 @@
 #else
 #define LWIP_SOCKET 0
 #define LWIP_NETCONN 0
+#define LWIP_COMPAT_MUTEX 1
 #endif
 
 #ifdef CONFIG_LWIP_ARP
