@@ -4,18 +4,11 @@
 #include <lwk/driver.h>
 #include <lwk/netdev.h>
 #include <lwk/kmem.h>
-#include <lwip/init.h>
-#include <lwip/tcp.h>
-#include <lwip/api.h>
-#include <lwip/sockets.h>
-#include <lwip/tcpip.h>
 #include <arch/uaccess.h>
 #include <arch/unistd.h>
 #include <arch/vsyscall.h>
 #include <lwk/kfs.h>
 #include <lwk/fdTable.h>
-#include <lwip/stats.h>
-
 
 /**
  * Holds a comma separated list of network devices to configure.
@@ -24,6 +17,13 @@ static char netdev_str[128];
 param_string(net, netdev_str, sizeof(netdev_str));
 
 #ifdef CONFIG_LWIP_SOCKET
+
+#include <lwip/init.h>
+#include <lwip/tcp.h>
+#include <lwip/api.h>
+#include <lwip/sockets.h>
+#include <lwip/tcpip.h>
+#include <lwip/stats.h>
 
 /** Return a LWIP connection number from a user fd */
 static inline int
