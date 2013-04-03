@@ -37,34 +37,64 @@
 #if LWIP_RAW /* don't build if not configured for use in lwipopts.h */
 
 #include "lwip/pbuf.h"
-#include "lwip/inet.h"
+#include "lwip/def.h"
 #include "lwip/ip.h"
 #include "lwip/ip_addr.h"
+#include "lwip/ip6_addr.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+struct raw_pcb;
+
+/** Function prototype for raw pcb receive callback functions.
+ * @param arg user supplied argument (raw_pcb.recv_arg)
+ * @param pcb the raw_pcb which received data
+ * @param p the packet buffer that was received
+ * @param addr the remote IP address from which the packet was received
+ * @return 1 if the packet was 'eaten' (aka. deleted),
+ *         0 if the packet lives on
+ * If returning 1, the callback is responsible for freeing the pbuf
+ * if it's not used any more.
+ */
+typedef u8_t (*raw_recv_fn)(void *arg, struct raw_pcb *pcb, struct pbuf *p,
+    ip_addr_t *addr);
+
+#if LWIP_IPV6
+/** Function prototype for raw pcb IPv6 receive callback functions.
+ * @param arg user supplied argument (raw_pcb.recv_arg)
+ * @param pcb the raw_pcb which received data
+ * @param p the packet buffer that was received
+ * @param addr the remote IPv6 address from which the packet was received
+ * @return 1 if the packet was 'eaten' (aka. deleted),
+ *         0 if the packet lives on
+ * If returning 1, the callback is responsible for freeing the pbuf
+ * if it's not used any more.
+ */
+typedef u8_t (*raw_recv_ip6_fn)(void *arg, struct raw_pcb *pcb, struct pbuf *p,
+    ip6_addr_t *addr);
+#endif /* LWIP_IPV6 */
+
+#if LWIP_IPV6
+#define RAW_PCB_RECV_IP6  raw_recv_ip6_fn ip6;
+#else
+#define RAW_PCB_RECV_IP6
+#endif /* LWIP_IPV6 */
+
 struct raw_pcb {
-/* Common members of all PCB types */
+  /* Common members of all PCB types */
   IP_PCB;
 
   struct raw_pcb *next;
 
   u8_t protocol;
 
-  /* receive callback function
-   * @param arg user supplied argument (raw_pcb.recv_arg)
-   * @param pcb the raw_pcb which received data
-   * @param p the packet buffer that was received
-   * @param addr the remote IP address from which the packet was received
-   * @return 1 if the packet was 'eaten' (aka. deleted),
-   *         0 if the packet lives on
-   * If returning 1, the callback is responsible for freeing the pbuf
-   * if it's not used any more.
-   */
-  u8_t (* recv)(void *arg, struct raw_pcb *pcb, struct pbuf *p,
-    struct ip_addr *addr);
+  /** receive callback function */
+  union {
+    raw_recv_fn ip4;
+    RAW_PCB_RECV_IP6
+  } recv;
   /* user-supplied argument for the recv callback */
   void *recv_arg;
 };
@@ -73,16 +103,20 @@ struct raw_pcb {
    RAW code. */
 struct raw_pcb * raw_new        (u8_t proto);
 void             raw_remove     (struct raw_pcb *pcb);
-err_t            raw_bind       (struct raw_pcb *pcb, struct ip_addr *ipaddr);
-err_t            raw_connect    (struct raw_pcb *pcb, struct ip_addr *ipaddr);
+err_t            raw_bind       (struct raw_pcb *pcb, ip_addr_t *ipaddr);
+err_t            raw_connect    (struct raw_pcb *pcb, ip_addr_t *ipaddr);
 
-void             raw_recv       (struct raw_pcb *pcb,
-                                 u8_t (* recv)(void *arg, struct raw_pcb *pcb,
-                                              struct pbuf *p,
-                                              struct ip_addr *addr),
-                                 void *recv_arg);
-err_t            raw_sendto     (struct raw_pcb *pcb, struct pbuf *p, struct ip_addr *ipaddr);
+void             raw_recv       (struct raw_pcb *pcb, raw_recv_fn recv, void *recv_arg);
+err_t            raw_sendto     (struct raw_pcb *pcb, struct pbuf *p, ip_addr_t *ipaddr);
 err_t            raw_send       (struct raw_pcb *pcb, struct pbuf *p);
+
+#if LWIP_IPV6
+struct raw_pcb * raw_new_ip6   (u8_t proto);
+#define          raw_bind_ip6(pcb, ip6addr) raw_bind(pcb, ip6_2_ip(ip6addr))
+#define          raw_connect_ip6(pcb, ip6addr) raw_connect(pcb, ip6_2_ip(ip6addr))
+#define          raw_recv_ip6(pcb, recv_ip6_fn, recv_arg) raw_recv(pcb, (raw_recv_fn)recv_ip6_fn, recv_arg)
+#define          raw_sendto_ip6(pcb, pbuf, ip6addr) raw_sendto(pcb, pbuf, ip6_2_ip(ip6addr))
+#endif /* LWIP_IPV6 */
 
 /* The following functions are the lower layer interface to RAW. */
 u8_t             raw_input      (struct pbuf *p, struct netif *inp);

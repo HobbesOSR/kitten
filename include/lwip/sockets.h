@@ -38,8 +38,11 @@
 
 #if LWIP_SOCKET /* don't build if not configured for use in lwipopts.h */
 
+#include <stddef.h> /* for size_t */
+
 #include "lwip/ip_addr.h"
 #include "lwip/inet.h"
+#include "lwip/inet6.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,21 +50,38 @@ extern "C" {
 
 /* members are in network byte order */
 struct sockaddr_in {
-  //u8_t sin_len;
-  u16_t sin_family;
+  u8_t sin_len;
+  u8_t sin_family;
   u16_t sin_port;
   struct in_addr sin_addr;
-  char sin_zero[8];
+#define SIN_ZERO_LEN 8
+  char sin_zero[SIN_ZERO_LEN];
 };
+
+#if LWIP_IPV6
+struct sockaddr_in6 {
+  u8_t sin6_len;             /* length of this structure */
+  u8_t sin6_family;          /* AF_INET6                 */
+  u16_t sin6_port;           /* Transport layer port #   */
+  u32_t sin6_flowinfo;       /* IPv6 flow information    */
+  struct in6_addr sin6_addr; /* IPv6 address             */
+};
+#endif /* LWIP_IPV6 */
 
 struct sockaddr {
   u8_t sa_len;
   u8_t sa_family;
-  char sa_data[14];
+#if LWIP_IPV6
+  u8_t sa_data[22];
+#else /* LWIP_IPV6 */
+  u8_t sa_data[14];
+#endif /* LWIP_IPV6 */
 };
 
-#ifndef socklen_t
-#  define socklen_t u32_t
+/* If your port already typedef's socklen_t, define SOCKLEN_T_DEFINED
+   to prevent this code from redefining it. */
+#if !defined(socklen_t) && !defined(SOCKLEN_T_DEFINED)
+typedef u32_t socklen_t;
 #endif
 
 /* Socket protocol types (TCP/UDP/RAW) */
@@ -70,14 +90,14 @@ struct sockaddr {
 #define SOCK_RAW        3
 
 /*
- * Option flags per-socket. These must match the SOF_ flags in ip.h!
+ * Option flags per-socket. These must match the SOF_ flags in ip.h (checked in init.c)
  */
 #define  SO_DEBUG       0x0001 /* Unimplemented: turn on debugging info recording */
 #define  SO_ACCEPTCONN  0x0002 /* socket has had listen() */
-#define  SO_REUSEADDR   0x0004 /* Unimplemented: allow local address reuse */
-#define  SO_KEEPALIVE   0x0009 /* keep connections alive */
+#define  SO_REUSEADDR   0x0004 /* Allow local address reuse */
+#define  SO_KEEPALIVE   0x0008 /* keep connections alive */
 #define  SO_DONTROUTE   0x0010 /* Unimplemented: just use interface addresses */
-#define  SO_BROADCAST   0x0020 /* Unimplemented: permit sending of broadcast msgs */
+#define  SO_BROADCAST   0x0020 /* permit to send and to receive broadcast messages (see IP_SOF_BROADCAST option) */
 #define  SO_USELOOPBACK 0x0040 /* Unimplemented: bypass hardware when possible */
 #define  SO_LINGER      0x0080 /* linger on close if data present */
 #define  SO_OOBINLINE   0x0100 /* Unimplemented: leave received OOB data in line */
@@ -89,7 +109,7 @@ struct sockaddr {
  * Additional options, not kept in so_options.
  */
 #define SO_SNDBUF    0x1001    /* Unimplemented: send buffer size */
-#define SO_RCVBUF    0x0008    /* receive buffer size */
+#define SO_RCVBUF    0x1002    /* receive buffer size */
 #define SO_SNDLOWAT  0x1003    /* Unimplemented: send low-water mark */
 #define SO_RCVLOWAT  0x1004    /* Unimplemented: receive low-water mark */
 #define SO_SNDTIMEO  0x1005    /* Unimplemented: send timeout */
@@ -111,21 +131,27 @@ struct linger {
 /*
  * Level number for (get/set)sockopt() to apply to socket itself.
  */
-#define  SOL_SOCKET  0x001    /* options for socket level */
+#define  SOL_SOCKET  0xfff    /* options for socket level */
 
 
 #define AF_UNSPEC       0
 #define AF_INET         2
+#if LWIP_IPV6
+#define AF_INET6        10
+#else /* LWIP_IPV6 */
+#define AF_INET6        AF_UNSPEC
+#endif /* LWIP_IPV6 */
 #define PF_INET         AF_INET
+#define PF_INET6        AF_INET6
 #define PF_UNSPEC       AF_UNSPEC
 
 #define IPPROTO_IP      0
 #define IPPROTO_TCP     6
 #define IPPROTO_UDP     17
+#if LWIP_IPV6
+#define IPPROTO_IPV6    41
+#endif /* LWIP_IPV6 */
 #define IPPROTO_UDPLITE 136
-
-#define INADDR_ANY       0
-#define INADDR_BROADCAST 0xffffffff
 
 /* Flags we can use with send and recv. */
 #define MSG_PEEK       0x01    /* Peeks at an incoming message */
@@ -152,6 +178,13 @@ struct linger {
 #define TCP_KEEPCNT    0x05    /* set pcb->keep_cnt   - Use number of probes sent for get/setsockopt */
 #endif /* LWIP_TCP */
 
+#if LWIP_IPV6
+/*
+ * Options for level IPPROTO_IPV6
+ */
+#define IPV6_V6ONLY 27 /* RFC3493: boolean control to restrict AF_INET6 sockets to IPv6 communications only. */
+#endif /* LWIP_IPV6 */
+
 #if LWIP_UDP && LWIP_UDPLITE
 /*
  * Options for level IPPROTO_UDPLITE
@@ -177,7 +210,22 @@ typedef struct ip_mreq {
 } ip_mreq;
 #endif /* LWIP_IGMP */
 
-/* Unimplemented for now... */
+/*
+ * The Type of Service provides an indication of the abstract
+ * parameters of the quality of service desired.  These parameters are
+ * to be used to guide the selection of the actual service parameters
+ * when transmitting a datagram through a particular network.  Several
+ * networks offer service precedence, which somehow treats high
+ * precedence traffic as more important than other traffic (generally
+ * by accepting only traffic above a certain precedence at time of high
+ * load).  The major choice is a three way tradeoff between low-delay,
+ * high-reliability, and high-throughput.
+ * The use of the Delay, Throughput, and Reliability indications may
+ * increase the cost (in some sense) of the service.  In many networks
+ * better performance for one of these parameters is coupled with worse
+ * performance on another.  Except for very unusual cases at most two
+ * of these three indications should be set.
+ */
 #define IPTOS_TOS_MASK          0x1E
 #define IPTOS_TOS(tos)          ((tos) & IPTOS_TOS_MASK)
 #define IPTOS_LOWDELAY          0x10
@@ -187,7 +235,13 @@ typedef struct ip_mreq {
 #define IPTOS_MINCOST           IPTOS_LOWCOST
 
 /*
- * Definitions for IP precedence (also in ip_tos) (Unimplemented)
+ * The Network Control precedence designation is intended to be used
+ * within a network only.  The actual use and control of that
+ * designation is up to each network. The Internetwork Control
+ * designation is intended for use by gateway control originators only.
+ * If the actual use of these precedence designations is of concern to
+ * a particular network, it is the responsibility of that network to
+ * control the access to, and use of, those precedence designations.
  */
 #define IPTOS_PREC_MASK                 0xe0
 #define IPTOS_PREC(tos)                ((tos) & IPTOS_PREC_MASK)
@@ -242,9 +296,27 @@ typedef struct ip_mreq {
 #define SIOCATMARK  _IOR('s',  7, unsigned long)  /* at oob mark? */
 #endif
 
-/* Socket flags: */
+/* commands for fnctl */
+#ifndef F_GETFL
+#define F_GETFL 3
+#endif
+#ifndef F_SETFL
+#define F_SETFL 4
+#endif
+
+/* File status flags and file access modes for fnctl,
+   these are bits in an int. */
 #ifndef O_NONBLOCK
-#define O_NONBLOCK    04000U
+#define O_NONBLOCK  1 /* nonblocking I/O */
+#endif
+#ifndef O_NDELAY
+#define O_NDELAY    1 /* same as O_NONBLOCK, for compatibility */
+#endif
+
+#ifndef SHUT_RD
+  #define SHUT_RD   0
+  #define SHUT_WR   1
+  #define SHUT_RDWR 2
 #endif
 
 /* FD_SET used for lwip_select */
@@ -279,7 +351,7 @@ struct timeval {
 void lwip_socket_init(void);
 
 int lwip_accept(int s, struct sockaddr *addr, socklen_t *addrlen);
-int lwip_bind(int s, struct sockaddr *name, socklen_t namelen);
+int lwip_bind(int s, const struct sockaddr *name, socklen_t namelen);
 int lwip_shutdown(int s, int how);
 int lwip_getpeername (int s, struct sockaddr *name, socklen_t *namelen);
 int lwip_getsockname (int s, struct sockaddr *name, socklen_t *namelen);
@@ -288,18 +360,19 @@ int lwip_setsockopt (int s, int level, int optname, const void *optval, socklen_
 int lwip_close(int s);
 int lwip_connect(int s, const struct sockaddr *name, socklen_t namelen);
 int lwip_listen(int s, int backlog);
-int lwip_recv(int s, void *mem, int len, unsigned int flags);
-int lwip_read(int s, void *mem, int len);
-int lwip_recvfrom(int s, void *mem, int len, unsigned int flags,
+int lwip_recv(int s, void *mem, size_t len, int flags);
+int lwip_read(int s, void *mem, size_t len);
+int lwip_recvfrom(int s, void *mem, size_t len, int flags,
       struct sockaddr *from, socklen_t *fromlen);
-int lwip_send(int s, const void *dataptr, int size, unsigned int flags);
-int lwip_sendto(int s, const void *dataptr, int size, unsigned int flags,
-    struct sockaddr *to, socklen_t tolen);
+int lwip_send(int s, const void *dataptr, size_t size, int flags);
+int lwip_sendto(int s, const void *dataptr, size_t size, int flags,
+    const struct sockaddr *to, socklen_t tolen);
 int lwip_socket(int domain, int type, int protocol);
-int lwip_write(int s, const void *dataptr, int size);
+int lwip_write(int s, const void *dataptr, size_t size);
 int lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
                 struct timeval *timeout);
 int lwip_ioctl(int s, long cmd, void *argp);
+int lwip_fcntl(int s, int cmd, int val);
 
 #if LWIP_COMPAT_SOCKETS
 #define accept(a,b,c)         lwip_accept(a,b,c)
@@ -324,6 +397,7 @@ int lwip_ioctl(int s, long cmd, void *argp);
 #define read(a,b,c)           lwip_read(a,b,c)
 #define write(a,b,c)          lwip_write(a,b,c)
 #define close(s)              lwip_close(s)
+#define fcntl(a,b,c)          lwip_fcntl(a,b,c)
 #endif /* LWIP_POSIX_SOCKETS_IO_NAMES */
 
 #endif /* LWIP_COMPAT_SOCKETS */
