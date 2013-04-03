@@ -24,6 +24,22 @@ $ompi{config_cmd}        = "./configure --with-platform=snl/kitten --with-pmi=$I
 to portals>";
 push(@packages, \%ompi);
 
+my %shmem;
+$shmem{name}               = "Portals SHMEM SVN Trunk";
+$shmem{directory}          = "shmem";
+$shmem{get_cmd}            = "svn checkout http://portals-shmem.googlecode.com/svn/trunk/ $shmem{directory}";
+$shmem{preconfig_cmd}      = "autoreconf -if";
+$shmem{config_cmd}         = "./configure LIBS=\"-L$INSTALLDIR/lib -lxpmem -lrt -lpthread\" --disable-shared --with-pmi=$INSTALLDIR --with-portals4=$INSTALLDIR --prefix=$INSTALLDIR";
+push(@packages, \%shmem);
+
+#my %gperftools;
+#$gperftools{name}          = "Google Perf Tools SVN Trunk";
+#$gperftools{directory}     = "gperftools";
+#$gperftools{get_cmd}       = "svn checkout http://gperftools.googlecode.com/svn/trunk/ $gperftools{directory}";
+#$gperftools{preconfig_cmd} = "./autogen.sh";
+#$gperftools{config_cmd}    = "./configure --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --enable-static --disable-shared --prefix=$INSTALLDIR";
+#push(@packages, \%gperftools);
+
 # Download and build external packages
 for (my $i=0; $i < @packages; $i++) {
 	chdir "$BASEDIR";
