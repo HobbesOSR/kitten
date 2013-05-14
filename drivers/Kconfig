@@ -46,6 +46,11 @@ config NE2K
         depends on NETWORK && LWIP_ARP
         default PC
 
+config GIGE
+        bool "GigE Device Driver (r8169)"
+        depends on NETWORK && LWIP_ARP
+        default PC
+
 config VMNET
         bool "VM Network Driver"
         depends on NETWORK && LWIP_ARP
