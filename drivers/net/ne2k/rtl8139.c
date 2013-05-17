@@ -245,7 +245,9 @@ rtl8139_interrupt(
 				printk("Packet present in RX buffer\n");
 			}
 		}
-	} else if (status == TX_OK) {
+	}
+
+	if (status & TX_OK) {
 		if (rtl8139_debug) {
 			printk("Packet successfully transmitted\n");
 		}

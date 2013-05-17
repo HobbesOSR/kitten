@@ -22,6 +22,7 @@
 
 #include "r8169.h"
 
+#define PHYOUT(val, reg) outl(0x80000000 | ((reg) & 0x1F) << 16 | ((val) & 0xFFFF), R8169_PHYAR)
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -46,18 +47,16 @@ static char netmask[16];
 static char gateway[16];
 
 static const int r8169_debug = 0;
-static const int r8169_debug_rx = 0;
-static const int r8169_debug_tx = 1;
 
 static struct netif r8169_netif;
 
 static const uint32_t r8169_intr_mask = 
-	TxDescUnavail | RxFIFOOver | LinkChg | RxOverflow | 
+	SYSErr | TxDescUnavail | RxFIFOOver | LinkChg | RxOverflow | 
 	TxErr | TxOK | RxErr | RxOK;
 
 static err_t r8169_tx( struct netif * const netif, struct pbuf * const p ) {
-	
-	if( r8169_debug_tx ) {
+
+	if( r8169_debug ) {
 		printk("Transmitting packet.  cur_tx = %d\n", cur_tx);
 	}
 
@@ -68,7 +67,7 @@ static err_t r8169_tx( struct netif * const netif, struct pbuf * const p ) {
 	uint8_t *pkt_data = (uint8_t *)(__va(paddr));
 
 	if( tx_desc->opts1 & DescOwn ) {
-		if( r8169_debug_tx ) {
+		if( r8169_debug ) {
 			printk("TX processing finished - SHOULD NOT HAPPEN\n");
 		}
 		return ERR_OK;
@@ -83,7 +82,7 @@ static err_t r8169_tx( struct netif * const netif, struct pbuf * const p ) {
 		offset += q->len;
 	}
 
-	if( r8169_debug_tx ) {
+	if( r8169_debug ) {
 		printk("Packet TX Size = %d\n", pkt_len);
 		int i;
 		for (i = 0; i < pkt_len; i++){
@@ -97,7 +96,7 @@ static err_t r8169_tx( struct netif * const netif, struct pbuf * const p ) {
 
 	cur_tx++;
 
-	if( r8169_debug_tx ) {
+	if( r8169_debug ) {
 		printk("Packet transmitted.  cur_tx = %d\n", cur_tx);
 	}
 
@@ -106,7 +105,7 @@ static err_t r8169_tx( struct netif * const netif, struct pbuf * const p ) {
 
 static void r8169_rx( struct netif * const netif ) {
 
-	if( r8169_debug_rx ) {
+	if( r8169_debug ) {
 		printk("Packet Received\n");  
 	}
 
@@ -118,13 +117,13 @@ static void r8169_rx( struct netif * const netif ) {
 		uint8_t *pkt_data = (uint8_t *)(__va(paddr));
 
 		if( rx_desc->opts1 & DescOwn ) {
-			if( r8169_debug_rx ) {
+			if( r8169_debug ) {
 				printk("RX processing finished\n");
 			}
 			break;
 		}
 
-		if( r8169_debug_rx ) {
+		if( r8169_debug ) {
 			printk("Packet RX Size = %u\n", pkt_len);
 			uint16_t i;
 			for (i = 0; i < pkt_len; i++){
@@ -154,7 +153,7 @@ static void r8169_rx( struct netif * const netif ) {
 			return;
 		}
 
-		if( r8169_debug_rx ) {
+		if( r8169_debug ) {
 			printk("Packet Processed.  cur_rx = %d\n", cur_rx);
 		}
 	}
@@ -187,25 +186,29 @@ static irqreturn_t r8169_interrupt( int vector, void *priv ) {
 	if( status & PKT_RX ) {
 		r8169_clear_irq(status);
 		r8169_rx(&r8169_netif );
-		if( r8169_debug_rx ) {
+		if( r8169_debug ) {
 			if( inb(R8169_CR) & RxBufEmpty ) {
 				printk("Receive Buffer Empty\n");
 			} else {
 				printk("Packet present in RX buffer\n");
 			}
 		}
-	} else if( status == TX_OK ) {
-		if( r8169_debug_tx ) {
+	}
+
+	if( status & TX_OK ) {
+		if( r8169_debug ) {
 			printk("Packet successfully transmitted\n");
 		}
 		r8169_clear_irq(TX_OK);
 	}
 
+	if( status & RX_LC ) {
+		printk("PHY Status : %02x\n", inb(R8169_PHYSTAT));
+	}
+
 	r8169_clear_irq(status);
 	return IRQ_HANDLED;
 }
-
-#define PHYOUT(val, reg) outl(0x80000000 | ((reg) & 0x1F) << 16 | ((val) & 0xFFFF), R8169_PHYAR)
 
 static void r8169_hw_init( void ) {
 	uint64_t paddr;
@@ -223,10 +226,7 @@ static void r8169_hw_init( void ) {
 
 	/* Setup PHY */
 	PHYOUT(MII_CTRL_ANE | MII_CTRL_DM | MII_CTRL_SP_1000, MII_CTRL);
-	PHYOUT(MII_ANA_10THD | MII_ANA_10TFD | MII_ANA_100TXHD |
-	     MII_ANA_100TXFD | MII_ANA_PAUSE_SYM | MII_ANA_PAUSE_ASYM, MII_ANA);
 	PHYOUT(MII_1000C_FULL | MII_1000C_HALF, MII_1000_CTRL);
-	PHYOUT(MII_CTRL_ANE | MII_CTRL_RAN, MII_CTRL);
 
 	/* Unlock Config[01234] and BMCR register writes */
 	outb(R9346CR_EEM_CONFIG, R8169_9346CR);
@@ -263,7 +263,7 @@ static void r8169_hw_init( void ) {
 	}
 
 	/* Initialize Tx */
-	outw(TX_BUF_SIZE, R8169_MTPS);
+	outw(TX_BUF_SIZE/128, R8169_MTPS);
 	outl(TCR_MXDMA_2048 | TCR_IFG_STD, R8169_TCR);
 	paddr = __pa(tx_ring);
 	outl(paddr & 0xfffffffful, R8169_TNPDS_LO);
@@ -279,7 +279,7 @@ static void r8169_hw_init( void ) {
 	}
 
 	/* Initialize Tx */
-	outw(TX_BUF_SIZE, R8169_MTPS);
+	outw(TX_BUF_SIZE/128, R8169_MTPS);
 	outl(TCR_MXDMA_2048 | TCR_IFG_STD, R8169_TCR);
 	paddr = __pa(tx_hi_ring);
 	outl(paddr & 0xfffffffful, R8169_THPDS_LO);
@@ -325,6 +325,8 @@ static void r8169_hw_init( void ) {
 	if( !(inb(R8169_CR) & CmdRxEnb) || !(inb(R8169_CR) & CmdTxEnb) )
 		outb(CmdRxEnb | CmdTxEnb, R8169_CR);
 	
+	irq_request(R8169_IDTVEC, &r8169_interrupt, 0, "r8169", NULL);
+
 	/* Enable all known interrupts by setting the interrupt mask. */
 	outw(r8169_intr_mask, R8169_IMR);
 
@@ -367,8 +369,6 @@ static err_t r8169_net_init( struct netif * const netif ) {
 int r8169_init( void ) {
 	r8169_hw_init();
 	
-	irq_request(R8169_IDTVEC, &r8169_interrupt, 0, "r8169", NULL);
-
 	struct ip_addr ip = {inet_addr(ipaddr)};
 	struct ip_addr nm = {inet_addr(netmask)};
 	struct ip_addr gw = {inet_addr(gateway)};
