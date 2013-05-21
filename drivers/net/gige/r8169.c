@@ -263,7 +263,7 @@ static void r8169_hw_init( void ) {
 	}
 
 	/* Initialize Tx */
-	outw(TX_BUF_SIZE/128, R8169_MTPS);
+	outw((TX_BUF_SIZE>>7)+1, R8169_MTPS);
 	outl(TCR_MXDMA_2048 | TCR_IFG_STD, R8169_TCR);
 	paddr = __pa(tx_ring);
 	outl(paddr & 0xfffffffful, R8169_TNPDS_LO);
@@ -279,7 +279,7 @@ static void r8169_hw_init( void ) {
 	}
 
 	/* Initialize Tx */
-	outw(TX_BUF_SIZE/128, R8169_MTPS);
+	outw((TX_BUF_SIZE>>7)+1, R8169_MTPS);
 	outl(TCR_MXDMA_2048 | TCR_IFG_STD, R8169_TCR);
 	paddr = __pa(tx_hi_ring);
 	outl(paddr & 0xfffffffful, R8169_THPDS_LO);
