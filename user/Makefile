@@ -15,7 +15,7 @@ clean:
 	make O=$O/liblwk -C liblwk clean
 	make O=$O/libxpmem -C libxpmem clean
 	make O=$O/hello_world -C hello_world clean
-	make O=$O/hello_world -C powerinsight clean
+	make O=$O/powerinsight -C powerinsight clean
 	make O=$O/test_app -C test_app clean
 	make O=$O/smartmap -C smartmap clean
 	rm -rf $O/install

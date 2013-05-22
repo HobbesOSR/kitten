@@ -115,27 +115,38 @@ run_power_comm( void )
                         printf( "Agent establishing connection\n" );
                         int new_fd = accept( pfd, (struct sockaddr *) &addr, &socklen );
 
+			printf( "Agent IP address is %d.%d.%d.%d\n", 
+				*((char *)(&addr.sin_addr.s_addr)+0),
+				*((char *)(&addr.sin_addr.s_addr)+1),
+				*((char *)(&addr.sin_addr.s_addr)+2),
+				*((char *)(&addr.sin_addr.s_addr)+3) );
+
                         FD_SET( new_fd, &fds );
                         if( new_fd > max_fd )
                                 max_fd = new_fd;
 
-		}
+			sleep(2);
 
-		if( FD_ISSET( afd, &read_fds ) )
-		{
 			printf( "Proxy establishing connection\n" );
 			aaddr.sin_family = addr.sin_family;
 			aaddr.sin_addr.s_addr = addr.sin_addr.s_addr;
 			aaddr.sin_port = htons( aport );
-                        rc = connect( afd, (struct sockaddr *) &aaddr, socklen );
+
+			printf( "Connecting to agent address\n");
+                        rc = connect( afd, (struct sockaddr *) &aaddr, sizeof(aaddr) );
                 	if( rc < 0 )
                 	{
                         	printf( "ERROR: connect() failed! rc=%d\n", rc );
                         	return -1;
                 	}
+			FD_SET( afd, &fds );
+			if( afd > max_fd )
+				max_fd = afd;
 
-                        char outbuf[ 32 ], cmd[ 10 ] = "start";
-			unsigned int val = 8;
+			sleep(2);
+
+                        char outbuf[ 32 ] = "", cmd[ 10 ] = "start";
+			unsigned int val = 1;
 
 			printf( "Setting agent to %s collection on port %u\n", cmd, val );
                         int len = snprintf( outbuf, sizeof(outbuf), "%s:%u\n", cmd, val );
