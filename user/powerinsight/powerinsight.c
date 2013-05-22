@@ -62,6 +62,7 @@ writen(int fd, const void *vptr, size_t n)
                 nleft -= nwritten;
                 ptr   += nwritten;
         }
+
         return n;
 }
 
@@ -139,9 +140,6 @@ run_power_comm( void )
                         	printf( "ERROR: connect() failed! rc=%d\n", rc );
                         	return -1;
                 	}
-			FD_SET( afd, &fds );
-			if( afd > max_fd )
-				max_fd = afd;
 
 			sleep(2);
 
@@ -151,6 +149,9 @@ run_power_comm( void )
 			printf( "Setting agent to %s collection on port %u\n", cmd, val );
                         int len = snprintf( outbuf, sizeof(outbuf), "%s:%u\n", cmd, val );
 			writen( afd, outbuf, len );
+			close( afd );
+
+			printf( "Successfully configured agent\n");
                 }
 
                 int fd;
