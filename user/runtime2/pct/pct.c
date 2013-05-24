@@ -18,6 +18,9 @@
 #include "pct.h"
 #include "pct_internal.h"
 
+#ifdef USING_PIAPI
+#include "piapi.h"
+#endif
 
 // The linker sets this up to point to the embedded app ELF image
 int _binary_pct_rawdata_start __attribute__ ((weak));
@@ -312,6 +315,13 @@ app_load(
 	return 0;
 }
 
+int
+piapi_callback( char *message, unsigned int size )
+{
+	printf( "Recieved message of length %u: %s\n", size, message );
+
+	return 0;
+}
 
 int
 main(int argc, char *argv[], char *envp[])
@@ -340,6 +350,11 @@ main(int argc, char *argv[], char *envp[])
 	}
 	printf("\n");
 
+#ifdef USING_PIAPI
+	void *cntx = 0x0;
+	piapi_init( &cntx, (piapi_callback_t *)&piapi_callback );
+#endif 
+
 	// Load the application into memory, but don't start it executing yet
 	app_load(&pct, num_ranks, num_ranks, num_ranks, 1, 1, cpuset, (void *)elf_image);
 
@@ -353,6 +368,10 @@ main(int argc, char *argv[], char *envp[])
 	/*************************************************************************/
 
 	printf("DONE LOADING APPLICATION\n");
+
+#ifdef USING_PIAPI
+	piapi_start( cntx, PIAPI_CPU );
+#endif
 
 	/*************************************************************************/
 	printf("ENTERING PORTALS EVENT DISPATCH LOOP\n");
@@ -368,4 +387,9 @@ main(int argc, char *argv[], char *envp[])
 		ptl_queue_process_event(pct.app.pmi_state.client_rx_q, &ev);
 	}
 	/*************************************************************************/
+
+#ifdef USING_PIAPI
+	piapi_stop( cntx, PIAPI_CPU );
+	piapi_destroy( cntx );
+#endif
 }
