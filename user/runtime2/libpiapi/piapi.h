@@ -5,7 +5,7 @@
 #define PIAPI_PRXY_IPADDR   "10.101.4.201"
 
 // The well-known powerinsight agent saddr
-#define PIAPI_AGNT_SADDR   0x0a361500
+#define PIAPI_AGNT_SADDR    0x0a361500
 
 // The well-known powerinsight proxy port
 #define PIAPI_PRXY_PORT     20203

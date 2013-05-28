@@ -24,7 +24,7 @@ static int piapi_debug = 1;
 
 struct piapi_context
 {
-	int pfd, afd;
+	int pfd;
         fd_set fds;
 	int max_fd;
 
@@ -179,36 +179,46 @@ static int
 piapi_control( void *cntx, char *cmd, char *val )
 {
 	struct sockaddr_in addr;
+	int afd = socket( PF_INET, SOCK_STREAM, 0 );
 	char outbuf[ 32 ] = "";
 	unsigned int len;
 	int rc;
+
+	if( piapi_debug )
+		printf( "Proxy establishing control connection\n" );
+
+	if( afd < 0 )
+	{
+		printf( "ERROR: socket() failed! rc=%d\n", afd );
+		return -1;
+	}
 
         addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl( PIAPI_AGNT_SADDR );
 	addr.sin_port = htons( PIAPI_AGNT_PORT );
 
-	rc = connect( PIAPI_CNTX(cntx)->afd, (struct sockaddr *) &addr, sizeof(addr) );
+	if( piapi_debug )
+		printf( "Agent IP address is %d.%d.%d.%d\n",
+			*((char *)(&addr.sin_addr.s_addr)+0),
+			*((char *)(&addr.sin_addr.s_addr)+1),
+			*((char *)(&addr.sin_addr.s_addr)+2),
+			*((char *)(&addr.sin_addr.s_addr)+3) );
+
+	rc = connect( afd, (struct sockaddr *) &addr, sizeof(addr) );
 	if( rc < 0 )
 	{
 		printf( "ERROR: connect() failed! rc=%d\n", rc );
+		perror( "CONNECT:" );
 		return -1;
 	}
-
-	sleep(2);
-
-        PIAPI_CNTX(cntx)->afd = socket( PF_INET, SOCK_STREAM, 0 );
-        if( PIAPI_CNTX(cntx)->afd < 0 )
-        {
-                printf( "ERROR: socket() failed! rc=%d\n", PIAPI_CNTX(cntx)->afd );
-                return -1;
-        }
 
 	if( piapi_debug )
 		printf( "Sending control command to agent %s:%s\n", cmd, val );
 
 	len = snprintf( outbuf, sizeof(outbuf), "%s:%s\n", cmd, val );
-	writen( PIAPI_CNTX(cntx)->afd, outbuf, len );
-	close( PIAPI_CNTX(cntx)->afd );
+	writen( afd, outbuf, len );
+
+	close( afd );
 
 	if( piapi_debug )
 		printf( "Successfully configured agent\n");
@@ -262,8 +272,8 @@ piapi_init( void **cntx, piapi_callback_t *callback )
 	if( piapi_debug )
         	printf("\nPower Communication (Proxy <=> Agent)\n");
 
-	*cntx = malloc(sizeof(struct piapi_context));
-	bzero(*cntx, sizeof(struct piapi_context));
+	*cntx = malloc( sizeof(struct piapi_context) );
+	bzero( *cntx, sizeof(struct piapi_context) );
 
 	PIAPI_CNTX(*cntx)->callback = *callback;
         FD_ZERO( &PIAPI_CNTX(*cntx)->fds );
@@ -313,7 +323,7 @@ piapi_start( void *cntx, piapi_port_t port )
 	char val[10] = "";
 
 	if( piapi_debug )
-		printf( "Setting agent to %s collection on port %u\n", cmd, port);
+		printf( "Setting agent to %s collection on sensor port %u\n", cmd, port);
 
 	snprintf( val, 10, "%u", port );
 	if( piapi_control( cntx, cmd, val ) < 0 )
@@ -335,7 +345,7 @@ piapi_stop( void *cntx, piapi_port_t port )
 	char val[10] = "";
 
 	if( piapi_debug )
-		printf( "Setting agent to %s collection on port %u\n", cmd, port);
+		printf( "Setting agent to %s collection on sensor port %u\n", cmd, port);
 
 	snprintf( val, 10, "%u", port );
 	if( piapi_control( cntx, cmd, val ) < 0 )
