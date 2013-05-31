@@ -44,6 +44,7 @@ include/arch
 init_task
 user/hello_world/hello_world
 user/liblwk/liblwk.a
+user/powerinsight/powerinsight
 user/smartmap/smartmap_loader
 user/smartmap/smartmap_app
 user/test_app/test_app
