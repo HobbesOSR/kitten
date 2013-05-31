@@ -2,23 +2,14 @@
 
 #include "piapi.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <ctype.h>
-#include <sched.h>
-#include <pthread.h>
 #include <lwk/liblwk.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <netinet/in.h>
-#include <sys/time.h>
-#include <utmpx.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <unistd.h>
-#include <sys/syscall.h>
+#include <errno.h>
 
 static int piapi_debug = 1;
 
@@ -77,9 +68,18 @@ piapi_proxy_listen( void *cntx )
                 return -1;
         }
 
+	bzero((void *)&addr, sizeof(addr));
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = INADDR_ANY;
         addr.sin_port = htons( PIAPI_PRXY_PORT );
+
+	if( piapi_debug )
+		printf( "Proxy IP address is %d.%d.%d.%d\n",
+			*((char *)(&addr.sin_addr.s_addr)+0),
+			*((char *)(&addr.sin_addr.s_addr)+1),
+			*((char *)(&addr.sin_addr.s_addr)+2),
+			*((char *)(&addr.sin_addr.s_addr)+3) );
+
         bind( PIAPI_CNTX(cntx)->pfd, (struct sockaddr*) &addr, sizeof(addr) );
 
         if( listen( PIAPI_CNTX(cntx)->pfd, 5 ) < 0 ) {
@@ -193,6 +193,7 @@ piapi_control( void *cntx, char *cmd, char *val )
 		return -1;
 	}
 
+	bzero((void *)&addr, sizeof(addr));
         addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl( PIAPI_AGNT_SADDR );
 	addr.sin_port = htons( PIAPI_AGNT_PORT );
@@ -204,14 +205,16 @@ piapi_control( void *cntx, char *cmd, char *val )
 			*((char *)(&addr.sin_addr.s_addr)+2),
 			*((char *)(&addr.sin_addr.s_addr)+3) );
 
+	sleep(2);
 	rc = connect( afd, (struct sockaddr *) &addr, sizeof(addr) );
 	if( rc < 0 )
 	{
 		printf( "ERROR: connect() failed! rc=%d\n", rc );
-		perror( "CONNECT:" );
+		perror( "CONNECT" );
 		return -1;
 	}
 
+	sleep(2);
 	if( piapi_debug )
 		printf( "Sending control command to agent %s:%s\n", cmd, val );
 
@@ -287,6 +290,7 @@ piapi_init( void **cntx, piapi_callback_t *callback )
 	if( piapi_debug )
        		printf( "Proxy listener established\n" );
 
+	sleep(1);
 	if( piapi_attach( cntx ) < 0 )
 	{
 		printf( "ERROR: Unable to attach agent\n");
@@ -296,6 +300,7 @@ piapi_init( void **cntx, piapi_callback_t *callback )
 	if( piapi_debug )
        		printf( "Agent connection established\n" );
 
+	sleep(1);
 	pthread_create(&(PIAPI_CNTX(*cntx)->worker), 0x0, (void *)&piapi_worker_thread, *cntx);
 	return 0;
 }

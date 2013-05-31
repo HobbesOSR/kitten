@@ -2,23 +2,13 @@
 
 #define _GNU_SOURCE
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <ctype.h>
-#include <sched.h>
-#include <pthread.h>
 #include <lwk/liblwk.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <netinet/in.h>
-#include <sys/time.h>
-#include <utmpx.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <unistd.h>
-#include <sys/syscall.h>
+#include <errno.h>
 
 static int run_power_comm(void);
 

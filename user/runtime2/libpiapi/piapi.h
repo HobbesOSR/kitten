@@ -4,6 +4,9 @@
 // The well-known powerinsight proxy ipaddr
 #define PIAPI_PRXY_IPADDR   "10.101.4.201"
 
+// The well-known powerinsight agent ipaddr
+#define PIAPI_AGNT_IPADDR   "10.54.21.0"
+
 // The well-known powerinsight agent saddr
 #define PIAPI_AGNT_SADDR    0x0a361500
 
