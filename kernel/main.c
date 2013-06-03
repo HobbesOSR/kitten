@@ -21,6 +21,7 @@
 #include <lwk/kgdb.h>
 #include <lwk/driver.h>
 #include <lwk/kfs.h>
+#include <lwk/pci/pci.h>
 #include <lwk/random.h>
 #include <lwk/linux_compat.h>
 #include <lwk/workq.h>
@@ -155,6 +156,11 @@ start_kernel()
 		if (!cpu_isset(cpu, cpu_online_map))
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
+
+	/*
+	 * Initialize the PCI subsystem.
+	 */
+	init_pci();
 
 	/*
 	 * Enable external interrupts.

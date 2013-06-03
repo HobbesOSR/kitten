@@ -20,3 +20,11 @@ config LOCALVERSION_AUTO
 	default "y"
 	help
 	  Build SCM tag into version string.  Always turned on.
+
+config PCI_DEVICE_DB
+	bool
+	default "y"
+	help
+	  Include PCI device database in kernel image.  This is used
+	  to convert PCI device IDs to human readable strings.
+	  Enabling this option adds about 400 KB to the kernel image.

@@ -41,6 +41,7 @@ obj-$(CONFIG_DEBUG_HW_NOISE) += noise.o
 obj-y += mm/
 obj-y += lwk_syscalls/
 obj-y += linux_syscalls/
+obj-y += pci/
 
 # additional files to be removed upon make clean
 clean-files := ../include/lwk/compile.h
