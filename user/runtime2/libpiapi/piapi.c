@@ -69,7 +69,7 @@ piapi_agent_connect( void *cntx )
         }
 
 	bzero((void *)&addr, sizeof(addr));
-        addr.sin_family = AF_INET;
+        addr.sin_family = htons(AF_INET);
 	addr.sin_addr.s_addr = htonl( PIAPI_AGNT_SADDR );
 	addr.sin_port = htons( PIAPI_AGNT_PORT );
 

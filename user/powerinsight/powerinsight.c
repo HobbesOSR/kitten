@@ -73,7 +73,7 @@ run_power_comm( void )
         struct sockaddr_in paddr, aaddr, addr;
         socklen_t socklen = sizeof(aaddr);
 
-        paddr.sin_family = AF_INET;
+        paddr.sin_family = htons(AF_INET);
         paddr.sin_port = htons( pport );
         paddr.sin_addr.s_addr = INADDR_ANY;
         if( bind( pfd, (struct sockaddr*) &paddr, sizeof(paddr) ) < 0 )
