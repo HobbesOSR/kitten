@@ -29,10 +29,10 @@ typedef enum
 	PIAPI_ALL = 8
 } piapi_port_t;
 
-typedef int (*piapi_callback_t)( char *, unsigned int );
+typedef void (*piapi_callback_t)( char *, unsigned int );
 
 int
-piapi_init( void **cntx, piapi_callback_t *callback );
+piapi_init( void **cntx, piapi_callback_t callback );
 
 int
 piapi_destroy( void *cntx );

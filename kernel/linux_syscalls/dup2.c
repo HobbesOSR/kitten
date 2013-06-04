@@ -14,5 +14,6 @@ sys_dup2(
 	newfd = fdTableGetUnused( current->fdTable );
 	fdTableInstallFd( current->fdTable, newfd, file );
 
+	ret = newfd;
 	return ret;
 }

@@ -1,7 +1,7 @@
 obj-y := \
 	uname.o \
 	brk.o \
-	dup2.o \
+	dup.o \
 	getuid.o \
 	getgid.o \
 	getgroups.o \

@@ -315,12 +315,10 @@ app_load(
 	return 0;
 }
 
-int
+void
 piapi_callback( char *message, unsigned int size )
 {
-	printf( "Recieved message of length %u: %s\n", size, message );
-
-	return 0;
+	printf( "PIAPI message (%u): %s\n", size, message );
 }
 
 int
@@ -352,7 +350,7 @@ main(int argc, char *argv[], char *envp[])
 
 #ifdef USING_PIAPI
 	void *cntx = 0x0;
-	piapi_init( &cntx, (piapi_callback_t *)&piapi_callback );
+	piapi_init( &cntx, piapi_callback );
 #endif 
 
 	// Load the application into memory, but don't start it executing yet
@@ -389,7 +387,6 @@ main(int argc, char *argv[], char *envp[])
 	/*************************************************************************/
 
 #ifdef USING_PIAPI
-	piapi_stop( cntx, PIAPI_CPU );
 	piapi_destroy( cntx );
 #endif
 }

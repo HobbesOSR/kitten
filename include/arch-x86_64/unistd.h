@@ -80,7 +80,7 @@ __SYSCALL(__NR_shmat, syscall_not_implemented)
 __SYSCALL(__NR_shmctl, syscall_not_implemented)
 
 #define __NR_dup                                32
-__SYSCALL(__NR_dup, syscall_not_implemented)
+__SYSCALL(__NR_dup, sys_dup)
 #define __NR_dup2                               33
 __SYSCALL(__NR_dup2, syscall_not_implemented)
 #define __NR_pause                              34
