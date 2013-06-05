@@ -1,20 +1,11 @@
 #ifndef PIAPI_H
 #define PIAPI_H
 
-// The well-known powerinsight proxy ipaddr
-#define PIAPI_PRXY_IPADDR   "10.101.4.201"
-
-// The well-known powerinsight agent ipaddr
-#define PIAPI_AGNT_IPADDR   "10.54.21.0"
-
 // The well-known powerinsight agent saddr
 #define PIAPI_AGNT_SADDR    0x0a361500
 
-// The well-known powerinsight proxy port
-#define PIAPI_PRXY_PORT     20203
-
 // The well-known powerinsight agent port
-#define PIAPI_AGNT_PORT     20202
+#define PIAPI_AGNT_PORT     20201
 
 typedef enum
 {
@@ -29,7 +20,16 @@ typedef enum
 	PIAPI_ALL = 8
 } piapi_port_t;
 
-typedef void (*piapi_callback_t)( char *, unsigned int );
+struct piapi_sample {
+	unsigned int number;
+	unsigned int total;
+	unsigned long time_sec;
+	unsigned long time_usec;
+	float power;
+	float energy;
+};
+
+typedef void (*piapi_callback_t)( struct piapi_sample *);
 
 int
 piapi_init( void **cntx, piapi_callback_t callback );
@@ -38,9 +38,6 @@ int
 piapi_destroy( void *cntx );
 
 int
-piapi_start( void *cntx, piapi_port_t port );
-
-int
-piapi_stop( void *cntx, piapi_port_t port );
+piapi_collect( void *cntx, piapi_port_t port, unsigned int samples, unsigned int frequency );
 
 #endif

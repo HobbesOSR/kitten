@@ -160,8 +160,31 @@ sys_socket(
 	return fd;
 }
 
+static int
+translate_sockaddr(
+	uint8_t *		buf,
+	size_t			len
+)
+{
+	typedef unsigned short sa_family_t;
+	struct linux_sockaddr {
+		sa_family_t sa_family;
+		char sa_data[14];
+	};
 
+	struct sockaddr addr;
 
+	if( len < sizeof(struct sockaddr_in) )
+		return -1;
+
+	addr.sa_len = 0;
+	addr.sa_family = ((struct linux_sockaddr *)buf)->sa_family;
+	memcpy(addr.sa_data, ((struct linux_sockaddr *)buf)->sa_data, 14);
+
+	memcpy(buf, &addr, sizeof(struct sockaddr));
+
+	return 0;
+}
 
 static unsigned long
 sys_bind(
@@ -181,6 +204,12 @@ sys_bind(
 	if( copy_from_user( buf, (void*) addr, len ) )
 	{
 		printk( "%s: bad user address %p\n", __func__, (void*) addr );
+		return -EFAULT;
+	}
+
+	if( translate_sockaddr( buf, len ) < 0 )
+	{
+		printk( "%s: bad user address translation %p\n", __func__, (void*) addr );
 		return -EFAULT;
 	}
 
@@ -209,6 +238,12 @@ sys_connect(
 		return -EFAULT;
 	}
 
+	if( translate_sockaddr( buf, len ) < 0 )
+	{
+		printk( "%s: bad user address %p translation\n", __func__, (void*) addr );
+		return -EFAULT;
+	}
+
 	return lwip_connect( conn, (struct sockaddr *) buf, len );
 }
 
@@ -224,6 +259,7 @@ sys_accept(
 	if( !new_file )
 		return -EMFILE;
 
+ 
 	int conn = lwip_accept( lwip_from_fd(fd), addr, addrlen );
 	if( conn < 0 )
 	{

@@ -316,9 +316,13 @@ app_load(
 }
 
 void
-piapi_callback( char *message, unsigned int size )
+piapi_callback( struct piapi_sample *sample )
 {
-	printf( "PIAPI message (%u): %s\n", size, message );
+	printf( "PIAPI:\n");
+	printf( "\tsample - %u of %u\n", sample->number, sample->total );
+	printf( "\ttime   - %f\n", sample->time_sec+sample->time_usec/1000000.0 );
+	printf( "\tpower  - %f\n", sample->power );
+	printf( "\tenergy - %f\n", sample->energy );
 }
 
 int
@@ -368,7 +372,7 @@ main(int argc, char *argv[], char *envp[])
 	printf("DONE LOADING APPLICATION\n");
 
 #ifdef USING_PIAPI
-	piapi_start( cntx, PIAPI_CPU );
+	piapi_collect( cntx, PIAPI_CPU, 60, 1 );
 #endif
 
 	/*************************************************************************/

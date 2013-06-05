@@ -5,14 +5,13 @@
 #include <lwk/liblwk.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-//#include <arpa/inet.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <errno.h>
 
-static int piapi_debug = 0;
+static int piapi_debug = 1;
 
 struct piapi_context
 {
@@ -69,7 +68,7 @@ piapi_agent_connect( void *cntx )
         }
 
 	bzero((void *)&addr, sizeof(addr));
-        addr.sin_family = htons(AF_INET);
+        addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl( PIAPI_AGNT_SADDR );
 	addr.sin_port = htons( PIAPI_AGNT_PORT );
 
@@ -94,12 +93,43 @@ piapi_agent_connect( void *cntx )
 	return 0;
 }
 
+static int 
+piapi_parse_message( char *buf, unsigned int len, struct piapi_sample *sample )
+{
+	char *token;
+
+	if( (token = strtok( buf, ":" )) == NULL)
+		return -1;
+	sample->number = atoi(token);
+
+	if( (token = strtok( NULL, ":" )) == NULL)
+		return -1;
+	sample->total = atoi(token);
+
+	if( (token = strtok( NULL, ":" )) == NULL)
+		return -1;
+	sample->time_sec = atol(token);
+
+	if( (token = strtok( NULL, ":" )) == NULL)
+		return -1;
+	sample->time_usec = atol(token);
+
+	if( (token = strtok( NULL, ":" )) == NULL)
+		return -1;
+	sample->power = atof(token);
+
+	if( (token = strtok( NULL, ":" )) == NULL)
+		return -1;
+	sample->energy = atof(token);
+}
+
 static void
 piapi_worker_thread( void *cntx )
 {
 	struct sockaddr_in addr;
 	socklen_t socklen = sizeof(addr);
 
+	struct piapi_sample sample;
 	char buf[ 256 ];
 	ssize_t rc;
 
@@ -137,7 +167,10 @@ piapi_worker_thread( void *cntx )
 			printf( "%d: read %zd bytes: '%s'\n", PIAPI_CNTX(cntx)->pfd, rc, buf);
 
 		if( PIAPI_CNTX(cntx)->callback )
-			PIAPI_CNTX(cntx)->callback(buf, rc);
+		{
+			piapi_parse_message(buf, rc, &sample);
+			PIAPI_CNTX(cntx)->callback(&sample);
+		}
 	}
 }
 
@@ -196,15 +229,15 @@ piapi_destroy( void *cntx )
 }
 
 int
-piapi_start( void *cntx, piapi_port_t port )
+piapi_collect( void *cntx, piapi_port_t port, unsigned int samples, unsigned int frequency )
 {
-	char cmd[ 10 ] = "start";
-	char val[10] = "";
+	char cmd[ 10 ] = "collect";
+	char val[ 20 ] = "";
 
 	if( piapi_debug )
 		printf( "Setting agent to %s collection on sensor port %u\n", cmd, port);
 
-	snprintf( val, 10, "%u", port );
+	snprintf( val, 10, "%u:%u:%u", port, samples, frequency );
 	if( piapi_control( cntx, cmd, val ) < 0 )
 	{
 		printf( "ERROR: Control message failed\n");
@@ -216,26 +249,3 @@ piapi_start( void *cntx, piapi_port_t port )
 
 	return 0;
 }
-
-int
-piapi_stop( void *cntx, piapi_port_t port )
-{
-	char cmd[ 10 ] = "stop";
-	char val[10] = "";
-
-	if( piapi_debug )
-		printf( "Setting agent to %s collection on sensor port %u\n", cmd, port);
-
-	snprintf( val, 10, "%u", port );
-	if( piapi_control( cntx, cmd, val ) < 0 )
-	{
-		printf( "ERROR: Control message failed\n");
-		return -1;
-	}
-
-	if( piapi_debug )
-		printf( "Successfully stopped agent\n");
-
-	return 0;
-}
-
