@@ -315,6 +315,7 @@ app_load(
 	return 0;
 }
 
+#ifdef USING_PIAPI
 void
 piapi_callback( struct piapi_sample *sample )
 {
@@ -324,6 +325,7 @@ piapi_callback( struct piapi_sample *sample )
 	printf( "\tpower  - %f\n", sample->power );
 	printf( "\tenergy - %f\n", sample->energy );
 }
+#endif
 
 int
 main(int argc, char *argv[], char *envp[])
