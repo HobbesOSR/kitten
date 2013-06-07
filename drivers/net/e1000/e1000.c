@@ -30,15 +30,13 @@
 #include <arch/apicdef.h>
 #include <arch/io_apic.h>
 
-
-#define NUM_RX_DESCRIPTORS	16
-#define NUM_TX_DESCRIPTORS	16
-
-
 // Macros that read/write e1000 memory mapped registers
 #define mmio_read32(offset)         *((volatile uint32_t *)(dev->mmio_vaddr + (offset)))
 #define mmio_write32(offset, value) *((volatile uint32_t *)(dev->mmio_vaddr + (offset))) = (value)
-//#define mmio_write32(offset, value) e1000_write_reg_io(dev, offset, value)
+
+// Number of read/write descriptors
+#define NUM_RX_DESCRIPTORS	16
+#define NUM_TX_DESCRIPTORS	16
 
 
 // E1000 Ethernet Controller Register Offsets
@@ -64,6 +62,7 @@
 #define E1000_REG_MTA      0x05200	// Multicast Table Array (n)
 #define E1000_REG_ICR      0x000C0	// Interrupt Cause Read
 #define E1000_REG_IMS      0x000D0	// Interrupt Mask Set/Read
+#define E1000_REG_IMC      0x000D8	// Interrupt Mask Clear
 #define E1000_REG_ICS      0x000C8	// Interrupt Cause Set
 #define E1000_REG_RAL      0x05400	// Receive Address Low
 #define E1000_REG_RAH      0x05404	// Receive Address High
@@ -141,7 +140,7 @@ typedef struct e1000_device_s
 	
 	volatile uint8_t		*rx_desc_base;
 	volatile e1000_rx_desc_t	*rx_desc[NUM_RX_DESCRIPTORS];	// receive descriptor buffer
-	volatile uint16_t		rx_tail;
+	volatile uint16_t		rx_cur;
 	
 	volatile uint8_t		*tx_desc_base;
 	volatile e1000_tx_desc_t	*tx_desc[NUM_TX_DESCRIPTORS];	// transmit descriptor buffer
@@ -525,7 +524,7 @@ static int e1000_rx_init(struct netif *netif)
 		dev->rx_desc[i]->status = 0;
 	}
 	
-	// setup the receive descriptor ring buffer (TODO: >32-bits may be broken in this code)
+	// setup the receive descr ptor ring buffer (TODO: >32-bits may be broken in this code)
 	mmio_write32( E1000_REG_RDBAH, (uint32_t)((uint64_t)__pa(dev->rx_desc_base) >> 32) );
 	mmio_write32( E1000_REG_RDBAL, (uint32_t)((uint64_t)__pa(dev->rx_desc_base) & 0xFFFFFFFF) );
 	
@@ -534,11 +533,11 @@ static int e1000_rx_init(struct netif *netif)
 	
 	// setup head and tail pointers
 	mmio_write32( E1000_REG_RDH, 0 );
-	mmio_write32( E1000_REG_RDT, NUM_RX_DESCRIPTORS );
-	dev->rx_tail = 0;
+	mmio_write32( E1000_REG_RDT, NUM_RX_DESCRIPTORS - 1);
+	dev->rx_cur = 0;
 	
 	// set the receieve control register (promisc ON, 8K pkt size)
-	mmio_write32( E1000_REG_RCTL, (RCTL_SBP | RCTL_UPE | RCTL_MPE | RDMTS_HALF | RCTL_SECRC | 
+	mmio_write32( E1000_REG_RCTL, (RCTL_SBP | RCTL_UPE | RCTL_MPE | RDMTS_HALF |
 									RCTL_LPE | RCTL_BAM | RCTL_BSIZE_8192) );
 	return 0;
 }
@@ -588,8 +587,6 @@ static err_t e1000_tx_poll(struct netif *netif, struct pbuf *pkt)
 	struct pbuf *q;
 	int count = 0;
 
-	printk("In e1000_tx_poll\n");
-
 	// Count the number of entries in the pbuf
 	for (q = pkt; q != NULL ; q = q->next)
 		++count;
@@ -625,13 +622,17 @@ static err_t e1000_tx_poll(struct netif *netif, struct pbuf *pkt)
 // This can be used stand-alone or from an interrupt handler
 static void e1000_rx_poll(struct netif *netif)
 {
+    struct pbuf * p;
 	e1000_device_t *dev = netif->state;
 
-	while( (dev->rx_desc[dev->rx_tail]->status & (1 << 0)) )
+    printk("E1000: packet received! [h=%d, t=%d]\n", mmio_read32(E1000_REG_RDH),
+        mmio_read32(E1000_REG_RDT));
+
+	while( (dev->rx_desc[dev->rx_cur]->status & (1 << 0)) )
 	{
 		// raw packet and packet length (excluding CRC)
-		uint8_t *pkt = __va((void *)dev->rx_desc[dev->rx_tail]->address);
-		uint16_t pktlen = dev->rx_desc[dev->rx_tail]->length;
+		uint8_t *pkt = __va((void *)dev->rx_desc[dev->rx_cur]->address);
+		uint16_t pktlen = dev->rx_desc[dev->rx_cur]->length;
 		bool dropflag = false;
 
 		if( pktlen < 60 )
@@ -641,33 +642,60 @@ static void e1000_rx_poll(struct netif *netif)
 		}
 
 		// while not technically an error, there is no support in this driver
-		if( !(dev->rx_desc[dev->rx_tail]->status & (1 << 1)) )
+		if( !(dev->rx_desc[dev->rx_cur]->status & (1 << 1)) )
 		{
 			printk("E1000: no EOP set! (len=%u, 0x%x 0x%x 0x%x)\n", 
 				pktlen, pkt[0], pkt[1], pkt[2]);
 			dropflag = true;
 		}
 		
-		if( dev->rx_desc[dev->rx_tail]->errors )
+		if( dev->rx_desc[dev->rx_cur]->errors )
 		{
-			printk("E1000: rx errors (0x%x)\n", dev->rx_desc[dev->rx_tail]->errors);
+			printk("E1000: rx errors (0x%x)\n", dev->rx_desc[dev->rx_cur]->errors);
 			dropflag = true;
 		}
 
 		if( !dropflag )
 		{
-			// send the packet to higher layers for parsing
+            p = pbuf_alloc(PBUF_RAW, pktlen, PBUF_POOL);
+            if (!p) {
+                printk("Unable to allocate pbuf! dropping packet\n");
+            } else {
+                memcpy(p->payload, pkt, pktlen);
+                p->tot_len = pktlen;
+                p->next = 0x0;
+
+                // send the packet to higher layers for parsing
+                if (netif->input(p, netif) != ERR_OK) {
+                    printk("Packet receive failed!\n");
+                    pbuf_free(p);
+                }
+            }
 		}
 		
-		// update RX tail pointer
-		dev->rx_desc[dev->rx_tail]->status = (uint16_t)(0);
-		dev->rx_tail = (dev->rx_tail + 1) % NUM_RX_DESCRIPTORS;
+		// update RX cur pointer
+		dev->rx_desc[dev->rx_cur]->status = (uint16_t)(0);
+		dev->rx_cur = (dev->rx_cur + 1) % NUM_RX_DESCRIPTORS;
 		
 		// write the tail to the device
-		mmio_write32(E1000_REG_RDT, dev->rx_tail);
+		mmio_write32(E1000_REG_RDT, (mmio_read32(E1000_REG_RDT) + 1) % NUM_RX_DESCRIPTORS);
 	}
 }
 
+// ICR bits
+#define E1000_ICR_TXCW      0x00000001  // Transmit descirptor written back
+#define E1000_ICR_TXQE      0x00000002  // Transmit queue empty 
+#define E1000_ICR_LSC       0x00000004  // Link status change
+#define E1000_ICR_RXSEQ     0x00000008  // Receive sequence error  
+#define E1000_ICR_RXDMT0    0x00000010  // Receive descirptor minimum threshold met
+#define E1000_ICR_RXO       0x00000040  // Receiver overrun
+#define E1000_ICR_RXT0      0x00000080  // Receiver timer interrupt
+#define E1000_ICR_MDAC      0x00000200  // MDIO access complete
+#define E1000_ICR_RXCFG     0x00000400  // Receieve configuration symbols
+#define E1000_ICR_GPI_SDP6  0x00002000  // General purpose interrupt 6
+#define E1000_ICR_GPI_SDP7  0x00004000  // General purpose interrupt 7
+#define E1000_ICR_TXD_LOW   0x00008000  // Transmit descriptor low threshold met
+#define E1000_ICR_SRPD      0x00010000  // Small receive packet detected
 
 static irqreturn_t e1000_interrupt_handler(int vector, void *priv)
 {
@@ -685,13 +713,22 @@ static irqreturn_t e1000_interrupt_handler(int vector, void *priv)
 	// read the pending interrupt status
 	uint32_t icr = mmio_read32(E1000_REG_ICR);
 
+    if (!icr) {
+        printk("NOT our interrupt!\n");
+        return IRQ_HANDLED;
+    }
+
+    // Disable interrupts
+    mmio_write32(E1000_REG_IMC, ~0);
+
 	// tx success stuff
-	icr &= ~(3);
+    // This clears the TX interrupts
+	icr &= ~(E1000_ICR_TXCW | E1000_ICR_TXQE);
 
 	// LINK STATUS CHANGE
-	if( icr & (1 << 2) )
+	if(icr & (E1000_ICR_LSC))
 	{
-		icr &= ~(1 << 2);
+		icr &= ~(E1000_ICR_LSC);
 		mmio_write32(E1000_REG_CTRL, (mmio_read32(E1000_REG_CTRL) | CTRL_SLU));		
 		
 		// debugging info (probably not necessary in most scenarios)
@@ -707,10 +744,12 @@ static irqreturn_t e1000_interrupt_handler(int vector, void *priv)
 	}
 	
 	// RX underrun / min threshold
-	if( icr & (1 << 6) || icr & (1 << 4) )
+	if(icr & (E1000_ICR_RXO) || icr & (E1000_ICR_RXDMT0))
 	{
-		icr &= ~((1 << 6) | (1 << 4));
-		printk(" underrun (rx_head = %u, rx_tail = %u)\n", mmio_read32(E1000_REG_RDH), dev->rx_tail);
+		icr &= ~((E1000_ICR_RXO) | (E1000_ICR_RXDMT0));
+		//printk(" underrun (rx_head = %u, rx_cur = %u)\n", mmio_read32(E1000_REG_RDH), dev->rx_cur);
+		printk(" overrun (rx head = %u, rx tail = %u)\n", mmio_read32(E1000_REG_RDH),
+            mmio_read32(E1000_REG_RDT));
 		
 		volatile int i;
 		for(i = 0; i < NUM_RX_DESCRIPTORS; i++)
@@ -723,17 +762,20 @@ static irqreturn_t e1000_interrupt_handler(int vector, void *priv)
 	}
 
 	// packet is pending
-	if( icr & (1 << 7) )
+	if(icr & (E1000_ICR_RXT0))
 	{
-		icr &= ~(1 << 7);
+		icr &= ~(E1000_ICR_RXT0);
 		e1000_rx_poll(netif);
 	}
 	
-	if( icr )
+	if(icr)
 		printk("E1000: unhandled interrupt #%u received! (ICR = 0x%08x)\n", vector, icr);
 	
 	// clearing the pending interrupts
 	mmio_read32(E1000_REG_ICR);
+
+    // Enable interrupts
+    mmio_write32(E1000_REG_IMS, 0xFFFFFFFF);
 
 	return IRQ_HANDLED;
 }
