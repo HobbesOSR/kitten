@@ -41,11 +41,6 @@ config SEASTAR
         depends on CRAY_XT && NETWORK
         default CRAY_XT
 
-config E1K
-        bool "E1K Device Driver (e1000)"
-        depends on NETWORK && LWIP_ARP
-        default PC
-
 config E1000
         bool "E1000 Device Driver (e1000)"
         depends on NETWORK && LWIP_ARP
