@@ -36,6 +36,7 @@
  *
  */
 
+#include <lwk/delay.h>
 #include "lwip/opt.h"
 
 #if !NO_SYS /* don't build if not configured for use in lwipopts.h */
@@ -75,27 +76,21 @@ tcpip_thread(void *arg)
 {
   struct tcpip_msg *msg;
   LWIP_UNUSED_ARG(arg);
-  struct netif *rtl8139_netif;
+  struct netif *netif;
 
   if (tcpip_init_done != NULL) {
     tcpip_init_done(tcpip_init_done_arg);
   }
 
-	rtl8139_netif = netif_find("ne0");
-	rtl8139_netif->ip_addr.addr = 0x0101a8c0;
-	rtl8139_netif->netmask.addr = 0x00ffffff;
-	rtl8139_netif->gw.addr = 0xfe01a8c0;
-	netif_set_default(rtl8139_netif);
-	netif_set_up(rtl8139_netif);
+  // Sleep for a second
+  for (int i = 0; i < 50 * 5; i++)
+    udelay(20000);
 
-	printk("Configuring RTL8139:\n");
-	printk("\tIP: %x\n", rtl8139_netif->ip_addr.addr);
-	printk("\tNETMASK: %x\n", rtl8139_netif->netmask.addr);
-	printk("\tGATEWAY: %x\n", rtl8139_netif->gw.addr);
-
-	printk(KERN_INFO "%s:IP address set to kitten is %d.%d.%d.%d\n", __func__, ip4_addr1(&rtl8139_netif->ip_addr), ip4_addr2(&rtl8139_netif->ip_addr), ip4_addr3(&rtl8139_netif->ip_addr), ip4_addr4(&rtl8139_netif->ip_addr));
-	printk(KERN_INFO "%s:NETMASK address set to  kitten is %d.%d.%d.%d\n", __func__, ip4_addr1(&rtl8139_netif->netmask), ip4_addr2(&rtl8139_netif->netmask), ip4_addr3(&rtl8139_netif->netmask), ip4_addr4(&rtl8139_netif->netmask));
-	printk(KERN_INFO "%s:GATEWAY address set to kitten is %d.%d.%d.%d\n", __func__, ip4_addr1(&rtl8139_netif->gw), ip4_addr2(&rtl8139_netif->gw), ip4_addr3(&rtl8139_netif->gw), ip4_addr4(&rtl8139_netif->gw));
+  // Bring up the e1000 driver.
+  // TODO: fix this!
+  netif = netif_find("en0");
+  netif_set_default(netif);
+  netif_set_up(netif);
 
   LOCK_TCPIP_CORE();
   while (1) {                          /* MAIN Loop */

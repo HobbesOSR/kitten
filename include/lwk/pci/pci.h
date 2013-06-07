@@ -55,4 +55,12 @@ pci_dev_t *pci_lookup_device(uint16_t vendor_id, uint16_t device_id);
 void pci_describe_device(pci_dev_t *dev, size_t len, char *buf);
 
 
+/** Reads a value from a PCI device's config space header. */
+uint32_t pci_read(pci_dev_t *dev, unsigned int reg, unsigned int width);
+
+
+/** Writes a value to a PCI device's config space header. */
+void pci_write(pci_dev_t *dev, unsigned int reg, unsigned int width, uint32_t value);
+
+
 #endif

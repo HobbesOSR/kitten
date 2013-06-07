@@ -11,16 +11,16 @@
  *
  * Currently supported device types:
  * - "console": Output console devices
- * - "net": Network devices
- * - "late": Devices that are to be brought up late, if they are linked in
- *
- * 
+ * - "net":     Network devices
+ * - "late":    Devices that are to be brought up late, if they are linked in
  */
+
 #ifndef _LWK_DRIVER_H
 #define _LWK_DRIVER_H
 
 #include <lwk/kernel.h>
 #include <lwk/types.h>
+
 
 /**
  * Name of the driver.
@@ -31,6 +31,7 @@
 #ifndef DRIVER_NAME
 #define DRIVER_NAME KBUILD_MODNAME
 #endif
+
 
 /**
  * Driver parameter names have the form:
@@ -45,6 +46,7 @@
  *      bar.foo=1
  */
 #define __DRIVER_PARAM_PREFIX	DRIVER_NAME "."
+
 
 /**
  * \name Driver parameters.
@@ -73,6 +75,7 @@
 
 /** @} */
 
+
 /** Driver initialization structure.
  *
  * Every driver defines one of these structures via the
@@ -90,13 +93,14 @@ struct driver_info {
 					//!< used to prevent double inits.
 };
 
+
 /** Create a driver_info structure.
  *
  * This adds a function to the __driver_table ELF section.
  * \param type should be one of the known types.
  * \param init_func should take be a thunk that will bring up the driver.
  */
-#define DRIVER_INIT(type,init_func) 					\
+#define DRIVER_INIT(type, init_func) 					\
 	static char __driver_name[] = DRIVER_NAME;			\
 	static char __driver_type[] = type;				\
 	static struct driver_info const __driver_info			\
@@ -105,6 +109,7 @@ struct driver_info {
 			aligned(sizeof(void *))))			\
 	= { __driver_name, __driver_type, init_func };
 
+
 /**
  * Driver initialization table markers.
  *
@@ -112,6 +117,7 @@ struct driver_info {
  * which are defined in the platform's linker script.
  * @{
  */
+
 extern struct driver_info __start___driver_table[];
 extern struct driver_info __stop___driver_table[];
 
@@ -147,12 +153,13 @@ driver_init_by_name(
  * Given a comma separated list of device drivers, initialize
  * them each in turn.
  *
- * \note Modifies the string in place to nul terminate the devices!
+ * \note Modifies the string in place to NULL terminate the devices!
  */
 extern void
 driver_init_list(
 	const char *		type,
 	char *			list
 );
+
 
 #endif

@@ -130,7 +130,7 @@ start_kernel()
 	 */
 	rand_init();
 
-    workq_init();
+	workq_init();
 
 	/*
 	 * Boot all of the other CPUs in the system, one at a time.
@@ -172,7 +172,8 @@ start_kernel()
 	*/
 	netdev_init();
 
-    mcheck_init_late();
+	mcheck_init_late();
+
 	/*
 	 * And any modules that need to be started.
 	 */

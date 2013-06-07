@@ -46,6 +46,11 @@ config E1K
         depends on NETWORK && LWIP_ARP
         default PC
 
+config E1000
+        bool "E1000 Device Driver (e1000)"
+        depends on NETWORK && LWIP_ARP
+        default PC
+
 config NE2K
         bool "NE2K Device Driver (rtl8139)"
         depends on NETWORK && LWIP_ARP

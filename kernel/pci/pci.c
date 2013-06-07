@@ -181,6 +181,22 @@ pci_lookup_device(uint16_t vendor_id, uint16_t device_id)
 }
 
 
+/** Reads a value from a PCI device's config space header. */
+uint32_t
+pci_read(pci_dev_t *dev, unsigned int reg, unsigned int width)
+{
+	return pcicfg_read(dev->parent_bus->bus, dev->slot, dev->func, reg, width);
+}
+
+
+/** Writes a value to a PCI device's config space header. */
+void
+pci_write(pci_dev_t *dev, unsigned int reg, unsigned int width, uint32_t value)
+{
+	pcicfg_write(dev->parent_bus->bus, dev->slot, dev->func, reg, width, value);
+}
+
+
 void
 init_pci(void)
 {

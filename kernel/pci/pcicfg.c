@@ -153,6 +153,17 @@ pcicfg_read_extcap(
 	uint32_t	val;
 	int		ptr, nextptr, ptrptr;
 
+	/*
+	 * Start out with all structures invalid.
+	 * For each extended capability found, the corresponding structure's
+	 * valid bit will be set to true.
+	 */
+	hdr->pp.valid   = false;
+	hdr->msi.valid  = false;
+	hdr->msix.valid = false;
+	hdr->pcix.valid = false;
+	hdr->msix.valid = false;
+
 	/* Figure out where to start */
 	switch (hdr->hdr_type) {
 	case 0:
@@ -181,8 +192,21 @@ pcicfg_read_extcap(
 		/* Process this entry */
 		switch (RREG( ptr + PCICAP_ID, 1) ) {
 
+		case PCIY_PMG:
+			hdr->pp.valid  = true;
+			hdr->pp.pmc   = RREG( ptr + PCIR_POWER_CAP,    2 );
+			hdr->pp.pmcsr = RREG( ptr + PCIR_POWER_STATUS, 2 );
+			break;
+
+		case PCIY_PCIX:
+			hdr->pcix.valid   = true;
+			hdr->pcix.command = RREG( ptr + PCIXR_COMMAND, 2 );
+			hdr->pcix.status  = RREG( ptr + PCIXR_STATUS,  4 );
+			break;
+
 		/* Extended Message Signaled Interrupt (MSI-X) */
 		case PCIY_MSIX:	
+			hdr->msix.valid             = true;
 			hdr->msix.msix_location     = ptr;
 			hdr->msix.msix_ctrl         = RREG( ptr + PCIR_MSIX_CTRL, 2 );
 			hdr->msix.msix_msgnum       = (hdr->msix.msix_ctrl &
@@ -356,6 +380,53 @@ pcicfg_hdr1_read(
 	hdr1->sec_latency_timer = RREG( PCIR_SECLAT_1,    1 );
 	hdr1->sec_status_reg    = RREG( PCIR_SECSTAT_1,   2 );
 	hdr1->bridge_ctrl_reg   = RREG( PCIR_BRIDGECTL_1, 2 );
+}
+
+
+/** Decodes hdr->bar[index], stores result in bar output. */
+int
+pcicfg_bar_decode(
+	pcicfg_hdr_t *	hdr,
+	unsigned int	index,
+	pci_bar_t *	bar
+)
+{
+	uint32_t bar1, bar2;
+	uint8_t mem = 0;
+	uint8_t type = 0;
+	uint8_t prefetch = 0;
+	uint64_t address;
+
+	bar1 = hdr->bar[index];
+
+	// Figure out the type of the BAR, 0 = Memory, 1 = I/O
+	mem = (bar1 & 0x1);
+
+	if (mem == PCIM_BAR_MEM_SPACE) {
+		// Memory BAR, has type and prefetch defined
+		type     = ((bar1 >> 1) & 0x3);
+		prefetch = ((bar1 >> 3) & 0x1);
+		address  = (bar1 & 0xFFFFFFF0);
+
+		// 64-bit BARs (type 2) use two indicies
+		if (type == 2) {
+			bar2 = hdr->bar[index + 1];
+			address |= ((uint64_t)bar2 << 32);
+		}
+	} else {
+		// I/O BAR, only address is defined
+		address  = (bar1 & 0xFFFFFFFC);
+	}
+
+	if (bar) {
+		bar->index    = (uint8_t) index;
+		bar->address  = address;
+		bar->mem      = mem;
+		bar->type     = type;
+		bar->prefetch = prefetch;
+	}
+
+	return 0;
 }
 
 

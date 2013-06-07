@@ -57,10 +57,9 @@ typedef uint32_t	pci_io_addr_t;
  * This structure stores a device's PCI power management information.
  */
 typedef struct pcicfg_pp {
-	uint16_t	pp_cap;			//!< power management capabilities
-	uint8_t		pp_status;		//!< config space address of PCI power status reg
-	uint8_t		pp_pmcsr;		//!< config space address of PMCSR reg
-	uint8_t		pp_data;		//!< config space address of PCI power data reg
+	bool		valid;			//!< Set struct contents are valid, 0 otherwise
+	uint16_t	pmc;			//!< power management capabilities register
+	uint16_t	pmcsr;			//!< power management control / status register
 } pcicfg_pp_t;
 
 
@@ -91,6 +90,7 @@ typedef struct vpd_rw {
  * not necessarily needed to configure the device.
  */
 typedef struct pcicfg_vpd {
+	bool		valid;			//!< Set struct contents are valid, 0 otherwise
 	uint8_t		vpd_reg;		//!< base register, + 2 for addr, + 4 data
 	char		vpd_cached;		//!< cached value
 	char *		vpd_ident;		//!< string identifier
@@ -108,6 +108,7 @@ typedef struct pcicfg_vpd {
  * payload contains the source of the interrupt.
  */
 typedef struct pcicfg_msi {
+	bool		valid;			//!< Set struct contents are valid, 0 otherwise
 	uint16_t	msi_ctrl;		//!< message control
 	uint8_t		msi_location;		//!< offset of MSI capability registers
 	uint8_t		msi_msgnum;		//!< number of messages
@@ -137,6 +138,7 @@ typedef struct msix_table_entry {
  * at a time.
  */
 typedef struct pcicfg_msix {
+	bool		valid;			//!< Set struct contents are valid, 0 otherwise
 	uint16_t	msix_ctrl;		//!< message control
 	uint16_t	msix_msgnum;		//!< number of messages
 	uint8_t		msix_location;		//!< offset of MSI-X capability registers
@@ -151,8 +153,17 @@ typedef struct pcicfg_msix {
 } pcicfg_msix_t;
 
 
+/** PCI-X info. */
+typedef struct pcicfg_pcix {
+	bool		valid;			//!< Set struct contents are valid, 0 otherwise
+	uint16_t	command;		//!< PCI-X command register
+	uint32_t	status;			//!< PCI-X status register
+} pcicfg_pcix_t;
+
+
 /** PCI HyperTransport info. */
 typedef struct pcicfg_ht {
+	bool		valid;			//!< Set struct contents are valid, 0 otherwise
 	uint8_t		ht_msimap;		//!< Offset of MSI mapping cap registers
 	uint16_t	ht_msictrl;		//!< MSI mapping control
 	uint64_t	ht_msiaddr;		//!< MSI mapping base address
@@ -205,7 +216,8 @@ typedef struct pcicfg_hdr {
 	pcicfg_vpd_t	vpd;			//!< vital product Data
 	pcicfg_msi_t	msi;			//!< message signaled interrupt info
 	pcicfg_msix_t	msix;			//!< message signaled intterupt extended info
-	pcicfg_ht_t	ht;			//!< HyperTransport
+	pcicfg_pcix_t	pcix;			//!< PCI-X info
+	pcicfg_ht_t	ht;			//!< HyperTransport info
 } pcicfg_hdr_t;
 
 
@@ -232,6 +244,17 @@ typedef struct pcicfg_hdr1 {
 } pcicfg_hdr1_t;
 
 
+/** PCI Base Address (BAR) register structure. */
+typedef struct pci_bar {
+	uint64_t	address;		//!< the base address of the region defined by the bar
+	uint8_t		index;			//!< the index of the BAR in its parent PCI config header
+	uint8_t		mem;			//!< 0 for memory, 1 for I/O
+	uint8_t		type;			//!< 0 for 32-bit, 2 for 64-bit
+	uint8_t		prefetch;		//!< 0 = non-prefetchable, 1 = prefetchable
+} pci_bar_t;
+
+
+/** Reads a value from PCI configuration space. */
 uint32_t pcicfg_read(
 	unsigned int	bus,
 	unsigned int	slot,
@@ -241,6 +264,7 @@ uint32_t pcicfg_read(
 );
 
 
+/** Writes a value to PCI configuration space. */
 void
 pcicfg_write(
 	unsigned int	bus,
@@ -252,6 +276,7 @@ pcicfg_write(
 );
 
 
+/** Reads a base PCI config header into a pcicfg_hdr_t structure. */
 void
 pcicfg_hdr_read(
 	unsigned int	bus,
@@ -261,6 +286,7 @@ pcicfg_hdr_read(
 );
 
 
+/** Reads bridge PCI config header into a pcicfg_hdr1_t structure. */
 void
 pcicfg_hdr1_read(
 	unsigned int	bus,
@@ -268,6 +294,23 @@ pcicfg_hdr1_read(
 	unsigned int	func,
 	pcicfg_hdr1_t *	hdr1
 );
+
+
+/** Decodes a raw BAR into a pci_bar_t structure. */
+int
+pcicfg_bar_decode(
+	pcicfg_hdr_t *	hdr,
+	unsigned int	index,
+	pci_bar_t *	bar
+);
+
+
+/** Prints a pci_bar_t structure to the console. */
+void pcicfg_bar_print(pci_bar_t *bar);
+
+
+/** Prints a PCI config header to the console. */
+void pcicfg_hdr_print(pcicfg_hdr_t *hdr);
 
 
 #endif
