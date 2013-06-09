@@ -1009,6 +1009,21 @@ dhcp_bind(struct netif *netif)
   netif_set_up(netif);
   /* netif is now bound to DHCP leased address */
   dhcp_set_state(dhcp, DHCP_BOUND);
+
+  printk(KERN_INFO "DHCP %c%c%d IP: %d.%d.%d.%d\n",
+         netif->name[0], netif->name[1], netif->num,
+         ip4_addr1(&netif->ip_addr), ip4_addr2(&netif->ip_addr),
+         ip4_addr3(&netif->ip_addr), ip4_addr4(&netif->ip_addr));
+
+  printk(KERN_INFO "DHCP %c%c%d SN: %d.%d.%d.%d\n",
+         netif->name[0], netif->name[1], netif->num,
+         ip4_addr1(&netif->netmask), ip4_addr2(&netif->netmask),
+         ip4_addr3(&netif->netmask), ip4_addr4(&netif->netmask));
+
+  printk(KERN_INFO "DHCP %c%c%d GW: %d.%d.%d.%d\n",
+         netif->name[0], netif->name[1], netif->num,
+         ip4_addr1(&netif->gw), ip4_addr2(&netif->gw),
+         ip4_addr3(&netif->gw), ip4_addr4(&netif->gw));
 }
 
 /**

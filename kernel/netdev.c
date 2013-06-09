@@ -9,6 +9,13 @@
 #include <arch/vsyscall.h>
 #include <lwk/kfs.h>
 #include <lwk/fdTable.h>
+#include <lwip/init.h>
+#include <lwip/tcp.h>
+#include <lwip/api.h>
+#include <lwip/sockets.h>
+#include <lwip/tcpip.h>
+#include <lwip/stats.h>
+
 
 /**
  * Holds a comma separated list of network devices to configure.
@@ -16,14 +23,6 @@
 static char netdev_str[128];
 param_string(net, netdev_str, sizeof(netdev_str));
 
-#ifdef CONFIG_LWIP_SOCKET
-
-#include <lwip/init.h>
-#include <lwip/tcp.h>
-#include <lwip/api.h>
-#include <lwip/sockets.h>
-#include <lwip/tcpip.h>
-#include <lwip/stats.h>
 
 /** Return a LWIP connection number from a user fd */
 static inline int
@@ -80,6 +79,7 @@ socket_read(
 	return lwip_read( lwip_connection(file), (void*) buf, count );
 }
 
+
 static int
 sys_listen(
 	int			fd,
@@ -88,7 +88,6 @@ sys_listen(
 {
 	return lwip_listen( lwip_from_fd(fd), backlog );
 }
-
 
 
 static int
@@ -103,6 +102,7 @@ socket_close(
 	lwip_close(lwip_connection(file));
 	return 0;
 }
+
 
 struct kfs_fops kfs_socket_fops = {
 	.write		= socket_write,
@@ -132,7 +132,6 @@ socket_allocate( void )
 }
 
 
-
 static int
 sys_socket(
 	int			domain,
@@ -160,6 +159,7 @@ sys_socket(
 	return fd;
 }
 
+
 static int
 translate_sockaddr(
 	uint8_t *		buf,
@@ -185,6 +185,7 @@ translate_sockaddr(
 
 	return 0;
 }
+
 
 static unsigned long
 sys_bind(
@@ -246,6 +247,7 @@ sys_connect(
 
 	return lwip_connect( conn, (struct sockaddr *) buf, len );
 }
+
 
 static int
 sys_accept(
@@ -342,6 +344,7 @@ translate_out_fdset(
 	return 0;
 }
 
+
 int
 sys_select(
 	int			n,
@@ -384,6 +387,7 @@ sys_select(
 	return rc;
 }
 
+
 static int
 sys_setsockopt(
 	int				sockfd, 
@@ -405,6 +409,7 @@ sys_setsockopt(
 	/* printk( KERN_INFO "%s: Inside sys_setsockopt level=%d, optname=%d, optval=%s, optlen=%d\n", __func__, level, optname, (char *)optval, optlen); */
 	return setsockopt(conn, level, optname, kbuf, optlen);
 }
+
 
 static int
 sys_getsockopt(
@@ -431,9 +436,7 @@ sys_getsockopt(
 
 	return(ret);
 }
-#endif // CONFIG_SOCKET
 
-	
 
 /**
  * Initializes the network subsystem; called once at boot.
@@ -441,18 +444,15 @@ sys_getsockopt(
 void
 netdev_init(void)
 {
-	printk( KERN_INFO "%s: Bringing up network devices: '%s'\n",
-		__func__,
-		netdev_str
-	);
+	printk(KERN_INFO "%s: Bringing up network devices: '%s'\n",
+	       __func__, netdev_str);
 
-	driver_init_list( "net", netdev_str );
+	driver_init_list("net", netdev_str);
 
-#ifdef CONFIG_LWIP_SOCKET
-	// Full sockets are enabled.  Bring up the entire system
-	tcpip_init( 0, 0 );
+	// Bring up the lightweight IP stack
+	tcpip_init(NULL, NULL);
 
-	// Install the socket system calls
+	// Install the socket system call handlers
 	syscall_register( __NR_socket, (syscall_ptr_t) sys_socket );
 	syscall_register( __NR_bind, (syscall_ptr_t) sys_bind );
 	syscall_register( __NR_connect, (syscall_ptr_t) sys_connect );
@@ -461,9 +461,5 @@ netdev_init(void)
 	syscall_register( __NR_select, (syscall_ptr_t) sys_select );
 	syscall_register( __NR_setsockopt, (syscall_ptr_t) sys_setsockopt );
 	syscall_register( __NR_getsockopt, (syscall_ptr_t) sys_getsockopt );
-#elif defined( CONFIG_NETWORK )
-	// No sockets enabled, just bring up the LWIP library
-	lwip_init();
-#endif
 }
 

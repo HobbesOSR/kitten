@@ -49,9 +49,7 @@
 #include "lwip/init.h"
 #include "lwip/etharp.h"
 #include "lwip/ppp_oe.h"
-#ifdef LWIP_DHCP
 #include "lwip/dhcp.h"
-#endif
 
 /* global variables */
 static tcpip_init_done_fn tcpip_init_done;
@@ -81,27 +79,28 @@ tcpip_thread(void *arg)
   LWIP_UNUSED_ARG(arg);
   struct netif *netif;
 
-  if (tcpip_init_done != NULL) {
-    tcpip_init_done(tcpip_init_done_arg);
-  }
-
-  // Sleep for a second
-  for (int i = 0; i < 50 * 5; i++)
-    udelay(20000);
-
   netif = netif_find("en0");
   if (netif == NULL) {
-    printk("ERROR: Unable to find interface en0\n");
+    printk(KERN_ERR "Unable to find interface en0.\n");
     return;
   }
 
   netif_set_default(netif);
-  netif_set_up(netif);
 
-#ifdef LWIP_DHCP
-  if (!netif->ip_addr.addr)
+  // Tell lwip that the interface is ready to go
+  if (netif->ip_addr.addr) {
+    // We're using a static IP.
+    // We must manually mark the interface as up.
+    netif_set_up(netif);
+  } else {
+    // We're using DHCP.
+    // dhcp_start() will mark the interface as up once our IP is determined.
     dhcp_start(netif);
-#endif
+  }
+
+  if (tcpip_init_done != NULL) {
+    tcpip_init_done(tcpip_init_done_arg);
+  }
 
   LOCK_TCPIP_CORE();
   while (1) {                          /* MAIN Loop */

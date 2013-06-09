@@ -37,34 +37,10 @@ config LWIP_DHCP
  	depends on NETWORK
  	default y
  
-# config LWIP_AUTOIP
-# 	bool "Enable DHCP"
-# 	depends on NETWORK
-# 	default N
-# 
-# config LWIP_SNMP
-# 	bool "Enable SNMP"
-# 	depends on NETWORK
-# 	default N
-# 
-# config LWIP_IGMP
-# 	bool "Enable IGMP"
-# 	depends on NETWORK
-# 	default N
-# 
 # config LWIP_DNS
 # 	bool "Enable DNS"
 # 	depends on NETWORK
 # 	default N
 # 
-# config PPP_SUPPORT
-# 	bool "Enable PPP"
-# 	depends on NETWORK
-# 	default N
-# 
-# config PPPOE_SUPPORT
-# 	bool "Enable PPPOE"
-# 	depends on NETWORK
-# 	default N
 
 endmenu
