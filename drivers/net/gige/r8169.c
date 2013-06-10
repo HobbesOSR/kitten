@@ -255,6 +255,9 @@ static err_t r8169_hw_init( struct netif * const netif ) {
 	pcicfg_bar_decode(&dev->pci_dev->cfg, 4, &dev->io_bar);
 	dev->io_base   = dev->io_bar.address;
 
+	dev->cur_tx = 0;
+	dev->cur_rx = 0;
+
 	outw(0x0000, IOADDR(dev, R8169_IMR));
 
 	/* Reset the chip */
@@ -329,7 +332,7 @@ static err_t r8169_hw_init( struct netif * const netif ) {
 	/* missed packet counter */
 	outl(0, IOADDR(dev, R8169_TCTR));
   
-	// rtl8139_set_rx_mode does some stuff here.
+	// r8169_set_rx_mode does some stuff here.
 	outl(inl(IOADDR(dev, R8169_RCR)) | AcceptBroadcast | AcceptMulticast | AcceptMyPhys | AcceptAllPhys, 
 	     IOADDR(dev, R8169_RCR));
   
