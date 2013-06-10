@@ -8,73 +8,71 @@
 #define R8169_IDTVEC	 64
 #define R8169_MTU      1500
 
-#define R8169_BASE_ADDR 	0xe000		/* Starting address of the card (a guess right now)*/
+#define R8169_IDR0	0x00	/* ID Registers */
+#define R8169_IDR1	0x01
+#define R8169_IDR2	0x02
+#define R8169_IDR3	0x03
+#define R8169_IDR4	0x04
+#define R8169_IDR5	0x05
 
-#define R8169_IDR0	R8169_BASE_ADDR		/* ID Registers */
-#define R8169_IDR1	(R8169_BASE_ADDR + 0x01)
-#define R8169_IDR2	(R8169_BASE_ADDR + 0x02)
-#define R8169_IDR3	(R8169_BASE_ADDR + 0x03)
-#define R8169_IDR4	(R8169_BASE_ADDR + 0x04)
-#define R8169_IDR5	(R8169_BASE_ADDR + 0x05)
+#define R8169_MAR7	0x08	/* Mulicast Registers*/
+#define R8169_MAR6	0x09
+#define R8169_MAR5	0x0a
+#define R8169_MAR4	0x0b
+#define R8169_MAR3	0x0c
+#define R8169_MAR2	0x0d
+#define R8169_MAR1	0x0e
+#define R8169_MAR0	0x0f
 
-#define R8169_MAR7	(R8169_BASE_ADDR + 0x08)	/* Mulicast Registers*/
-#define R8169_MAR6	(R8169_BASE_ADDR + 0x09)
-#define R8169_MAR5	(R8169_BASE_ADDR + 0x0a)
-#define R8169_MAR4	(R8169_BASE_ADDR + 0x0b)
-#define R8169_MAR3	(R8169_BASE_ADDR + 0x0c)
-#define R8169_MAR2	(R8169_BASE_ADDR + 0x0d)
-#define R8169_MAR1	(R8169_BASE_ADDR + 0x0e)
-#define R8169_MAR0	(R8169_BASE_ADDR + 0x0f)
+#define R8169_DTCCR	0x10	/* Dump Tally Counter Command Reg */
 
-#define R8169_DTCCR	(R8169_BASE_ADDR + 0x10)	/* Dump Tally Counter Command Reg */
+#define R8169_TNPDS_LO	0x20	/* Tx Normal Priority Descriptors: Start address LOW */
+#define R8169_TNPDS_HI	0x24	/* Tx Normal Priority Descriptors: Start address HIGH */
+#define R8169_THPDS_LO	0x28	/* Tx High Priority Descriptors: Start address LOW */
+#define R8169_THPDS_HI	0x2c	/* Tx High Priority Descriptors: Start address HIGH */
 
-#define R8169_TNPDS_LO	(R8169_BASE_ADDR + 0x20)	/* Tx Normal Priority Descriptors: Start address LOW */
-#define R8169_TNPDS_HI	(R8169_BASE_ADDR + 0x24)	/* Tx Normal Priority Descriptors: Start address HIGH */
-#define R8169_THPDS_LO	(R8169_BASE_ADDR + 0x28)	/* Tx High Priority Descriptors: Start address LOW */
-#define R8169_THPDS_HI	(R8169_BASE_ADDR + 0x2c)	/* Tx High Priority Descriptors: Start address HIGH */
+#define R8169_CR	0x37	/* Command Regiseter */
+#define R8169_TPPOLL	0x38	/* Transmit Priority Polling Reg */
+#define R8169_IMR	0x3c	/* Intrpt Mask Reg */
+#define R8169_ISR	0x3e	/* Intrpt Status Reg */
+#define R8169_TCR	0x40	/* Tx Config Reg */
+#define R8169_RCR	0x44	/* Rx Config Reg */
+#define R8169_TCTR	0x48	/* Timer Count Reg */
 
-#define R8169_CR	(R8169_BASE_ADDR + 0x37)	/* Command Regiseter */
-#define R8169_TPPOLL	(R8169_BASE_ADDR + 0x38)	/* Transmit Priority Polling Reg */
-#define R8169_IMR	(R8169_BASE_ADDR + 0x3c)	/* Intrpt Mask Reg */
-#define R8169_ISR	(R8169_BASE_ADDR + 0x3e)	/* Intrpt Status Reg */
-#define R8169_TCR	(R8169_BASE_ADDR + 0x40)	/* Tx Config Reg */
-#define R8169_RCR	(R8169_BASE_ADDR + 0x44)	/* Rx Config Reg */
-#define R8169_TCTR	(R8169_BASE_ADDR + 0x48)	/* Timer Count Reg */
+#define R8169_9346CR	0x50	/* 9346 Command Reg */
+#define R8169_CONFIG0	0x51	/* Config Reg */
+#define R8169_CONFIG1	0x52
+#define R8169_CONFIG2	0x53
+#define R8169_CONFIG3	0x54
+#define R8169_CONFIG4	0x55
+#define R8169_CONFIG5	0x56
 
-#define R8169_9346CR	(R8169_BASE_ADDR + 0x50)	/* 9346 Command Reg */
-#define R8169_CONFIG0	(R8169_BASE_ADDR + 0x51)	/* Config Reg */
-#define R8169_CONFIG1	(R8169_BASE_ADDR + 0x52)
-#define R8169_CONFIG2	(R8169_BASE_ADDR + 0x53)
-#define R8169_CONFIG3	(R8169_BASE_ADDR + 0x54)
-#define R8169_CONFIG4	(R8169_BASE_ADDR + 0x55)
-#define R8169_CONFIG5	(R8169_BASE_ADDR + 0x56)
+#define R8169_TIMINT	0x58	/* Timer Intrpt Reg */
+#define R8169_MULINT	0x5c	/* Multiple Intrpt Reg */
+#define R8169_PHYAR	0x60	/* PHY Access Reg */
+#define R8169_PHYSTAT	0x6c	/* PHY Status Reg */
 
-#define R8169_TIMINT	(R8169_BASE_ADDR + 0x58)	/* Timer Intrpt Reg */
-#define R8169_MULINT	(R8169_BASE_ADDR + 0x5c)	/* Multiple Intrpt Reg */
-#define R8169_PHYAR	(R8169_BASE_ADDR + 0x60)	/* PHY Access Reg */
-#define R8169_PHYSTAT	(R8169_BASE_ADDR + 0x6c)	/* PHY Status Reg */
+#define R8169_W0	0x84	/* Power Management wakeup frames */
+#define R8169_W1	0x8c
+#define R8169_W2LD	0x94
+#define R8169_W2HD	0x9c
+#define R8169_W3LD	0xa4
+#define R8169_W3HD	0xac
+#define R8169_W4LD	0xb4
+#define R8169_W4HD	0xbc
 
-#define R8169_W0	(R8169_BASE_ADDR + 0x84)	/* Power Management wakeup frames */
-#define R8169_W1	(R8169_BASE_ADDR + 0x8c)
-#define R8169_W2LD	(R8169_BASE_ADDR + 0x94)
-#define R8169_W2HD	(R8169_BASE_ADDR + 0x9c)
-#define R8169_W3LD	(R8169_BASE_ADDR + 0xa4)
-#define R8169_W3HD	(R8169_BASE_ADDR + 0xac)
-#define R8169_W4LD	(R8169_BASE_ADDR + 0xb4)
-#define R8169_W4HD	(R8169_BASE_ADDR + 0xbc)
+#define R8169_CRC0	0xc4	/* Power Management CRC Reg for wakeup frame */
+#define R8169_CRC1	0xc6
+#define R8169_CRC2	0xc8
+#define R8169_CRC3	0xca
+#define R8169_CRC4	0xcc
 
-#define R8169_CRC0	(R8169_BASE_ADDR + 0xc4)	/* Power Management CRC Reg for wakeup frame */
-#define R8169_CRC1	(R8169_BASE_ADDR + 0xc6)
-#define R8169_CRC2	(R8169_BASE_ADDR + 0xc8)
-#define R8169_CRC3	(R8169_BASE_ADDR + 0xca)
-#define R8169_CRC4	(R8169_BASE_ADDR + 0xcc)
-
-#define R8169_RMS	(R8169_BASE_ADDR + 0xda)	/* Rx packet Max Size */
-#define R8169_CPLUSCR	(R8169_BASE_ADDR + 0xe0)	/* C+ Command Reg */
-#define R8169_INTRMIT	(R8169_BASE_ADDR + 0xe2)	/* Interrupt Mitigate */
-#define R8169_RDSAR_LO	(R8169_BASE_ADDR + 0xe4)	/* Rx Descriptor Start Address Reg LOW */
-#define R8169_RDSAR_HI	(R8169_BASE_ADDR + 0xe8)	/* Rx Descriptor Start Address Reg HIGH */
-#define R8169_MTPS	(R8169_BASE_ADDR + 0xec)	/* Max Tx Packet Size Reg */
+#define R8169_RMS	0xda	/* Rx packet Max Size */
+#define R8169_CPLUSCR	0xe0	/* C+ Command Reg */
+#define R8169_INTRMIT	0xe2	/* Interrupt Mitigate */
+#define R8169_RDSAR_LO	0xe4	/* Rx Descriptor Start Address Reg LOW */
+#define R8169_RDSAR_HI	0xe8	/* Rx Descriptor Start Address Reg HIGH */
+#define R8169_MTPS	0xec	/* Max Tx Packet Size Reg */
 
 /* Interrupts */
 #define PKT_RX			0x0001
