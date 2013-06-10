@@ -8,28 +8,33 @@
  */
 
 #ifndef __SYSCALL
-#define __SYSCALL(a,b) 
+#define __SYSCALL(a,b)
 #endif
 
 #define __NR_read                                0
-__SYSCALL(__NR_read, syscall_not_implemented)
+__SYSCALL(__NR_read, sys_read)
 #define __NR_write                               1
-__SYSCALL(__NR_write, syscall_not_implemented)
+__SYSCALL(__NR_write, sys_write)
 #define __NR_open                                2
-__SYSCALL(__NR_open, syscall_not_implemented)
+__SYSCALL(__NR_open, sys_open)
 #define __NR_close                               3
-__SYSCALL(__NR_close, syscall_not_implemented)
+__SYSCALL(__NR_close, sys_close)
 #define __NR_stat                                4
-__SYSCALL(__NR_stat, syscall_not_implemented)
+__SYSCALL(__NR_stat, sys_stat)
 #define __NR_fstat                               5
-__SYSCALL(__NR_fstat, syscall_not_implemented)
+__SYSCALL(__NR_fstat, sys_fstat)
 #define __NR_lstat                               6
 __SYSCALL(__NR_lstat, syscall_not_implemented)
+
 #define __NR_poll                                7
+#ifdef CONFIG_LINUX
+__SYSCALL(__NR_poll, sys_poll)
+#else
 __SYSCALL(__NR_poll, syscall_not_implemented)
+#endif
 
 #define __NR_lseek                               8
-__SYSCALL(__NR_lseek, syscall_not_implemented)
+__SYSCALL(__NR_lseek, sys_lseek)
 #define __NR_mmap                                9
 __SYSCALL(__NR_mmap, sys_mmap)
 #define __NR_mprotect                           10
@@ -46,19 +51,19 @@ __SYSCALL(__NR_rt_sigprocmask, sys_rt_sigprocmask)
 __SYSCALL(__NR_rt_sigreturn, asm_sys_rt_sigreturn)
 
 #define __NR_ioctl                              16
-__SYSCALL(__NR_ioctl, syscall_not_implemented)
+__SYSCALL(__NR_ioctl, sys_ioctl)
 #define __NR_pread64                            17
 __SYSCALL(__NR_pread64, syscall_not_implemented)
 #define __NR_pwrite64                           18
 __SYSCALL(__NR_pwrite64, syscall_not_implemented)
 #define __NR_readv                              19
-__SYSCALL(__NR_readv, syscall_not_implemented)
+__SYSCALL(__NR_readv, sys_readv)
 #define __NR_writev                             20
-__SYSCALL(__NR_writev, syscall_not_implemented)
+__SYSCALL(__NR_writev, sys_writev)
 #define __NR_access                             21
 __SYSCALL(__NR_access, syscall_not_implemented)
 #define __NR_pipe                               22
-__SYSCALL(__NR_pipe, syscall_not_implemented)
+__SYSCALL(__NR_pipe, sys_pipe)
 #define __NR_select                             23
 __SYSCALL(__NR_select, syscall_not_implemented)
 
@@ -82,7 +87,7 @@ __SYSCALL(__NR_shmctl, syscall_not_implemented)
 #define __NR_dup                                32
 __SYSCALL(__NR_dup, sys_dup)
 #define __NR_dup2                               33
-__SYSCALL(__NR_dup2, syscall_not_implemented)
+__SYSCALL(__NR_dup2, sys_dup2)
 #define __NR_pause                              34
 __SYSCALL(__NR_pause, syscall_not_implemented)
 #define __NR_nanosleep                          35
@@ -133,7 +138,7 @@ __SYSCALL(__NR_getsockopt, syscall_not_implemented)
 #define __NR_clone                              56
 __SYSCALL(__NR_clone, asm_sys_clone)
 #define __NR_fork                               57
-__SYSCALL(__NR_fork, syscall_not_implemented)
+__SYSCALL(__NR_fork, sys_fork)
 #define __NR_vfork                              58
 __SYSCALL(__NR_vfork, syscall_not_implemented)
 #define __NR_execve                             59
@@ -165,7 +170,7 @@ __SYSCALL(__NR_msgrcv, syscall_not_implemented)
 __SYSCALL(__NR_msgctl, syscall_not_implemented)
 
 #define __NR_fcntl                              72
-__SYSCALL(__NR_fcntl, syscall_not_implemented)
+__SYSCALL(__NR_fcntl, sys_fcntl)
 #define __NR_flock                              73
 __SYSCALL(__NR_flock, syscall_not_implemented)
 #define __NR_fsync                              74
@@ -177,7 +182,7 @@ __SYSCALL(__NR_truncate, syscall_not_implemented)
 #define __NR_ftruncate                          77
 __SYSCALL(__NR_ftruncate, syscall_not_implemented)
 #define __NR_getdents                           78
-__SYSCALL(__NR_getdents, syscall_not_implemented)
+__SYSCALL(__NR_getdents, sys_getdents)
 #define __NR_getcwd                             79
 __SYSCALL(__NR_getcwd, syscall_not_implemented)
 
@@ -188,20 +193,20 @@ __SYSCALL(__NR_fchdir, syscall_not_implemented)
 #define __NR_rename                             82
 __SYSCALL(__NR_rename, syscall_not_implemented)
 #define __NR_mkdir                              83
-__SYSCALL(__NR_mkdir, syscall_not_implemented)
+__SYSCALL(__NR_mkdir, sys_mkdir)
 #define __NR_rmdir                              84
-__SYSCALL(__NR_rmdir, syscall_not_implemented)
+__SYSCALL(__NR_rmdir, sys_rmdir)
 #define __NR_creat                              85
 __SYSCALL(__NR_creat, syscall_not_implemented)
 #define __NR_link                               86
 __SYSCALL(__NR_link, syscall_not_implemented)
 #define __NR_unlink                             87
-__SYSCALL(__NR_unlink, syscall_not_implemented)
+__SYSCALL(__NR_unlink, sys_unlink)
 
 #define __NR_symlink                            88
 __SYSCALL(__NR_symlink, syscall_not_implemented)
 #define __NR_readlink                           89
-__SYSCALL(__NR_readlink, syscall_not_implemented)
+__SYSCALL(__NR_readlink, sys_readlink)
 #define __NR_chmod                              90
 __SYSCALL(__NR_chmod, syscall_not_implemented)
 #define __NR_fchmod                             91
@@ -295,7 +300,7 @@ __SYSCALL(__NR_sigaltstack, syscall_not_implemented)
 #define __NR_utime                             132
 __SYSCALL(__NR_utime, syscall_not_implemented)
 #define __NR_mknod                             133
-__SYSCALL(__NR_mknod, syscall_not_implemented)
+__SYSCALL(__NR_mknod, sys_mknod)
 
 /* Only needed for a.out */
 #define __NR_uselib                            134
@@ -420,7 +425,7 @@ __SYSCALL(__NR_getpmsg, syscall_not_implemented)
 #define __NR_putpmsg                           182	/* reserved for LiS/STREAMS */
 __SYSCALL(__NR_putpmsg, syscall_not_implemented)
 
-#define __NR_afs_syscall                       183	/* reserved for AFS */ 
+#define __NR_afs_syscall                       183	/* reserved for AFS */
 __SYSCALL(__NR_afs_syscall, syscall_not_implemented)
 
 #define __NR_tuxcall      		184 /* reserved for tux */
@@ -493,7 +498,7 @@ __SYSCALL(__NR_epoll_wait_old, syscall_not_implemented)
 #define __NR_remap_file_pages	216
 __SYSCALL(__NR_remap_file_pages, syscall_not_implemented)
 #define __NR_getdents64	217
-__SYSCALL(__NR_getdents64, syscall_not_implemented)
+__SYSCALL(__NR_getdents64, sys_getdents64)
 #define __NR_set_tid_address	218
 __SYSCALL(__NR_set_tid_address, sys_set_tid_address)
 #define __NR_restart_syscall	219
@@ -685,12 +690,12 @@ __SYSCALL(__NR_mce_inject, syscall_not_implemented)
 #define __NR_lwk_ifconfig       309
 
 
-#ifdef CONFIG_LINUX 
+#ifdef CONFIG_LINUX
 
 /* TODO: Move these registrations to the Linux compatibility layer initialization */
 __SYSCALL(__NR_lwk_arp, sys_lwk_arp)
 __SYSCALL(__NR_lwk_ifconfig, sys_lwk_ifconfig)
-#else 
+#else
 __SYSCALL(__NR_lwk_arp, syscall_not_implemented)
 __SYSCALL(__NR_lwk_ifconfig, syscall_not_implemented)
 #endif

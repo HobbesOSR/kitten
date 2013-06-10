@@ -1,7 +1,7 @@
 /** \file
  * x86-64 interrupt handlers.
  *
- * 
+ *
  */
 #include <lwk/aspace.h>
 #include <lwk/kernel.h>
@@ -173,6 +173,8 @@ do_page_fault(struct pt_regs *regs, unsigned int vector)
 	int i = sigsend(current->aspace->id, ANY_ID, SIGSEGV, &s);
 	printk(">> PAGE FAULT! Sent signal %d: CR2 is %p\n", i, s.si_addr);
 	show_registers(regs);
+
+	while (1) {}
 }
 
 void
@@ -199,7 +201,7 @@ do_alignment_check(struct pt_regs *regs, unsigned int vector)
 	while (1) {}
 }
 
-#ifdef CONFIG_X86_MCE 
+#ifdef CONFIG_X86_MCE
 void
 do_machine_check(struct pt_regs *regs, unsigned int vector);
 #else
@@ -264,7 +266,7 @@ do_apic_spurious(struct pt_regs *regs, unsigned int vector)
 
 //@}
 
-void 
+void
 set_idtvec_handler(unsigned int vector, idtvec_handler_t handler)
 {
 	char namebuf[KSYM_NAME_LEN+1];

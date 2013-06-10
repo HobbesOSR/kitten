@@ -34,3 +34,25 @@ obj-y := \
 	clock_gettime.o \
 	getcpu.o \
 	madvise.o \
+	poll.o	 \
+	fork.o	 \
+	dup2.o	 \
+	fcntl.o	 \
+	ioctl.o	 \
+	readv.o	 \
+	writev.o \
+	lseek.o	 \
+	write.o	 \
+	read.o	 \
+	close.o	 \
+	open.o	 \
+	mknod.o	 \
+	mkdir.o	 \
+	unlink.o \
+	rmdir.o	 \
+	pipe.o	 \
+	stat.o	 \
+	fstat.o	 \
+	getdents.o \
+	getdents64.o \
+	readlink.o

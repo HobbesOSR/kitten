@@ -9,6 +9,7 @@
 #include <lwk/waitq.h>
 #include <lwk/mutex.h>
 #include <lwk/fdTable.h>
+#include <lwk/spinlock.h>
 
 /* fcntl.h */
 #ifndef O_NONBLOCK
@@ -18,6 +19,8 @@
 #ifndef O_EXCL
 #define O_EXCL      00000200
 #endif
+
+#define dbg(fmt,args...)
 
 struct iovec;
 struct kiocb;
@@ -59,7 +62,7 @@ struct inode
 	struct cdev             *i_cdev;
 	struct list_head        i_devices;
 
-	/* for qib driver combpatibility */
+	/* for qib driver compatibility */
 	struct super_block      *i_sb;
 	umode_t                 i_mode;
 	uid_t                   i_uid;
@@ -166,6 +169,16 @@ static inline struct file *get_current_file(int fd)
 extern void kfs_init(void);
 extern void kfs_init_stdio(struct task_struct *);
 
+static inline void __lock( spinlock_t * lock )
+{
+        spin_lock(lock);
+}
+
+static inline void __unlock( spinlock_t * lock )
+{
+        spin_unlock(lock);
+}
+
 /* kfs inode manipulation */
 extern struct inode *kfs_mkdirent(struct inode *,
 				  const char *,
@@ -174,6 +187,7 @@ extern struct inode *kfs_mkdirent(struct inode *,
 				  unsigned,
 				  void *,
 				  size_t);
+
 extern struct inode *kfs_create(const char *,
 				const struct inode_operations *,
 			        const struct kfs_fops *,
@@ -187,5 +201,42 @@ extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 extern int kfs_readdir(struct file *, uaddr_t, unsigned int, dirent_filler f);
 
 extern void kfs_close( struct file* );
+
+/* kfs path operations */
+extern int kfs_open_path(const char *pathname,
+		int flags,
+		mode_t mode,
+		struct file **rv);
+
+extern struct inode * kfs_lookup(struct inode * root, const char * dirname, unsigned create_mode);
+
+extern struct inode * kfs_mkdir(char * name, unsigned mode);
+
+extern void kfs_destroy(struct inode *inode);
+
+extern int kfs_stat(struct inode *inode, uaddr_t buf);
+
+extern int kfs_fill_dirent(uaddr_t buf,
+		unsigned int count,
+		struct inode *inode,
+		const char *name,
+		int namelen,
+		loff_t offset,
+		unsigned int type);
+
+extern int kfs_fill_dirent64(uaddr_t buf,
+		unsigned int count,
+		struct inode *inode,
+		const char *name,
+		int namelen,
+		loff_t offset,
+		unsigned int type);
+
+extern char * get_full_path(struct inode *inode, char *buf);
+
+/* These variables are initialized in kfs.c */
+
+extern struct inode *kfs_root;
+extern spinlock_t _lock;
 
 #endif /* _lwk_kfs_h_ */
