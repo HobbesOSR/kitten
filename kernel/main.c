@@ -167,10 +167,12 @@ start_kernel()
 	 */
 	local_irq_enable();
 
+#ifdef CONFIG_NETWORK
 	/*
 	* Bring up any network devices.
 	*/
 	netdev_init();
+#endif
 
 	mcheck_init_late();
 
@@ -179,10 +181,10 @@ start_kernel()
 	 */
 	driver_init_by_name( "module", "*" );
 
+#ifdef CONFIG_KGDB
 	/* 
 	 * Stop eary (before "late" devices) in KGDB if requested
 	 */
-#ifdef CONFIG_KGDB
         kgdb_initial_breakpoint();
 #endif
 

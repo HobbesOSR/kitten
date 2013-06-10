@@ -21,7 +21,6 @@ obj-y := \
 	waitq.o \
 	timer.o \
 	init_task.o \
-	netdev.o \
 	kfs.o \
 	interrupt.o \
 	semaphore.o \
@@ -38,6 +37,7 @@ obj-y := \
 obj-$(CONFIG_KGDB) += kgdb.o
 obj-$(CONFIG_KGDB_SERIAL_CONSOLE) += kgdboc.o
 obj-$(CONFIG_DEBUG_HW_NOISE) += noise.o
+obj-$(CONFIG_NETWORK) += netdev.o
 obj-y += mm/
 obj-y += lwk_syscalls/
 obj-y += linux_syscalls/
