@@ -18,7 +18,12 @@ pct_SOURCES = \
 CFLAGS  += -std=gnu99 -D_GNU_SOURCE -DHAVE_KITTEN -Wall -pthread
 INCDIRS += -Ipmi
 
-pct_LDADD   = -lportals -lportals_ppe -lportals_util -lxpmem -lpiapi -llwk -lrt -lpthread
+pct_LDADD = -lportals -lportals_ppe -lportals_util -lxpmem -llwk -lrt -lpthread
+
+ifdef USE_PIAPI
+CFLAGS    += -DUSING_PIAPI
+pct_LDADD += -lpiapi
+endif
 
 # Embed the app ELF executable in the PCT's ELF image
 pct_RAWDATA = ../libpmi/test_pmi_hello
