@@ -49,6 +49,9 @@
 #include "lwip/init.h"
 #include "lwip/etharp.h"
 #include "lwip/ppp_oe.h"
+#ifdef LWIP_DHCP
+#include "lwip/dhcp.h"
+#endif
 
 /* global variables */
 static tcpip_init_done_fn tcpip_init_done;
@@ -86,11 +89,13 @@ tcpip_thread(void *arg)
   for (int i = 0; i < 50 * 5; i++)
     udelay(20000);
 
-  // Bring up the e1000 driver.
-  // TODO: fix this!
   netif = netif_find("en0");
   netif_set_default(netif);
   netif_set_up(netif);
+
+#ifdef LWIP_DHCP
+  dhcp_start(netif);
+#endif
 
   LOCK_TCPIP_CORE();
   while (1) {                          /* MAIN Loop */

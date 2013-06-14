@@ -79,9 +79,9 @@
 #include "lwip/dhcp.h"
 #include "lwip/autoip.h"
 #include "lwip/dns.h"
-#include "netif/etharp.h"
+#include "lwip/etharp.h"
 
-#include <string.h>
+#include <lwk/string.h>
 
 /** DHCP_CREATE_RAND_XID: if this is set to 1, the xid is created using
  * LWIP_RAND() (this overrides DHCP_GLOBAL_XID)

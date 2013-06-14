@@ -32,12 +32,11 @@ config LWIP_ARP
 	help
 	  Enables address resolution protocol
 
-# 
-# config LWIP_DHCP
-# 	bool "Enable DHCP support"
-# 	depends on NETWORK
-# 	default N
-# 
+config LWIP_DHCP
+ 	bool "Enable DHCP support"
+ 	depends on NETWORK
+ 	default N
+ 
 # config LWIP_AUTOIP
 # 	bool "Enable DHCP"
 # 	depends on NETWORK

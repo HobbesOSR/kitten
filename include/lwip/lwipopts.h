@@ -21,6 +21,13 @@
 #define ARP_QUEUEING 0
 #endif
 
+#ifdef CONFIG_LWIP_DHCP
+#define LWIP_DHCP 1
+#define LWIP_DHCP_BOOTP_FILE 0
+#else
+#define LWIP_DHCP 0
+#endif
+
 // We have struct timeval
 #define LWIP_TIMEVAL_PRIVATE 0
 

@@ -386,8 +386,8 @@ static err_t r8169_hw_init( struct netif * const netif ) {
 	netif->hwaddr[4]	= dev->mac_addr[4];
 	netif->hwaddr[5]	= dev->mac_addr[5];
   
-	netif->name[0]		= 'g';
-	netif->name[1]		= 'e';
+	netif->name[0]		= 'e';
+	netif->name[1]		= 'n';
   
 	netif->linkoutput     = r8169_tx;
 
