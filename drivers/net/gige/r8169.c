@@ -69,7 +69,7 @@ static struct netif r8169_netif;
 
 static r8169_device_t r8169_state;
 
-static const int r8169_debug = 1;
+static const int r8169_debug = 0;
 
 static const uint32_t r8169_intr_mask = 
 	SYSErr | TxDescUnavail | RxFIFOOver | LinkChg | RxOverflow | 

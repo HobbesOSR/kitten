@@ -90,6 +90,11 @@ tcpip_thread(void *arg)
     udelay(20000);
 
   netif = netif_find("en0");
+  if (netif == NULL) {
+    printk("ERROR: Unable to find interface en0\n");
+    return;
+  }
+
   netif_set_default(netif);
   netif_set_up(netif);
 
