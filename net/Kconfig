@@ -33,9 +33,9 @@ config LWIP_ARP
 	  Enables address resolution protocol
 
 config LWIP_DHCP
- 	bool "Enable DHCP support"
+ 	bool
  	depends on NETWORK
- 	default N
+ 	default y
  
 # config LWIP_AUTOIP
 # 	bool "Enable DHCP"

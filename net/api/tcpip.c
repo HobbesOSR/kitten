@@ -94,7 +94,8 @@ tcpip_thread(void *arg)
   netif_set_up(netif);
 
 #ifdef LWIP_DHCP
-  dhcp_start(netif);
+  if (!netif->ip_addr.addr)
+    dhcp_start(netif);
 #endif
 
   LOCK_TCPIP_CORE();
