@@ -95,14 +95,20 @@ setup_bootmem_allocator(
 	unsigned long	end_pfn
 )
 {
-	unsigned long bootmap_size, bootmap;
+	unsigned long bootmap_size = 0, bootmap = 0;
 
-	bootmap_size = bootmem_bootmap_pages(end_pfn)<<PAGE_SHIFT;
-	bootmap = find_e820_area(0, end_pfn<<PAGE_SHIFT, bootmap_size, PAGE_SIZE);
+	bootmap_size = bootmem_bootmap_pages(end_pfn) << PAGE_SHIFT;
+
+	bootmap = find_e820_area(start_pfn << PAGE_SHIFT, 
+				 end_pfn << PAGE_SHIFT, 
+				 bootmap_size, PAGE_SIZE);
+
 	if (bootmap == -1L)
-		panic("Cannot find bootmem map of size %ld\n",bootmap_size);
-	bootmap_size = init_bootmem(bootmap >> PAGE_SHIFT, end_pfn);
-	e820_bootmem_free(0, end_pfn << PAGE_SHIFT);
+		panic("Cannot find bootmem map of size %ld\n", bootmap_size);
+
+	bootmap_size = init_bootmem(bootmap >> PAGE_SHIFT, start_pfn, end_pfn);
+
+	e820_bootmem_free(start_pfn << PAGE_SHIFT, end_pfn << PAGE_SHIFT);
 	reserve_bootmem(bootmap, bootmap_size);
 }
 

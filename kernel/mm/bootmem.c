@@ -95,17 +95,17 @@ link_bootmem(bootmem_data_t *bdata)
 static unsigned long __init
 init_bootmem_core(
 	bootmem_data_t	*bdata,
-	unsigned long	mapstart,
-	unsigned long	start,
-	unsigned long	end
+	unsigned long	mapstart_pfn,
+	unsigned long	start_pfn,
+	unsigned long	end_pfn
 )
 {
-	unsigned long mapsize = ((end - start)+7)/8;
+	unsigned long mapsize = ((end_pfn - start_pfn) + 7) / 8;
 
 	mapsize = ALIGN(mapsize, sizeof(long));
-	bdata->node_bootmem_map = phys_to_virt(mapstart << PAGE_SHIFT);
-	bdata->node_boot_start = (start << PAGE_SHIFT);
-	bdata->node_low_pfn = end;
+	bdata->node_bootmem_map = phys_to_virt(mapstart_pfn << PAGE_SHIFT);
+	bdata->node_boot_start = (start_pfn << PAGE_SHIFT);
+	bdata->node_low_pfn = end_pfn;
 	link_bootmem(bdata);
 
 	/*
@@ -470,9 +470,11 @@ free_all_bootmem_core(struct bootmem_data *bdata)
  * Initialize boot memory allocator.
  */
 unsigned long __init
-init_bootmem(unsigned long start, unsigned long pages)
+init_bootmem(unsigned long mapstart_pfn, 
+	     unsigned long start_pfn, 
+	     unsigned long end_pfn)
 {
-	return init_bootmem_core(&bootmem_data, start, 0, pages);
+	return init_bootmem_core(&bootmem_data, mapstart_pfn, start_pfn, end_pfn);
 }
 
 /**
