@@ -43,6 +43,7 @@
 #if LWIP_SOCKET /* don't build if not configured for use in lwipopts.h */
 
 #include "lwip/sockets.h"
+#include "lwip/sockios.h"
 #include "lwip/api.h"
 #include "lwip/sys.h"
 #include "lwip/igmp.h"
@@ -52,6 +53,8 @@
 #include "lwip/udp.h"
 #include "lwip/tcpip.h"
 #include "lwip/pbuf.h"
+#include "lwip/netif.h"
+#include "lwip/if.h"
 #if LWIP_CHECKSUM_ON_COPY
 #include "lwip/inet_chksum.h"
 #endif
@@ -247,6 +250,7 @@ static const int err_to_errno_table[] = {
 static void event_callback(struct netconn *conn, enum netconn_evt evt, u16_t len);
 static void lwip_getsockopt_internal(void *arg);
 static void lwip_setsockopt_internal(void *arg);
+static struct lwip_sock * get_socket(int s);
 
 /**
  * Initialize this module. This function has to be called before any other
@@ -255,6 +259,23 @@ static void lwip_setsockopt_internal(void *arg);
 void
 lwip_socket_init(void)
 {
+}
+
+/**
+ * Return the last error associated with a given socket
+ */
+int
+lwip_lasterr(int s)
+{
+    struct lwip_sock * sock;
+
+    sock = get_socket(s);
+
+    if (!sock) {
+        return 0;
+    }
+    
+    return sock->err;
 }
 
 /**
@@ -502,7 +523,7 @@ lwip_bind(int s, const struct sockaddr *name, socklen_t namelen)
   LWIP_DEBUGF(SOCKETS_DEBUG, (" port=%"U16_F")\n", local_port));
 
   err = netconn_bind(sock->conn, ipX_2_ip(&local_addr), local_port);
-
+  
   if (err != ERR_OK) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_bind(%d) failed, err=%d\n", s, err));
     sock_set_errno(sock, err_to_errno(err));
@@ -665,6 +686,7 @@ lwip_recvfrom(int s, void *mem, size_t len, int flags,
         sock_set_errno(sock, EWOULDBLOCK);
         return -1;
       }
+
 
       /* No data was left from the previous operation, so we try to get
          some from the network. */
@@ -2512,6 +2534,36 @@ lwip_ioctl(int s, long cmd, void *argp)
     sock_set_errno(sock, 0);
     return 0;
 
+
+  /* BJK: read IP address for interface name given in argp */
+  case SIOCGIFADDR: {
+    struct netif * netif;
+    struct ifreq * devinfo = (struct ifreq *)argp;
+
+    netif = netif_find(devinfo->ifr_name);
+    if (!netif) {
+      return -ENOSYS;
+    }
+
+    ((struct sockaddr_in *)&(devinfo->ifr_addr))->sin_addr.s_addr = netif->ip_addr.addr;
+    return 0;
+  }
+
+  /* BJK: Return index associated with iface name */
+  case SIOCGIFINDEX: {
+    struct netif * netif;
+    struct ifreq * devinfo = (struct ifreq *)argp;
+
+    netif = netif_find(devinfo->ifr_name);
+    if (!netif) {
+      return -ENOSYS;
+    }
+
+    // Adding 1 always ensures index is nonzero
+    devinfo->ifr_ifindex = netif->num + 1;
+    return 0;
+  }
+
   default:
     break;
   } /* switch (cmd) */
@@ -2544,6 +2596,7 @@ lwip_fcntl(int s, int cmd, int val)
       netconn_set_nonblocking(sock->conn, val & O_NONBLOCK);
       ret = 0;
     }
+    
     break;
   default:
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_fcntl(%d, UNIMPL: %d, %d)\n", s, cmd, val));
@@ -2551,5 +2604,4 @@ lwip_fcntl(int s, int cmd, int val)
   }
   return ret;
 }
-
 #endif /* LWIP_SOCKET */

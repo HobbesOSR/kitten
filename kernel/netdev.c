@@ -9,19 +9,23 @@
 #include <arch/vsyscall.h>
 #include <lwk/kfs.h>
 #include <lwk/fdTable.h>
-#include <lwip/init.h>
-#include <lwip/tcp.h>
-#include <lwip/api.h>
-#include <lwip/sockets.h>
-#include <lwip/tcpip.h>
-#include <lwip/stats.h>
-
 
 /**
  * Holds a comma separated list of network devices to configure.
  */
 static char netdev_str[128];
 param_string(net, netdev_str, sizeof(netdev_str));
+
+#ifdef CONFIG_LWIP_SOCKET
+
+#include <lwip/init.h>
+#include <lwip/tcp.h>
+#include <lwip/api.h>
+#include <lwip/sockets.h>
+#include <lwip/sockios.h>
+#include <lwip/tcpip.h>
+#include <lwip/stats.h>
+#include <lwip/if.h>
 
 
 /** Return a LWIP connection number from a user fd */
@@ -90,6 +94,7 @@ sys_listen(
 }
 
 
+
 static int
 socket_close(
 	struct file *		file
@@ -103,11 +108,21 @@ socket_close(
 	return 0;
 }
 
-
+/* BJK: Allow ioctls on sockets */
+static int
+socket_ioctl(
+    struct file *       file,
+    int                 request,
+    uaddr_t             address
+)
+{
+    return lwip_ioctl(lwip_connection(file), request, (void *)address);
+}
 struct kfs_fops kfs_socket_fops = {
 	.write		= socket_write,
 	.read		= socket_read,
 	.close		= socket_close,
+	.ioctl      = socket_ioctl,
 };
 
 
@@ -159,7 +174,6 @@ sys_socket(
 	return fd;
 }
 
-
 static int
 translate_sockaddr(
 	uint8_t *		buf,
@@ -185,7 +199,6 @@ translate_sockaddr(
 
 	return 0;
 }
-
 
 static unsigned long
 sys_bind(
@@ -247,7 +260,6 @@ sys_connect(
 
 	return lwip_connect( conn, (struct sockaddr *) buf, len );
 }
-
 
 static int
 sys_accept(
@@ -344,7 +356,6 @@ translate_out_fdset(
 	return 0;
 }
 
-
 int
 sys_select(
 	int			n,
@@ -387,7 +398,6 @@ sys_select(
 	return rc;
 }
 
-
 static int
 sys_setsockopt(
 	int				sockfd, 
@@ -409,7 +419,6 @@ sys_setsockopt(
 	/* printk( KERN_INFO "%s: Inside sys_setsockopt level=%d, optname=%d, optval=%s, optlen=%d\n", __func__, level, optname, (char *)optval, optlen); */
 	return setsockopt(conn, level, optname, kbuf, optlen);
 }
-
 
 static int
 sys_getsockopt(
@@ -437,6 +446,110 @@ sys_getsockopt(
 	return(ret);
 }
 
+/* BJK: The rest of the functions defined here are to support Portals on UDP */
+static ssize_t
+sys_sendto(
+    int sockfd,
+    const void * buf,
+    size_t len,
+    int flags,
+    struct sockaddr * dest_addr,
+    socklen_t addrlen
+)
+{
+    int ret = lwip_sendto(lwip_from_fd(sockfd), buf, len, flags, dest_addr, addrlen);
+
+    if (ret == -1) {
+        ret = -lwip_lasterr(lwip_from_fd(sockfd));
+    }
+    
+    return ret;
+}
+
+static ssize_t
+sys_sendmsg(
+    int sockfd,
+    const struct msghdr * msg,
+    int flags
+)
+{
+    int i;
+    ssize_t written, total;
+    struct iovec * vec;
+
+    total = 0;
+    for (i = 0; i < msg->msg_iovlen; i++) {
+        vec = &(msg->msg_iov[i]);
+        written = lwip_sendto(lwip_from_fd(sockfd), vec->iov_base, vec->iov_len, flags,
+                (struct sockaddr *)msg->msg_name, msg->msg_namelen);
+
+        switch (written) {
+            case -1:
+                return -lwip_lasterr(lwip_from_fd(sockfd));
+            case 0:
+                return written;
+            default:
+                total += written;
+                break;
+        }
+    }
+
+    return total;
+}
+
+static ssize_t 
+sys_recvfrom(
+    int sockfd,
+    void * buf,
+    size_t len,
+    int flags,
+    struct sockaddr * src_addr,
+    socklen_t * addrlen
+)
+{
+    int ret = lwip_recvfrom(lwip_from_fd(sockfd), buf, len,flags, src_addr, addrlen);
+
+    if (ret == -1) {
+        ret = -lwip_lasterr(lwip_from_fd(sockfd));
+    }
+
+    return ret;
+}
+
+static ssize_t
+sys_recvmsg(
+    int sockfd,
+    struct msghdr * msg,
+    int flags
+)
+{
+    int i;
+    ssize_t read, total;
+    struct iovec * vec;
+
+    total = 0;
+    for (i = 0; i < msg->msg_iovlen; i++) {
+        vec = &(msg->msg_iov[i]);
+        read = lwip_recvfrom(lwip_from_fd(sockfd), vec->iov_base, vec->iov_len, flags, 
+                (struct sockaddr *)msg->msg_name, &(msg->msg_namelen));
+
+        switch (read) {
+            case -1:
+                return -lwip_lasterr(lwip_from_fd(sockfd));
+            case 0:
+                return total;
+            default:
+                total += read;
+                break;
+        }
+    }
+
+    return total;
+}
+
+#endif // CONFIG_SOCKET
+
+	
 
 /**
  * Initializes the network subsystem; called once at boot.
@@ -444,15 +557,18 @@ sys_getsockopt(
 void
 netdev_init(void)
 {
-	printk(KERN_INFO "%s: Bringing up network devices: '%s'\n",
-	       __func__, netdev_str);
+	printk( KERN_INFO "%s: Bringing up network devices: '%s'\n",
+		__func__,
+		netdev_str
+	);
 
-	driver_init_list("net", netdev_str);
+	driver_init_list( "net", netdev_str );
 
-	// Bring up the lightweight IP stack
-	tcpip_init(NULL, NULL);
+#ifdef CONFIG_LWIP_SOCKET
+	// Full sockets are enabled.  Bring up the entire system
+	tcpip_init( 0, 0 );
 
-	// Install the socket system call handlers
+	// Install the socket system calls
 	syscall_register( __NR_socket, (syscall_ptr_t) sys_socket );
 	syscall_register( __NR_bind, (syscall_ptr_t) sys_bind );
 	syscall_register( __NR_connect, (syscall_ptr_t) sys_connect );
@@ -461,5 +577,14 @@ netdev_init(void)
 	syscall_register( __NR_select, (syscall_ptr_t) sys_select );
 	syscall_register( __NR_setsockopt, (syscall_ptr_t) sys_setsockopt );
 	syscall_register( __NR_getsockopt, (syscall_ptr_t) sys_getsockopt );
+
+	syscall_register( __NR_sendto, (syscall_ptr_t) sys_sendto );
+	syscall_register( __NR_sendmsg, (syscall_ptr_t) sys_sendmsg );
+	syscall_register( __NR_recvfrom, (syscall_ptr_t) sys_recvfrom );
+	syscall_register( __NR_recvmsg, (syscall_ptr_t) sys_recvmsg );
+#elif defined( CONFIG_NETWORK )
+	// No sockets enabled, just bring up the LWIP library
+	lwip_init();
+#endif
 }
 

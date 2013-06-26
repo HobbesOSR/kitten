@@ -40,6 +40,9 @@
 
 #include <stddef.h> /* for size_t */
 
+/* BJK: For O_NONBLOCK */
+#include <asm-generic/fcntl.h>
+
 #include "lwip/ip_addr.h"
 #include "lwip/inet.h"
 #include "lwip/inet6.h"
@@ -76,6 +79,28 @@ struct sockaddr {
 #else /* LWIP_IPV6 */
   u8_t sa_data[14];
 #endif /* LWIP_IPV6 */
+};
+
+/* BJK: Adding structures to support sendmsg/recvmsg */
+typedef u32_t socklen_t;
+
+struct iovec {
+    char * iov_base;          /* Base address of iov data */
+    int iov_len;              /* Length of iov data */
+};
+
+struct msghdr {
+    void * msg_name;          /* Address to send to/receive from */
+    socklen_t msg_namelen;    /* Length of address data */
+
+    struct iovec * msg_iov;   /* Vector of data to send/receive into */
+    size_t msg_iovlen;        /* Number of elements in the vector */
+
+    void * msg_control;       /* Ancillary data (ed BSD filedesc passing). */
+    size_t msg_controllen;    /* Ancillary data buffer length.
+                !! This type should be socklen_t but the
+                definition of the kernel is incompatible
+                with this. */
 };
 
 /* If your port already typedef's socklen_t, define SOCKLEN_T_DEFINED
@@ -349,6 +374,7 @@ struct timeval {
 #endif /* LWIP_TIMEVAL_PRIVATE */
 
 void lwip_socket_init(void);
+int lwip_lasterr(int s);
 
 int lwip_accept(int s, struct sockaddr *addr, socklen_t *addrlen);
 int lwip_bind(int s, const struct sockaddr *name, socklen_t namelen);
