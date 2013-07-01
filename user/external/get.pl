@@ -40,6 +40,14 @@ push(@packages, \%shmem);
 #$gperftools{config_cmd}    = "./configure --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --enable-static --disable-shared --prefix=$INSTALLDIR";
 #push(@packages, \%gperftools);
 
+#my %piapi;
+#$piapi{name}              = "Kratos PIAPI SVN Trunk";
+#$piapi{directory}         = "piapi";
+#$piapi{get_cmd}           = "svn co svn+ssh://software.sandia.gov/svn/private/kratos $piapi{directory}";
+#$piapi{preconfig_cmd}     = "autoconf";
+#$piapi{config_cmd}        = "./configure --prefix=$INSTALLDIR";
+#push(@packages, \%piapi);
+
 # Download and build external packages
 for (my $i=0; $i < @packages; $i++) {
 	chdir "$BASEDIR";
