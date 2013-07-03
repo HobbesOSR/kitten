@@ -322,7 +322,6 @@ piapi_callback( struct piapi_sample *sample )
 	printf( "PIAPI:\n");
 	printf( "\tsample - %u of %u\n", sample->number, sample->total );
 	printf( "\ttime   - %f\n", sample->time_sec+sample->time_usec/1000000.0 );
-	printf( "\tpower  - %f\n", sample->raw.watts );
 	printf( "\tenergy - %f\n", sample->energy );
 }
 #endif
