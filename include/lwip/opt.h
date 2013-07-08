@@ -1461,6 +1461,13 @@
 #endif
 
 /**
+ * LWIP_SO_SENDBUF==1: Enable SO_SNDBUF processing.
+ */
+#ifndef LWIP_SO_SNDBUF
+#define LWIP_SO_SNDBUF					0
+#endif
+
+/**
  * LWIP_SO_RCVTIMEO==1: Enable receive timeout for sockets/netconns and
  * SO_RCVTIMEO processing.
  */

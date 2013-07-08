@@ -175,7 +175,7 @@ sys_socket(
 }
 
 static int
-translate_sockaddr(
+translate_sockaddr_to_lwk(
 	uint8_t *		buf,
 	size_t			len
 )
@@ -200,6 +200,31 @@ translate_sockaddr(
 	return 0;
 }
 
+static int
+translate_sockaddr_to_linux(
+	uint8_t *	buf,
+	size_t		len
+)
+{
+	typedef unsigned short sa_family_t;
+	struct linux_sockaddr {
+		sa_family_t sa_family;
+		char sa_data[14];
+	};
+
+	struct linux_sockaddr addr;
+
+	if ( len < sizeof(struct sockaddr_in) )
+		return -1;
+
+	addr.sa_family = ((struct sockaddr *)buf)->sa_family;
+	memcpy(addr.sa_data, ((struct sockaddr *)buf)->sa_data, 14);
+	
+	memcpy(buf, &addr, sizeof(struct linux_sockaddr));
+
+	return 0;
+}
+
 static unsigned long
 sys_bind(
 	int			sock,
@@ -207,6 +232,7 @@ sys_bind(
 	size_t			len
 )
 {
+	int ret;
 	const int conn = lwip_from_fd( sock );
 	if( sock < 0 )
 		return -EBADF;
@@ -221,13 +247,17 @@ sys_bind(
 		return -EFAULT;
 	}
 
-	if( translate_sockaddr( buf, len ) < 0 )
+	if( translate_sockaddr_to_lwk( buf, len ) < 0 )
 	{
 		printk( "%s: bad user address translation %p\n", __func__, (void*) addr );
 		return -EFAULT;
 	}
 
-	return lwip_bind( conn, (struct sockaddr *) buf, len );
+	ret = lwip_bind( conn, (struct sockaddr *) buf, len );
+	if (ret == -1) {
+		ret = -lwip_lasterr(conn);
+	}
+	return ret;
 }
 
 
@@ -238,6 +268,7 @@ sys_connect(
 	size_t			len
 )
 {
+	int ret;
 	const int conn = lwip_from_fd( sock );
 	if( sock < 0 )
 		return -EBADF;
@@ -252,13 +283,17 @@ sys_connect(
 		return -EFAULT;
 	}
 
-	if( translate_sockaddr( buf, len ) < 0 )
+	if( translate_sockaddr_to_lwk( buf, len ) < 0 )
 	{
 		printk( "%s: bad user address %p translation\n", __func__, (void*) addr );
 		return -EFAULT;
 	}
 
-	return lwip_connect( conn, (struct sockaddr *) buf, len );
+	ret = lwip_connect( conn, (struct sockaddr *) buf, len );
+	if (ret == -1) {
+		ret = -lwip_lasterr(conn);
+	}
+	return ret;
 }
 
 static int
@@ -457,8 +492,27 @@ sys_sendto(
     socklen_t addrlen
 )
 {
-    int ret = lwip_sendto(lwip_from_fd(sockfd), buf, len, flags, dest_addr, addrlen);
+	struct sockaddr * dest;
+	uint8_t kbuf[addrlen];
+	char databuf[len];
 
+	if (copy_from_user(&databuf, buf, len)) {
+		printk("%s: bad user address %p\n", __func__, (void*) dest_addr);
+		return -EFAULT;
+	}
+
+	if (copy_from_user(&kbuf, dest_addr, addrlen)) {
+		printk("%s: bad user address %p\n", __func__, (void*) dest_addr);
+		return -EFAULT;
+	}
+
+	if (translate_sockaddr_to_lwk(kbuf, sizeof(struct sockaddr)) < 0) {
+		printk( "%s: bad user address %p translation\n", __func__, (void*) kbuf);
+		return -EFAULT;
+	}
+	dest = (struct sockaddr *)kbuf;
+
+    int ret = lwip_sendto(lwip_from_fd(sockfd), (void *)databuf, len, flags, dest, addrlen);
     if (ret == -1) {
         ret = -lwip_lasterr(lwip_from_fd(sockfd));
     }
@@ -476,12 +530,25 @@ sys_sendmsg(
     int i;
     ssize_t written, total;
     struct iovec * vec;
+	struct sockaddr * dest;
+	uint8_t kbuf[msg->msg_namelen];
+
+	if (copy_from_user(&kbuf, msg->msg_name, msg->msg_namelen)) {
+		printk("%s: bad user address %p\n", __func__, (void*) msg->msg_name);
+		return -EFAULT;
+	}
+
+	if (translate_sockaddr_to_lwk(kbuf, sizeof(struct sockaddr)) < 0) {
+		printk( "%s: bad user address %p translation\n", __func__, (void*) kbuf);
+		return -EFAULT;
+	}
+	dest = (struct sockaddr *)kbuf;
 
     total = 0;
     for (i = 0; i < msg->msg_iovlen; i++) {
         vec = &(msg->msg_iov[i]);
         written = lwip_sendto(lwip_from_fd(sockfd), vec->iov_base, vec->iov_len, flags,
-                (struct sockaddr *)msg->msg_name, msg->msg_namelen);
+                dest, msg->msg_namelen);
 
         switch (written) {
             case -1:
@@ -507,11 +574,26 @@ sys_recvfrom(
     socklen_t * addrlen
 )
 {
-    int ret = lwip_recvfrom(lwip_from_fd(sockfd), buf, len,flags, src_addr, addrlen);
+	char databuf[len];
+	uint8_t kbuf[sizeof(struct sockaddr)];
 
+    int ret = lwip_recvfrom(lwip_from_fd(sockfd), databuf, len, flags, (struct sockaddr *)kbuf, addrlen);
     if (ret == -1) {
         ret = -lwip_lasterr(lwip_from_fd(sockfd));
-    }
+    } else {
+		if (copy_to_user(buf, databuf, len)) {
+			return -EFAULT;
+		}
+
+		if (translate_sockaddr_to_linux(kbuf, sizeof(struct sockaddr)) < 0) {
+			printk( "%s: bad user address %p translation\n", __func__, (void*) kbuf);
+			return -EFAULT;
+		}
+
+		if (copy_to_user(src_addr, kbuf, *addrlen)) {
+			return -EFAULT;
+		}
+	}
 
     return ret;
 }
@@ -531,7 +613,7 @@ sys_recvmsg(
     for (i = 0; i < msg->msg_iovlen; i++) {
         vec = &(msg->msg_iov[i]);
         read = lwip_recvfrom(lwip_from_fd(sockfd), vec->iov_base, vec->iov_len, flags, 
-                (struct sockaddr *)msg->msg_name, &(msg->msg_namelen));
+				msg->msg_name, &(msg->msg_namelen));
 
         switch (read) {
             case -1:

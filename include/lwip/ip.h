@@ -101,13 +101,13 @@ struct ip_pcb {
  * Option flags per-socket. These are the same like SO_XXX.
  */
 /*#define SOF_DEBUG       0x01U     Unimplemented: turn on debugging info recording */
-#define SOF_ACCEPTCONN    0x02U  /* socket has had listen() */
-#define SOF_REUSEADDR     0x04U  /* allow local address reuse */
-#define SOF_KEEPALIVE     0x08U  /* keep connections alive */
+#define SOF_ACCEPTCONN    30	/* socket has had listen() */
+#define SOF_REUSEADDR     2		/* allow local address reuse */
+#define SOF_KEEPALIVE     9		/* keep connections alive */
 /*#define SOF_DONTROUTE   0x10U     Unimplemented: just use interface addresses */
-#define SOF_BROADCAST     0x20U  /* permit to send and to receive broadcast messages (see IP_SOF_BROADCAST option) */
+#define SOF_BROADCAST     6		/* permit to send and to receive broadcast messages (see IP_SOF_BROADCAST option) */
 /*#define SOF_USELOOPBACK 0x40U     Unimplemented: bypass hardware when possible */
-#define SOF_LINGER        0x80U  /* linger on close if data present */
+#define SOF_LINGER        13	/* linger on close if data present */
 /*#define SOF_OOBINLINE   0x0100U     Unimplemented: leave received OOB data in line */
 /*#define SOF_REUSEPORT   0x0200U     Unimplemented: allow local address & port reuse */
 

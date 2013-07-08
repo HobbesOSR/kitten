@@ -51,13 +51,13 @@ typedef size_t mem_size_t;
  * allow these defines to be overridden.
  */
 #ifndef mem_free
-#define mem_free free
+#define mem_free kmem_free
 #endif
 #ifndef mem_malloc
-#define mem_malloc malloc
+#define mem_malloc kmem_alloc
 #endif
 #ifndef mem_calloc
-#define mem_calloc calloc
+#define mem_calloc kmem_calloc
 #endif
 /* Since there is no C library allocation function to shrink memory without
    moving it, define this to nothing. */

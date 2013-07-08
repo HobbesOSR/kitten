@@ -3,6 +3,10 @@
 
 #define SYS_LIGHTWEIGHT_PROT 1
 #define NO_SYS 0
+#define MEM_LIBC_MALLOC 1
+#define MEMP_MEM_MALLOC 1
+#define LWIP_SO_SNDBUF 1
+#define LWIP_SO_RCVBUF 1
 
 #ifdef CONFIG_LWIP_SOCKET
 #define LWIP_SOCKET 1
@@ -16,6 +20,7 @@
 
 #ifdef CONFIG_LWIP_ARP
 #define LWIP_ARP 1
+#define ARP_QUEUEING 1
 #else
 #define LWIP_ARP 0
 #define ARP_QUEUEING 0
@@ -29,11 +34,13 @@
 #endif
 
 // We have struct timeval
-#define LWIP_TIMEVAL_PRIVATE 0
+//#define LWIP_TIMEVAL_PRIVATE 0
 
-#define LWIP_DEBUG 0
-#define LWIP_DBG_MIN_LEVEL 1
+#define LWIP_DEBUG 1
+#define IP_REASS_DEBUG LWIP_DBG_OFF
+#define LWIP_DBG_MIN_LEVEL LWIP_DBG_LEVEL_ALL
 #define IP_DEBUG LWIP_DBG_OFF
+#define UDP_DEBUG LWIP_DBG_OFF
 #define TCP_DEBUG LWIP_DBG_OFF
 #define TCPIP_DEBUG LWIP_DBG_OFF
 #define TCP_INPUT_DEBUG LWIP_DBG_OFF
