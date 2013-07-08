@@ -227,9 +227,10 @@ app_load(
 )
 {
 	app_t *app = &pct->app;
-	int i, cpu, offset, src, dst;
+	int i, cpu, offset, src, dst, global_rank, global_size, rank, size;
 	char env[1024];
 	char name[32];
+	char * env_ptr;
 
 	app->world_size    = world_size;
 	app->universe_size = universe_size;
@@ -255,6 +256,9 @@ app_load(
 		++i;
 	}
 
+	global_rank = ((env_ptr = getenv("PMI_RANK")) != NULL) ? atoi(env_ptr) : -1;
+	global_size = ((env_ptr = getenv("PMI_SIZE")) != NULL) ? atoi(env_ptr) : -1;
+
 	// Portals early initialization.
 	// Must be done before a process's address space is created.
 	for (i = 0; i < local_size; i++)
@@ -273,9 +277,12 @@ app_load(
 
 		// Setup the process's environment.
 		// This includes info needed to contact PPE.
+		rank = (global_rank > -1) ? global_rank : i;
+		size = (global_size > -1) ? global_size : i;
+
 		offset = 0;
-		offset += sprintf(env + offset, "PMI_RANK=%d, ", i);
-		offset += sprintf(env + offset, "PMI_SIZE=%d, ", local_size);
+		offset += sprintf(env + offset, "PMI_RANK=%d, ", rank);
+		offset += sprintf(env + offset, "PMI_SIZE=%d, ", size);
 		offset += sprintf(env + offset, "%s", app->procs[i].ppe_info);
 
 		sprintf(name, "RANK-%d", i);
