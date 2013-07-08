@@ -37,8 +37,8 @@
 
 
 // Number of read/write descriptors
-#define NUM_RX_DESCRIPTORS	16
-#define NUM_TX_DESCRIPTORS	16
+#define NUM_RX_DESCRIPTORS	64
+#define NUM_TX_DESCRIPTORS	64
 
 
 // E1000 Ethernet Controller Register Offsets
@@ -348,25 +348,11 @@ static int e1000_tx_init(struct netif *netif)
 	return 0;
 }
 
-
-static err_t e1000_tx_poll(struct netif *netif, struct pbuf *pkt)
-{
+static err_t e1000_tx_send(struct netif *netif, char * buf, int len) {
 	e1000_device_t *dev = netif->state;
-	struct pbuf *q;
-	int count = 0;
 
-	// Count the number of entries in the pbuf
-	for (q = pkt; q != NULL ; q = q->next)
-		++count;
-	if (count != 1) {
-		printk(KERN_WARNING "E1000: trying to transmit pbuf with more than one region, count=%d\n", count);
-		return -1;
-	}
-
-	// printk("E1000: transmitting packet (%u bytes) [h=%u, t=%u]\n", pkt->tot_len, mmio_read32(E1000_REG_TDH), dev->tx_tail);
-	
-	dev->tx_desc[dev->tx_tail]->address = (uint64_t) __pa(pkt->payload);
-	dev->tx_desc[dev->tx_tail]->length = pkt->len;
+	dev->tx_desc[dev->tx_tail]->address = (uint64_t) __pa(buf);
+	dev->tx_desc[dev->tx_tail]->length = len;
 	dev->tx_desc[dev->tx_tail]->cmd = ((1 << 3) | (3));
 	
 	// Update the tail so the hardware knows it's ready
@@ -378,8 +364,23 @@ static err_t e1000_tx_poll(struct netif *netif, struct pbuf *pkt)
 	while (!(dev->tx_desc[oldtail]->sta & 0xF)) { }
 	
 	// printk("E1000: TX DONE: transmit status = 0x%01x\n", (dev->tx_desc[oldtail]->sta & 0xF));
-
 	return 0;
+}
+
+// BJK: assemble a single buffer from the queues in pkt
+static err_t e1000_tx_poll(struct netif *netif, struct pbuf *pkt) {
+	int off;
+	char buf[pkt->tot_len];
+	struct pbuf * q;
+
+	// Count the number of entries in the pbuf
+	off = 0;
+	for (q = pkt; q != NULL ; q = q->next) {
+		memcpy(buf + off, q->payload, q->len);
+		off += q->len;
+	}
+
+	return e1000_tx_send(netif, buf, pkt->tot_len);
 }
 
 
@@ -421,7 +422,7 @@ static void e1000_rx_poll(struct netif *netif)
 				printk(KERN_WARNING "Unable to allocate pbuf! dropping packet\n");
 			} else {
 				memcpy(p->payload, pkt, pktlen);
-				p->tot_len = pktlen;
+				p->len = p->tot_len = pktlen;
 				p->next = 0x0;
 
 				// send the packet to higher layers for parsing
@@ -443,11 +444,11 @@ static void e1000_rx_poll(struct netif *netif)
 
 
 // ICR bits
-#define E1000_ICR_TXCW      0x00000001  // Transmit descirptor written back
+#define E1000_ICR_TXCW      0x00000001  // Transmit descriptor written back
 #define E1000_ICR_TXQE      0x00000002  // Transmit queue empty 
 #define E1000_ICR_LSC       0x00000004  // Link status change
 #define E1000_ICR_RXSEQ     0x00000008  // Receive sequence error  
-#define E1000_ICR_RXDMT0    0x00000010  // Receive descirptor minimum threshold met
+#define E1000_ICR_RXDMT0    0x00000010  // Receive descriptor minimum threshold met
 #define E1000_ICR_RXO       0x00000040  // Receiver overrun
 #define E1000_ICR_RXT0      0x00000080  // Receiver timer interrupt
 #define E1000_ICR_MDAC      0x00000200  // MDIO access complete

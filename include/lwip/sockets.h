@@ -117,32 +117,31 @@ typedef u32_t socklen_t;
 /*
  * Option flags per-socket. These must match the SOF_ flags in ip.h (checked in init.c)
  */
-#define  SO_DEBUG       0x0001 /* Unimplemented: turn on debugging info recording */
-#define  SO_ACCEPTCONN  0x0002 /* socket has had listen() */
-#define  SO_REUSEADDR   0x0004 /* Allow local address reuse */
-#define  SO_KEEPALIVE   0x0008 /* keep connections alive */
-#define  SO_DONTROUTE   0x0010 /* Unimplemented: just use interface addresses */
-#define  SO_BROADCAST   0x0020 /* permit to send and to receive broadcast messages (see IP_SOF_BROADCAST option) */
-#define  SO_USELOOPBACK 0x0040 /* Unimplemented: bypass hardware when possible */
-#define  SO_LINGER      0x0080 /* linger on close if data present */
-#define  SO_OOBINLINE   0x0100 /* Unimplemented: leave received OOB data in line */
-#define  SO_REUSEPORT   0x0200 /* Unimplemented: allow local address & port reuse */
+#define  SO_DEBUG       1		/* Unimplemented: turn on debugging info recording */
+#define  SO_REUSEADDR   2		/* Allow local address reuse */
+#define	 SO_TYPE		3
+#define	 SO_ERROR		4
+#define  SO_DONTROUTE   5		/* Unimplemented: just use interface addresses */
+#define  SO_BROADCAST   6		/* permit to send and to receive broadcast messages (see IP_SOF_BROADCAST option) */
+#define  SO_SNDBUF		7
+#define  SO_RCVBUF		8
+#define  SO_KEEPALIVE   9		/* keep connections alive */
+#define  SO_OOBINLINE   10		/* Unimplemented: leave received OOB data in line */
+#define  SO_NO_CHECK	11
+#define  SO_LINGER      13		/* linger on close if data present */
+#define  SO_REUSEPORT   15		/* Unimplemented: allow local address & port reuse */
+#define  SO_RCVLOWAT	18
+#define  SO_SNDLOWAT	19
+#define  SO_RCVTIMEO	20
+#define  SO_SNDTIMEO	21
+#define  SO_ACCEPTCONN  30		/* socket has had listen() */
+
+
+#define  SO_USELOOPBACK 0x0040	/* Unimplemented: bypass hardware when possible */
+#define  SO_CONTIMEO 0x10000
+
 
 #define SO_DONTLINGER   ((int)(~SO_LINGER))
-
-/*
- * Additional options, not kept in so_options.
- */
-#define SO_SNDBUF    0x1001    /* Unimplemented: send buffer size */
-#define SO_RCVBUF    0x1002    /* receive buffer size */
-#define SO_SNDLOWAT  0x1003    /* Unimplemented: send low-water mark */
-#define SO_RCVLOWAT  0x1004    /* Unimplemented: receive low-water mark */
-#define SO_SNDTIMEO  0x1005    /* Unimplemented: send timeout */
-#define SO_RCVTIMEO  0x1006    /* receive timeout */
-#define SO_ERROR     0x1007    /* get error status and clear */
-#define SO_TYPE      0x1008    /* get socket type */
-#define SO_CONTIMEO  0x1009    /* Unimplemented: connect timeout */
-#define SO_NO_CHECK  0x100a    /* don't create UDP checksum */
 
 
 /*
@@ -156,7 +155,7 @@ struct linger {
 /*
  * Level number for (get/set)sockopt() to apply to socket itself.
  */
-#define  SOL_SOCKET  0xfff    /* options for socket level */
+#define  SOL_SOCKET  1   /* options for socket level */
 
 
 #define AF_UNSPEC       0
@@ -179,11 +178,11 @@ struct linger {
 #define IPPROTO_UDPLITE 136
 
 /* Flags we can use with send and recv. */
-#define MSG_PEEK       0x01    /* Peeks at an incoming message */
-#define MSG_WAITALL    0x02    /* Unimplemented: Requests that the function block until the full amount of data requested can be returned */
-#define MSG_OOB        0x04    /* Unimplemented: Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific */
-#define MSG_DONTWAIT   0x08    /* Nonblocking i/o for this operation only */
-#define MSG_MORE       0x10    /* Sender will send more */
+#define MSG_OOB        0x01		/* Unimplemented: Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific */
+#define MSG_PEEK       0x02		/* Peeks at an incoming message */
+#define MSG_WAITALL    0x100    /* Unimplemented: Requests that the function block until the full amount of data requested can be returned */
+#define MSG_DONTWAIT   0x40		/* Nonblocking i/o for this operation only */
+#define MSG_MORE       0x8000   /* Sender will send more */
 
 
 /*
@@ -363,7 +362,7 @@ typedef struct ip_mreq {
 /** LWIP_TIMEVAL_PRIVATE: if you want to use the struct timeval provided
  * by your system, set this to 0 and include <sys/time.h> in cc.h */ 
 #ifndef LWIP_TIMEVAL_PRIVATE
-#define LWIP_TIMEVAL_PRIVATE 1
+#define LWIP_TIMEVAL_PRIVATE 0
 #endif
 
 #if LWIP_TIMEVAL_PRIVATE
