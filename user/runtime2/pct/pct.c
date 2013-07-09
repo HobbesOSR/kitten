@@ -267,25 +267,24 @@ app_load(
 	/*************************************************************************/
 	printf("Creating address spaces...\n");
 	for (i = 0; i < local_size; ++i) {
+		rank = (global_rank > -1) ? global_rank : i;
+		size = (global_size > -1) ? global_size : local_size;
 
 		app->procs[i].start_state.task_id  = app->procs[i].task_id;
 		app->procs[i].start_state.cpu_id   = app->procs[i].cpu_id;
 		app->procs[i].start_state.user_id  = app->user_id;
 		app->procs[i].start_state.group_id = app->group_id;
 
-		sprintf(app->procs[i].start_state.task_name, "RANK%d", i);
+		sprintf(app->procs[i].start_state.task_name, "RANK%d", rank);
 
 		// Setup the process's environment.
 		// This includes info needed to contact PPE.
-		rank = (global_rank > -1) ? global_rank : i;
-		size = (global_size > -1) ? global_size : local_size;
-
 		offset = 0;
 		offset += sprintf(env + offset, "PMI_RANK=%d, ", rank);
 		offset += sprintf(env + offset, "PMI_SIZE=%d, ", size);
 		offset += sprintf(env + offset, "%s", app->procs[i].ppe_info);
 
-		sprintf(name, "RANK-%d", i);
+		sprintf(name, "RANK-%d", rank);
 
 		CHECK(elf_load(elf_image, "app", app->procs[i].aspace_id, VM_PAGE_4KB,
 		               (1024 * 1024 * 16),  // heap_size  = 16 MB

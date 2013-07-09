@@ -293,7 +293,7 @@ static int e1000_rx_init(struct netif *netif)
 		dev->rx_desc[i]->status = 0;
 	}
 	
-	// setup the receive descr ptor ring buffer (TODO: >32-bits may be broken in this code)
+	// setup the receive descriptor ring buffer (TODO: >32-bits may be broken in this code)
 	mmio_write32( E1000_REG_RDBAH, (uint32_t)((uint64_t)__pa(dev->rx_desc_base) >> 32) );
 	mmio_write32( E1000_REG_RDBAL, (uint32_t)((uint64_t)__pa(dev->rx_desc_base) & 0xFFFFFFFF) );
 	
