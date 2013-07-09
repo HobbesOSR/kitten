@@ -532,6 +532,7 @@ sys_sendmsg(
     struct iovec * vec;
 	struct sockaddr * dest;
 	uint8_t kbuf[msg->msg_namelen];
+	char * databuf;
 
 	if (copy_from_user(&kbuf, msg->msg_name, msg->msg_namelen)) {
 		printk("%s: bad user address %p\n", __func__, (void*) msg->msg_name);
@@ -547,8 +548,16 @@ sys_sendmsg(
     total = 0;
     for (i = 0; i < msg->msg_iovlen; i++) {
         vec = &(msg->msg_iov[i]);
-        written = lwip_sendto(lwip_from_fd(sockfd), vec->iov_base, vec->iov_len, flags,
+		databuf = kmem_alloc(vec->iov_len);
+
+		if (copy_from_user(databuf, vec->iov_base, vec->iov_len)) {
+			kmem_free(databuf);
+			return -EFAULT;
+		}
+
+        written = lwip_sendto(lwip_from_fd(sockfd), databuf, vec->iov_len, flags,
                 dest, msg->msg_namelen);
+		kmem_free(databuf);
 
         switch (written) {
             case -1:
@@ -608,12 +617,22 @@ sys_recvmsg(
     int i;
     ssize_t read, total;
     struct iovec * vec;
+	char * databuf;
+	uint8_t kbuf[sizeof(struct sockaddr)];
 
     total = 0;
     for (i = 0; i < msg->msg_iovlen; i++) {
         vec = &(msg->msg_iov[i]);
-        read = lwip_recvfrom(lwip_from_fd(sockfd), vec->iov_base, vec->iov_len, flags, 
-				msg->msg_name, &(msg->msg_namelen));
+		databuf = kmem_alloc(vec->iov_len);
+
+        read = lwip_recvfrom(lwip_from_fd(sockfd), databuf, vec->iov_len, flags, 
+				(struct sockaddr *)kbuf, &(msg->msg_namelen));
+
+		if (copy_to_user(vec->iov_base, databuf, vec->iov_len)) {
+			kmem_free(databuf);
+			return -EFAULT;
+		}
+		kmem_free(databuf);
 
         switch (read) {
             case -1:
@@ -625,6 +644,15 @@ sys_recvmsg(
                 break;
         }
     }
+
+	if (translate_sockaddr_to_linux(kbuf, sizeof(struct sockaddr)) < 0) {
+		printk( "%s: bad user address %p translation\n", __func__, (void*) kbuf);
+		return -EFAULT;
+	}
+
+	if (copy_to_user(msg->msg_name, kbuf, msg->msg_namelen)) {
+		return -EFAULT;
+	}
 
     return total;
 }
