@@ -278,7 +278,7 @@ app_load(
 		// Setup the process's environment.
 		// This includes info needed to contact PPE.
 		rank = (global_rank > -1) ? global_rank : i;
-		size = (global_size > -1) ? global_size : i;
+		size = (global_size > -1) ? global_size : local_size;
 
 		offset = 0;
 		offset += sprintf(env + offset, "PMI_RANK=%d, ", rank);
