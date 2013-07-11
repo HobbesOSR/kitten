@@ -519,7 +519,6 @@ sys_sendto(
     return ret;
 }
 
-// Currently, non-blocking sendmsg/recvmsg are not implemented
 static ssize_t
 sys_sendmsg(
 	int sockfd,
@@ -533,10 +532,6 @@ sys_sendmsg(
 	void * databuf;
 	uint8_t * kname;
 	int i;
-
-	if (flags & O_NONBLOCK || flags & MSG_DONTWAIT) {
-		return -EINVAL;
-	}
 
 	// Copy msghdr in
 	if (copy_from_user(&kmsg, msg, sizeof(struct msghdr))) {
@@ -628,7 +623,6 @@ sys_recvfrom(
     return ret;
 }
 
-// Currently, non-blocking sendmsg/recvmsg are not implemented
 static ssize_t
 sys_recvmsg(
 	int sockfd,
@@ -642,10 +636,6 @@ sys_recvmsg(
 	void * databuf;
 	uint8_t kname[sizeof(struct sockaddr)];
 	int i;
-
-	if (flags & O_NONBLOCK || flags & MSG_DONTWAIT) {
-		return -EINVAL;
-	}
 
 	// Copy msghdr in
 	if (copy_from_user(&kmsg, msg, sizeof(struct msghdr))) {
@@ -674,6 +664,7 @@ sys_recvmsg(
 			default:
 				if (copy_to_user(msg->msg_iov[i].iov_base, databuf, kvec.iov_len)) {
 					kmem_free(databuf);
+					printk("%s: bad user address %p\n", __func__, (void*) msg->msg_iov[i].iov_base);
 					return -EFAULT;
 				}
 				total += read;

@@ -8,6 +8,19 @@
 #define LWIP_SO_SNDBUF 1
 #define LWIP_SO_RCVBUF 1
 
+// BJK: These options are needed to support larger UDP messages. Tune as needed.
+// Note: Need invariant PBUF_POOL_SIZE > IP_REASS_MAX_PBUFS
+// Maximum outstanding messages in the mailbox. To be safe, message sizes should be
+// less than MTU * TCPIP_MBOX_SIZE (other processes can consume slots as well)
+#define TCPIP_MBOX_SIZE 32
+
+// Number of pbufs in the pool
+#define PBUF_POOL_SIZE 64
+
+// Number of pbufs that can be used in a single packet reassembly. Message size,
+// then, is limited to MTU * IP_REASS_MAX_PBUFS
+#define IP_REASS_MAX_PBUFS 32
+
 #ifdef CONFIG_LWIP_SOCKET
 #define LWIP_SOCKET 1
 #define LWIP_NETCONN 1
