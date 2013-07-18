@@ -576,14 +576,8 @@ e1000_hw_init(struct netif *netif)
 	       netif->hwaddr[0], netif->hwaddr[1], netif->hwaddr[2],
 	       netif->hwaddr[3], netif->hwaddr[4], netif->hwaddr[5]);
 
-	// Register our interrupt handler
-	int vector = ioapic_pcidev_vector(dev->pci_dev->cfg.bus, dev->pci_dev->cfg.slot, 0);
-	if (vector == -1) {
-		printk(KERN_WARNING "E1000: Failed to find interrupt vector.  Assuming 66!\n");
-		vector = 66;
-	}
-	printk(KERN_INFO "E1000 IDT vector:  %d\n", vector);
-	irq_request(vector, &e1000_interrupt_handler, 0, "e1000", netif);
+	// Disable interrupts - will enable them when the card is ready
+	mmio_write32(E1000_REG_IMC, ~0);
 
 	// Initialize the rest of the Lightweight IP netif structure
 	netif->mtu        = 1500;
@@ -614,6 +608,15 @@ e1000_hw_init(struct netif *netif)
 	e1000_tx_init(netif);
 
 	e1000_rx_enable(netif);
+
+	// Register our interrupt handler
+	int vector = ioapic_pcidev_vector(dev->pci_dev->cfg.bus, dev->pci_dev->cfg.slot, 0);
+	if (vector == -1) {
+		printk(KERN_WARNING "E1000: Failed to find interrupt vector.  Assuming 66!\n");
+		vector = 66;
+	}
+	printk(KERN_INFO "E1000 IDT vector:  %d\n", vector);
+	irq_request(vector, &e1000_interrupt_handler, 0, "e1000", netif);
 	
 	return 0;
 }

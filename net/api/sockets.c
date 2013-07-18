@@ -1582,6 +1582,9 @@ lwip_getsockopt(int s, int level, int optname, void *optval, socklen_t *optlen)
 #if LWIP_SO_RCVBUF
     case SO_RCVBUF:
 #endif /* LWIP_SO_RCVBUF */
+#if LWIP_SO_SNDBUF
+	case SO_SNDBUF:
+#endif /* LWIP_SO_SNDBUF */
     /* UNIMPL case SO_OOBINLINE: */
     /* UNIMPL case SO_SNDBUF: */
     /* UNIMPL case SO_RCVLOWAT: */
@@ -1856,6 +1859,12 @@ lwip_getsockopt_internal(void *arg)
       *(int *)optval = netconn_get_recvbufsize(sock->conn);
       break;
 #endif /* LWIP_SO_RCVBUF */
+#if LWIP_SO_SNDBUF
+    /* BJK: Currently, the SNDBUF size is the same as the RCVBUF size */
+	case SO_SNDBUF:
+      *(int *)optval = netconn_get_recvbufsize(sock->conn);
+      break;
+#endif /* LWIP_SO_SNDBUF */
 #if LWIP_UDP
     case SO_NO_CHECK:
       *(int*)optval = (udp_flags(sock->conn->pcb.udp) & UDP_FLAGS_NOCHKSUM) ? 1 : 0;
@@ -2026,6 +2035,9 @@ lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t opt
 #if LWIP_SO_RCVBUF
     case SO_RCVBUF:
 #endif /* LWIP_SO_RCVBUF */
+#if LWIP_SO_SNDBUF
+	case SO_SNDBUF:
+#endif /* LWIP_SO_SNDBUF */
     /* UNIMPL case SO_OOBINLINE: */
     /* UNIMPL case SO_SNDBUF: */
     /* UNIMPL case SO_RCVLOWAT: */

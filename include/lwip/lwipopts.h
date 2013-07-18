@@ -8,6 +8,10 @@
 #define LWIP_SO_SNDBUF 1
 #define LWIP_SO_RCVBUF 1
 
+// BJK: Allow loopback
+#define LWIP_NETIF_LOOPBACK 1
+#define LWIP_NETIF_MAX_PBUFS 32
+
 // BJK: These options are needed to support larger UDP messages. Tune as needed.
 // Note: Need invariant PBUF_POOL_SIZE > IP_REASS_MAX_PBUFS
 // Maximum outstanding messages in the mailbox. To be safe, message sizes should be

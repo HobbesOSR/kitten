@@ -460,11 +460,11 @@ sys_getsockopt(
 	int				sockfd, 
 	int				level,
 	int				optname,
-	void *	optval,
+	void *			optval,
 	socklen_t *		optlen
 )
 {
-	int			kint;
+	int	kint;
 	int ret;
 
 	const int conn = lwip_from_fd( sockfd );
@@ -597,10 +597,21 @@ sys_recvfrom(
 )
 {
 	char databuf[len];
-	uint8_t kbuf[sizeof(struct sockaddr)];
+	uint8_t kname[sizeof(struct sockaddr)];
+	socklen_t klen;
+
+	if (copy_from_user(&klen, addrlen, sizeof(socklen_t))) {
+		printk("%s: bad user address %p\n", __func__, (void*) addrlen);
+		return -EFAULT;
+	}
+
+	if (copy_from_user(kname, src_addr, klen)) {
+		printk("%s: bad user address %p\n", __func__, (void*) src_addr);
+		return -EFAULT;
+	}
 
     int ret = lwip_recvfrom(lwip_from_fd(sockfd), databuf, len, flags, 
-			(struct sockaddr *)kbuf, addrlen);
+			(struct sockaddr *)kname, &klen);
     if (ret == -1) {
         ret = -lwip_lasterr(lwip_from_fd(sockfd));
     } else {
@@ -609,13 +620,18 @@ sys_recvfrom(
 			return -EFAULT;
 		}
 
-		if (translate_sockaddr_to_linux(kbuf, sizeof(struct sockaddr)) < 0) {
-			printk("%s: bad kernel address %p translation\n", __func__, (void*) kbuf);
+		if (translate_sockaddr_to_linux(kname, sizeof(struct sockaddr)) < 0) {
+			printk("%s: bad kernel address %p translation\n", __func__, (void*) kname);
 			return -EFAULT;
 		}
 
-		if (copy_to_user(src_addr, kbuf, *addrlen)) {
+		if (copy_to_user(src_addr, kname, klen)) {
 			printk("%s: bad user address %p\n", __func__, (void*) src_addr);
+			return -EFAULT;
+		}
+
+		if (copy_to_user(addrlen, &klen, sizeof(socklen_t))) {
+			printk("%s: bad user address %p\n", __func__, (void*) addrlen);
 			return -EFAULT;
 		}
 	}
