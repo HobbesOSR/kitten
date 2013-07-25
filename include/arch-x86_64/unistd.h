@@ -639,64 +639,69 @@ __SYSCALL(__NR_fallocate, syscall_not_implemented)
 
 /**
  * LWK specific system calls.
+ * 
+ * The LWK-specific system call numbers start at a base of 500 to leave some
+ * room for the number of Linux system calls to grow. If the number of Linux
+ * syscalls becomes >= 500, the LWK syscall number base will need to be
+ * increased to avoid overlap.
  */
-#define __NR_pmem_add		286
+#define __NR_pmem_add		500
 __SYSCALL(__NR_pmem_add, sys_pmem_add)
-#define __NR_pmem_update	287
+#define __NR_pmem_update	501
 __SYSCALL(__NR_pmem_update, sys_pmem_update)
-#define __NR_pmem_query		288
+#define __NR_pmem_query		502
 __SYSCALL(__NR_pmem_query, sys_pmem_query)
-#define __NR_pmem_alloc		289
+#define __NR_pmem_alloc		503
 __SYSCALL(__NR_pmem_alloc, sys_pmem_alloc)
 
-#define __NR_aspace_get_myid	290
+#define __NR_aspace_get_myid	504
 __SYSCALL(__NR_aspace_get_myid, sys_aspace_get_myid)
-#define __NR_aspace_create	291
+#define __NR_aspace_create	505
 __SYSCALL(__NR_aspace_create, sys_aspace_create)
-#define __NR_aspace_destroy	292
+#define __NR_aspace_destroy	506
 __SYSCALL(__NR_aspace_destroy, sys_aspace_destroy)
-#define __NR_aspace_find_hole	293
+#define __NR_aspace_find_hole	507
 __SYSCALL(__NR_aspace_find_hole, sys_aspace_find_hole)
-#define __NR_aspace_add_region	294
+#define __NR_aspace_add_region	508
 __SYSCALL(__NR_aspace_add_region, sys_aspace_add_region)
-#define __NR_aspace_del_region	295
+#define __NR_aspace_del_region	509
 __SYSCALL(__NR_aspace_del_region, sys_aspace_del_region)
-#define __NR_aspace_map_pmem	296
+#define __NR_aspace_map_pmem	510
 __SYSCALL(__NR_aspace_map_pmem, sys_aspace_map_pmem)
-#define __NR_aspace_unmap_pmem	297
+#define __NR_aspace_unmap_pmem	511
 __SYSCALL(__NR_aspace_unmap_pmem, sys_aspace_unmap_pmem)
-#define __NR_aspace_virt_to_phys 298
+#define __NR_aspace_virt_to_phys 512
 __SYSCALL(__NR_aspace_virt_to_phys, sys_aspace_virt_to_phys)
-#define __NR_aspace_smartmap	299
+#define __NR_aspace_smartmap	513
 __SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
-#define __NR_aspace_unsmartmap	300
+#define __NR_aspace_unsmartmap	514
 __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
-#define __NR_aspace_dump2console 301
+#define __NR_aspace_dump2console 515
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
-#define __NR_task_create	302
+#define __NR_task_create	516
 __SYSCALL(__NR_task_create, sys_task_create)
-#define __NR_task_switch_cpus	303
+#define __NR_task_switch_cpus	517
 __SYSCALL(__NR_task_switch_cpus, sys_task_switch_cpus)
-#define __NR_elf_hwcap		304
+#define __NR_elf_hwcap		518
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
-#define __NR_v3_start_guest	305
+#define __NR_v3_start_guest	519
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
-#define __NR_getcpu		306
+#define __NR_getcpu		520
 __SYSCALL(__NR_getcpu, sys_getcpu)
-#define __NR_mce_inject		    307
+#define __NR_mce_inject		521
 __SYSCALL(__NR_mce_inject, syscall_not_implemented)
 
-#define __NR_lwk_arp            308
-#define __NR_lwk_ifconfig       309
-
-
+#define __NR_lwk_arp            522
 #ifdef CONFIG_LINUX
-
-/* TODO: Move these registrations to the Linux compatibility layer initialization */
 __SYSCALL(__NR_lwk_arp, sys_lwk_arp)
-__SYSCALL(__NR_lwk_ifconfig, sys_lwk_ifconfig)
 #else
 __SYSCALL(__NR_lwk_arp, syscall_not_implemented)
+#endif
+
+#define __NR_lwk_ifconfig       523
+#ifdef CONFIG_LINUX
+__SYSCALL(__NR_lwk_ifconfig, sys_lwk_ifconfig)
+#else
 __SYSCALL(__NR_lwk_ifconfig, syscall_not_implemented)
 #endif
 
