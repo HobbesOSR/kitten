@@ -58,28 +58,28 @@ $(1)_LDADD_OTHER     = $$(filter-out %.a, $$($(1)_LDADD))
 ifdef $(1)_RAWDATA
 $(1)_OLDADD_EXPLICIT += $$O/$(1)_rawdata.o
 $$O/$(1)_rawdata.o: $$($(1)_RAWDATA) $(CONFIG)
-	$$(call buildrawobj,$$@,$$<,$(1)_rawdata,$O)
+	$$(call buildrawobj,$$@,$$<,$(1)_rawdata,$O,.rawdata)
 CLEAN_FILES += $$O/$(1)_rawdata.o
 endif
 
 ifdef $(1)_RAWDATA2
 $(1)_OLDADD_EXPLICIT += $$O/$(1)_rawdata2.o
 $$O/$(1)_rawdata2.o: $$($(1)_RAWDATA2) $(CONFIG)
-	$$(call buildrawobj,$$@,$$<,$(1)_rawdata2,$O)
+	$$(call buildrawobj,$$@,$$<,$(1)_rawdata2,$O,.rawdata2)
 CLEAN_FILES += $$O/$(1)_rawdata2.o
 endif
 
 ifdef $(1)_RAWDATA3
 $(1)_OLDADD_EXPLICIT += $$O/$(1)_rawdata3.o
 $$O/$(1)_rawdata3.o: $$($(1)_RAWDATA3) $(CONFIG)
-	$$(call buildrawobj,$$@,$$<,$(1)_rawdata3,$O)
+	$$(call buildrawobj,$$@,$$<,$(1)_rawdata3,$O,.rawdata3)
 CLEAN_FILES += $$O/$(1)_rawdata3.o
 endif
 
 ifdef $(1)_RAWDATA4
 $(1)_OLDADD_EXPLICIT += $$O/$(1)_rawdata4.o
 $$O/$(1)_rawdata4.o: $$($(1)_RAWDATA4) $(CONFIG)
-	$$(call buildrawobj,$$@,$$<,$(1)_rawdata4,$O)
+	$$(call buildrawobj,$$@,$$<,$(1)_rawdata4,$O,.rawdata4)
 CLEAN_FILES += $$O/$(1)_rawdata4.o
 endif
 
@@ -167,7 +167,7 @@ buildrawobj = \
 		objcopy -I binary -O elf64-x86-64 		\
 			--binary-architecture i386		\
 			$3 $1;					\
-		objcopy --rename-section .data=.rawdata $1;	\
+		objcopy --rename-section .data=$5 $1;	\
 		$(RM) $3;					\
 	)
 
