@@ -323,7 +323,7 @@ app_load(
 
 #ifdef USING_PIAPI
 void
-piapi_callback( struct piapi_sample *sample )
+piapi_callback( piapi_sample_t *sample )
 {
 	printf( "PIAPI:\n");
 	printf( "\tsample - %u of %u\n", sample->number, sample->total );
@@ -361,7 +361,7 @@ main(int argc, char *argv[], char *envp[])
 
 #ifdef USING_PIAPI
 	void *cntx = 0x0;
-	piapi_init( &cntx, piapi_callback );
+	piapi_init( &cntx, PIAPI_MODE_PROXY, piapi_callback, PIAPI_AGNT_SADDR, PIAPI_AGNT_PORT );
 #endif 
 
 	// Load the application into memory, but don't start it executing yet
@@ -379,7 +379,7 @@ main(int argc, char *argv[], char *envp[])
 	printf("DONE LOADING APPLICATION\n");
 
 #ifdef USING_PIAPI
-	piapi_collect( cntx, PIAPI_CPU, 60, 1 );
+	piapi_collect( cntx, PIAPI_PORT_CPU, 60, 1 );
 #endif
 
 	/*************************************************************************/

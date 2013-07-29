@@ -13,4 +13,12 @@
 // The well-known maximum size of PMI message, in bytes
 #define PCT_MAX_PMI_MSG     1024
 
+#ifdef USING_PIAPI
+/* The well-known powerinsight agent saddr */
+#define PIAPI_AGNT_SADDR    0x0a361500
+
+/* The well-known powerinsight agent port */
+#define PIAPI_AGNT_PORT     20201
+#endif
+
 #endif
