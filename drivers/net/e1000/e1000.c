@@ -598,15 +598,10 @@ e1000_hw_init(struct netif *netif)
 	uint16_t cmd = pci_read(dev->pci_dev, PCIR_COMMAND, 2);
 	cmd |= PCIM_CMD_BUSMASTEREN;
 	pci_write(dev->pci_dev, PCIR_COMMAND, 2, cmd);
-		
-	// enable all interrupts (and clear existing pending ones)
-	mmio_write32(E1000_REG_IMS, 0x1F6DC);
-	mmio_read32(E1000_REG_ICR);
-	
+			
 	// Initialize the E1000 transmit and receive state
 	e1000_rx_init(netif);
 	e1000_tx_init(netif);
-
 	e1000_rx_enable(netif);
 
 	// Register our interrupt handler
@@ -617,6 +612,10 @@ e1000_hw_init(struct netif *netif)
 	}
 	printk(KERN_INFO "E1000 IDT vector:  %d\n", vector);
 	irq_request(vector, &e1000_interrupt_handler, 0, "e1000", netif);
+
+	// enable all interrupts (and clear existing pending ones)
+	mmio_write32(E1000_REG_IMS, 0x1F6DC);
+	mmio_read32(E1000_REG_ICR);
 	
 	return 0;
 }
