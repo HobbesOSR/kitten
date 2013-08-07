@@ -21,8 +21,7 @@ CFLAGS  += -std=gnu99 -D_GNU_SOURCE -DHAVE_KITTEN -Wall -pthread
 INCDIRS += -I${PMI_COMMON_BASE}
 
 pct_LDADD = -lportals -lportals_ppe -lportals_util -lxpmem -llwk -lrt
-
-ifdef USE_PIAPI
+ifeq ($(PIAPI),y)
 CFLAGS    += -DUSING_PIAPI
 pct_LDADD += -lpiapi
 endif
