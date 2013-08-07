@@ -20,3 +20,5 @@ endif
 .PHONY:all
 all::
 
+# By default, only install in lwk install directory
+TARGET=lwk

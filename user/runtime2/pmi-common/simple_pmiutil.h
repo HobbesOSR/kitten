@@ -20,7 +20,13 @@
 /* prototypes for PMIU routines */
 void PMIU_Set_rank( int PMI_rank );
 void PMIU_SetServer( void );
+
+#if 1
+#include <stdio.h>
+#define PMIU_printf(a, fmt, args...) printf(fmt, ## args)
+#else
 void PMIU_printf( int print_flag, const char *fmt, ... );
+#endif
 int  PMIU_readline( int fd, char *buf, int max );
 int  PMIU_writeline( int fd, char *buf );
 int  PMIU_parse_keyvals( char *st );

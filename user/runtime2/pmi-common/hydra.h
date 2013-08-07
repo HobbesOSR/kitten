@@ -189,6 +189,9 @@ struct HYD_user_global {
 
 #define HYDU_mem_init()
 #define HYDU_strdup   strdup
+#define HYDU_strtok   strtok
+#define HYDU_strcat   strcat
+#define HYDU_strncpy  strncpy
 #define HYDU_malloc   malloc
 #define HYDU_free     free
 #define HYDU_snprintf snprintf

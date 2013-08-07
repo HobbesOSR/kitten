@@ -233,7 +233,7 @@ HYD_status HYD_pmcd_pmi_add_kvs(const char *key, char *val, struct HYD_pmcd_pmi_
     key_pair->next = NULL;
 
     *ret = 0;
-
+    
     if (kvs->key_pair == NULL) {
         kvs->key_pair = key_pair;
     }
@@ -256,4 +256,76 @@ HYD_status HYD_pmcd_pmi_add_kvs(const char *key, char *val, struct HYD_pmcd_pmi_
 
   fn_fail:
     goto fn_exit;
+}
+
+/* Return a comma delimited buf of key-val pairs */
+HYD_status HYD_pmcd_pmi_get_kvs_string(struct HYD_pmcd_pmi_kvs * kvs, char ** kvs_list)
+{
+    struct HYD_pmcd_pmi_kvs_pair *run;
+    unsigned long length;
+    HYD_status status = HYD_SUCCESS;
+    char *tmp[5], *buf;
+
+    HYDU_FUNC_ENTER();
+
+    for (length = 0, run = kvs->key_pair; run; run = run->next) {
+        length += strlen(run->key) + strlen(run->val) + 2;
+    }
+
+    length++; // NULL at the end
+    HYDU_MALLOC(*kvs_list, char *, length, status);
+    *kvs_list[0] = 0;
+
+    for (run = kvs->key_pair; run; run = run->next) {
+        tmp[0] = HYDU_strdup(run->key);
+        tmp[1] = HYDU_strdup(";");
+        tmp[2] = HYDU_strdup(run->val);
+        tmp[3] = HYDU_strdup(",");
+        tmp[4] = NULL;
+
+        status = HYDU_str_alloc_and_join(tmp, &buf);
+        HYDU_ERR_POP(status, "unable to join strings\n");
+        HYDU_free_strlist(tmp);
+
+        HYDU_strcat(*kvs_list, buf);
+        HYDU_FREE(buf);
+    }
+
+    fn_exit:
+      HYDU_FUNC_EXIT();
+      return status;
+
+    fn_fail:
+      goto fn_exit;
+}
+
+/* Split comma delimited key-val string into a struct HYD_pmcd_pmi_kvs */
+HYD_status HYD_pmcd_pmi_get_kvs_struct(char * kvs_list, struct HYD_pmcd_pmi_kvs ** kvs)
+{
+    HYD_status status = HYD_SUCCESS;
+    char *key, *val;
+    int ret;
+
+    HYDU_FUNC_ENTER();
+    HYDU_MALLOC(*kvs, struct HYD_pmcd_pmi_kvs *, sizeof(struct HYD_pmcd_pmi_kvs), status);
+    (*kvs)->key_pair = NULL;
+
+    for (key = HYDU_strtok(kvs_list, ";,\n"); key; key = HYDU_strtok(NULL, ";,\n")) {
+        val = HYDU_strtok(NULL, ";,\n");
+        if (!val) {
+            status = HYD_FAILURE;
+            goto fn_fail;
+        }
+
+        status = HYD_pmcd_pmi_add_kvs(key, val, *kvs, &ret);
+        HYDU_ERR_POP(status, "unable to add keypair to kvs\n");
+    }
+
+  fn_exit:
+    HYDU_FUNC_EXIT();
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+
 }

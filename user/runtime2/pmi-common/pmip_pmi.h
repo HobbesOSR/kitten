@@ -9,7 +9,7 @@
 
 #include "hydra.h"
 #include "common.h"
-#include "pct_internal.h"
+#include "pmi_server.h"
 
 /* PMI-1 specific definitions */
 extern struct HYD_pmcd_pmip_pmi_handle *HYD_pmcd_pmip_pmi_v1;

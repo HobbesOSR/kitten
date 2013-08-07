@@ -56,6 +56,7 @@ void PMIU_SetServer( void )
 
 /* Note that vfprintf is part of C89 */
 
+#if 0
 /* style: allow:fprintf:1 sig:0 */
 /* style: allow:vfprintf:1 sig:0 */
 /* This should be combined with the message routines */
@@ -63,7 +64,7 @@ void PMIU_printf( int print_flag, const char *fmt, ... )
 {
     va_list ap;
     static FILE *logfile= 0;
-    
+
     /* In some cases when we are debugging, the handling of stdout or
        stderr may be unreliable.  In that case, we make it possible to
        select an output file. */
@@ -97,6 +98,7 @@ void PMIU_printf( int print_flag, const char *fmt, ... )
 	fflush( logfile );
     }
 }
+#endif
 
 #define MAX_READLINE 1024
 /* 

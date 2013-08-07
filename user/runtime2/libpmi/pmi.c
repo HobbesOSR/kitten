@@ -290,7 +290,7 @@ PMI_Init(int *spawned)
 {
 	char *p;
 	int i;
-    
+
 	PMI_initialized = PMI_UNINITIALIZED;
 
 	if ((p = getenv("PMI_DEBUG")) != NULL) {
@@ -487,7 +487,21 @@ PMI_KVS_Get(const char *kvsname, const char *key, char *value, int length)
 int
 PMI_KVS_Commit(const char *kvsname)
 {
-	/* no-op in this implementation */
+	/* Commits push our local kvs to the server */
+	char buf[PMIU_MAXLINE];
+	int status, rc;
+
+	status = snprintf(buf, PMIU_MAXLINE,
+					  "cmd=commit kvsname=%s\n",
+					  kvsname);
+	
+	if (status < 0)
+        return PMI_FAIL;
+
+	status = GetResponse(buf, "commit_result", 0);
+	if (status != PMI_SUCCESS)
+		return status;
+
 	return PMI_SUCCESS;
 }
 

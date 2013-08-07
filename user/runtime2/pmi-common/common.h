@@ -79,5 +79,7 @@ HYD_status HYD_pmcd_pmi_allocate_kvs(struct HYD_pmcd_pmi_kvs **kvs, int pgid);
 void HYD_pmcd_free_pmi_kvs_list(struct HYD_pmcd_pmi_kvs *kvs_list);
 HYD_status HYD_pmcd_pmi_add_kvs(const char *key, char *val, struct HYD_pmcd_pmi_kvs *kvs,
                                 int *ret);
+HYD_status HYD_pmcd_pmi_get_kvs_string(struct HYD_pmcd_pmi_kvs *kvs, char ** kvs_list);
+HYD_status HYD_pmcd_pmi_get_kvs_struct(char * kvs_list, struct HYD_pmcd_pmi_kvs **kvs);
 
 #endif /* COMMON_H_INCLUDED */

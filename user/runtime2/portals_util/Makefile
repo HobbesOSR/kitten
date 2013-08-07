@@ -8,4 +8,7 @@ libportals_util_SOURCES = debug.c queue.c
 
 CFLAGS += -std=gnu99
 
+# Install in both install directories
+TARGET=both
+
 include $(BASE)/Makefile.footer

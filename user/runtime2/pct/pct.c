@@ -16,7 +16,7 @@
 #include <portals4_util.h>
 
 #include "pct.h"
-#include "pct_internal.h"
+#include <pmi_server.h>
 
 #ifdef USING_PIAPI
 #include "piapi.h"
@@ -220,6 +220,7 @@ app_load(
 	int         world_size,
 	int         universe_size,
 	int         local_size,
+	int         base_rank,
 	id_t        user_id,
 	id_t        group_id,
 	cpu_set_t   avail_cpus,
@@ -227,24 +228,32 @@ app_load(
 )
 {
 	app_t *app = &pct->app;
-	int i, cpu, offset, src, dst, global_rank, global_size, rank, size;
+	int i, cpu, offset, src, dst, rank;
 	char env[1024];
 	char name[32];
-	char * env_ptr;
 
-	app->world_size    = world_size;
-	app->universe_size = universe_size;
-	app->local_size    = local_size;
+	if (world_size != -1)
+		app->world_size    = world_size;
+
+	if (universe_size != -1)
+		app->universe_size = universe_size;
+
+	if (local_size != -1) 
+		app->local_size    = local_size;
+
+	if (base_rank != -1)
+		app->base_rank     = base_rank;
+
 	app->user_id       = user_id;
 	app->group_id      = group_id;
 	app->avail_cpus    = avail_cpus;
 
 	// Allocate a state structure for each application process
-	app->procs = (process_t *)MALLOC(local_size * sizeof(process_t));
+	app->procs = (process_t *)MALLOC(app->local_size * sizeof(process_t));
 
 	// Pre-determine the IDs for each application process
 	i = 0;
-	for (cpu = 0; (cpu <= CPU_SETSIZE) && (i < local_size); cpu++) {
+	for (cpu = 0; (cpu <= CPU_SETSIZE) && (i < app->local_size); cpu++) {
 		if (!CPU_ISSET(cpu, &app->avail_cpus))
 			continue;
 
@@ -256,19 +265,15 @@ app_load(
 		++i;
 	}
 
-	global_rank = ((env_ptr = getenv("PMI_RANK")) != NULL) ? atoi(env_ptr) : -1;
-	global_size = ((env_ptr = getenv("PMI_SIZE")) != NULL) ? atoi(env_ptr) : -1;
-
 	// Portals early initialization.
 	// Must be done before a process's address space is created.
-	for (i = 0; i < local_size; i++)
+	for (i = 0; i < app->local_size; i++)
 		portals_process_init_early(pct, &app->procs[i]);
 
 	/*************************************************************************/
 	printf("Creating address spaces...\n");
-	for (i = 0; i < local_size; ++i) {
-		rank = (global_rank > -1) ? global_rank : i;
-		size = (global_size > -1) ? global_size : local_size;
+	for (i = 0; i < app->local_size; ++i) {
+		rank = app->base_rank + i;
 
 		app->procs[i].start_state.task_id  = app->procs[i].task_id;
 		app->procs[i].start_state.cpu_id   = app->procs[i].cpu_id;
@@ -276,18 +281,19 @@ app_load(
 		app->procs[i].start_state.group_id = app->group_id;
 
 		sprintf(app->procs[i].start_state.task_name, "RANK%d", rank);
+		printf("Starting APP with PMI rank = %d\n", rank);
 
 		// Setup the process's environment.
 		// This includes info needed to contact PPE.
 		offset = 0;
 		offset += sprintf(env + offset, "PMI_RANK=%d, ", rank);
-		offset += sprintf(env + offset, "PMI_SIZE=%d, ", size);
+		offset += sprintf(env + offset, "PMI_SIZE=%d, ", app->world_size);
 		offset += sprintf(env + offset, "%s", app->procs[i].ppe_info);
 
 		sprintf(name, "RANK-%d", rank);
 
 		CHECK(elf_load(elf_image, "app", app->procs[i].aspace_id, VM_PAGE_4KB,
-		               (1024 * 1024 * 16),  // heap_size  = 16 MB
+		               (1024 * 1024 * 512),  // heap_size  = 512 MB
 		               (1024 * 256),        // stack_size = 256 KB
 		               "",                  // argv_str
 		               env,                 // envp_str
@@ -300,8 +306,8 @@ app_load(
 
 	/*************************************************************************/
 	printf("Creating app<->app SMARTMAP mappings...\n");
-	for (dst = 0; dst < local_size; dst++) {
-		for (src = 0; src < local_size; src++) {
+	for (dst = 0; dst < app->local_size; dst++) {
+		for (src = 0; src < app->local_size; src++) {
 			// SMARTMAP slot 0 is reserved, so offset by one.
 			// Process with local index i goes in SMARTMAP slot i+1.
 			CHECK(aspace_smartmap(app->procs[src].start_state.aspace_id,
@@ -315,8 +321,21 @@ app_load(
 
 	// Portals late initialization.
 	// Must be done after a process's address space is created.
-	for (i = 0; i < local_size; i++)
+	for (i = 0; i < app->local_size; i++)
 		portals_process_init_late(pct, &app->procs[i]);
+
+	return 0;
+}
+
+static int wait_for_launch(pct_t * pct) {
+	ptl_event_t ev;
+
+	PTL_CHECK(PtlEQWait(pct->app.pmi_state.client.rx_eq_h, &ev));
+
+	if (ev.type == PTL_EVENT_PUT)
+		CHECK(pmi_process_event(pct, &pct->app, &ev));
+
+	ptl_queue_process_event(pct->app.pmi_state.client.rx_q, &ev);
 
 	return 0;
 }
@@ -340,6 +359,7 @@ main(int argc, char *argv[], char *envp[])
 	cpu_set_t cpuset;
 	int num_ranks;
 	int cpu, i;
+	char * do_wait;
 
 	// Figure out my address space ID
 	aspace_get_myid(&pct.aspace_id);
@@ -364,10 +384,26 @@ main(int argc, char *argv[], char *envp[])
 	piapi_init( &cntx, PIAPI_MODE_PROXY, piapi_callback, PIAPI_AGNT_SADDR, PIAPI_AGNT_PORT );
 #endif 
 
-	// Load the application into memory, but don't start it executing yet
-	app_load(&pct, num_ranks, num_ranks, num_ranks, 1, 1, cpuset, (void *)elf_image);
+	ptl_process_t match_id = {.phys.nid = PTL_NID_ANY, .phys.pid = PTL_PID_ANY};
+	pmi_init(&pct, &pct.app, PCT_PMI_PT_INDEX, match_id);
 
-	pmi_init(&pct, &pct.app, PCT_PMI_PT_INDEX);
+	do_wait = getenv("WAIT_LAUNCH");
+	if (do_wait && atoi(do_wait) == 1) {
+		// Don't create the tasks until you get the OK from the Linux server
+		printf("Waiting for job server to start task...");
+		fflush(stdout);
+		if (wait_for_launch(&pct)) {
+			printf("failed.\n");
+			return 0;
+		}
+		printf("OK\n");
+
+		// Load the application into memory using received values, but don't start it executing yet
+		app_load(&pct, -1, -1, -1, -1, 1, 1, cpuset, (void *)elf_image); 
+	} else  {
+		// Load the application into memory using default values, but don't start it executing yet
+		app_load(&pct, num_ranks, num_ranks, num_ranks, 0, 1, 1, cpuset, (void *)elf_image);
+	}
 
 	/*************************************************************************/
 	printf("Creating tasks...\n");
@@ -382,18 +418,17 @@ main(int argc, char *argv[], char *envp[])
 	piapi_collect( cntx, PIAPI_PORT_CPU, 60, 1 );
 #endif
 
-	/*************************************************************************/
 	printf("ENTERING PORTALS EVENT DISPATCH LOOP\n");
 	while (1) {
 		ptl_event_t ev;
 
 		// Handle PMI requests from local clients
-		PTL_CHECK(PtlEQWait(pct.app.pmi_state.client_rx_eq_h, &ev));
+		PTL_CHECK(PtlEQWait(pct.app.pmi_state.client.rx_eq_h, &ev));
 
 		if (ev.type == PTL_EVENT_PUT)
 			CHECK(pmi_process_event(&pct, &pct.app, &ev));
 
-		ptl_queue_process_event(pct.app.pmi_state.client_rx_q, &ev);
+		ptl_queue_process_event(pct.app.pmi_state.client.rx_q, &ev);
 	}
 	/*************************************************************************/
 

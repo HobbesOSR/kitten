@@ -4,6 +4,8 @@ use strict;
 
 my $BASEDIR    = `pwd`; chomp($BASEDIR);
 my $INSTALLDIR = "$BASEDIR/../install";
+my $INSTALLDIR_LINUX = "$BASEDIR/../install-linux";
+my $XPMEM_DIR  = "/path/to/xpmem/install/directory";
 
 my @packages;
 
@@ -12,8 +14,16 @@ $portals4{name}          = "Portals4 SVN Trunk";
 $portals4{directory}     = "portals4";
 $portals4{get_cmd}       = "svn checkout http://portals4.googlecode.com/svn/trunk/ $portals4{directory}";
 $portals4{preconfig_cmd} = "./autogen.sh";
-$portals4{config_cmd}    = "./configure --enable-kitten --enable-ppe --disable-transport-ib --disable-transport-udp --disable-shared --with-xpmem=$INSTALLDIR --prefix=$INSTALLDIR";
+$portals4{config_cmd}    = "./configure --enable-kitten --enable-ppe --disable-transport-ib --enable-transport-udp --disable-shared --with-xpmem=$INSTALLDIR --prefix=$INSTALLDIR";
 push(@packages, \%portals4);
+
+my %portals4_linux;
+$portals4_linux{name}          = "Portals4 SVN Trunk";
+$portals4_linux{directory}     = "portals4_linux";
+$portals4_linux{get_cmd}       = "cp -r $portals4{directory} $portals4_linux{directory}; cd $portals4_linux{directory}; rm Makefile; cd ..";
+$portals4_linux{preconfig_cmd} = "./autogen.sh";
+$portals4_linux{config_cmd}    = "./configure --enable-ppe --disable-transport-ib --enable-transport-udp --disable-shared --with-xpmem=$XPMEM_DIR --prefix=$INSTALLDIR_LINUX";
+push(@packages, \%portals4_linux);
 
 my %ompi;
 $ompi{name}              = "Open MPI SVN Trunk";

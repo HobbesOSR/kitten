@@ -1,5 +1,5 @@
-#ifndef PCT_INTERNAL_H
-#define PCT_INTERNAL_H
+#ifndef PMI_SERVER_H
+#define PMI_SERVER_H
 
 #include <sched.h>
 #include <lwk/liblwk.h>
@@ -23,20 +23,30 @@
 
 
 typedef struct pmi_state {
-	ptl_pt_index_t  client_pt_index;
+	struct client {
+		// Portals state for handling client requests
+		ptl_queue_t     rx_q;
+		ptl_handle_eq_t rx_eq_h;
 
-	// Portals state for handling client requests
-	ptl_queue_t     client_rx_q;
-	ptl_handle_eq_t client_rx_eq_h;
+		// Portals state for sending responses to clients
+		ptl_handle_eq_t tx_eq_h;
+		ptl_md_t        tx_md;
+		ptl_handle_md_t tx_md_h;
+		size_t			tx_buf_size;
+		char *          tx_buf;
 
-	// Portals state for sending responses to clients
-	ptl_handle_eq_t client_tx_eq_h;
-	ptl_md_t        client_tx_md;
-	ptl_handle_md_t client_tx_md_h;
-	size_t			client_tx_buf_size;
-	char *          client_tx_buf;
+		// Client's pt index
+		ptl_pt_index_t  pt_index;
+	} client;
+
+	struct {
+		// Server's pt index
+		ptl_pt_index_t  pt_index;
+
+		// Server's NID/PID
+		ptl_process_t   ptl_id;
+	} server;
 } pmi_state_t;
-
 
 typedef struct process {
 	id_t            local_index;     // Local index of the process
@@ -70,6 +80,8 @@ typedef struct app {
 	cpu_set_t       avail_cpus;      // Bitmap of CPUs that app procs can run on
 
 	pmi_state_t     pmi_state;       // State needed for app process <-> PCT comm
+
+	int             base_rank;       // Rank that our app processes start from
 } app_t;
 
 
@@ -82,9 +94,8 @@ typedef struct pct {
 	ptl_process_t   ptl_id;          // The PCT's Portals ID
 } pct_t;
 
-
-// PMI server related prototypes
-int pmi_init(pct_t *pct, app_t *app, ptl_pt_index_t pt_index);
+// PMI server prototypes
+int pmi_init(pct_t *pct, app_t *app, ptl_pt_index_t pt_index, ptl_process_t match_id);
 int pmi_process_event(pct_t *pct, app_t *app, const ptl_event_t *ev);
 
 

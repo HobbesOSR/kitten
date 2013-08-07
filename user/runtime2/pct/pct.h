@@ -10,6 +10,10 @@
 // The well-known portals table index for PMI messages
 #define PCT_PMI_PT_INDEX    1
 
+// The well-known portals table index for PMI messages sent to
+// the PMI server node
+#define PCT_PMI_SERVER_PT_INDEX 2
+
 // The well-known maximum size of PMI message, in bytes
 #define PCT_MAX_PMI_MSG     1024
 
