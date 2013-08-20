@@ -12,4 +12,6 @@ extern void kmem_free( const void *addr);
 extern void * kmem_get_pages(unsigned long order);
 extern void kmem_free_pages(const void *addr, unsigned long order);
 
+extern bool paddr_is_kmem(const paddr_t paddr);
+
 #endif

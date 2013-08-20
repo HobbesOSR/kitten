@@ -270,3 +270,14 @@ kmem_free_pages(
 }
 
 
+/**
+ * Returns true if the physical addr passed in is kmem, false otherwise.
+ */
+bool
+paddr_is_kmem(
+	const paddr_t		paddr
+) 
+{
+	return (((unsigned long)__va(paddr) >= kmem->base_addr) && 
+	       ((unsigned long)__va(paddr) - kmem->base_addr) < (1 << (kmem->pool_order)));
+}

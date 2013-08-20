@@ -332,7 +332,7 @@ arch_memsys_init(size_t kmem_size)
 	query.end   = round_up(   initrd_end,   PAGE_SIZE );
 	while (pmem_query(&query, &result) == 0) {
 		/* Only umem needs to be marked free at this point */
-		if (result.start >= kmem_size) {
+		if (!paddr_is_kmem(result.start)) {
 			result.type      = PMEM_TYPE_UMEM;
 			result.allocated = false;
 			BUG_ON(pmem_update(&result));
@@ -363,7 +363,8 @@ arch_memsys_init(size_t kmem_size)
 	query.start = round_down( initrd_start, PAGE_SIZE );
 	query.end   = round_up(   initrd_end,   PAGE_SIZE );
 	while (pmem_query(&query, &result) == 0) {
-		if (result.start < kmem_size) {
+		if (paddr_is_kmem(result.start)) {
+			BUG_ON(!paddr_is_kmem(result.end));
 			result.type      = PMEM_TYPE_KMEM;
 			result.allocated = false;
 			BUG_ON(pmem_update(&result));
