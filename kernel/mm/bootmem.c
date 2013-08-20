@@ -343,9 +343,9 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 
 	BUG_ON(!bdata->node_bootmem_map);
 
-	kmem_max_idx = (kmem_size >> PAGE_SHIFT) - (bdata->node_boot_start >> PAGE_SHIFT);
+	kmem_max_idx = (kmem_size >> PAGE_SHIFT);
 	max_idx = bdata->node_low_pfn - (bdata->node_boot_start >> PAGE_SHIFT);
-	BUG_ON(kmem_max_idx > max_idx);
+	BUG_ON(kmem_max_idx > max_idx);	/* kmem region doesn't fit into available bootmem */
 
 	/* Create the initial kernel managed memory pool (kmem) */
 	count = 0;
@@ -573,7 +573,7 @@ mem_subsys_init(void)
 	       kmem_size);
 
 	/* Initialize the kernel memory pool */
-	kmem_create_zone(PAGE_OFFSET, kmem_size);
+	kmem_create_zone((unsigned long)__va( bootmem_data.node_boot_start), kmem_size);
 	free_all_bootmem();
 	arch_memsys_init(kmem_size);
 }
