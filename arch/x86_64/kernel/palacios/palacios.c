@@ -71,23 +71,6 @@ send_key_to_palacios(
 }
 
 /**
- * Sends a mouse event to Palacios for handling.
- */
-void
-send_mouse_to_palacios(
-	unsigned char		packet[3]
-)
-{
-	if (!g_vm_guest)
-		return;
-
-	struct v3_mouse_event event;
-	memcpy(event.data, packet, 3);
-
-	v3_deliver_mouse_event(g_vm_guest, &event);
-}
-
-/**
  * Sends a timer tick event to Palacios for handling.
  */
 void
@@ -107,27 +90,34 @@ send_tick_to_palacios(
 
 /**
  * Prints a message to the console.
+ * TODO: Prefix print messages with vm->name and vcore
  */
 static void
 palacios_print(
-	const char *		fmt,
+	void *			vm,
+	int			vcore,
+	const char *		format,
 	...
 )
 {
 	va_list ap;
-	va_start(ap, fmt);
-	vprintk(fmt, ap);
+	va_start(ap, format);
+	vprintk(format, ap);
 	va_end(ap);
 }
 
 /**
  * Allocates a contiguous region of pages of the requested size.
  * Returns the physical address of the first page in the region.
+ *
+ * TODO: Actually use node_id and constraint arguments
  */
 static void *
 palacios_allocate_pages(
 	int			num_pages,
-	unsigned int		alignment	// must be power of two
+	unsigned int		alignment,	// must be power of two
+	int			node_id,
+	int			constraint
 )
 {
 	struct pmem_region result;
@@ -376,6 +366,17 @@ palacios_yield_cpu(void)
 }
 
 /**
+ * Puts the caller to sleep 'usec' microseconds.
+ */
+static void
+palacios_sleep_cpu(
+	unsigned int		usec
+)
+{
+	schedule_timeout(usec * 1000);
+}
+
+/**
  * Creates a kernel thread.
  */
 static void *
@@ -435,6 +436,34 @@ palacios_mutex_unlock(
 }
 
 /**
+ * Locks a mutex and disables interrupts.
+ * Return value should be passed to the corresponding
+ * palacios_mutex_unlock_irqrestore() as the flags argument.
+ */
+static void *
+palacios_mutex_lock_irqsave(
+	void *			mutex,
+	int			must_spin
+)
+{
+	unsigned long flags;
+	spin_lock_irqsave((spinlock_t *)mutex, flags);
+	return (void *) flags;
+}
+
+/**
+ * Unlocks a mutex and, if indicated by flags argument, restores interrupts.
+ */
+static void
+palacios_mutex_unlock_irqrestore(
+	void *			mutex,
+	void *			flags
+)
+{
+	spin_unlock_irqrestore((spinlock_t *)mutex, (unsigned long)flags);
+}
+
+/**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
  */
 struct v3_os_hooks palacios_os_hooks = {
@@ -450,10 +479,13 @@ struct v3_os_hooks palacios_os_hooks = {
 	.get_cpu_khz		= palacios_get_cpu_khz,
 	.start_kernel_thread    = palacios_start_kernel_thread,
 	.yield_cpu		= palacios_yield_cpu,
+	.sleep_cpu		= palacios_sleep_cpu,
 	.mutex_alloc		= palacios_mutex_alloc,
 	.mutex_free		= palacios_mutex_free,
 	.mutex_lock		= palacios_mutex_lock, 
 	.mutex_unlock		= palacios_mutex_unlock,
+	.mutex_lock_irqsave	= palacios_mutex_lock_irqsave,
+	.mutex_unlock_irqrestore = palacios_mutex_unlock_irqrestore,
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,

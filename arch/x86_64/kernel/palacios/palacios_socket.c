@@ -26,12 +26,15 @@
 #include <lwip/tcpip.h>
 #include <lwk/driver.h>
 
+typedef int palacios_socket;
+
 //ignore the arguments given here currently
-static int 
+static void *
 palacios_tcp_socket(
 	const int bufsize,
 	const int nodelay,
-	const int nonblocking
+	const int nonblocking,
+	void * private_data
 )
 {
 	int sock = lwip_socket(PF_INET, SOCK_STREAM, 0);
@@ -40,29 +43,40 @@ palacios_tcp_socket(
 		setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
 		           &nodelay, sizeof(nodelay));
 	}
-       
-	return sock;
+
+	palacios_socket *sock_ptr = (palacios_socket *) kmem_alloc(sizeof(palacios_socket));  
+	*sock_ptr = sock;
+
+	return sock_ptr;
 }
 
 //ignore the arguments given here currently
-static int 
+static void *
 palacios_udp_socket(
 	const int bufsize,
-	const int nonblocking
+	const int nonblocking,
+	void * private_data
 )
 {
-  	return lwip_socket(PF_INET, SOCK_DGRAM, 0);
+  	int sock = lwip_socket(PF_INET, SOCK_DGRAM, 0);
+    
+	palacios_socket *sock_ptr = (palacios_socket *) kmem_alloc(sizeof(palacios_socket));  
+	*sock_ptr = sock;
+
+	return sock_ptr;
 }
 
 static void 
-palacios_close(int sock)
+palacios_close(void * sock_ptr)
 {
-  	lwip_close(sock);
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+  	lwip_close(*sock);
+	kmem_free(sock);
 }
 
 static int 
 palacios_bind_socket(
-	const int sock,
+	const void * sock_ptr,
 	const int port
 )
 {
@@ -71,22 +85,25 @@ palacios_bind_socket(
   	addr.sin_family = AF_INET;
   	addr.sin_port = htons( port );
   	addr.sin_addr.s_addr = INADDR_ANY;
+    
+	palacios_socket *sock = (palacios_socket *) sock_ptr; 
 
-  	return lwip_bind(sock, (struct sockaddr*) &addr, sizeof(addr));
+  	return lwip_bind(*sock, (struct sockaddr *) &addr, sizeof(addr));
 }
 
 static int 
 palacios_listen(
-	const int sock,
+	const void * sock_ptr,
 	int backlog
 )
 {
-  	return lwip_listen(sock, backlog);
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+  	return lwip_listen(*sock, backlog);
 }
 
-static int 
+static void *
 palacios_accept(
-	const int sock,
+	const void * sock_ptr,
 	unsigned int * remote_ip,
 	unsigned int * port
 )
@@ -94,15 +111,18 @@ palacios_accept(
   	struct sockaddr_in client;
   	socklen_t len;
   	int client_sock;
-
-  	client_sock = lwip_accept(sock, (struct sockaddr *) &client, &len);
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+  	client_sock = lwip_accept(*sock, (struct sockaddr *) &client, &len);
 
   	if (client.sin_family == AF_INET) {
-	        *port = ntohs (client.sin_port);
+		*port      = ntohs (client.sin_port);
 		*remote_ip = ntohl(client.sin_addr.s_addr);
 	}
 
-  	return client_sock;
+	palacios_socket *client_sock_ptr = (palacios_socket *) kmem_alloc(sizeof(palacios_socket));
+	*client_sock_ptr = client_sock;
+
+	return client_sock_ptr;
 }
 
 static int 
@@ -118,7 +138,7 @@ palacios_select(
 
 static int 
 palacios_connect_to_ip(
-	const int sock,
+	const void * sock_ptr,
 	const int hostip,
 	const int port
 )
@@ -129,32 +149,36 @@ palacios_connect_to_ip(
   	client.sin_port = htons( port );
   	client.sin_addr.s_addr = htonl(hostip);
 
-  	return lwip_connect(sock, (struct sockaddr *) &client, sizeof(client));
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+
+  	return lwip_connect(*sock, (struct sockaddr *) &client, sizeof(client));
 }
 
 static int 
 palacios_send(
-	const int sock,
+	const void * sock_ptr,
 	const char * buf,
 	const int len
 )
 {
-  	return lwip_write(sock, buf, len);
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+  	return lwip_write(*sock, buf, len);
 }
 
 static int 
 palacios_recv(
-	const int sock,
+	const void * sock_ptr,
 	char * buf,
 	const int len
 )
 {
-  	return lwip_read(sock, buf, len);
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+  	return lwip_read(*sock, buf, len);
 }
 
 static int 
 palacios_sendto_ip(
-	const int sock,
+	const void * sock_ptr,
 	const int ip_addr,
 	const int port,
 	const char * buf,
@@ -166,13 +190,13 @@ palacios_sendto_ip(
 	dst.sin_family = AF_INET;
 	dst.sin_port = htons(port);
 	dst.sin_addr.s_addr = htonl(ip_addr);
-
-	return lwip_sendto(sock, buf, len, 0, (struct sockaddr *) &dst, sizeof(dst));
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+	return lwip_sendto(*sock, buf, len, 0, (struct sockaddr *) &dst, sizeof(dst));
 }
 
 static int 
 palacios_recvfrom_ip(
-	const int sock,
+	const void * sock_ptr,
 	const int ip_addr,
 	const int port,
 	char * buf,
@@ -186,15 +210,15 @@ palacios_recvfrom_ip(
   	src.sin_port = htons(port);
   	src.sin_addr.s_addr = htonl(ip_addr);
   	alen = sizeof(src);
-
-  	return lwip_recvfrom(sock, buf, len, 0 /*unsigned int flags*/, (struct sockaddr *) &src, &alen);
+	palacios_socket *sock = (palacios_socket *) sock_ptr;
+  	return lwip_recvfrom(*sock, buf, len, 0 /*unsigned int flags*/, (struct sockaddr *) &src, &alen);
 }
 
 struct v3_socket_hooks palacios_sock_hooks = {
   	.tcp_socket = palacios_tcp_socket,
   	.udp_socket = palacios_udp_socket,
   	.close = palacios_close,
-  	.bind_socket = palacios_bind_socket,
+  	.bind = palacios_bind_socket,
   	.listen = palacios_listen,
   	.accept = palacios_accept,
   	.select = palacios_select,
