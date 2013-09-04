@@ -172,6 +172,7 @@ SYSCALL1(pmem_update, const struct pmem_region *);
 SYSCALL2(pmem_query, const struct pmem_region *, struct pmem_region *);
 SYSCALL4(pmem_alloc, size_t, size_t,
          const struct pmem_region *, struct pmem_region *);
+SYSCALL1(pmem_zero, const struct pmem_region *);
 
 /**
  * Address space management.

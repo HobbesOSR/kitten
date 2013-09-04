@@ -188,13 +188,6 @@ merge_pmem_list(void)
 	}
 }
 
-static void
-zero_pmem(const struct pmem_region *rgn)
-{
-	/* access pmem region via the kernel's identity map */
-	memset(__va(rgn->start), 0, rgn->end - rgn->start);
-}
-
 static int
 __pmem_add(const struct pmem_region *rgn)
 {
@@ -371,7 +364,6 @@ __pmem_alloc(size_t size, size_t alignment,
 			candidate.allocated = true;
 			status = __pmem_update(&candidate);
 			BUG_ON(status);
-			zero_pmem(&candidate);
 			if (result)
 				*result = candidate;
 			return 0;
@@ -397,4 +389,16 @@ pmem_alloc(size_t size, size_t alignment,
 	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
 
 	return status;
+}
+
+int
+pmem_zero(const struct pmem_region *rgn)
+{
+	if (!region_is_sane(rgn))
+		return -EINVAL;
+
+	/* access pmem region via the kernel's identity map */
+	memset(__va(rgn->start), 0, rgn->end - rgn->start);
+
+	return 0;
 }

@@ -34,6 +34,9 @@ paddr_t _pmem_alloc(size_t size, size_t alignment, uintptr_t arg)
         return -1;
     }
 
+    if (pmem_zero(request))
+        return -1;
+
     void* vaddr = map( request->start, size );
     if ( vaddr == (void*) -1 ) {
         _pmem_free( request->start );

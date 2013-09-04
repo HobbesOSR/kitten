@@ -3,6 +3,7 @@ obj-y := \
 	pmem_update.o \
 	pmem_query.o \
 	pmem_alloc.o \
+	pmem_zero.o \
 	aspace_create.o \
 	aspace_destroy.o \
 	aspace_get_myid.o \

@@ -653,52 +653,54 @@ __SYSCALL(__NR_pmem_update, sys_pmem_update)
 __SYSCALL(__NR_pmem_query, sys_pmem_query)
 #define __NR_pmem_alloc		503
 __SYSCALL(__NR_pmem_alloc, sys_pmem_alloc)
+#define __NR_pmem_zero		504
+__SYSCALL(__NR_pmem_zero, sys_pmem_zero)
 
-#define __NR_aspace_get_myid	504
+#define __NR_aspace_get_myid	505
 __SYSCALL(__NR_aspace_get_myid, sys_aspace_get_myid)
-#define __NR_aspace_create	505
+#define __NR_aspace_create	506
 __SYSCALL(__NR_aspace_create, sys_aspace_create)
-#define __NR_aspace_destroy	506
+#define __NR_aspace_destroy	507
 __SYSCALL(__NR_aspace_destroy, sys_aspace_destroy)
-#define __NR_aspace_find_hole	507
+#define __NR_aspace_find_hole	508
 __SYSCALL(__NR_aspace_find_hole, sys_aspace_find_hole)
-#define __NR_aspace_add_region	508
+#define __NR_aspace_add_region	509
 __SYSCALL(__NR_aspace_add_region, sys_aspace_add_region)
-#define __NR_aspace_del_region	509
+#define __NR_aspace_del_region	510
 __SYSCALL(__NR_aspace_del_region, sys_aspace_del_region)
-#define __NR_aspace_map_pmem	510
+#define __NR_aspace_map_pmem	511
 __SYSCALL(__NR_aspace_map_pmem, sys_aspace_map_pmem)
-#define __NR_aspace_unmap_pmem	511
+#define __NR_aspace_unmap_pmem	512
 __SYSCALL(__NR_aspace_unmap_pmem, sys_aspace_unmap_pmem)
-#define __NR_aspace_virt_to_phys 512
+#define __NR_aspace_virt_to_phys 513
 __SYSCALL(__NR_aspace_virt_to_phys, sys_aspace_virt_to_phys)
-#define __NR_aspace_smartmap	513
+#define __NR_aspace_smartmap	514
 __SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
-#define __NR_aspace_unsmartmap	514
+#define __NR_aspace_unsmartmap	515
 __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
-#define __NR_aspace_dump2console 515
+#define __NR_aspace_dump2console 516
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
-#define __NR_task_create	516
+#define __NR_task_create	517
 __SYSCALL(__NR_task_create, sys_task_create)
-#define __NR_task_switch_cpus	517
+#define __NR_task_switch_cpus	518
 __SYSCALL(__NR_task_switch_cpus, sys_task_switch_cpus)
-#define __NR_elf_hwcap		518
+#define __NR_elf_hwcap		519
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
-#define __NR_v3_start_guest	519
+#define __NR_v3_start_guest	520
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
-#define __NR_getcpu		520
+#define __NR_getcpu		521
 __SYSCALL(__NR_getcpu, sys_getcpu)
-#define __NR_mce_inject		521
+#define __NR_mce_inject		522
 __SYSCALL(__NR_mce_inject, syscall_not_implemented)
 
-#define __NR_lwk_arp            522
+#define __NR_lwk_arp            523
 #ifdef CONFIG_LINUX
 __SYSCALL(__NR_lwk_arp, sys_lwk_arp)
 #else
 __SYSCALL(__NR_lwk_arp, syscall_not_implemented)
 #endif
 
-#define __NR_lwk_ifconfig       523
+#define __NR_lwk_ifconfig       524
 #ifdef CONFIG_LINUX
 __SYSCALL(__NR_lwk_ifconfig, sys_lwk_ifconfig)
 #else

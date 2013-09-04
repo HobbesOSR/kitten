@@ -128,6 +128,11 @@ palacios_allocate_pages(
 	if (status)
 		return NULL;
 
+	/* Zero the memory before handing it to Palacios */
+	status = pmem_zero(&result);
+	if (status)
+		return NULL;
+
 	/* Return the physical address of the region */
 	return (void *) result.start;
 }

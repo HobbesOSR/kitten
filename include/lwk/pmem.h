@@ -47,6 +47,7 @@ int pmem_query(const struct pmem_region *query, struct pmem_region *result);
 int pmem_alloc(size_t size, size_t alignment,
                const struct pmem_region *constraint,
                struct pmem_region *result);
+int pmem_zero(const struct pmem_region *rgn);
 
 /**
  * Convenience functions.
@@ -69,6 +70,7 @@ int sys_pmem_query(const struct pmem_region __user * query,
 int sys_pmem_alloc(size_t size, size_t alignment,
                    const struct pmem_region __user *constraint,
                    struct pmem_region __user *result);
+int sys_pmem_zero(const struct pmem_region __user *rgn);
 
 #endif
 #endif

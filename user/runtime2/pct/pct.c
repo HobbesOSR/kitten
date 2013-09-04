@@ -36,6 +36,9 @@ alloc_app_pmem(size_t size, size_t alignment, uintptr_t arg)
 	if (pmem_alloc_umem(size, alignment, &result))
 		return (paddr_t) NULL;
 
+	if (pmem_zero(&result))
+		return (paddr_t) NULL;
+
 	// Mark allocated region with the name passed in
 	result.name_is_set = true;
 	strncpy(result.name, name, sizeof(result.name));
