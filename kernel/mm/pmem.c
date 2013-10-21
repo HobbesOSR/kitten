@@ -6,6 +6,7 @@
 #include <lwk/list.h>
 #include <lwk/log2.h>
 #include <lwk/pmem.h>
+#include <lwk/aspace.h>
 #include <arch/uaccess.h>
 
 static LIST_HEAD(pmem_list);
@@ -203,6 +204,16 @@ __pmem_add(const struct pmem_region *rgn)
 		return -ENOMEM;
 	
 	entry->rgn = *rgn;
+
+	/* Map the pmem region into the kernel, if it isn't already.
+	 * Normally all memory will be mapped during bootstrap, so
+	 * this will effectively be a NOP.  The U. Pittsburgh mode
+	 * where Kitten boots on a subset of a node's resources
+	 * dynamically adds physical memory by calling pmem_add(),
+	 * in which case this arch_aspace_map_pmem_into_kernel() call
+	 * will dynamically map the pmem into the kernel's virtual
+	 * address space. */
+	arch_aspace_map_pmem_into_kernel(rgn->start, rgn->end);
 
 	insert_pmem_list_entry(entry);
 	merge_pmem_list();

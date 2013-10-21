@@ -391,6 +391,12 @@ arch_aspace_virt_to_phys(
 	paddr_t *		paddr
 );
 
+extern int
+arch_aspace_map_pmem_into_kernel(
+	paddr_t			start,
+	paddr_t			end
+);
+
 // End architecture specific address space functions
 
 

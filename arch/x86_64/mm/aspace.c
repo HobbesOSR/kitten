@@ -330,6 +330,13 @@ write_pte(
 		_pte.global = 1;
 	if ((flags & VM_EXEC) == 0)
 		_pte.no_exec = 1;
+	if (flags & VM_KERNEL) {
+		_pte.global   = 1;
+		_pte.write    = 1;
+		_pte.no_exec  = 1;
+		_pte.accessed = 1;
+		_pte.dirty    = 1;
+	}
 
 	_pte.base_paddr = paddr >> 12;
 	if ((pagesz == VM_PAGE_2MB) || (pagesz == VM_PAGE_1GB))
@@ -500,5 +507,43 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 out:
 	if (paddr)
 		*paddr = result;
+	return 0;
+}
+
+
+/**
+ * This maps a region of physical memory into the kernel virtual address space.
+ * It assumes start and end are aligned to a 2 MB boundary and that the
+ * kernel is using 2 MB pages to map physical memory into the kernel virtual
+ * address space.
+ */
+int
+arch_aspace_map_pmem_into_kernel(paddr_t start, paddr_t end)
+{
+	paddr_t paddr;
+	int status;
+
+	for (paddr = start; paddr < end; paddr += VM_PAGE_2MB) {
+		/* If the page isn't already mapped, we need to map it */
+		if (arch_aspace_virt_to_phys(&bootstrap_aspace, (vaddr_t)__va(paddr), NULL) == -ENOENT) {
+			printk(KERN_INFO "Missing kernel memory found, paddr=0x%016lx.\n", paddr);
+
+			status =
+			arch_aspace_map_page(
+				&bootstrap_aspace,
+				(vaddr_t)__va(paddr),
+				paddr,
+				VM_KERNEL,
+				VM_PAGE_2MB
+			);
+
+			if (status) {
+				printk(KERN_ERR "Could not map kernel memory for paddr=0x%016lx.\n", paddr);
+				printk(KERN_ERR "Kernel address space is now inconsistent.\n");
+				return -1;
+			}
+		}
+	}
+
 	return 0;
 }
