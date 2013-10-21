@@ -368,8 +368,8 @@ interrupts_init(void)
 	/*
 	 * Register handlers for inter-CPU interrupts (cross calls).
 	 */
-	set_idtvec_handler( XCALL_FUNCTION_VECTOR,   &arch_xcall_function_interrupt   );
-	set_idtvec_handler( XCALL_RESCHEDULE_VECTOR, &arch_xcall_reschedule_interrupt );
+	set_idtvec_handler( LWK_XCALL_FUNCTION_VECTOR,   &arch_xcall_function_interrupt   );
+	set_idtvec_handler( LWK_XCALL_RESCHEDULE_VECTOR, &arch_xcall_reschedule_interrupt );
 }
 
 

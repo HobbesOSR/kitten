@@ -74,7 +74,7 @@ arch_xcall_function(
 
 	/* Send inter-processor interrupts to the target CPUs */
 	for_each_cpu_mask(cpu, cpu_mask)
-		lapic_send_ipi(cpu, XCALL_FUNCTION_VECTOR);
+		lapic_send_ipi(cpu, LWK_XCALL_FUNCTION_VECTOR);
 
 	/* Wait for initiation responses */
 	while (atomic_read(&data.started) != num_cpus)
@@ -124,7 +124,7 @@ arch_xcall_reschedule(id_t cpu)
 	if (cpu == this_cpu)
 		set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);
 	else
-		lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
+		lapic_send_ipi(cpu, LWK_XCALL_RESCHEDULE_VECTOR);
 }
 
 /**
