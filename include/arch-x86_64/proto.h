@@ -7,6 +7,7 @@
 #define _X86_64_PROTO_H
 
 #include <arch/ptrace.h>
+#include <lwk/init.h>
 
 /* misc architecture specific prototypes */
 
