@@ -73,11 +73,10 @@ lapic_init(void)
 
 	/*
  	 * Initialize the Logical Destination Register.
- 	 * The LWK never uses logical destination mode, so just set it to the
- 	 * APIC's physical ID to avoid possible confusion.
+ 	 * The LWK never uses logical destination mode, so just set it to zero.
  	 */
 	val = apic_read(APIC_LDR) & ~APIC_LDR_MASK;
-	val |= SET_APIC_LOGICAL_ID( GET_APIC_ID(apic_read(APIC_ID)) );
+	val |= SET_APIC_LOGICAL_ID(0);
 	apic_write(APIC_LDR, val);
 
 	/*
