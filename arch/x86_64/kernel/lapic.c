@@ -330,16 +330,37 @@ lapic_send_ipi(
 	unsigned int	vector		/* Interrupt vector to send */
 )
 {
-	uint32_t status;
 	unsigned int apic_id;
+
+	/* Find target APIC */
+	apic_id = cpu_info[cpu].arch.apic_id;
+
+	lapic_send_ipi_to_apic(apic_id, vector);
+}
+
+/**
+ * Sends an inter-processor interrupt (IPI) to a specific APIC ID.
+ * This works even if the APIC ID is not associated with a CPU that Kitten
+ * is currently running on, making it useful for hotplug-like functionality
+ * and for sending IPIs from Kitten cores to Linux cores (in a FusedOS-like
+ * approach).
+ * Note that the IPI has not necessarily been delivered when this function
+ * returns.
+ */
+void
+lapic_send_ipi_to_apic(
+	unsigned int	apic_id,	/* APIC ID */
+	unsigned int	vector		/* Interrupt vector to send */
+)
+{
+	uint32_t status;
 
 	/* Wait for idle */
 	status = lapic_wait4_icr_idle();
 	if (status)
 		panic("lapic_wait4_icr_idle() timed out. (%x)", status);
 
-	/* Set target CPU */
-	apic_id = cpu_info[cpu].arch.apic_id;
+	/* Set target APIC */
 	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
 
 	/* Send the IPI */
