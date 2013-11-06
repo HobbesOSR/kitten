@@ -133,8 +133,15 @@ waitq_wake_nr_locked( waitq_t * waitq, int nr )
 	waitq_entry_t *entry;
 
 	list_for_each_entry(entry, &waitq->waitq, link) {
+		struct task_struct *task = (struct task_struct *) entry->private;
+
+		// Nothing to do if the task has already been woken up
+		if ((task->state == TASK_STOPPED) && ((task->ptrace >> 1) == TASK_RUNNING))
+			continue;
+	
 		if( ++count > nr )
 			break;
+
 		entry->func(entry, 0, 0, NULL);
 	}
 

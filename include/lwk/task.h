@@ -75,7 +75,8 @@ task_switch_cpus(
 #define TASK_RUNNING		(1 << 0)
 #define TASK_INTERRUPTIBLE	(1 << 1)
 #define TASK_UNINTERRUPTIBLE	(1 << 2)
-#define TASK_EXITED		(1 << 3)
+#define TASK_STOPPED		(1 << 3)
+#define TASK_EXITED		(1 << 4)
 typedef unsigned int taskstate_t;
 
 

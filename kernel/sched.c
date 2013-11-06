@@ -145,6 +145,8 @@ repeat_lock_runq:
 		set_task_state(task, TASK_RUNNING);
 		status = 0;
 	} else {
+		if (task->state == TASK_STOPPED)
+			task->ptrace = (TASK_RUNNING << 1) | 1;
 		status = -EINVAL;
 	}
 	spin_unlock_irqrestore(&runq->lock, irqstate);

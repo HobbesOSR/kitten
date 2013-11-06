@@ -8,6 +8,7 @@
 #include <lwk/init.h>
 #include <lwk/kallsyms.h>
 #include <lwk/kgdb.h>
+#include <lwk/gdb.h>
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <lwk/timer.h>
@@ -50,6 +51,18 @@ do_divide_error(struct pt_regs *regs, unsigned int vector)
 	while (1) {}
 }
 
+/* DEBUG exception is used for debug single stepping */
+void
+do_debug(struct pt_regs *regs, unsigned int vector) {
+#ifdef CONFIG_PALACIOS_GDB
+	/* If exception is from user-space, pass control to the GDB stub */
+	if (user_mode(regs))
+		gdb_exception_enter(vector, 0, regs);
+#else
+	printk("Debug Exception\n");
+#endif
+}
+
 void
 do_nmi(struct pt_regs *regs, unsigned int vector)
 {
@@ -58,9 +71,18 @@ do_nmi(struct pt_regs *regs, unsigned int vector)
 	while (1) {}
 }
 
+/* INT3 exception is used for debug breakpoints */
 void
 do_int3(struct pt_regs *regs, unsigned int vector)
 {
+#ifdef CONFIG_PALACIOS_GDB
+	/* If exception is from user-space, pass control to the GDB stub */
+	if (user_mode(regs)) {
+		gdb_exception_enter(vector, 0, regs);
+		return;
+	}
+#endif
+
 #ifdef CONFIG_KGDB
         kgdb_exception_enter(vector, 0, regs);
 #else
@@ -337,6 +359,7 @@ interrupts_init(void)
 	 * Register handlers for the standard x86_64 interrupts & exceptions.
 	 */
 	set_idtvec_handler( DIVIDE_ERROR_VECTOR,           &do_divide_error           );
+	set_idtvec_handler( DEBUG_VECTOR,                  &do_debug                  );
 	set_idtvec_handler( NMI_VECTOR,                    &do_nmi                    );
 	set_idtvec_handler( INT3_VECTOR,                   &do_int3                   );
 	set_idtvec_handler( OVERFLOW_VECTOR,               &do_overflow               );

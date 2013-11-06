@@ -118,6 +118,11 @@ config PALACIOS_SOCKET
         depends on NETWORK && LWIP_TCP && LWIP_UDP && LWIP_SOCKET
         default "y"
 
+config PALACIOS_GDB
+	bool
+	depends on PALACIOS
+	default "y"
+
 config PALACIOS_PATH
 	string "Path to pre-built Palacios tree"
 	depends on PALACIOS
@@ -130,7 +135,7 @@ config PALACIOS_PATH
 config GUEST_OS_ISOIMAGE_PATH
 	string "Path to guest OS image"
 	depends on PALACIOS
-	default "/opt/vmm-tools/isos/puppy.img"
+	default "../guest_os/linux_guest.img"
 	help
 	  Path to a guest image to link with the example user/hello_world
 	  init task.  The hello_world init task will use this image

@@ -11,6 +11,7 @@
 #include <lwk/string.h>
 #include <lwk/smp.h>
 
+#include <arch/idt_vectors.h>
 #include <arch/segment.h>
 #include <arch/mmu.h>
 
@@ -155,11 +156,16 @@ set_intr_gate_ist(
 { 
 	BUG_ON((unsigned)nr > 0xFF);
 
+	/* Debug interrupts must be triggerable from user-space */
+	int dpl = 0;
+	if ((nr == INT3_VECTOR) || (nr == DEBUG_VECTOR))
+		dpl = 3;
+   
 	_set_gate(
 		&idt_table[nr],
 		GATE_INTERRUPT,
 		(unsigned long) func,
-		0,
+		dpl,
 		ist
 	); 
 } 
