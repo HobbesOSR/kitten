@@ -9,9 +9,16 @@
 
 #undef i386	/* in case the preprocessor is a 32bit one */
 
-OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
+OUTPUT_FORMAT(CONFIG_OUTPUT_FORMAT, CONFIG_OUTPUT_FORMAT, CONFIG_OUTPUT_FORMAT)
+
+#if defined(CONFIG_MK1OM)
+OUTPUT_ARCH(k1om)
+#else
 OUTPUT_ARCH(i386:x86-64)
+#endif
+
 ENTRY(phys_startup_64)
+
 _proxy_pda = 1;
 PHDRS {
 	text PT_LOAD FLAGS(5);	/* R_E */

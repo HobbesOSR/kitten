@@ -187,12 +187,13 @@ buildrawobj = \
 	$(call build,RAWOBJ  $1,				\
 		cd $4;						\
 		ln -s $2 $3;					\
-		objcopy -I binary -O elf64-x86-64 		\
-			--binary-architecture i386		\
+		$(OBJCOPY) -I binary -O $(CONFIG_OUTPUT_FORMAT)	\
+			--binary-architecture $(CONFIG_BFDARCH)	\
 			$3 $1;					\
-		objcopy --rename-section .data=$5 $1;	\
+		$(OBJCOPY) --rename-section .data=$5 $1;	\
 		$(RM) $3;					\
 	)
+
 
 #
 # Implicit rule for building .c files

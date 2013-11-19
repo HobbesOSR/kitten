@@ -246,38 +246,6 @@ static __inline__ int variable_test_bit(int nr, volatile const void * addr)
 
 #undef ADDR
 
-extern long find_first_zero_bit(const unsigned long * addr, unsigned long size);
-extern long find_next_zero_bit (const unsigned long * addr, long size, long offset);
-extern long find_first_bit(const unsigned long * addr, unsigned long size);
-extern long find_next_bit(const unsigned long * addr, long size, long offset);
-
-/* return index of first bet set in val or max when no bit is set */
-static inline unsigned long __scanbit(unsigned long val, unsigned long max)
-{
-	asm("bsfq %1,%0 ; cmovz %2,%0" : "=&r" (val) : "r" (val), "r" (max));
-	return val;
-}
-
-#define find_first_bit(addr,size) \
-((__builtin_constant_p(size) && (size) <= BITS_PER_LONG ? \
-  (__scanbit(*(unsigned long *)addr,(size))) : \
-  find_first_bit(addr,size)))
-
-#define find_next_bit(addr,size,off) \
-((__builtin_constant_p(size) && (size) <= BITS_PER_LONG ? 	  \
-  ((off) + (__scanbit((*(unsigned long *)addr) >> (off),(size)-(off)))) : \
-	find_next_bit(addr,size,off)))
-
-#define find_first_zero_bit(addr,size) \
-((__builtin_constant_p(size) && (size) <= BITS_PER_LONG ? \
-  (__scanbit(~*(unsigned long *)addr,(size))) : \
-  	find_first_zero_bit(addr,size)))
-	
-#define find_next_zero_bit(addr,size,off) \
-((__builtin_constant_p(size) && (size) <= BITS_PER_LONG ? 	  \
-  ((off)+(__scanbit(~(((*(unsigned long *)addr)) >> (off)),(size)-(off)))) : \
-	find_next_zero_bit(addr,size,off)))
-
 /* 
  * Find string of zero bits in a bitmap. -1 when not found.
  */ 
@@ -360,9 +328,17 @@ static __inline__ int ffs(int x)
 {
 	int r;
 
-	__asm__("bsfl %1,%0\n\t"
-		"cmovzl %2,%0" 
-		: "=r" (r) : "rm" (x), "r" (-1));
+#ifdef CONFIG_X86_CMOV
+	asm("bsfl %1,%0\n\t"
+	    "cmovzl %2,%0"
+	    : "=r" (r) : "rm" (x), "r" (-1));
+#else
+	asm("bsfl %1,%0\n\t"
+	    "jnz 1f\n\t"
+	    "movl $-1,%0\n"
+	    "1:" : "=r" (r) : "rm" (x));
+#endif
+
 	return r+1;
 }
 
@@ -389,13 +365,22 @@ static __inline__ int fls(int x)
 {
 	int r;
 
-	__asm__("bsrl %1,%0\n\t"
-		"cmovzl %2,%0"
-		: "=&r" (r) : "rm" (x), "rm" (-1));
+#ifdef CONFIG_X86_CMOV
+	asm("bsrl %1,%0\n\t"
+	    "cmovzl %2,%0"
+	    : "=&r" (r) : "rm" (x), "rm" (-1));
+#else
+	asm("bsrl %1,%0\n\t"
+	    "jnz 1f\n\t"
+	    "movl $-1,%0\n"
+	    "1:" : "=r" (r) : "rm" (x));
+#endif
+
 	return r+1;
 }
 
 #include <arch-generic/bitops/hweight.h>
+#include <arch-generic/bitops/find.h>
 
 #endif /* __KERNEL__ */
 

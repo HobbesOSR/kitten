@@ -608,7 +608,9 @@ ENTRY(load_gs_index)
 	swapgs
 gs_change:
 	movl %edi,%gs
+#ifndef CONFIG_X86_EARLYMIC
 2:	mfence          /* workaround */
+#endif
 	swapgs
 	popf
 	CFI_ADJUST_CFA_OFFSET -8

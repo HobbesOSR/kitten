@@ -18,6 +18,16 @@ config X86_MCE_INJECT
 	bool
 	default y
 
+config OUTPUT_FORMAT
+        string
+        default "elf64-k1om" if ARCH = "k1om"
+        default "elf64-x86-64" if X86_64
+
+config BFDARCH
+        string
+        default "k1om" if ARCH = "k1om"
+        default "i386" if X86_64
+
 source "kernel/Kconfig"
 
 menu "Target Configuration"
@@ -41,7 +51,7 @@ endchoice
 
 choice
 	prompt "Processor Family"
-	default MK8
+	default GENERIC_CPU
 
 config MK8
 	bool "AMD-Opteron/Athlon64"
@@ -53,6 +63,19 @@ config MPSC
 	help
 	  Optimize for Intel 64 architecture.
 
+config MK1OM
+	bool "Intel Knights Corner"
+	help
+	  Select this for the CPU used in the Intel Many Integrated Core
+	  (Intel MIC) products code-named Knights Corner. The CPU is an
+	  in-order, 4-way SMT design that is mostly x86-64 compatible
+	  but has a different vector unit. The differences from x86-64
+	  force incompatible calling conventions, so GCC and binutils
+	  assign it a unique ELF machine type: EM_K1OM.
+
+	  Future Intel products will be part of the x86 ecosystem, *not*
+	  derivatives of this incompatible offshoot.
+
 config GENERIC_CPU
 	bool "Generic-x86-64"
 	help
@@ -61,19 +84,30 @@ config GENERIC_CPU
 endchoice
 
 
+
 #
 # Define implied options from the CPU selection
 #
 
+# this should be set for all -march=.. options where the compiler generates cmov.
+config X86_CMOV
+	def_bool y
+	depends on GENERIC_CPU || MK8 || MPSC
+
+# non-X86_64 wierdness on Intel KNC (ARCH=MK1OM)
+config X86_EARLYMIC
+	def_bool y
+	depends on MK1OM
+
 config X86_L1_CACHE_BYTES
         int
-        default "128" if GENERIC_CPU || MPSC
-        default "64" if MK8
+        default "128" if MPSC
+        default "64" if GENERIC_CPU || MK8 || MK1OM
 
 config X86_L1_CACHE_SHIFT
         int
-        default "7" if GENERIC_CPU || MPSC
-        default "6" if MK8
+        default "7" if MPSC
+        default "6" if GENERIC_CPU || MK8 || MK1OM
 
 config X86_INTERNODE_CACHE_BYTES
 	int

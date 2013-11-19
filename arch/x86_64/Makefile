@@ -21,7 +21,19 @@
 #           Modifications for Kitten. Remove unneeded stuff.
 #
 
-LDFLAGS		:= -m elf_x86_64 --whole-archive
+# If we are building for Intel Phi KNC (ARCH=k1om), find the cross compile tool
+# chain. This architecture is *mostly* x86_64, but has some minor differences
+# as described in the "Intel Xeon Phi Coprocessor System Software Developers
+# Guide" SKU# 328207-002EN, June, 2013. We assume that Kitten is always built
+# on the host using the Intel-provided KNC cross-compilers.
+ifeq ($(ARCH),k1om)
+        CROSS_COMPILE := $(call cc-cross-prefix, \
+                                x86_64-k1om-linux-gnu- \
+                                x86_64-k1om-linux- \
+                                x86_64-k1om-unknown-linux-gnu-)
+endif
+
+LDFLAGS		:= -m elf_$(ARCH) --whole-archive
 OBJCOPYFLAGS	:= -O binary -R .note -R .comment -S
 LDFLAGS_vmlinux :=
 CHECKFLAGS      += -D__x86_64__ -m64

@@ -19,3 +19,5 @@ lib-y := \
 	sha1.o \
 	sigset.o \
 	siginfo.o \
+	find_last_bit.o \
+	find_next_bit.o \

@@ -177,7 +177,13 @@ ARCH		?= $(SUBARCH)
 CROSS_COMPILE	?=
 
 # Architecture as present in compile.h
-UTS_MACHINE := $(ARCH)
+UTS_MACHINE	:= $(ARCH)
+SRCARCH		:= $(ARCH)
+
+# Additional ARCH settings for x86
+ifeq ($(ARCH),k1om)
+        SRCARCH := x86_64
+endif
 
 # SHELL used by kbuild
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
@@ -328,7 +334,7 @@ KERNELRELEASE = $(shell cat .kernelrelease 2> /dev/null)
 KERNELVERSION = $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)$(EXTRAVERSION)
 
 export	VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION \
-	ARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC \
+	ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC \
 	CPP AR NM STRIP OBJCOPY OBJDUMP MAKE AWK GENKSYMS PERL UTS_MACHINE \
 	HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS
 
@@ -414,7 +420,7 @@ ifeq ($(config-targets),1)
 # Read arch specific Makefile to set KBUILD_DEFCONFIG as needed.
 # KBUILD_DEFCONFIG may point out an alternative default configuration
 # used for 'make defconfig'
-include $(srctree)/arch/$(ARCH)/Makefile
+include $(srctree)/arch/$(SRCARCH)/Makefile
 export KBUILD_DEFCONFIG
 
 config: scripts_basic outputmakefile FORCE
@@ -505,7 +511,7 @@ CFLAGS		+= -g
 endif
 
 
-include $(srctree)/arch/$(ARCH)/Makefile
+include $(srctree)/arch/$(SRCARCH)/Makefile
 
 # arch Makefile may override CC so keep this after arch Makefile is included
 NOSTDINC_FLAGS += -nostdinc -isystem $(shell $(CC) -print-file-name=include)
@@ -517,7 +523,7 @@ CFLAGS += $(call cc-option,-Wno-pointer-sign,)
 # Default kernel image to build when no specific target is given.
 # KBUILD_IMAGE may be overruled on the commandline or
 # set in the environment
-# Also any assignments in arch/$(ARCH)/Makefile take precedence over
+# Also any assignments in arch/$(SRCARCH)/Makefile take precedence over
 # this default value
 export KBUILD_IMAGE ?= vmlwk
 
@@ -567,7 +573,7 @@ libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
 # ---------------------------------------------------------------------------
 # vmlwk is build from the objects selected by $(vmlwk-init) and
 # $(vmlwk-main). Most are built-in.o files from top-level directories
-# in the kernel tree, others are specified in arch/$(ARCH)Makefile.
+# in the kernel tree, others are specified in arch/$(SRCARCH)Makefile.
 # Ordering when linking is important, and $(vmlwk-init) must be first.
 #
 # vmlwk
@@ -593,10 +599,10 @@ libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
 vmlwk-init := $(head-y) $(init-y)
 vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y) $(linux-y)
 vmlwk-all  := $(vmlwk-init) $(vmlwk-main)
-vmlwk-lds  := arch/$(ARCH)/kernel/vmlwk.lds
+vmlwk-lds  := arch/$(SRCARCH)/kernel/vmlwk.lds
 
 # Rule to link vmlwk - also used during CONFIG_KALLSYMS
-# May be overridden by arch/$(ARCH)/Makefile
+# May be overridden by arch/$(SRCARCH)/Makefile
 quiet_cmd_vmlwk__ ?= LD      $@
       cmd_vmlwk__ ?= $(LD) $(LDFLAGS) $(LDFLAGS_vmlwk) -o $@   \
       -T $(vmlwk-lds) $(vmlwk-init)                            \
@@ -827,9 +833,9 @@ ifneq ($(KBUILD_SRC),)
 		/bin/false; \
 	fi;
 	$(Q)if [ ! -d include2 ]; then mkdir -p include2; fi;
-	$(Q)ln -fsn $(srctree)/include/arch-$(ARCH) include2/arch
+	$(Q)ln -fsn $(srctree)/include/arch-$(SRCARCH) include2/arch
 	$(Q)if [ ! -d linux/include2 ]; then mkdir -p linux/include2; fi;
-	$(Q)ln -fsn $(srctree)/linux/include/asm-$(ARCH) linux/include2/asm
+	$(Q)ln -fsn $(srctree)/linux/include/asm-$(SRCARCH) linux/include2/asm
 endif
 
 # prepare2 creates a makefile if using a separate output directory
@@ -851,44 +857,44 @@ prepare0: archprepare FORCE
 prepare prepare-all: prepare0
 
 #	Leave this as default for preprocessing vmlwk.lds.S, which is now
-#	done in arch/$(ARCH)/kernel/Makefile
+#	done in arch/$(SRCARCH)/kernel/Makefile
 
-export CPPFLAGS_vmlwk.lds += -P -C -U$(ARCH)
+export CPPFLAGS_vmlwk.lds += -P -C -U$(SRCARCH)
 
 
-# The asm symlink changes when $(ARCH) changes.
+# The asm symlink changes when $(SRCARCH) changes.
 # Detect this and ask user to run make mrproper
 
 include/arch: FORCE
 	$(Q)set -e; asmlink=`readlink include/arch | cut -d '-' -f 2`;   \
 	if [ -L include/arch ]; then                                     \
-		if [ "$$asmlink" != "$(ARCH)" ]; then                \
-			echo "ERROR: the symlink $@ points to arch-$$asmlink but arch-$(ARCH) was expected"; \
+		if [ "$$asmlink" != "$(SRCARCH)" ]; then                \
+			echo "ERROR: the symlink $@ points to arch-$$asmlink but arch-$(SRCARCH) was expected"; \
 			echo "       set ARCH or save .config and run 'make mrproper' to fix it";             \
 			exit 1;                                         \
 		fi;                                                     \
 	else                                                            \
-		echo '  SYMLINK $@ -> include/arch-$(ARCH)';          \
+		echo '  SYMLINK $@ -> include/arch-$(SRCARCH)';          \
 		if [ ! -d include ]; then                               \
 			mkdir -p include;                               \
 		fi;                                                     \
-		ln -fsn arch-$(ARCH) $@;                              \
+		ln -fsn arch-$(SRCARCH) $@;                              \
 	fi
 
 linux/include/asm: FORCE
 	$(Q)set -e; asmlink=`readlink linux/include/asm | cut -d '-' -f 2`;   \
 	if [ -L linux/include/asm ]; then                                     \
-		if [ "$$asmlink" != "$(ARCH)" ]; then                \
-			echo "ERROR: the symlink $@ points to asm-$$asmlink but asm-$(ARCH) was expected"; \
+		if [ "$$asmlink" != "$(SRCARCH)" ]; then                \
+			echo "ERROR: the symlink $@ points to asm-$$asmlink but asm-$(SRCARCH) was expected"; \
 			echo "       set ARCH or save .config and run 'make mrproper' to fix it";             \
 			exit 1;                                         \
 		fi;                                                     \
 	else                                                            \
-		echo '  SYMLINK $@ -> linux/include/asm-$(ARCH)';          \
+		echo '  SYMLINK $@ -> linux/include/asm-$(SRCARCH)';          \
 		if [ ! -d linux/include ]; then                               \
 			mkdir -p linux/include;                               \
 		fi;                                                     \
-		ln -fsn asm-$(ARCH) $@;                              \
+		ln -fsn asm-$(SRCARCH) $@;                              \
 	fi
 
 # 	Split autoconf.h into include/lwk/config/*
@@ -1021,7 +1027,7 @@ rpm: FORCE
 # Brief documentation of the typical targets used
 # ---------------------------------------------------------------------------
 
-boards := $(wildcard $(srctree)/arch/$(ARCH)/configs/*_defconfig)
+boards := $(wildcard $(srctree)/arch/$(SRCARCH)/configs/*_defconfig)
 boards := $(notdir $(boards))
 
 help:
@@ -1056,9 +1062,9 @@ help:
 	@echo  'Documentation targets:'
 	@$(MAKE) -f $(srctree)/Documentation/DocBook/Makefile dochelp
 	@echo  ''
-	@echo  'Architecture specific targets ($(ARCH)):'
+	@echo  'Architecture specific targets ($(SRCARCH)):'
 	@$(if $(archhelp),$(archhelp),\
-		echo '  No architecture specific help defined for $(ARCH)')
+		echo '  No architecture specific help defined for $(SRCARCH)')
 	@echo  ''
 	@$(if $(boards), \
 		$(foreach b, $(boards), \
@@ -1276,7 +1282,7 @@ endif #ifeq ($(mixed-targets),1)
 PHONY += checkstack
 checkstack:
 	$(OBJDUMP) -d vmlwk $$(find . -name '*.ko') | \
-	$(PERL) $(src)/scripts/checkstack.pl $(ARCH)
+	$(PERL) $(src)/scripts/checkstack.pl $(SRCARCH)
 
 kernelrelease:
 	$(if $(wildcard .kernelrelease), $(Q)echo $(KERNELRELEASE), \

@@ -77,7 +77,9 @@ static inline void clear_fpu_state(struct i387_fxsave_struct *fx)
 	 * TODO: some CPUs may not need this, possibly use Linux
 	 *       alternative_input() mechanism.
 	 */
+#ifndef CONFIG_X86_EARLYMIC
 	asm volatile ("emms");		/* clear stack tags */
+#endif
 	asm volatile ("fildl %gs:0");	/* load to clear state */
 }
 

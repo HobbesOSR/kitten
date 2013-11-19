@@ -322,7 +322,12 @@ struct extended_sigtable {
 /* REP NOP (PAUSE) is a good thing to insert into busy-wait loops. */
 static inline void rep_nop(void)
 {
-	__asm__ __volatile__("rep;nop": : :"memory");
+#ifdef CONFIG_X86_EARLYMIC
+	/* On KNC, PAUSE instruction is not supported; approximate using 'delay' */
+	asm volatile("delay %0" :: "r" (1000) : "memory");
+#else
+	asm volatile("rep; nop" ::: "memory");
+#endif
 }
 
 /* Stop speculative execution */
@@ -337,13 +342,17 @@ static inline void sync_core(void)
 #define ARCH_HAS_PREFETCH
 static inline void prefetch(void *x) 
 { 
+#ifndef CONFIG_X86_EARLYMIC
 	asm volatile("prefetcht0 %0" :: "m" (*(unsigned long *)x));
+#endif
 } 
 
 #define ARCH_HAS_PREFETCHW 1
 static inline void prefetchw(void *x) 
 { 
+#ifndef CONFIG_X86_EARLYMIC
 	asm volatile("prefetchtw %0" :: "m" (*(unsigned long *)x));
+#endif
 } 
 
 #define ARCH_HAS_SPINLOCK_PREFETCH 1

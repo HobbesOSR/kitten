@@ -244,9 +244,16 @@ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
  * And yes, this is required on UP too when we're talking
  * to devices.
  */
-#define mb() 	asm volatile("mfence":::"memory")
-#define rmb()	asm volatile("lfence":::"memory")
-#define wmb()	asm volatile("sfence" ::: "memory")
+#if defined(CONFIG_X86_EARLYMIC)
+  #define mb()  asm volatile ("lock; addl $0,0(%%rsp)" ::: "memory")
+  #define rmb() asm volatile ("lock; addl $0,0(%%rsp)" ::: "memory")
+  #define wmb() asm volatile ("lock; addl $0,0(%%rsp)" ::: "memory")
+#else
+  #define mb()  asm volatile("mfence":::"memory")
+  #define rmb() asm volatile("lfence":::"memory")
+  #define wmb() asm volatile("sfence" ::: "memory")
+#endif
+
 #define read_barrier_depends()	do {} while(0)
 #define set_mb(var, value) do { (void) xchg(&var, value); } while (0)
 #define set_wmb(var, value) do { var = value; wmb(); } while (0)
