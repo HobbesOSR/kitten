@@ -566,21 +566,33 @@ static void gdb_stop_or_resume_single_task(struct task_struct *task, int req_typ
 	spin_unlock_irqrestore(&task->aspace->lock, irqstate);
 }
 
-static void gdb_stop_or_resume_task(struct task_struct *task, int req_type){
-	if(task == NULL){
-		return;
-	}
+static void gdb_stop_or_resume_all(struct task_struct *task, int req_type){
+        if(task == NULL){
+                return;
+        }    
 
-	if(task->id == task->aspace->id){//GDB ALL stop mode, stop or resume all threads within the process
-		struct task_struct *tsk;
-		struct aspace *aspace = aspace_acquire(task->aspace->id);
-		list_for_each_entry(tsk, &aspace->task_list, aspace_link) {
-			gdb_stop_or_resume_single_task(tsk, req_type);
-		}
-		aspace_release(aspace);
-	}else{
-		gdb_stop_or_resume_single_task(task, req_type);
-	} 
+        struct task_struct *tsk;
+        struct aspace *aspace = aspace_acquire(task->aspace->id);
+        list_for_each_entry(tsk, &aspace->task_list, aspace_link) {
+                gdb_stop_or_resume_single_task(tsk, req_type);
+        }    
+        aspace_release(aspace);
+}
+
+static void gdb_stop_or_resume_all_except(struct task_struct *task, id_t task_id, int req_type){
+        if(task == NULL){
+                return;
+        }    
+
+        struct task_struct *tsk;
+        struct aspace *aspace = aspace_acquire(task->aspace->id);
+        list_for_each_entry(tsk, &aspace->task_list, aspace_link) {
+                if(tsk->id == task_id){
+                        continue;
+                }    
+                gdb_stop_or_resume_single_task(tsk, req_type);
+        }    
+        aspace_release(aspace);
 }
 
 /*
@@ -961,7 +973,7 @@ static void gdb_cmd_task(struct gdb_per_process_state *ggs, struct gdb_per_threa
 		gdb_hex2long(&ptr, &gs->threadid);
         
 		if(gs->threadid == -1){//Hg-1
-			thread = NULL;
+			thread = TASK_PTR(gs->lwk_regs);
 		}else if(gs->threadid == 0){
 			thread = TASK_PTR(gs->lwk_regs);
 		}else{
@@ -982,12 +994,13 @@ static void gdb_cmd_task(struct gdb_per_process_state *ggs, struct gdb_per_threa
 			thread = TASK_PTR(gs->lwk_regs);
 		} else {
 			if(gs->threadid == -1){//Hc-1 continue command apply to all threads
-				gs->threadid = ggs->pid;
-			}
-			thread = get_task(ggs->pid, gs->threadid);
-			if (!thread) {
-				error_packet(ggs->remcom_out_buffer, -EINVAL);
-				break;
+				thread = TASK_PTR(gs->lwk_regs);
+			}else{
+				thread = get_task(ggs->pid, gs->threadid);
+				if (!thread) {
+					error_packet(ggs->remcom_out_buffer, -EINVAL);
+					break;
+				}
 			}
 		}
 		ggs->gdb_contthread = thread;
@@ -1206,9 +1219,12 @@ default_handle:
 gdb_exit:
 	if (gs->pass_exception)
 		error = -1;
-	gdb_stop_or_resume_task(ggs->gdb_usethread, GDB_RESUME_TASK);
-	gdb_stop_or_resume_task(ggs->gdb_contthread, GDB_RESUME_TASK);   
-   
+	if(ggs->remcom_in_buffer[0] == 's'){
+		gdb_stop_or_resume_single_task(TASK_PTR(gs->lwk_regs), GDB_RESUME_TASK);
+	}else{
+		id_t pid = TASK_PTR(gs->lwk_regs)->aspace->id;
+		gdb_stop_or_resume_all(get_task(pid, pid), GDB_RESUME_TASK);
+   	}
 	return error;
 }
 /*
@@ -1233,13 +1249,13 @@ int gdb_handle_exception(int evector, int signo, int ecode, struct pt_regs *regs
 	//int i; 
 	int cpu;
 
-	gs->cpu			    = raw_smp_processor_id();
+	gs->cpu			= raw_smp_processor_id();
 	gs->ex_vector		= evector;
-	gs->signo		    = signo;
+	gs->signo		= signo;
 	gs->ex_vector		= evector;
 	gs->err_code		= ecode;
 	gs->lwk_regs		= regs;
-	gs->pass_exception  = 0;
+	gs->pass_exception	= 0;
     
 	struct task_struct *task = TASK_PTR(regs); 
 	struct gdb_per_process_state *ggs = gdb_htable_lookup(task->aspace->id);
@@ -1247,8 +1263,6 @@ int gdb_handle_exception(int evector, int signo, int ecode, struct pt_regs *regs
 		printk("GDB Error: no corresponding gdb global state for process(%d)\n", ggs->pid);
 		return -1;    
 	}
-	ggs->gdb_usethread   = 	task;
-	ggs->pid             = task->aspace->id;
 
 acquirelock:
 	/*
@@ -1292,8 +1306,6 @@ acquirelock:
 	if (gdb_skipexception(ggs->gdb_break, ggs->pid, gs->ex_vector, gs->lwk_regs))
 		goto gdb_restore;
 
-	gdb_disable_hw_debug(gs->lwk_regs);
-
 	/* No need to signal other CPUs to enter gdb_wait???
 	 * Get the passive CPU lock which will hold all the non-primary
 	 * CPU in a spin state while the debugger is active
@@ -1329,10 +1341,13 @@ acquirelock:
 	 * in the debugger and all secondary CPUs are quiescent
 	 */
 	gdb_post_primary_code(gs->lwk_regs, gs->ex_vector, gs->err_code);
+
+	gdb_stop_or_resume_all_except(get_task(ggs->pid, ggs->pid), task->id, GDB_STOP_TASK);	
+	gdb_disable_hw_debug(gs->lwk_regs);
 	gdb_deactivate_sw_breakpoints(ggs->gdb_break);
 	//gdb_single_step = 0;
 	ggs->gdb_contthread = NULL;
-
+	ggs->gdb_usethread   = 	task;
 	/* Talk to debugger with gdbserial protocol */
 	error = gdb_serial_stub(ggs, gs);
 
@@ -1352,7 +1367,7 @@ gdb_restore:
 	/* Free gdb_active */
 	atomic_set(&(ggs->gdb_active), -1);
 	local_irq_restore(flags);
-
+	
 	return error;
 }
 
@@ -1374,7 +1389,7 @@ static int __gdb_attach(void *priv){
 	struct task_struct *task = (struct task_struct *) priv;
 	struct gdb_per_process_state * ggs = gdb_htable_lookup(task->aspace->id);
 
-	gdb_stop_or_resume_task(task, GDB_STOP_TASK);    
+	gdb_stop_or_resume_all(task, GDB_STOP_TASK);    
 	printk("GDB: attach to task(pid=%d, tid=%d) successfully, waiting for gdb client to connect\n", task->aspace->id, task->id); 
 	//printk("GDB: attach to task(%d, %d) successfully and wait for gdb client to connect via %s\n", task->aspace->id, task->id, ggs->gdb_filep->inode->name);
 	while(gdbio_get_char(ggs->gdb_filep) != '+');
