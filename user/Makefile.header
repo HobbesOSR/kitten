@@ -13,6 +13,11 @@ ifndef srctree
 srctree=matchnothing
 endif
 
+# Default build tools
+ifndef OBJCOPY
+OBJCOPY = $(CROSS_COMPILE)objcopy
+endif
+
 # Make sure 'all' is the default target by putting it first.
 # The real 'all' target is defined in Makefile.footer
 .PHONY:all

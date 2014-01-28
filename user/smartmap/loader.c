@@ -8,13 +8,13 @@
 
 
 /* The linker sets this up to point to the embedded smartmap_app ELF image */
-int _binary_loader_rawdata_start __attribute__ ((weak));
+extern int _binary_smartmap_loader_rawdata_start __attribute__ ((weak));
 
 
 int
 main(int argc, char *argv[], char *envp[])
 {
-	volatile vaddr_t elf_image = (vaddr_t) &_binary_loader_rawdata_start;
+	volatile vaddr_t elf_image = (vaddr_t) &_binary_smartmap_loader_rawdata_start;
 	start_state_t *start_state;
 	cpu_set_t cpuset;
 	int num_ranks=0;
