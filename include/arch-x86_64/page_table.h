@@ -73,4 +73,16 @@ typedef struct {
 		no_exec    :1;  /* Is the page executable? */
 } xpte_1GB_t;
 
+/*
+ * These functions return the base_paddr field in the input pte as a paddr_t.
+ * These functions should always be used rather than trying to use
+ * pte->base_addr directly, since the default type of C bitfields is 
+ * typically 32-bit integer, leading to hard to debug integer overflows
+ * when working with 64-bit unsigned addresses.
+ */
+static inline paddr_t xpte_paddr(xpte_t *pte)         { return ((paddr_t)(pte->base_paddr)) << 12; }
+static inline paddr_t xpte_4KB_paddr(xpte_4KB_t *pte) { return ((paddr_t)(pte->base_paddr)) << 12; }
+static inline paddr_t xpte_2MB_paddr(xpte_2MB_t *pte) { return ((paddr_t)(pte->base_paddr)) << 21; }
+static inline paddr_t xpte_1GB_paddr(xpte_1GB_t *pte) { return ((paddr_t)(pte->base_paddr)) << 30; }
+
 #endif

@@ -55,19 +55,19 @@ arch_aspace_destroy(
 			continue;
 
 		/* Walk and then free the Page Upper Directory */
-		pud = __va(pgd[i].base_paddr << 12);
+		pud = __va(xpte_paddr(&pgd[i]));
 		for (j = 0; j < 512; j++) {
 			if (!pud[j].present || pud[j].pagesize)
 				continue;
 
 			/* Walk and then free the Page Middle Directory */
-			pmd = __va(pud[j].base_paddr << 12);
+			pmd = __va(xpte_paddr(&pud[j]));
 			for (k = 0; k < 512; k++) {
 				if (!pmd[k].present || pmd[k].pagesize)
 					continue;
 				
 				/* Free the last level Page Table Directory */
-				ptd = __va(pmd[k].base_paddr << 12);
+				ptd = __va(xpte_paddr(&pmd[k]));
 				kmem_free_pages(ptd, 0);
 			}
 			kmem_free_pages(pmd, 0);
@@ -157,7 +157,7 @@ find_or_create_pte(
 		return NULL;
 
 	/* Traverse the Page Upper Directory */
-	pud = __va(pge->base_paddr << 12);
+	pud = __va(xpte_paddr(pge));
 	pue = &pud[pud_index];
 	if (pagesz == VM_PAGE_1GB)
 		return pue;
@@ -167,7 +167,7 @@ find_or_create_pte(
 		panic("BUG: Can't follow PUD entry, pagesize bit set.");
 
 	/* Traverse the Page Middle Directory */
-	pmd = __va(pue->base_paddr << 12);
+	pmd = __va(xpte_paddr(pue));
 	pme = &pmd[pmd_index];
 	if (pagesz == VM_PAGE_2MB)
 		return pme;
@@ -177,7 +177,7 @@ find_or_create_pte(
 		panic("BUG: Can't follow PMD entry, pagesize bit set.");
 
 	/* Traverse the Page Table Entry Directory */
-	ptd = __va(pme->base_paddr << 12);
+	ptd = __va(xpte_paddr(pme));
 	pte = &ptd[ptd_index];
 	return pte;
 }
@@ -245,7 +245,7 @@ find_and_delete_pte(
 		return;
 
 	/* Traverse the Page Upper Directory */
-	pud = __va(pge->base_paddr << 12);
+	pud = __va(xpte_paddr(pge));
 	pue = &pud[pud_index];
 	if (!pue->present) {
 		return;
@@ -262,7 +262,7 @@ find_and_delete_pte(
 	}
 
 	/* Traverse the Page Middle Directory */
-	pmd = __va(pue->base_paddr << 12);
+	pmd = __va(xpte_paddr(pue));
 	pme = &pmd[pmd_index];
 	if (!pme->present) {
 		return;
@@ -283,7 +283,7 @@ find_and_delete_pte(
 	}
 
 	/* Traverse the Page Table Entry Directory */
-	ptd = __va(pme->base_paddr << 12);
+	ptd = __va(xpte_paddr(pme));
 	pte = &ptd[ptd_index];
 	if (!pte->present) {
 		return;
@@ -475,34 +475,31 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 		return -ENOENT;
 
 	/* Traverse the Page Upper Directory */
-	pud = __va(pge->base_paddr << 12);
+	pud = __va(xpte_paddr(pge));
 	pue = &pud[pud_index];
 	if (!pue->present)
 		return -ENOENT;
 	if (pue->pagesize) {
-		result = (((xpte_1GB_t *)pue)->base_paddr << 30)
-		         | (vaddr & 0x3FFFFFFF);
+		result = xpte_1GB_paddr((xpte_1GB_t *)pue) | (vaddr & 0x3FFFFFFF);
 		goto out;
 	}
 
 	/* Traverse the Page Middle Directory */
-	pmd = __va(pue->base_paddr << 12);
+	pmd = __va(xpte_paddr(pue));
 	pme = &pmd[pmd_index];
 	if (!pme->present)
 		return -ENOENT;
 	if (pme->pagesize) {
-		result = (((xpte_2MB_t *)pme)->base_paddr << 21)
-		         | (vaddr & 0x1FFFFF);
+		result = xpte_2MB_paddr((xpte_2MB_t *)pme) | (vaddr & 0x1FFFFF);
 		goto out;
 	}
 
 	/* Traverse the Page Table Entry Directory */
-	ptd = __va(pme->base_paddr << 12);
+	ptd = __va(xpte_paddr(pme));
 	pte = &ptd[ptd_index];
 	if (!pte->present)
 		return -ENOENT;
-	result = (((xpte_4KB_t *)pte)->base_paddr << 12)
-	         | (vaddr & 0xFFF);
+	result = xpte_4KB_paddr((xpte_4KB_t *)pte) | (vaddr & 0xFFF);
 
 out:
 	if (paddr)
