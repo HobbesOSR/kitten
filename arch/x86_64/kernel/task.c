@@ -36,7 +36,7 @@ arch_task_create(
 		regs->rax = 0;  /* set child's clone() return value to 0 */
 	} else {
 		/* Zero all registers */
-		memset(regs, 0, sizeof(regs));
+		memset(regs, 0, sizeof(struct pt_regs));
 	}
 
 	task->arch.thread.rsp0    = (kaddr_t)(regs + 1);    /* kstack top */
