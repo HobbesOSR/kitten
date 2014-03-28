@@ -14,7 +14,7 @@ $portals4{name}          = "Portals4 SVN Trunk";
 $portals4{directory}     = "portals4";
 $portals4{get_cmd}       = "svn checkout http://portals4.googlecode.com/svn/trunk/ $portals4{directory}";
 $portals4{preconfig_cmd} = "./autogen.sh";
-$portals4{config_cmd}    = "./configure --enable-kitten --enable-ppe --disable-transport-ib --enable-transport-udp --disable-shared --with-xpmem=$INSTALLDIR --prefix=$INSTALLDIR";
+$portals4{config_cmd}    = "./configure --enable-kitten --enable-ppe --disable-transport-ib --disable-transport-udp --disable-shared --with-xpmem=$INSTALLDIR --prefix=$INSTALLDIR";
 push(@packages, \%portals4);
 
 my %portals4_linux;
