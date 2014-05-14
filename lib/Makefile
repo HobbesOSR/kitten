@@ -13,6 +13,7 @@ lib-y := \
 	ctype.o \
 	idspace.o \
 	htable.o \
+	rbtree.o \
 	mutex.o \
 	semaphore.o \
 	cmdline.o \
