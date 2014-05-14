@@ -180,6 +180,21 @@ pci_lookup_device(uint16_t vendor_id, uint16_t device_id)
 	return NULL;
 }
 
+#define PCI_DEVFN(slot, func) ((((slot) & 0x1f) << 3) | ((func) & 0x07))
+
+pci_dev_t *
+pci_get_dev_bus_and_slot(uint32_t bus, uint32_t devfn)
+{
+    pci_dev_t * dev;
+
+    list_for_each_entry(dev, &pci_devices, next) {
+        if ((dev->cfg.bus == bus) && ((PCI_DEVFN(dev->cfg.slot, dev->cfg.func) == devfn)))
+            return dev;
+    }
+
+    return NULL;
+}
+
 
 /** Reads a value from a PCI device's config space header. */
 uint32_t

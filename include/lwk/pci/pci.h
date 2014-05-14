@@ -50,6 +50,9 @@ void init_pci(void);
 /** Searches for a PCI device matching the input vendor ID and device ID. */
 pci_dev_t *pci_lookup_device(uint16_t vendor_id, uint16_t device_id);
 
+/** Searches for a PCI device matching the input bus and devfn. */
+pci_dev_t *pci_get_dev_bus_and_slot(uint32_t bus, uint32_t devfn);
+
 
 /** Creates a human-readable description of a PCI device. */
 void pci_describe_device(pci_dev_t *dev, size_t len, char *buf);
