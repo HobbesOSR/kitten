@@ -11,7 +11,7 @@
 #include <lwk/timer.h>
 #include <lwk/bootstrap.h>
 #include <lwk/params.h>
-
+#include <lwk/preempt_notifier.h>
 
 /**
  * User-level tasks are preemptively scheduled sched_hz times per second.
@@ -92,6 +92,44 @@ sched_subsys_init(void)
 	}
 
 	return 0;
+}
+
+
+
+void 
+preempt_notifier_register(struct preempt_notifier * notifier)
+{
+	hlist_add_head(&notifier->link, &current->preempt_notifiers);
+}
+
+
+void 
+preempt_notifier_unregister(struct preempt_notifier * notifier)
+{
+	hlist_del(&notifier->link);
+}
+
+static void 
+fire_sched_out_preempt_notifiers(struct task_struct * curr,
+				 struct task_struct * next)
+{
+	struct preempt_notifier * notifier;
+	struct hlist_node * pos;
+
+	hlist_for_each_entry(notifier, pos, &curr->preempt_notifiers, link) {
+		notifier->ops->sched_out(notifier, next);
+	}
+}
+
+static void
+fire_sched_in_preempt_notifiers(struct task_struct * curr) 
+{
+	struct preempt_notifier * notifier;
+	struct hlist_node * pos;
+
+	hlist_for_each_entry(notifier, pos, &curr->preempt_notifiers, link) {
+		notifier->ops->sched_in(notifier, smp_processor_id());
+	}
 }
 
 void
@@ -244,6 +282,8 @@ schedule(void)
 	clear_bit(TF_NEED_RESCHED_BIT, &prev->arch.flags);
 
 	if (prev != next) {
+		fire_sched_out_preempt_notifiers(prev, next);
+
 		prev = context_switch(prev, next);
 
 		/* "next" is now running. Since it may have changed CPUs
@@ -254,6 +294,8 @@ schedule(void)
 		 * 'current' should be used to refer to the currently
 		 * executing task. */
 		runq = &per_cpu(run_queue, this_cpu);
+
+		fire_sched_in_preempt_notifiers(current);
 
 		/* Free memory used by prev if it has exited */
 		if (prev->state == TASK_EXITED)

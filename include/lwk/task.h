@@ -126,6 +126,9 @@ struct task_struct {
 	// Stuff needed for the Linux compatibility layer
 	char *			comm;		// The task's name
 	struct aspace *		mm;		// Address space task is in
+
+	/* List of struct preempt_notifier */
+	struct hlist_head       preempt_notifiers;
 };
 
 
