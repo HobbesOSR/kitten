@@ -396,6 +396,8 @@ pcicfg_bar_decode(
 	uint8_t type = 0;
 	uint8_t prefetch = 0;
 	uint64_t address;
+	uint64_t mask = 0;
+	uint64_t size = 0;
 
 	bar1 = hdr->bar[index];
 
@@ -413,14 +415,46 @@ pcicfg_bar_decode(
 			bar2 = hdr->bar[index + 1];
 			address |= ((uint64_t)bar2 << 32);
 		}
+			
+
+		/* Detect BAR size */
+		/* We are going to assume that no BAR is larger than 4GB, so we 
+		 *  only need to check the lower 32 bits
+		 */
+		pcicfg_write(hdr->bus, hdr->slot, hdr->func, 
+			     PCIR_BAR(index), 4, 0xffffffff);
+		
+		mask = pcicfg_read(hdr->bus, hdr->slot, hdr->func,
+				   PCIR_BAR(index), 4);
+		mask &= 0xfffffff0;
+		
+		size = ((uint32_t)~mask) + 1;
+
+		pcicfg_write(hdr->bus, hdr->slot, hdr->func, 
+			     PCIR_BAR(index), 4, (uint32_t)address);
+
 	} else {
 		// I/O BAR, only address is defined
 		address  = (bar1 & 0xFFFFFFFC);
+
+		/* Detect BAR size */
+		pcicfg_write(hdr->bus, hdr->slot, hdr->func, 
+			     PCIR_BAR(index), 4, 0xffffffff);
+		
+		mask = pcicfg_read(hdr->bus, hdr->slot, hdr->func,
+				   PCIR_BAR(index), 4);
+
+		mask &= 0xfffc;
+		size = ((uint16_t)~mask) + 1;
+
+		pcicfg_write(hdr->bus, hdr->slot, hdr->func, 
+			     PCIR_BAR(index), 4, (uint32_t)address);		
 	}
 
 	if (bar) {
 		bar->index    = (uint8_t) index;
 		bar->address  = address;
+		bar->size     = size;
 		bar->mem      = mem;
 		bar->type     = type;
 		bar->prefetch = prefetch;

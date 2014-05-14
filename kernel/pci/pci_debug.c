@@ -8,23 +8,44 @@
 void
 pcicfg_bar_print(pci_bar_t *bar)
 {
+	if (bar->address == 0) {
+		printk("    BAR[%d]: NONE\n", bar->index);
+		return;
+	}
+
 	if (bar->mem == PCIM_BAR_MEM_SPACE) {
 		if (bar->type == 0) {
-			printk("BAR[%d]: MEM addr=0x%08x (32-bit, %s)\n",
+			printk("    BAR[%d]: MEM addr=0x%08x, [size=%u%s] (32-bit, %s)\n",
 			       bar->index, (uint32_t)bar->address,
+			       (bar->size >= (1024 * 1024)) ? (uint32_t)(bar->size / (1024 * 1024)) : 
+			       (bar->size >= 1024) ? (uint32_t)(bar->size / 1024) :
+			       (uint32_t)bar->size,
+			       (bar->size >= (1024 * 1024)) ? "M" : 
+			       (bar->size >= 1024) ? "K" : "",
 			       (bar->prefetch) ? "prefetchable" : "non-prefetchable");
 		} else if (bar->type == 1) {
-			printk("BAR[%d]: MEM addr=0x%08x (< 1MB, %s)\n",
+			printk("    BAR[%d]: MEM addr=0x%08x [size=%u%s] (< 1MB, %s)\n",
 			       bar->index, (uint32_t)bar->address,
+			       (bar->size >= (1024 * 1024)) ? (uint32_t)(bar->size / (1024 * 1024)) : 
+			       (bar->size >= 1024) ? (uint32_t)(bar->size / 1024) :
+			       (uint32_t)bar->size,
+			       (bar->size >= (1024 * 1024)) ? "M" : 
+			       (bar->size >= 1024) ? "K" : "",
 			       (bar->prefetch) ? "prefetchable" : "non-prefetchable");
 		} else if (bar->type == 2) {
-			printk("BAR[%d]: MEM addr=0x%016lx (64-bit, %s)\n",
+			printk("    BAR[%d]: MEM addr=0x%016lx [size=%u%s] (64-bit, %s)\n",
 			       bar->index, (unsigned long)bar->address,
+			       (bar->size >= (1024 * 1024)) ? (uint32_t)(bar->size / (1024 * 1024)) : 
+			       (bar->size >= 1024) ? (uint32_t)(bar->size / 1024) :
+			       (uint32_t)bar->size,
+			       (bar->size >= (1024 * 1024)) ? "M" : 
+			       (bar->size >= 1024) ? "K" : "",
 			       (bar->prefetch) ? "prefetchable" : "non-prefetchable");
 		}
 	} else {
-		printk("BAR[%d]: IO  addr=0x%04x\n",
-		       bar->index, (uint16_t)bar->address);
+		printk("    BAR[%d]: IO  addr=0x%04x [size=%u]\n",
+		       bar->index, (uint16_t)bar->address,
+		       (uint32_t)(bar->size));
 	}
 }
 
@@ -33,6 +54,7 @@ pcicfg_bar_print(pci_bar_t *bar)
 void
 pcicfg_hdr_print(pcicfg_hdr_t *hdr)
 {
+    
 	printk("======================================================================\n");
 
 	printk("Device %d:%d.%d\n", hdr->bus, hdr->slot, hdr->func);
@@ -63,13 +85,17 @@ pcicfg_hdr_print(pcicfg_hdr_t *hdr)
 	printk("  Min Grant:           0x%x\n", hdr->min_grant);
 	printk("  Max Latency:         0x%x\n", hdr->max_latency);
 	printk("  Num Maps:            0x%x\n", hdr->num_maps);
-	printk("    BAR[0]:            0x%08x (%s)\n", hdr->bar[0], (hdr->bar[0] & 0x1) ? "IO" : "MEM");
-	printk("    BAR[1]:            0x%08x (%s)\n", hdr->bar[1], (hdr->bar[1] & 0x1) ? "IO" : "MEM");
-	printk("    BAR[2]:            0x%08x (%s)\n", hdr->bar[2], (hdr->bar[2] & 0x1) ? "IO" : "MEM");
-	printk("    BAR[3]:            0x%08x (%s)\n", hdr->bar[3], (hdr->bar[3] & 0x1) ? "IO" : "MEM");
-	printk("    BAR[4]:            0x%08x (%s)\n", hdr->bar[4], (hdr->bar[4] & 0x1) ? "IO" : "MEM");
-	printk("    BAR[5]:            0x%08x (%s)\n", hdr->bar[5], (hdr->bar[5] & 0x1) ? "IO" : "MEM");
 
+	{
+		pci_bar_t tmp_bar;
+		int i;
+
+		for (i = 0; i < 6; i++) {
+			pcicfg_bar_decode(hdr, i, &tmp_bar);
+			pcicfg_bar_print(&tmp_bar);
+		}
+	}
+	
 	if (hdr->pp.valid) {
 		printk("\n");
 		printk("  EXTCAP PCI Power Management:\n");

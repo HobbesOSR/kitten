@@ -247,6 +247,7 @@ typedef struct pcicfg_hdr1 {
 /** PCI Base Address (BAR) register structure. */
 typedef struct pci_bar {
 	uint64_t	address;		//!< the base address of the region defined by the bar
+	uint64_t        size;                   //!< the size of the region defined by the bar
 	uint8_t		index;			//!< the index of the BAR in its parent PCI config header
 	uint8_t		mem;			//!< 0 for memory, 1 for I/O
 	uint8_t		type;			//!< 0 for 32-bit, 2 for 64-bit

@@ -118,7 +118,7 @@ pci_scan_bus(pci_bus_t * bus)
 			new_dev->parent_bus = bus;
 			new_dev->slot       = slot;
 			new_dev->func       = func;
-			new_dev->driver	    = NULL;
+			new_dev->driver	    = NULL;			
 
 			/* Add new device onto parent bus's list of devices */
 			list_add_tail(&new_dev->siblings, &bus->devices);
