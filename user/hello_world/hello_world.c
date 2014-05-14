@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
+#define TEST_BLOCK_LAYER 1
+
 static int pmem_api_test(void);
 static int aspace_api_test(void);
 static int task_api_test(void);
@@ -27,6 +29,9 @@ static int task_migrate_test(void);
 static int fd_test(void);
 static int socket_api_test(void);
 static int hypervisor_api_test(void);
+#ifdef TEST_BLOCK_LAYER
+static int block_layer_test(void);
+#endif
 
 int
 main(int argc, char *argv[], char *envp[])
@@ -48,6 +53,9 @@ main(int argc, char *argv[], char *envp[])
 	fd_test();
 	task_api_test();
 	task_migrate_test();
+#ifdef TEST_BLOCK_LAYER
+	block_layer_test();
+#endif
 	hypervisor_api_test();
         socket_api_test();
 
@@ -583,6 +591,51 @@ socket_api_test( void )
         printf("TEST END: Sockets API\n");
         return 0;
 }
+
+
+#ifdef TEST_BLOCK_LAYER
+
+char test_buf[4096];
+char hello_buf[512];
+char resp_buf[4066];
+
+int block_layer_test(void) {
+    int fd = 0;
+    int ret = 0;
+
+    memset(test_buf, 0, 4096);
+    memset(hello_buf, 0, 512);
+    memset(resp_buf, 0, 4096);
+
+    sprintf(hello_buf, "Hello There\n");
+
+    fd = open("/dev/block/sata-0", O_RDWR);
+    printf("Opened SATA-0\n");
+
+    ret = read(fd, test_buf, 4096);
+    printf("Read %d bytes. Buf:\n", ret);
+    printf("%s\n", test_buf);
+
+    lseek(fd, 100 * 4096, 0);
+
+    write(fd, hello_buf, 512);
+
+    read(fd, resp_buf, 512);
+    printf("Resp1: %s\n", resp_buf);
+
+    lseek(fd, 100 * 4096, 0);
+
+    read(fd, resp_buf + 1024, 512);
+    printf("Resp2: %s\n", resp_buf + 1024);
+
+    close(fd);
+
+
+    return 0;
+}
+
+#endif
+
 
 /* These specify the virtual address start, end, and size
  * of the guest OS ISO image embedded in our ELF executable. */

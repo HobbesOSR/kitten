@@ -43,6 +43,14 @@ typedef unsigned long vmflags_t;
 typedef unsigned long vmpagesize_t;
 
 
+typedef struct {
+	vaddr_t     start;
+	vaddr_t     end;
+	paddr_t     paddr;
+	vmflags_t   flags; 
+} aspace_mapping_t;
+
+
 // Begin core address space management API.
 // These are accessible from both kernel-space and user-space (via syscalls).
 
@@ -123,6 +131,13 @@ aspace_virt_to_phys(
 	id_t			id,
 	vaddr_t			vaddr,
 	paddr_t *		paddr
+);
+
+extern int
+aspace_lookup_mapping(
+        id_t                    id, 
+	vaddr_t                 vaddr,
+	aspace_mapping_t *      mapping
 );
 
 extern int aspace_dump2console(

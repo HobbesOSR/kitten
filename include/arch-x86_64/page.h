@@ -49,6 +49,29 @@
 #define __VIRTUAL_MASK_SHIFT    48
 #define __VIRTUAL_MASK      ((_AC(1,UL) << __VIRTUAL_MASK_SHIFT) - 1)
 
+
+
+#ifndef __ASSEMBLY__
+/**
+ * Pure 2^n version of get_order
+ */
+static inline int 
+get_order(unsigned long size)
+{
+	int order;
+	
+	size = (size - 1) >> (PAGE_SHIFT - 1);
+	order = -1;
+	do {
+		size >>= 1;
+		order++;
+	} while (size);
+
+	return order;
+}
+#endif
+
+
 #define TASK_ORDER 1 
 #define TASK_SIZE  (PAGE_SIZE << TASK_ORDER)
 #define CURRENT_MASK (~(TASK_SIZE-1))
@@ -123,5 +146,8 @@ extern unsigned long end_pfn;
 
 #define LARGE_PAGE_MASK (~(LARGE_PAGE_SIZE-1))
 #define LARGE_PAGE_SIZE (_AC(1,UL) << PMD_SHIFT)
+
+
+
 
 #endif

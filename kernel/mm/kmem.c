@@ -281,3 +281,6 @@ paddr_is_kmem(
 	return (((unsigned long)__va(paddr) >= kmem->base_addr) && 
 	       ((unsigned long)__va(paddr) - kmem->base_addr) < (1 << (kmem->pool_order)));
 }
+
+
+ 

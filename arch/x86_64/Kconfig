@@ -226,6 +226,7 @@ config ACPI
 	default "y"
 
 source "net/Kconfig"
+source "block/Kconfig"
 source "drivers/Kconfig"
 source "arch/x86_64/boot/Kconfig"
 source "arch/x86_64/Kconfig.debug"

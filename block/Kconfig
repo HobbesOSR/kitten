@@ -1,0 +1,7 @@
+menu "Block Device"
+
+config BLOCK_DEVICE
+        bool "Enable Block driver support"
+        default n
+
+endmenu

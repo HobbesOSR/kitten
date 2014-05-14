@@ -451,6 +451,7 @@ scripts_basic: include/lwk/autoconf.h
 # Objects we will link into vmlwk / subdirs we need to visit
 drivers-y	:= drivers/
 net-y		:= net/
+block-y         := block/
 libs-y		:= lib/
 linux-y		:= linux/
 #core-y		:= usr/
@@ -549,18 +550,19 @@ core-y		+= kernel/ modules/
 vmlwk-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
 		     $(linux-y) $(linux-m) \
-		     $(net-y) $(net-m) $(libs-y) $(libs-m)))
+		     $(net-y) $(net-m) $(block-y) $(block-m) $(libs-y) $(libs-m)))
 
 vmlwk-alldirs	:= $(sort $(vmlwk-dirs) $(patsubst %/,%,$(filter %/, \
 		     $(init-n) $(init-) \
 		     $(core-n) $(core-) $(drivers-n) $(drivers-) \
 		     $(linux-n) $(linux-) \
-		     $(net-n)  $(net-)  $(libs-n)    $(libs-))))
+		     $(net-n)  $(net-) $(block-n) $(block-)  $(libs-n)    $(libs-))))
 
 init-y		:= $(patsubst %/, %/built-in.o, $(init-y))
 core-y		:= $(patsubst %/, %/built-in.o, $(core-y))
 drivers-y	:= $(patsubst %/, %/built-in.o, $(drivers-y))
 net-y		:= $(patsubst %/, %/built-in.o, $(net-y))
+block-y         := $(patsubst %/, %/built-in.o, $(block-y))
 libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
 libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
 libs-y		:= $(libs-y1) $(libs-y2)
@@ -597,7 +599,7 @@ libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
 # System.map is generated to document addresses of all kernel symbols
 
 vmlwk-init := $(head-y) $(init-y)
-vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y) $(linux-y)
+vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y) $(block-y) $(linux-y)
 vmlwk-all  := $(vmlwk-init) $(vmlwk-main)
 vmlwk-lds  := arch/$(SRCARCH)/kernel/vmlwk.lds
 

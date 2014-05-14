@@ -912,6 +912,53 @@ aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t *paddr)
 	return status;
 }
 
+
+int 
+__aspace_lookup_mapping(struct aspace *aspace, vaddr_t vaddr, aspace_mapping_t *mapping)
+{
+	struct region * rgn;
+
+	if (!aspace) {
+		return -EINVAL;
+	}
+	
+	rgn = find_region(aspace, vaddr);
+	if (!rgn) {
+		printk(KERN_WARNING
+		       "Failed to find region covering addr=0x%lx.\n",
+		       vaddr);
+		return -EINVAL;
+	}
+	
+
+	mapping->start = rgn->start;
+	mapping->end = rgn->end;
+	mapping->flags = rgn->flags;
+
+	return __aspace_virt_to_phys(aspace, mapping->start, &(mapping->paddr));
+}
+
+int 
+aspace_lookup_mapping(id_t id, vaddr_t vaddr, aspace_mapping_t *mapping)
+{
+	int status;
+	struct aspace * aspace;
+	unsigned long irqstate;
+
+	if (id == MY_ID) {
+		id = current->aspace->id;
+	}
+
+	local_irq_save(irqstate);
+	aspace = lookup_and_lock(id);
+	status = __aspace_lookup_mapping(aspace, vaddr, mapping);
+	if (aspace) spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+
+	return status;
+}
+
+
 int
 aspace_wait4_child_exit(id_t child_id, bool block, id_t *exit_id, int *exit_status)
 {

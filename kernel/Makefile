@@ -38,6 +38,7 @@ obj-$(CONFIG_KGDB) += kgdb.o
 obj-$(CONFIG_KGDB_SERIAL_CONSOLE) += kgdboc.o
 obj-$(CONFIG_DEBUG_HW_NOISE) += noise.o
 obj-$(CONFIG_NETWORK) += netdev.o
+obj-$(CONFIG_BLOCK_DEVICE) += blkdev.o
 obj-$(CONFIG_PALACIOS_GDB) += \
 	gdb_target_desc.o \
 	gdb.o \

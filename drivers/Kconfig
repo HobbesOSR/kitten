@@ -65,4 +65,12 @@ config VMNET
           virtual machines.
           If the kernel will be run under Palacios, say yes.
 
+
+config SATA
+	bool "SATA block driver"
+	depends on BLOCK_DEVICE
+	default PC
+	help 
+	  SATA compatible block driver for raw disk access
+
 endmenu

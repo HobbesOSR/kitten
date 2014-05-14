@@ -7,6 +7,7 @@
 #include <lwk/params.h>
 #include <lwk/console.h>
 #include <lwk/netdev.h>
+#include <lwk/blkdev.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/percpu.h>
 #include <lwk/smp.h>
@@ -173,6 +174,14 @@ start_kernel()
 	*/
 	netdev_init();
 #endif
+
+#ifdef CONFIG_BLOCK_DEVICE
+	/**
+	 * Initialize the block devices
+	 */
+	blkdev_init();
+#endif
+
 
 	mcheck_init_late();
 
