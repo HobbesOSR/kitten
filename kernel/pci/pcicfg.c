@@ -213,11 +213,11 @@ pcicfg_read_extcap(
 			                                  PCIM_MSIXCTRL_TABLE_SIZE) + 1;
 
 			val = RREG( ptr + PCIR_MSIX_TABLE, 4 );
-			hdr->msix.msix_table_bar    = PCIR_BAR(val & PCIM_MSIX_BIR_MASK);
+			hdr->msix.msix_table_bar    = val & PCIM_MSIX_BIR_MASK;
 			hdr->msix.msix_table_offset = val & ~PCIM_MSIX_BIR_MASK;
 
 			val = RREG( ptr + PCIR_MSIX_PBA, 4 );
-			hdr->msix.msix_pba_bar      = PCIR_BAR(val & PCIM_MSIX_BIR_MASK);
+			hdr->msix.msix_pba_bar      = val & PCIM_MSIX_BIR_MASK;
 			hdr->msix.msix_pba_offset   = val & ~PCIM_MSIX_BIR_MASK;
 
 			break;
