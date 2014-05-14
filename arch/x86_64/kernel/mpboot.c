@@ -6,6 +6,7 @@
 #include <lwk/bootmem.h>
 #include <lwk/task.h>
 #include <lwk/sched.h>
+#include <lwk/timer.h>
 #include <arch/atomic.h>
 #include <arch/apicdef.h>
 #include <arch/apic.h>
@@ -30,6 +31,8 @@ void __init
 start_secondary(void)
 {
 	cpu_init();
+	sched_init_runqueue(this_cpu);
+	core_timer_init(this_cpu);
 	cpu_set(this_cpu, cpu_online_map);
 	lapic_set_timer_freq(sched_hz);
 	schedule(); /* runs idle_task, since that's the only task

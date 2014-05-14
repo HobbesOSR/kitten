@@ -5,6 +5,9 @@
 #include <lwk/ptrace.h>
 #include <lwk/string.h>
 #include <lwk/delay.h>
+#include <lwk/sched.h>
+#include <lwk/aspace.h>
+
 #include <arch/processor.h>
 #include <arch/desc.h>
 #include <arch/proto.h>
@@ -270,4 +273,95 @@ cpu_init(void)
 	lapic_init();		/* local advanced prog. interrupt controller */
 	time_init();		/* detects CPU frequency, udelay(), etc. */
 	barrier();		/* compiler memory barrier, avoids reordering */
+}
+
+
+
+#include <arch/mpspec.h>
+#include <asm/processor.h>
+extern unsigned int num_cpus;
+extern unsigned char apic_version[MAX_APICS];
+extern physid_mask_t phys_cpu_present_map;
+
+int 
+phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id) 
+{
+	int logical_cpu;
+	cpumask_t tmp_map;
+	unsigned int timeout;
+	unsigned char apic_ver;
+
+	if (num_cpus >= NR_CPUS) {
+		printk(KERN_ERR "NR_CPUS limits of %i reached.\n", NR_CPUS);
+		return -1;
+	}
+
+	/* Count the new CPU */
+	num_cpus++;
+
+	/*
+	 * Assign a logical CPU ID.
+	 * Choose the lowest ID available
+	 */
+	 cpus_complement(tmp_map, cpu_present_map);
+	 logical_cpu = first_cpu(tmp_map);
+
+	/* JRL: 
+	 * This is most likely a bad idea, but I don't know a better thing to do
+	 * We don't have the MPTable information, which is where this is normally stored
+	 */
+	 apic_ver = apic_version[0];
+
+	 /*	
+	   if (apic_ver == 0x0) {
+		printk(KERN_ERR "BIOS bug, APIC version is 0 for PhysCPU 0! "
+		                "fixing up to 0x10. (tell your hw vendor)\n");
+		apic_ver = 0x10;
+	 }
+	 */
+	apic_version[phys_cpu_id] = apic_ver;
+
+
+	/* Add the CPU to the map of physical CPU IDs present. */
+	physid_set(phys_cpu_id, phys_cpu_present_map);
+
+	/* Add the CPU to the map of logical CPU IDs present. */
+	cpu_set(logical_cpu, cpu_present_map);
+
+	/* We now have to at minimum update the KERNEL ASPACE to allow this CPU */
+	/* NOTE: No other existing ASPACEs will be updated, so they will not be 
+	   accessible on this CPU unless they are explicitly updated. 
+	   BUT: the feature to do that does not exist yet!!!! 
+	*/
+	__aspace_update_cpumask(KERNEL_ASPACE_ID, &cpu_present_map); 
+
+	/* Store ID information. */
+	cpu_info[logical_cpu].logical_id   = logical_cpu;
+	cpu_info[logical_cpu].physical_id  = phys_cpu_id;
+	cpu_info[logical_cpu].arch.apic_id = apic_id;
+
+	printk(KERN_DEBUG
+	  "Booting Physical CPU #%d -> Logical CPU #%d APIC #%d (APIC version %d)\n",
+	       phys_cpu_id,
+	       logical_cpu,
+	       apic_id,
+	       apic_version[phys_cpu_id]);
+
+
+	arch_boot_cpu(logical_cpu);
+
+	/* Wait for ACK that CPU has booted (5 seconds max). */
+	for (timeout = 0; timeout < 50000; timeout++) {
+	    if (cpu_isset(logical_cpu, cpu_online_map))
+		break;
+	    udelay(100);
+	}
+	
+	if (!cpu_isset(logical_cpu, cpu_online_map)) {
+	    panic("Failed to boot CPU %d.\n", logical_cpu);
+	} else {
+	    printk("Logical CPU %d is now online\n", logical_cpu);
+	}
+
+	return logical_cpu;
 }

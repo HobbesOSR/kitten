@@ -19,18 +19,14 @@ struct timer_queue {
 static DEFINE_PER_CPU(struct timer_queue, timer_queue);
 
 int
-timer_subsys_init(void)
+core_timer_init(int cpu_id)
 {
-	id_t cpu;
-	struct timer_queue *timerq;
-
-	for_each_cpu_mask(cpu, cpu_present_map) {
-		timerq = &per_cpu(timer_queue, cpu);
-		spin_lock_init(&timerq->lock);
-		list_head_init(&timerq->timer_list);
-	}
-
-	return 0;
+    struct timer_queue *timerq = &per_cpu(timer_queue, cpu_id);
+    
+    spin_lock_init(&timerq->lock);
+    list_head_init(&timerq->timer_list);
+        
+    return 0;
 }
 
 

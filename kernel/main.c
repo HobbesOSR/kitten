@@ -112,16 +112,14 @@ start_kernel()
  	 */
 	aspace_subsys_init();
 
-	/*
- 	 * Initialize the task scheduling subsystem.
- 	 */
-	sched_subsys_init();
+
+	sched_init_runqueue(0); /* This CPUs scheduler state + idle task */
 	sched_add_task(current);  /* now safe to call schedule() */
 
 	/*
  	 * Initialize the task scheduling subsystem.
  	 */
-	timer_subsys_init();
+	core_timer_init(0);
 
 	/* Start the kernel filesystems */
 	kfs_init();

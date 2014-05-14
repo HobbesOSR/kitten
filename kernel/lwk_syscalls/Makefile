@@ -19,3 +19,4 @@ obj-y := \
 	task_create.o \
 	task_switch_cpus.o \
 	elf_hwcap.o \
+	phys_cpu_add.o \

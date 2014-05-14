@@ -1,6 +1,8 @@
 #ifndef __LINUX_SMP_H
 #define __LINUX_SMP_H
 
+#ifdef __KERNEL__
+
 /*
  *	Generic SMP support
  *		Alan Cox. <alan@redhat.com>
@@ -73,5 +75,10 @@ void smp_prepare_boot_cpu(void);
 
 void __init arch_boot_cpu(unsigned int cpu);
 void __init cpu_init(void);
+
+#endif
+
+int phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id);
+
 
 #endif /* _LWK_SMP_H */

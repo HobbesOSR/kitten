@@ -284,6 +284,12 @@ __aspace_del_region(
 );
 
 extern int
+__aspace_update_cpumask(
+        id_t                    id,
+	cpumask_t *             cpu_mask
+);
+
+extern int
 __aspace_map_pmem(
 	struct aspace *		aspace,
 	paddr_t			pmem,

@@ -209,6 +209,12 @@ SYSCALL1(lwk_ifconfig, struct lwk_ifreq *);
 SYSCALL2(elf_hwcap, id_t, uint32_t *);
 
 /**
+ * CPU Management system calls
+ */
+SYSCALL2(phys_cpu_add, id_t, id_t);
+
+
+/**
  * Palacios hypervisor control system calls.
  */
 SYSCALL2(v3_start_guest, vaddr_t, size_t);

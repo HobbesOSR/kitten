@@ -85,7 +85,7 @@ static inline int timer_pending(const struct timer * timer)
  * Normal kernel code and drivers should not call these.
  * @{
  */
-int timer_subsys_init(void);
+int core_timer_init(int cpu_id);
 void expire_timers(void);
 
 /** \note unused? */

@@ -417,6 +417,24 @@ aspace_acquire(id_t id)
 	return aspace;
 }
 
+
+int 
+__aspace_update_cpumask(id_t id, cpumask_t * cpu_mask) 
+{
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	if ((aspace = lookup_and_lock(id)) != NULL) {
+		aspace->cpu_mask = *cpu_mask;
+		spin_unlock(&aspace->lock);
+	}
+	local_irq_restore(irqstate);
+
+	return 0;
+}
+
+
 /**
  * Releases an aspace object that was previously acquired via aspace_acquire().
  * The aspace object passed in must be unlocked.

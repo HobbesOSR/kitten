@@ -53,47 +53,39 @@ idle_task_loop(void)
 	}
 }
 
-
 int __init
-sched_subsys_init(void)
-{
-	id_t cpu_id;
+sched_init_runqueue(int cpu_id) {
+	struct run_queue *runq = &per_cpu(run_queue, cpu_id);
 
-	/* Initialize each CPU's run queue */
-	for_each_cpu_mask(cpu_id, cpu_present_map) {
-		struct run_queue *runq = &per_cpu(run_queue, cpu_id);
+	spin_lock_init(&runq->lock);
+	runq->num_tasks = 0;
+	list_head_init(&runq->task_list);
+	list_head_init(&runq->migrate_list);
+ 
+	/*
+	 * Create this CPU's idle task. When a CPU has no
+	 * other work to do, it runs the idle task. 
+	 */
+	start_state_t start_state = {
+		.task_id     = IDLE_TASK_ID,
+		.task_name   = "idle_task",
+		.user_id     = 0,
+		.group_id    = 0,
+		.aspace_id   = KERNEL_ASPACE_ID,
+		.cpu_id      = cpu_id,
+		.stack_ptr   = 0, /* will be set automatically */
+		.entry_point = (vaddr_t) idle_task_loop,
+		.use_args    = 0,
+	};
+ 
+	struct task_struct *idle_task = __task_create(&start_state, NULL);
+	if (!idle_task)
+		panic("Failed to create idle_task for CPU %u.", cpu_id);
 
-		spin_lock_init(&runq->lock);
-		runq->num_tasks = 0;
-		list_head_init(&runq->task_list);
-		list_head_init(&runq->migrate_list);
+	runq->idle_task = idle_task;
 
-		/*
- 	 	 * Create this CPU's idle task. When a CPU has no
- 	 	 * other work to do, it runs the idle task. 
- 	 	 */
-		start_state_t start_state = {
-			.task_id     = IDLE_TASK_ID,
-			.task_name   = "idle_task",
-			.user_id     = 0,
-			.group_id    = 0,
-			.aspace_id   = KERNEL_ASPACE_ID,
-			.cpu_id      = cpu_id,
-			.stack_ptr   = 0, /* will be set automatically */
-			.entry_point = (vaddr_t) idle_task_loop,
-			.use_args    = 0,
-		};
-
-		struct task_struct *idle_task = __task_create(&start_state, NULL);
-		if (!idle_task)
-			panic("Failed to create idle_task for CPU %u.", cpu_id);
-
-		runq->idle_task = idle_task;
-	}
-
-	return 0;
+ 	return 0;
 }
-
 
 
 void 

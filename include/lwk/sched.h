@@ -13,7 +13,7 @@
 
 extern unsigned int sched_hz;
 
-extern int __init sched_subsys_init(void);
+extern int __init sched_init_runqueue(int cpu_id);
 extern void sched_add_task(struct task_struct *task);
 extern void sched_del_task(struct task_struct *task);
 extern int sched_wakeup_task(struct task_struct *task,
