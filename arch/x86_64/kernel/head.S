@@ -129,12 +129,22 @@ startup_64:
 	leaq	level3_ident_pgt(%rip), %rbx
 	movq	%rdx, 0(%rbx, %rax, 8)
 
-	movq	%rdi, %rax
+	movq	%rdi, %rcx
+	shrq	$PUD_SHIFT, %rcx
+	shlq	$PUD_SHIFT, %rcx
+	leaq	level2_spare_pgt(%rip), %rbx
+setup_level2_spare_pgt:
+	movq	%rcx, %rax
 	shrq	$PMD_SHIFT, %rax
 	andq	$(PTRS_PER_PMD - 1), %rax
-	leaq	__PAGE_KERNEL_LARGE_EXEC(%rdi), %rdx
-	leaq	level2_spare_pgt(%rip), %rbx
+	leaq	__PAGE_KERNEL_LARGE_EXEC(%rcx), %rdx
 	movq	%rdx, 0(%rbx, %rax, 8)
+	shrq    $PMD_SHIFT, %rcx
+        incq    %rcx
+	shlq    $PMD_SHIFT, %rcx
+	cmpq	$(PTRS_PER_PMD -1), %rax
+	jne	setup_level2_spare_pgt
+
 ident_complete:
 
 	/* Fixup the kernel text+data virtual addresses
