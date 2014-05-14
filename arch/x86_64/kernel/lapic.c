@@ -369,6 +369,30 @@ lapic_send_ipi_to_apic(
 		apic_write(APIC_ICR, APIC_DEST_PHYSICAL|APIC_DM_FIXED|vector);
 }
 
+
+/**
+ * Writes a value directly to the APIC IPI Register (ICR).
+ */
+void
+lapic_issue_raw_ipi (
+	unsigned int	apic_id,
+	unsigned int    icr
+)
+{
+	uint32_t status;
+
+	/* Wait for idle */
+	status = lapic_wait4_icr_idle();
+	if (status)
+		panic("lapic_wait4_icr_idle() timed out. (%x)", status);
+
+	/* Set target APIC */
+	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+
+	/* Send the IPI */
+	apic_write(APIC_ICR, icr);
+}
+
 /**
  * Converts an entry in a local APIC's Local Vector Table to a
  * human-readable string.

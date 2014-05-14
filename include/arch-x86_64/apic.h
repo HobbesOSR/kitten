@@ -112,5 +112,6 @@ extern void lapic_send_init_ipi(unsigned int cpu);
 extern void lapic_send_startup_ipi(unsigned int cpu, unsigned long start_rip);
 extern void lapic_send_ipi(unsigned int cpu, unsigned int vector);
 extern void lapic_send_ipi_to_apic(unsigned int apic_id, unsigned int vector);
+extern void lapic_issue_raw_ipi(unsigned int apic_id, unsigned int icr);
 
 #endif /* __ASM_APIC_H */
