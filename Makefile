@@ -1118,7 +1118,7 @@ $(module-dirs): crmodverdir
 
 modules: $(module-dirs)
 	@echo '  Building modules, stage 2.';
-	$(Q)$(MAKE) -rR -f $(srctree)/scripts/Makefile.modpost
+#	$(Q)$(MAKE) -rR -f $(srctree)/scripts/Makefile.modpost
 
 PHONY += modules_install
 modules_install: _emodinst_ _emodinst_post

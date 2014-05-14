@@ -147,14 +147,36 @@ config PALACIOS
 	  Include the Palacios virtual machine monitor. This enables Kitten
 	  to run guest operating systems alongside native applications.
 
+
+choice
+	prompt "Internal/External Palacios library"
+	depends on PALACIOS
+	default PALACIOS_INT
+
+config PALACIOS_INTERNAL
+	bool "Link core Palacios library directly to Kitten interfaces"
+	help 
+		This is the old style linking mechanism that required 
+		internalized Palacios interfaces to be implemented 
+		inside Kitten
+
+config PALACIOS_EXTERNAL
+	bool "Link in Palacios as a self contained module"
+	help 
+		New linking style that modularizes Palacios and requires
+		no Palacios interfaces to be included inside Kitten
+		
+endchoice
+ 
+
 config PALACIOS_SOCKET
         bool
-        depends on NETWORK && LWIP_TCP && LWIP_UDP && LWIP_SOCKET
+        depends on NETWORK && LWIP_TCP && LWIP_UDP && LWIP_SOCKET && PALACIOS_INTERNAL
         default "y"
 
 config PALACIOS_GDB
 	bool
-	depends on PALACIOS
+	depends on PALACIOS && PALACIOS_INTERNAL
 	default "y"
 
 config PALACIOS_PATH
@@ -166,9 +188,15 @@ config PALACIOS_PATH
 	  find Palacios include files and libraries that need to be
 	  linked with the Kitten kernel image.
 
+
+config BUILT_IN_GUEST_OS
+	depends on PALACIOS
+	bool "Compile Guest OS image into Kitten init_task"
+	
+
 config GUEST_OS_ISOIMAGE_PATH
 	string "Path to guest OS image"
-	depends on PALACIOS
+	depends on BUILT_IN_GUEST_OS
 	default "../guest_os/linux_guest.img"
 	help
 	  Path to a guest image to link with the example user/hello_world
