@@ -338,6 +338,11 @@ write_pte(
 		_pte.dirty    = 1;
 	}
 
+    if (flags & VM_NOCACHE) {
+        _pte.pcd      = 1;
+        _pte.pwt      = 1;
+    }
+
 	_pte.base_paddr = paddr >> 12;
 	if ((pagesz == VM_PAGE_2MB) || (pagesz == VM_PAGE_1GB))
 		_pte.pagesize = 1;
