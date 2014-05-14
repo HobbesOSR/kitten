@@ -17,6 +17,8 @@
 extern unsigned char trampoline_data[];
 extern unsigned char trampoline_end[];
 
+uintptr_t trampoline_base_paddr = SMP_TRAMPOLINE_BASE;
+
 /**
  * These specify the initial stack pointer and instruction pointer for a
  * newly booted CPU.
@@ -47,9 +49,10 @@ arch_boot_cpu(unsigned int cpu)
 	 * work to get us to 64-bit long mode and then calls the *initial_code
 	 * kernel entry function.
 	 */
-	memcpy(__va(SMP_TRAMPOLINE_BASE), trampoline_data,
-	                                  trampoline_end - trampoline_data
-	);
+	memcpy(__va(trampoline_base_paddr), trampoline_data,
+	                                    trampoline_end - trampoline_data
+        );
+
 
 	/*
 	 * Allocate memory for the new CPU's GDT.
@@ -75,14 +78,14 @@ arch_boot_cpu(unsigned int cpu)
 	 * Set the initial kernel entry point and stack pointer for the new CPU.
 	 */
 	initial_code = start_secondary;
-	init_rsp     = (unsigned long)new_task_union
-	                                  + sizeof(union task_union) - 1;
+	init_rsp     = (unsigned long)new_task_union + sizeof(union task_union) - 1;
+	
 
 	/*
 	 * Boot it!
 	 */
 	lapic_send_init_ipi(cpu);
-	lapic_send_startup_ipi(cpu, SMP_TRAMPOLINE_BASE);
-	lapic_send_startup_ipi(cpu, SMP_TRAMPOLINE_BASE);
+	lapic_send_startup_ipi(cpu, trampoline_base_paddr);
+	lapic_send_startup_ipi(cpu, trampoline_base_paddr);
 }
 
