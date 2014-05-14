@@ -204,6 +204,28 @@ pcicfg_read_extcap(
 			hdr->pcix.status  = RREG( ptr + PCIXR_STATUS,  4 );
 			break;
 
+                case PCIY_MSI:
+                        hdr->msi.valid = true;
+                        hdr->msi.msi_location = ptr;
+                        hdr->msi.msi_ctrl = RREG(ptr + PCIR_MSI_CTRL, 2);
+                        hdr->msi.msi_msgnum = 
+                            1 << ((hdr->msi.msi_ctrl & PCIM_MSICTRL_MMC_MASK) >> 1);
+
+                        /*
+                        printk("MSI supports %d message%s%s%s \n", hdr->msi.msi_msgnum,
+                                (hdr->msi.msi_msgnum == 1) ? "" : "s",
+                                (hdr->msi.msi_ctrl & PCIM_MSICTRL_64BIT) ? ", 64 bit" : "",
+                                (hdr->msi.msi_ctrl & PCIM_MSICTRL_VECTOR) ? ", vector masks" : "");
+                                */
+
+                        if (hdr->msi.msi_ctrl & PCIM_MSICTRL_MSI_ENABLE) {
+                            /*
+                            printk("Warning: MSI already enabled!!\n");
+                            */
+                        }
+
+                        break;
+
 		/* Extended Message Signaled Interrupt (MSI-X) */
 		case PCIY_MSIX:	
 			hdr->msix.valid             = true;

@@ -43,6 +43,37 @@ typedef struct pci_dev {
 } pci_dev_t;
 
 
+struct msix_entry {
+  u16 vector;
+  u16 entry;
+}__attribute__((packed));
+
+struct msi_msg {
+    u32 address_hi;
+    union {
+      uint32_t address_lo;
+      struct {
+        uint32_t    rsvd1         : 2;
+        uint32_t    dest_mode     : 1;
+        uint32_t    redirect_hint : 1;
+        uint32_t    rsvd2         : 8;
+        uint32_t    dest          : 8; 
+        uint32_t    rsvd3         : 12; 
+        } __attribute__((packed));
+    } __attribute__((packed));
+    union {
+      uint32_t data;
+      struct {
+        uint32_t    vector        : 8;
+        uint32_t    delivery_mode : 3;
+        uint32_t    rsvd4         : 3;
+        uint32_t    level         : 1;
+        uint32_t    trigger_mode  : 1;
+        uint32_t    rsvd5         : 16;
+        } __attribute__((packed));
+    } __attribute__((packed));
+} __attribute__((packed));
+
 /** Initializes the PCI subsystem, called once at boot. */
 void init_pci(void);
 
@@ -65,5 +96,18 @@ uint32_t pci_read(pci_dev_t *dev, unsigned int reg, unsigned int width);
 /** Writes a value to a PCI device's config space header. */
 void pci_write(pci_dev_t *dev, unsigned int reg, unsigned int width, uint32_t value);
 
+void pci_intx_enable(pci_dev_t *dev);
+void pci_intx_disable(pci_dev_t *dev);
+int pci_msi_setup(pci_dev_t *dev, u8 vector);
+void pci_msi_enable(pci_dev_t *dev);
+void pci_msi_disable(pci_dev_t *dev);
+int pci_msix_setup(pci_dev_t *dev, struct msix_entry * entries, u32 num_entries);
+void pci_msix_enable(pci_dev_t * dev);
+void pci_msix_disable(pci_dev_t * dev);
+
+void compose_msi_msg(struct msi_msg *msg, unsigned int dest, u8 vector);
+void read_msi_msg(pci_dev_t * dev, struct msi_msg * msg);
+void write_msi_msg(pci_dev_t * dev, struct msi_msg * msg);
+void set_msi_msg_nr(pci_dev_t * dev, unsigned int n);
 
 #endif
