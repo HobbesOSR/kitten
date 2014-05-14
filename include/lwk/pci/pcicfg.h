@@ -254,6 +254,13 @@ typedef struct pci_bar {
 	uint8_t		prefetch;		//!< 0 = non-prefetchable, 1 = prefetchable
 } pci_bar_t;
 
+/** PCI Expansion ROM register structure. */
+typedef struct pci_exp_rom_bar {
+	uint64_t	address;
+	uint64_t	size;
+	uint8_t		enable;
+} pci_exp_rom_bar_t;
+
 
 /** Reads a value from PCI configuration space. */
 uint32_t pcicfg_read(
@@ -303,6 +310,13 @@ pcicfg_bar_decode(
 	pcicfg_hdr_t *	hdr,
 	unsigned int	index,
 	pci_bar_t *	bar
+);
+
+
+int
+pcicfg_exp_rom_decode(
+	pcicfg_hdr_t * hdr,
+	pci_exp_rom_bar_t * bar
 );
 
 

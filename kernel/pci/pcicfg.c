@@ -269,6 +269,7 @@ pcicfg_hdr_read(
 	hdr->bar[3]		= RREG( PCIR_BAR(3),    4 );
 	hdr->bar[4]		= RREG( PCIR_BAR(4),    4 );
 	hdr->bar[5]		= RREG( PCIR_BAR(5),    4 );
+	hdr->bios		= RREG( PCIR_BIOS,      4 );
 
 	hdr->is_multi_func	= (hdr->hdr_type & PCIM_MFDEV);
 	hdr->hdr_type		&= ~PCIM_MFDEV;
@@ -463,6 +464,40 @@ pcicfg_bar_decode(
 	return 0;
 }
 
+
+/* Decodes Expansion ROM bar, stores result in bar output. */
+int
+pcicfg_exp_rom_decode(
+	pcicfg_hdr_t * hdr,
+	pci_exp_rom_bar_t * bar
+) {
+        uint32_t exp_rom = 0;
+        uint64_t mask = 0;
+        uint64_t size = 0;
+
+        exp_rom = hdr->bios;
+
+        pcicfg_write(hdr->bus, hdr->slot, hdr->func, 
+                PCIR_BIOS, 4, 0xffffffff & PCIM_BIOS_ADDR_MASK);
+
+        mask = pcicfg_read(hdr->bus, hdr->slot, hdr->func,
+                PCIR_BIOS, 4);
+
+        mask &= PCIM_BIOS_ADDR_MASK;
+
+        size = ((uint32_t)~mask) + 1;
+
+        pcicfg_write(hdr->bus, hdr->slot, hdr->func, 
+                PCIR_BIOS, 4, (uint32_t)exp_rom);
+
+        if (bar) {
+                bar->address  = exp_rom & PCIM_BIOS_ADDR_MASK;
+                bar->size     = size;
+                bar->enable     = exp_rom & PCIM_BIOS_ENABLE;
+        }
+
+        return 0;
+}
 
 #undef RCFG
 #undef WCFG
