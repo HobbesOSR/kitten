@@ -212,6 +212,7 @@ SYSCALL2(elf_hwcap, id_t, uint32_t *);
  * CPU Management system calls
  */
 SYSCALL2(phys_cpu_add, id_t, id_t);
+SYSCALL2(phys_cpu_remove, id_t, id_t);
 
 
 /**

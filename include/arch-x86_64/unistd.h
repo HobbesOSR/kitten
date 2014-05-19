@@ -709,6 +709,8 @@ __SYSCALL(__NR_lwk_ifconfig, syscall_not_implemented)
 
 #define __NR_phys_cpu_add	525
 __SYSCALL(__NR_phys_cpu_add, sys_phys_cpu_add)
+#define __NR_phys_cpu_remove	526
+__SYSCALL(__NR_phys_cpu_remove, sys_phys_cpu_remove)
 
 
 #endif

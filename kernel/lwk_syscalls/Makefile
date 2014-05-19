@@ -20,3 +20,4 @@ obj-y := \
 	task_switch_cpus.o \
 	elf_hwcap.o \
 	phys_cpu_add.o \
+	phys_cpu_remove.o

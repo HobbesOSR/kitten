@@ -12,6 +12,7 @@
 #include <lwk/bootstrap.h>
 #include <lwk/params.h>
 #include <lwk/preempt_notifier.h>
+#include <lwk/kthread.h>
 
 /**
  * User-level tasks are preemptively scheduled sched_hz times per second.
@@ -35,6 +36,7 @@ param(sched_hz, uint);
 struct run_queue {
 	spinlock_t           lock;
 	size_t               num_tasks;
+	int                  online;
 	struct list_head     task_list;
 	struct list_head     migrate_list;
 	struct task_struct * idle_task;
@@ -42,23 +44,35 @@ struct run_queue {
 
 static DEFINE_PER_CPU(struct run_queue, run_queue);
 
-
 /** Spin until something else is ready to run */
 static void
 idle_task_loop(void)
 {
+        struct run_queue *runq = &per_cpu(run_queue, this_cpu);
+
 	while (1) {
-		arch_idle_task_loop_body();
-		schedule();
+		if (runq->online == 0) {
+			local_irq_disable();
+			kmem_free_pages(runq->idle_task, TASK_ORDER);
+			cpu_clear(this_cpu, cpu_online_map);
+			arch_idle_task_loop_body();
+
+			panic("CPU offline should not return!\n");
+		} else {
+			arch_idle_task_loop_body();
+			schedule();
+		}
 	}
 }
 
 int __init
 sched_init_runqueue(int cpu_id) {
-	struct run_queue *runq = &per_cpu(run_queue, cpu_id);
+	struct run_queue * runq = &per_cpu(run_queue, cpu_id);
+
 
 	spin_lock_init(&runq->lock);
 	runq->num_tasks = 0;
+	runq->online    = 1;
 	list_head_init(&runq->task_list);
 	list_head_init(&runq->migrate_list);
  
@@ -78,13 +92,38 @@ sched_init_runqueue(int cpu_id) {
 		.use_args    = 0,
 	};
  
-	struct task_struct *idle_task = __task_create(&start_state, NULL);
+	struct task_struct * idle_task = __task_create(&start_state, NULL);
 	if (!idle_task)
 		panic("Failed to create idle_task for CPU %u.", cpu_id);
 
 	runq->idle_task = idle_task;
 
  	return 0;
+}
+
+
+/* set the offlining flag and migrate all tasks away
+ * The idle task will complete the offline operation when it runs
+ */
+void sched_cpu_remove(void * arg)
+{
+	struct run_queue   * runq = &per_cpu(run_queue, this_cpu);
+	struct task_struct * task = NULL;
+	struct task_struct * tmp  = NULL;
+
+
+	local_irq_disable();
+	spin_lock(&runq->lock);
+
+        runq->online = 0;
+
+	list_for_each_entry_safe(task, tmp, &runq->task_list, sched_link) {
+                kthread_bind(task, 0);
+                cpu_clear(this_cpu, task->aspace->cpu_mask);
+	}
+
+	spin_unlock(&runq->lock);
+        local_irq_enable();
 }
 
 

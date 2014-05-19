@@ -202,6 +202,21 @@ setup_per_cpu_area(int cpu)
 	memcpy(ptr, __per_cpu_start, __per_cpu_end - __per_cpu_start);
 } 
 
+void
+free_per_cpu_area(int cpu)
+{
+        char * ptr = cpu_pda(cpu)->data_offset + __per_cpu_start;
+
+	if (!ptr) {
+		panic("Cannot free cpu data for CPU %d\n", cpu);
+	}
+
+	if (paddr_is_kmem(__pa(ptr))) {
+		kmem_free(ptr);
+	} else {
+		/* Its been allocated from bootmem, so we can't reclaim it */
+	}
+}
 
 /**
  * This initializes a per-CPU area for each present CPU.

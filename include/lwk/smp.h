@@ -79,6 +79,7 @@ void __init cpu_init(void);
 #endif
 
 int phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id);
+int phys_cpu_remove(unsigned int phys_cpu_id, unsigned int apic_id);
 
 
 #endif /* _LWK_SMP_H */
