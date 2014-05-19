@@ -282,6 +282,7 @@ cpu_init(void)
 extern unsigned int num_cpus;
 extern unsigned char apic_version[MAX_APICS];
 extern physid_mask_t phys_cpu_present_map;
+extern void setup_per_cpu_area(int cpu);
 
 int 
 phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id) 
@@ -347,6 +348,7 @@ phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id)
 	       apic_id,
 	       apic_version[phys_cpu_id]);
 
+	setup_per_cpu_area(logical_cpu);
 
 	arch_boot_cpu(logical_cpu);
 
