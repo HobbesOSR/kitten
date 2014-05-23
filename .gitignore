@@ -51,6 +51,7 @@ user/test_app/test_app
 user/install
 user/external/portals4*
 user/external/ompi*
+user/pisces/pisces
 docs/html/*
 docs/latex/*
 *.orig
