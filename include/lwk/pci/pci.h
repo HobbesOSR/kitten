@@ -96,8 +96,17 @@ uint32_t pci_read(pci_dev_t *dev, unsigned int reg, unsigned int width);
 /** Writes a value to a PCI device's config space header. */
 void pci_write(pci_dev_t *dev, unsigned int reg, unsigned int width, uint32_t value);
 
-void pci_intx_enable(pci_dev_t *dev);
-void pci_intx_disable(pci_dev_t *dev);
+
+
+void pci_dma_enable(pci_dev_t * dev);
+void pci_dma_disable(pci_dev_t * dev); 
+void pci_mmio_enable(pci_dev_t * dev);
+void pci_mmio_disable(pci_dev_t * dev);
+void pci_ioport_enable(pci_dev_t * dev);
+void pci_ioport_disable(pci_dev_t * dev);
+void pci_intx_enable(pci_dev_t * dev);
+void pci_intx_disable(pci_dev_t * dev);
+
 int pci_msi_setup(pci_dev_t *dev, u8 vector);
 void pci_msi_enable(pci_dev_t *dev);
 void pci_msi_disable(pci_dev_t *dev);

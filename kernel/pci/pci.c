@@ -215,37 +215,69 @@ pci_write(pci_dev_t *dev, unsigned int reg, unsigned int width, uint32_t value)
 	pcicfg_write(dev->parent_bus->bus, dev->slot, dev->func, reg, width, value);
 }
 
-static void
-pci_set_intx(pci_dev_t *dev, int enable)
+void 
+pci_dma_enable(pci_dev_t * dev) 
 {
-    u16 pci_command, new;
-
-    pci_command = pci_read(dev, PCIR_COMMAND, 2);
-    if (enable) {
-        new = pci_command & ~PCIM_CMD_INTxDIS;
-    } else {
-        new = pci_command | PCIM_CMD_INTxDIS;
-    }
-
-    if (new != pci_command) {
-        pci_write(dev, PCIR_COMMAND, 2, new);
-    } else {
-        printk("Warning: pci already INTx %s!\n",
-                enable == 1 ? "enabled" : "disabled");
-    }
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd | PCIM_CMD_BUSMASTEREN));
 }
 
-void pci_intx_enable(pci_dev_t * dev)
+
+void 
+pci_dma_disable(pci_dev_t * dev) 
 {
-    pci_set_intx(dev, 1);
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd & ~PCIM_CMD_BUSMASTEREN));
 }
 
-void pci_intx_disable(pci_dev_t * dev)
+
+void 
+pci_mmio_enable(pci_dev_t * dev) 
 {
-    pci_set_intx(dev, 0);
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd | PCIM_CMD_MEMEN));
 }
 
-void compose_msi_msg(
+
+void 
+pci_mmio_disable(pci_dev_t * dev) 
+{
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd & ~PCIM_CMD_MEMEN));
+}
+
+void 
+pci_ioport_enable(pci_dev_t * dev) 
+{
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd | PCIM_CMD_PORTEN));
+}
+
+
+void 
+pci_ioport_disable(pci_dev_t * dev) 
+{
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd & ~PCIM_CMD_PORTEN));
+}
+
+
+void 
+pci_intx_enable(pci_dev_t * dev)
+{
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd & ~PCIM_CMD_INTxDIS));
+}
+
+void 
+pci_intx_disable(pci_dev_t * dev)
+{
+	u16 cmd =  pci_read(dev, PCIR_COMMAND, 2);
+	pci_write(dev, PCIR_COMMAND, 2, (cmd | PCIM_CMD_INTxDIS));
+}
+
+void 
+	compose_msi_msg(
         struct msi_msg *msg,
         unsigned int dest,
         u8 vector)
