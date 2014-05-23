@@ -7,3 +7,5 @@ obj-$(CONFIG_DEVFS) += devfs.o
 
 obj-$(CONFIG_ACPI) += acpi/
 
+obj-y += xpmem/
+

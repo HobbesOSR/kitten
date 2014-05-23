@@ -69,6 +69,8 @@ libs-y += arch/x86_64/lib/
 core-y += arch/x86_64/kernel/	\
           arch/x86_64/mm/
 
+core-$(CONFIG_PISCES) += arch/x86_64/pisces/
+
 boot := arch/x86_64/boot
 
 PHONY += bzImage archmrproper isoimage archclean

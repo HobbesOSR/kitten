@@ -18,6 +18,10 @@
 #include <arch/page.h>
 #include <arch/pgtable.h>
 
+#ifdef CONFIG_PISCES
+#include <arch/pisces/pisces.h>
+#endif
+
 /**
  * Data passed to the kernel by the bootloader.
  *
@@ -118,6 +122,16 @@ x86_64_start_kernel(char * real_mode_data)
 	for (i = 0; i < NR_CPUS; i++)
 		cpu_pda(i) = &boot_cpu_pda[i];
 	pda_init(0, &bootstrap_task_union.task_info);
+
+#ifdef CONFIG_PISCES
+	/* 
+	 * If we are booting as a pisces instance, we have a separate setup path
+	 */
+	pisces_init(real_mode_data);
+        while(1);
+	/* This does not return */
+
+#endif
 
 	/*
 	 * Make a copy data passed by the bootloader.

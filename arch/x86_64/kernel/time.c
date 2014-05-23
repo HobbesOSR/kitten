@@ -142,6 +142,23 @@ crayxt_detect_cpu_freq(void)
 }
 #endif
 
+#ifdef CONFIG_PISCES
+
+#include <arch/pisces/pisces_boot_params.h>
+
+extern struct pisces_boot_params * pisces_boot_params;
+
+static unsigned int __init
+pisces_detect_cpu_freq(void)
+{    
+    return pisces_boot_params->cpu_khz;
+}
+
+
+#endif
+
+
+
 void __init
 time_init(void)
 {
@@ -151,11 +168,13 @@ time_init(void)
 	/*
 	 * Detect the CPU frequency
 	 */
-#if defined CONFIG_PC
+#if defined CONFIG_PC 
 	cpu_khz = pit_calibrate_tsc();
 	pit_stop_timer0();
 #elif defined CONFIG_CRAY_XT
 	cpu_khz = crayxt_detect_cpu_freq();
+#elif defined CONFIG_PISCES
+	cpu_khz = pisces_detect_cpu_freq();
 #else
 	#error "In time_init(), unknown system architecture."
 #endif

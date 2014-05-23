@@ -46,6 +46,11 @@ config CRAY_XT
          help
 	  Support for Cray XT3 and XT4 systems.
 
+config PISCES
+	bool "Multi-instance environment"
+	help 
+	  Support for running Kitten as a multi-instance enclave
+
 endchoice
 
 

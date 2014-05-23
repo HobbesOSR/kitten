@@ -27,7 +27,7 @@
  * Points to the MP table, once and if it is found.
  * This gets initialized by find_mp_table().
  */
-static struct intel_mp_floating *mpf_found;
+struct intel_mp_floating *mpf_found;
 
 /**
  * Physical CPU ID of the bootstrap CPU (the BP).

@@ -45,6 +45,7 @@ arch_boot_cpu(unsigned int cpu)
 	union task_union *new_task_union;
 	struct task_struct *new_task;
 
+#ifndef CONFIG_PISCES
 	/*
 	 * Setup the 'trampoline' cpu boot code. The trampoline contains the
 	 * first code executed by the CPU being booted. x86 CPUs boot in
@@ -55,6 +56,7 @@ arch_boot_cpu(unsigned int cpu)
 	memcpy(__va(trampoline_base_paddr), trampoline_data,
 	                                    trampoline_end - trampoline_data
         );
+#endif
 
 
 	/*

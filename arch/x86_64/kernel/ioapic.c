@@ -272,6 +272,12 @@ ioapic_map(void)
 	if (ioapic_num == 0)
 		return;
 
+#ifdef CONFIG_PISCES
+	printk("ERROR ERROR: Should never map in the IOAPIC on Pisces\n");
+	while (1);
+#endif
+
+
 	/*
 	 * Allocate enough memory for one resource structure per detected IO
 	 * APIC in the system. Memory for the resource name strings is tacked

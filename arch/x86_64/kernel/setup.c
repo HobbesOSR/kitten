@@ -269,16 +269,11 @@ static inline int get_family(int cpuid)
         return (0xf == base) ? base + extended : base;
 }
 
-/**
- * Architecture specific initialization.
- * This is called from start_kernel() in init/main.c.
- *
- * NOTE: Ordering is usually important.  Do not move things
- *       around unless you know what you are doing.
- */
-void __init
-setup_arch(void)
+
+static void __init
+setup_pc_arch(void) 
 {
+
 	/*
 	 * Figure out which memory regions are usable and which are reserved.
 	 * This builds the "e820" map of memory from info provided by the
@@ -382,7 +377,30 @@ setup_arch(void)
 
 	lapic_set_timer_freq(sched_hz);
     
-    mcheck_init();
+	mcheck_init();
+}
+
+#ifdef CONFIG_PISCES
+#include "../pisces/pisces_setup.h"
+#endif
+
+/**
+ * Architecture specific initialization.
+ * This is called from start_kernel() in init/main.c.
+ *
+ * NOTE: Ordering is usually important.  Do not move things
+ *       around unless you know what you are doing.
+ */
+void __init
+setup_arch(void)
+{
+
+#ifdef CONFIG_PISCES
+	setup_pisces_arch();
+#else
+	setup_pc_arch();
+#endif
+	return;
 }
 
 void disable_APIC_timer(void)
