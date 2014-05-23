@@ -94,7 +94,7 @@ int xpmem_attach_remote(struct xpmem_cmd_attach_ex * attach_ex) {
 	paddr_t paddr;
 	if (aspace_virt_to_phys(current->aspace->id, seg_vaddr, &paddr)) {
 	    printk(KERN_ERR "XPMEM: Cannot get PFN for vaddr %p\n", (void *)seg_vaddr);
-	    kfree(pfns);
+	    kmem_free(pfns);
 	    return -EFAULT;
 	}
 
