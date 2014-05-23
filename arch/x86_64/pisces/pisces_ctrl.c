@@ -13,10 +13,6 @@
 #include <lwk/kthread.h>
 #include <lwk/print.h>
 
-/* For wake_up_process */
-#include <linux/sched.h>
-
-
 #include <arch/pisces/pisces.h>
 #include <arch/pisces/pisces_boot_params.h>
 #include <arch/pisces/pisces_xbuf.h>

@@ -5,8 +5,6 @@
 #ifndef _PISCES_BOOT_PARAMS_H_
 #define _PISCES_BOOT_PARAMS_H_
 
-#include <linux/types.h>
-
 #include <arch/pisces/pisces_pgtables.h>
 
 
