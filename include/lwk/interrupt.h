@@ -49,6 +49,19 @@ irq_request(
 );
 
 /**
+ * Requests a free IRQ vector and registers an interrupt handler for it
+ *
+ * Returns the IRQ allocated or -1 if there is no available IRQ
+ */
+extern int
+irq_request_free_vector(
+	irq_handler_t		handler,
+	unsigned long		irqflags,
+	const char *		devname,
+	void  *			dev_id
+);
+
+/**
  * Unregisters an interrupt handler.
  */
 extern void

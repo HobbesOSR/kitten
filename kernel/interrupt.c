@@ -54,6 +54,63 @@ irq_dispatch(
 	spin_unlock(&irq_desc->lock);
 }
 
+
+int
+irq_request_free_vector(
+	irq_handler_t		handler,
+	unsigned long		irqflags,
+	const char *		devname,
+	void  *			dev_id
+)
+{
+	struct irq_desc     * irq_desc = NULL;
+	struct handler_desc * handler_desc;
+	unsigned long irqstate;
+	int irq;
+
+	handler_desc = kmem_alloc(sizeof(struct handler_desc));
+	if (!handler_desc)
+		return -1;
+	
+	*handler_desc = (typeof(*handler_desc)){
+		.link		= LIST_HEAD_INIT(handler_desc->link),
+		.handler	= handler,
+		.irqflags	= irqflags,
+		.devname	= devname,
+		.dev_id		= dev_id,
+	};
+
+	for (irq  = FIRST_AVAIL_VECTOR;
+	     irq  < FIRST_SYSTEM_VECTOR; 
+	     irq += 1) {
+		int allocated = 0;
+
+		irq_desc = &irqs[irq];
+
+		spin_lock_irqsave(&irq_desc->lock, irqstate);
+		{
+			if (list_empty(&irq_desc->handlers)) {
+				list_add_tail(&handler_desc->link, &irq_desc->handlers);
+				allocated = 1;
+			}
+		}
+		spin_unlock_irqrestore(&irq_desc->lock, irqstate);
+
+		if (allocated) break;
+	}
+
+
+	/* Abort if we failed to find a free vector */
+	if (irq >= FIRST_SYSTEM_VECTOR) {
+		kmem_free(handler_desc);
+		return -1;
+	}
+
+	set_idtvec_handler(irq, irq_dispatch);
+
+	return irq;
+}
+
 int
 irq_request(
 	unsigned int		irq,
@@ -63,8 +120,8 @@ irq_request(
 	void  *			dev_id
 )
 {
-	struct irq_desc *irq_desc = &irqs[irq];
-	struct handler_desc *handler_desc;
+	struct irq_desc     * irq_desc = &irqs[irq];
+	struct handler_desc * handler_desc;
 	unsigned long irqstate;
 
 	if (irq >= NUM_IRQS)
