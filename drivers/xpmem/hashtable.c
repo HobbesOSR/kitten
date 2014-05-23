@@ -35,7 +35,7 @@
 
 #include <lwk/types.h>
 #include <lwk/kmem.h>
-#include <arch/pisces/hashtable.h>
+#include "hashtable.h"
 #include <arch/string.h>
 
 

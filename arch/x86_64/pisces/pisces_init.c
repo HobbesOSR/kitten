@@ -20,26 +20,26 @@ struct pisces_boot_params * pisces_boot_params = NULL;
 
 
 void __init
-pisces_guest_init(char *real_mode_data) 
+pisces_init(char *real_mode_data) 
 {
       
-        pisces_boot_params = (struct pisces_boot_params *)__va((u64)real_mode_data << PAGE_SHIFT);
+	pisces_boot_params = (struct pisces_boot_params *)__va((u64)real_mode_data << PAGE_SHIFT);
 
 
-        if (pisces_boot_params->magic != PISCES_MAGIC) {
-	    return;
-        }
+	if (pisces_boot_params->magic != PISCES_MAGIC) {
+		return;
+	}
 
 
 	// Emulate the necessary x86_boot_params provided by bootloader
 	// See: include/arch-x86_64/bootsetup.h
 	// This is ugly....
 	INITRD_START = pisces_boot_params->initrd_addr;
-	INITRD_SIZE =  pisces_boot_params->initrd_size;
+	INITRD_SIZE  = pisces_boot_params->initrd_size;
 	KERNEL_START = pisces_boot_params->kernel_addr;
-	LOADER_TYPE = 'P'; // For now it just needs to be set to something
+	LOADER_TYPE  = 'P'; // For now it just needs to be set to something
 
-        memcpy(lwk_command_line, pisces_boot_params->cmd_line, sizeof(lwk_command_line));
+	memcpy(lwk_command_line, pisces_boot_params->cmd_line, sizeof(lwk_command_line));
 
 
 	start_kernel();

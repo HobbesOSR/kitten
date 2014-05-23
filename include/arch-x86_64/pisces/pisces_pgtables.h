@@ -26,19 +26,19 @@
 #define PTE32PAE_INDEX(x)  ((((u32)x) >> 12) & 0x1ff)
 
 #define PML4E64_INDEX(x) ((((u64)x) >> 39) & 0x1ff)
-#define PDPE64_INDEX(x) ((((u64)x) >> 30) & 0x1ff)
-#define PDE64_INDEX(x) ((((u64)x) >> 21) & 0x1ff)
-#define PTE64_INDEX(x) ((((u64)x) >> 12) & 0x1ff)
+#define PDPE64_INDEX(x)  ((((u64)x) >> 30) & 0x1ff)
+#define PDE64_INDEX(x)   ((((u64)x) >> 21) & 0x1ff)
+#define PTE64_INDEX(x)   ((((u64)x) >> 12) & 0x1ff)
 
 
 /* Gets the base address needed for a Page Table entry */
-#define PAGE_TO_BASE_ADDR(x) ((x) >> 12)
+#define PAGE_TO_BASE_ADDR(x)     ((x) >> 12)
 #define PAGE_TO_BASE_ADDR_4KB(x) ((x) >> 12)
 #define PAGE_TO_BASE_ADDR_2MB(x) ((x) >> 21)
 #define PAGE_TO_BASE_ADDR_4MB(x) ((x) >> 22)
 #define PAGE_TO_BASE_ADDR_1GB(x) ((x) >> 30)
 
-#define BASE_TO_PAGE_ADDR(x) (((uintptr_t)x) << 12)
+#define BASE_TO_PAGE_ADDR(x)     (((uintptr_t)x) << 12)
 #define BASE_TO_PAGE_ADDR_4KB(x) (((uintptr_t)x) << 12)
 #define BASE_TO_PAGE_ADDR_2MB(x) (((uintptr_t)x) << 21)
 #define BASE_TO_PAGE_ADDR_4MB(x) (((uintptr_t)x) << 22)
@@ -52,21 +52,21 @@
 #define PAGE_OFFSET_4MB(x) ((x) & 0x3fffff)
 #define PAGE_OFFSET_1GB(x) ((x) & 0x3fffffff)
 
-#define PAGE_POWER 12
+#define PAGE_POWER     12
 #define PAGE_POWER_4KB 12
 #define PAGE_POWER_2MB 21
 #define PAGE_POWER_4MB 22
 #define PAGE_POWER_1GB 30
 
 // We shift instead of mask because we don't know the address size
-#define PAGE_ADDR(x) (((x) >> PAGE_POWER) << PAGE_POWER)
+#define PAGE_ADDR(x)     (((x) >> PAGE_POWER)     << PAGE_POWER)
 #define PAGE_ADDR_4KB(x) (((x) >> PAGE_POWER_4KB) << PAGE_POWER_4KB)
 #define PAGE_ADDR_2MB(x) (((x) >> PAGE_POWER_2MB) << PAGE_POWER_2MB)
 #define PAGE_ADDR_4MB(x) (((x) >> PAGE_POWER_4MB) << PAGE_POWER_4MB)
 #define PAGE_ADDR_1GB(x) (((x) >> PAGE_POWER_1GB) << PAGE_POWER_1GB)
 
 //#define PAGE_SIZE 4096
-#define PAGE_SIZE_4KB 4096
+#define PAGE_SIZE_4KB  4096
 #define PAGE_SIZE_2MB (4096 * 512)
 #define PAGE_SIZE_4MB (4096 * 1024)
 #define PAGE_SIZE_1GB 0x40000000
@@ -82,13 +82,13 @@
 
 
 
-#define CR3_TO_PDE32_PA(cr3) ((uintptr_t)(((u32)cr3) & 0xfffff000))
+#define CR3_TO_PDE32_PA(cr3)     ((uintptr_t)(((u32)cr3) & 0xfffff000))
 #define CR3_TO_PDPE32PAE_PA(cr3) ((uintptr_t)(((u32)cr3) & 0xffffffe0))
-#define CR3_TO_PML4E64_PA(cr3)  ((uintptr_t)(((u64)cr3) & 0x000ffffffffff000LL))
+#define CR3_TO_PML4E64_PA(cr3)   ((uintptr_t)(((u64)cr3) & 0x000ffffffffff000LL))
 
-#define CR3_TO_PDE32_VA(cr3) ((pde32_t *)__va((void *)(uintptr_t)(((u32)cr3) & 0xfffff000)))
+#define CR3_TO_PDE32_VA(cr3)     ((pde32_t     *)__va((void *)(uintptr_t)(((u32)cr3) & 0xfffff000)))
 #define CR3_TO_PDPE32PAE_VA(cr3) ((pdpe32pae_t *)__va((void *)(uintptr_t)(((u32)cr3) & 0xffffffe0)))
-#define CR3_TO_PML4E64_VA(cr3)  ((pml4e64_t *)__va((void *)(uintptr_t)(((u64)cr3) & 0x000ffffffffff000LL)))
+#define CR3_TO_PML4E64_VA(cr3)   ((pml4e64_t   *)__va((void *)(uintptr_t)(((u64)cr3) & 0x000ffffffffff000LL)))
 
 
 
@@ -324,11 +324,11 @@ typedef struct pte64 {
 /* *************** */
 
 typedef struct pf_error_code {
-    u32 present           : 1; // if 0, fault due to page not present
-    u32 write             : 1; // if 1, faulting access was a write
-    u32 user              : 1; // if 1, faulting access was in user mode
-    u32 rsvd_access       : 1; // if 1, fault from reading a 1 from a reserved field (?)
-    u32 ifetch            : 1; // if 1, faulting access was an instr fetch (only with NX)
+    u32 present           : 1; /* if 0, fault due to page not present                     */
+    u32 write             : 1; /* if 1, faulting access was a write                       */
+    u32 user              : 1; /* if 1, faulting access was in user mode                  */
+    u32 rsvd_access       : 1; /* if 1, fault from reading a 1 from a reserved field (?)  */
+    u32 ifetch            : 1; /* if 1, faulting access was an instr fetch (only with NX) */
     u32 rsvd              : 27;
 } __attribute__((packed)) pf_error_t;
 

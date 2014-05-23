@@ -17,45 +17,47 @@
 #include <linux/sched.h>
 
 
+#include <arch/pisces/pisces.h>
 #include <arch/pisces/pisces_boot_params.h>
 #include <arch/pisces/pisces_xbuf.h>
-#include <arch/pisces/pisces_ipi.h>
 
 extern struct pisces_boot_params * pisces_boot_params;
+static struct pisces_xbuf_desc   * xbuf_desc = NULL;
 
-static waitq_t user_waitq;
-static struct pisces_xbuf_desc * xbuf_desc = NULL;
-static u8 * cmd_data = NULL;
-static u32 cmd_len = 0;
+static waitq_t   user_waitq;
+static u8      * cmd_data   = NULL;
+static u32       cmd_len    = 0;
 
 // This has to be done in a single operation
 static ssize_t 
-cmd_write(struct file * filp, const char __user * ubuf, size_t size, loff_t * off) {
-    u8 * resp = NULL;
+cmd_write(struct file       * filp,
+	  const char __user * ubuf, 
+	  size_t              size, 
+	  loff_t            * off) 
+{
+	u8 * resp = NULL;
 
-    cmd_data = NULL;
-    cmd_len = 0;
+	cmd_data  = NULL;
+	cmd_len   = 0;
 
+	resp = kmem_alloc(size);
 
-
-    resp = kmem_alloc(size);
-
-    if (!resp) {
-        printk(KERN_ERR "Unable to allocate buffer for command response\n");
-        return -ENOMEM;
-    }
-
-
-    // write response to buffer
-    if (copy_from_user(resp, ubuf, size)) {
-	return -EINVAL;
-    }
+	if (!resp) {
+		printk(KERN_ERR "Unable to allocate buffer for command response\n");
+		return -ENOMEM;
+	}
 
 
-    pisces_xbuf_complete(xbuf_desc, resp, size);
+	// write response to buffer
+	if (copy_from_user(resp, ubuf, size)) {
+		return -EINVAL;
+	}
 
-    kmem_free(resp);
-    return size;
+
+	pisces_xbuf_complete(xbuf_desc, resp, size);
+
+	kmem_free(resp);
+	return size;
 }
 
 
@@ -65,14 +67,18 @@ cmd_write(struct file * filp, const char __user * ubuf, size_t size, loff_t * of
    This means that reading a command with data requires 2(!!) read operations
 */
 static ssize_t 
-cmd_read(struct file * filp, char __user * ubuf, size_t size, loff_t * off) {
+cmd_read(struct file * filp, 
+	 char __user * ubuf, 
+	 size_t        size, 
+	 loff_t      * off) 
+{
 	//	u32 cmd_len = 0;
 	u32 read_len = 0;
 
 
 	while (cmd_data == NULL) {
-	    wait_event_interruptible(user_waitq,
-				     (cmd_data != NULL));
+		wait_event_interruptible(user_waitq,
+					 (cmd_data != NULL));
 	}
 
  
@@ -107,7 +113,9 @@ cmd_read(struct file * filp, char __user * ubuf, size_t size, loff_t * off) {
 }
 
 static unsigned int 
-cmd_poll(struct file * filp, struct poll_table_struct * table) {
+cmd_poll(struct file              * filp,
+	 struct poll_table_struct * table) 
+{
 	unsigned int mask = 0;
 
 	poll_wait(filp, &(user_waitq), table);
@@ -123,47 +131,49 @@ cmd_poll(struct file * filp, struct poll_table_struct * table) {
 
 
 static int 
-cmd_open(struct inode * inodep, struct file * filp) {
-
+cmd_open(struct inode * inodep, 
+	 struct file  * filp) 
+{
 	return 0;
 }
 
 
 
 static int 
-cmd_close(struct file * filp) {
-	
-
+cmd_close(struct file * filp) 
+{
 	return 0;
 }
 
 static long 
-cmd_ioctl(struct file *filp,
-        unsigned int ioctl, unsigned long arg)
+cmd_ioctl(struct file  * filp,
+	  unsigned int   ioctl, 
+	  unsigned long  arg)
 {
-
-    return 0;
+	return 0;
 }
 
 static struct kfs_fops pisces_ctrl_fops = {
-	.open = cmd_open, 
-	.write = cmd_write,
-	.read = cmd_read,
-	.poll = cmd_poll, 
-	.close = cmd_close,
+	.open           = cmd_open, 
+	.write          = cmd_write,
+	.read           = cmd_read,
+	.poll           = cmd_poll, 
+	.close          = cmd_close,
 	.unlocked_ioctl = cmd_ioctl,
 };
 
 
 static void 
-cmd_handler(u8 * data, u32 data_len, void * priv_data)
+cmd_handler(u8    * data, 
+	    u32     data_len, 
+	    void  * priv_data)
 {	
 	cmd_data = data;
-	cmd_len = data_len;
+	cmd_len  = data_len;
 
 	__asm__ __volatile__("":::"memory");
-	waitq_wakeup(&(user_waitq));
 
+	waitq_wakeup(&(user_waitq));
 
 	return;
 }
@@ -184,7 +194,7 @@ pisces_ctrl_init(void)
 
 	xbuf_desc = pisces_xbuf_server_init((uintptr_t)__va(pisces_boot_params->control_buf_addr), 
 					    pisces_boot_params->control_buf_size, 
-					    cmd_handler, NULL, PISCES_CTRL_IPI_VECTOR, 0);		 
+					    cmd_handler, NULL, -1, 0);		 
 
 	if (xbuf_desc == NULL) {
 		printk(KERN_ERR "Could not initialize cmd/ctrl xbuf channel\n");

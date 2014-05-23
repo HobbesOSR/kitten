@@ -3,12 +3,8 @@
 
 #include <lwk/types.h>
 
-#define CRIT_LCALL_START 0
 #define KERN_LCALL_START 10000
 #define USER_LCALL_START 20000
-
-
-/* CRITICAL/ATOMIC LCALLS (0 - 9999) */
 
 
 /* KERNEL LCALLS (10000 - 19999) */
@@ -41,22 +37,24 @@
 
 
 struct pisces_lcall {
-    u64 lcall;
-    u32 data_len;
-    u8 data[0];
+	u64 lcall;
+	u32 data_len;
+	u8  data[0];
 } __attribute__((packed));
 
 
 
 struct pisces_lcall_resp {
-    u64 status;
-    u32 data_len;
-    u8 data[0];
+	u64 status;
+	u32 data_len;
+	u8  data[0];
 } __attribute__((packed));
 
 
 
-int pisces_lcall_exec(struct pisces_lcall * lcall, struct pisces_lcall_resp ** resp);
+int pisces_lcall_exec(struct pisces_lcall       * lcall, 
+		      struct pisces_lcall_resp ** resp);
+
 int pisces_lcall_init( void );
 
 

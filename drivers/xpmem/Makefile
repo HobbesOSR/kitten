@@ -1,3 +1,3 @@
-obj-y += xpmem.o xpmem_extended.o xpmem_pisces.o
+obj-y += xpmem.o xpmem_extended.o xpmem_pisces.o hashtable.o
 
 EXTRA_CFLAGS = -I$(obj)/include

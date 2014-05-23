@@ -12,10 +12,8 @@ struct xpmem_pfn {
 };
 
 unsigned long
-pisces_map_xpmem_pfn_range(
-    struct xpmem_pfn * pfns,
-    u64 num_pfns
-);
+pisces_map_xpmem_pfn_range(struct xpmem_pfn * pfns,
+			   u64                num_pfns);
 
 
 #endif /* __PISCES_PAGEMAP_H__ */

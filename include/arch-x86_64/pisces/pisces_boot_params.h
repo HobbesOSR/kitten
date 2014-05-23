@@ -16,22 +16,21 @@ struct pisces_enclave;
 
 
 /* Pisces Boot loader memory layout
-
- * 1. boot parameters // 4KB aligned
+ * 1. boot parameters             // 4KB aligned
  *     ->  Trampoline code sits at the start of this structure 
- * 2. Console ring buffer (64KB) // 4KB aligned
- * 3. To enclave CMD buffer  // (4KB)
- * 4. From enclave CMD buffer // (4KB)
+ * 2. Console ring buffer (64KB)  // 4KB aligned
+ * 3. To enclave CMD buffer       // (4KB)
+ * 4. From enclave CMD buffer     // (4KB)
  * 5. Identity mapped page tables // 4KB aligned (5 Pages)
- * 6. kernel image // 2M aligned
- * 7. initrd // 2M aligned
+ * 6. kernel image                // 2M aligned
+ * 7. initrd                      // 2M aligned
  *
  */
 
 struct pisces_ident_pgt {
-    pdpe64_t      pdp[MAX_PDPE64_ENTRIES];
-    pde64_2MB_t   pd0[MAX_PDE64_ENTRIES]; // 1G mapping from 0
-    pde64_2MB_t   pd1[MAX_PDE64_ENTRIES]; // 1G mapping from bootmem_addr
+	pdpe64_t      pdp[MAX_PDPE64_ENTRIES];
+	pde64_2MB_t   pd0[MAX_PDE64_ENTRIES];  /* 1G mapping from 0            */
+	pde64_2MB_t   pd1[MAX_PDE64_ENTRIES];  /* 1G mapping from bootmem_addr */
 };
 
 
@@ -42,61 +41,61 @@ struct pisces_ident_pgt {
 /* All addresses in this structure are physical addresses */
 struct pisces_boot_params {
 
-    // Embedded asm to load esi and jump to kernel
-    u64 launch_code[8]; 
+	/* Embedded asm to load esi and jump to kernel */
+	u64 launch_code[8]; 
 
-    u8 init_dbg_buf[16];
-
-
-    u64 magic;
-
-    u64 boot_params_size;
-
-    u64 cpu_id;
-    u64 apic_id;
-    u64 cpu_khz;
-
-    u64 trampoline_code_pa;
-
-    // coordinator domain cpu apic id
-    u64 domain_xcall_master_apicid;
-
-    // domain cross call vector id
-    u64 domain_xcall_vector;
-
-    // cmd_line
-    char cmd_line[1024];
-
-    // kernel
-    u64 kernel_addr;
-    u64 kernel_size;
-
-    // initrd
-    u64 initrd_addr;
-    u64 initrd_size;
+	u8 init_dbg_buf[16];
 
 
-    // The address of the ring buffer used for the early console
-    u64 console_ring_addr;
-    u64 console_ring_size;
+	u64 magic;
 
-    // Address and size of the linux->enclave command/control channel
-    u64 control_buf_addr;
-    u64 control_buf_size;
+	u64 boot_params_size;
 
-    // Address and size of the enclave->linux command/control channel
-    u64 longcall_buf_addr;
-    u64 longcall_buf_size;
+	u64 cpu_id;
+	u64 apic_id;
+	u64 cpu_khz;
 
-    // Address and size of the enclave->linux XPMEM channel
-    u64 xpmem_buf_addr;
-    u64 xpmem_buf_size;
+	u64 trampoline_code_pa;
 
-    // 1G ident mapping for guest kernel
-    pml4e64_t ident_pml4e64;
+	/* coordinator domain cpu apic id */
+	u64 domain_xcall_master_apicid;
 
-    u64 base_mem_paddr;
-    u64 base_mem_size;
+	/* domain cross call vector id */
+	u64 domain_xcall_vector;
+
+	/* cmd_line */
+	char cmd_line[1024];
+
+	/* kernel */
+	u64 kernel_addr;
+	u64 kernel_size;
+
+	/* initrd */
+	u64 initrd_addr;
+	u64 initrd_size;
+	
+
+	/* The address of the ring buffer used for the early console */
+	u64 console_ring_addr;
+	u64 console_ring_size;
+
+	/* Address and size of the linux->enclave command/control channel */
+	u64 control_buf_addr;
+	u64 control_buf_size;
+
+	/* Address and size of the enclave->linux command/control channel */
+	u64 longcall_buf_addr;
+	u64 longcall_buf_size;
+
+	/* Address and size of the enclave->linux XPMEM channel */
+	u64 xpmem_buf_addr;
+	u64 xpmem_buf_size;
+
+	/* 1G ident mapping for guest kernel */
+	pml4e64_t ident_pml4e64;
+
+	u64 base_mem_paddr;
+	u64 base_mem_size;
 
 
 } __attribute__((packed));

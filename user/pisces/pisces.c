@@ -525,6 +525,7 @@ main(int argc, char ** argv, char * envp[]) {
 
 			if (ioctl(palacios_fd, V3_VM_CONSOLE_CONNECT, &cons_ring_buf) < 0) {
 			    printf("ERROR: Could connect to VM console\n");
+			    cons_ring_buf = 0;
 			}
 
 			printf("Console ring buffer at %p\n", (void *)cons_ring_buf);

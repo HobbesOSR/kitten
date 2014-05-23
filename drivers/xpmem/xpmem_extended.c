@@ -14,7 +14,7 @@
 
 #include <lwk/aspace.h>
 #include <lwk/list.h>
-#include <arch/pisces/hashtable.h>
+#include "hashtable.h"
 
 #include <xpmem.h>
 #include <xpmem_extended.h>
