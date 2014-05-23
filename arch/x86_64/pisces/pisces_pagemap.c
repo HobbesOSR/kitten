@@ -1,5 +1,4 @@
 #include <arch/pisces/pisces_pagemap.h>
-//#include <arch/pisces/pisces_portals.h>
 #include <lwk/aspace.h>
 #include <lwk/pfn.h>
 
