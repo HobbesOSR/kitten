@@ -1,5 +1,3 @@
-#ifdef CONFIG_LINUX
-
 #include <lwk/poll.h>
 #include <lwk/aspace.h>
 #include <arch/uaccess.h>
@@ -40,7 +38,7 @@ static struct poll_table_entry *poll_get_entry(struct poll_wqueues *p)
 	if (!table || POLL_TABLE_FULL(table)) {
 		struct poll_table_page *new_table;
 
-		new_table = (struct poll_table_page *) __get_free_page(GFP_KERNEL);
+		new_table = (struct poll_table_page *) kmem_get_pages(0);
 		if (!new_table) {
 			p->error = -ENOMEM;
 			return NULL;
@@ -77,7 +75,7 @@ static int __pollwake(waitq_entry_t *wait, unsigned mode, int sync, void *key)
 	 * pass in @sync.  @sync is scheduled to be removed and once
 	 * that happens, wake_up_process() can be used directly.
 	 */
-	return wake_up_process(pwq->polling_task);
+	return sched_wakeup_task(pwq->polling_task, TASK_ALL);
 }
 
 static int pollwake(waitq_entry_t *wait, unsigned mode, int sync, void *key)
@@ -152,7 +150,7 @@ void poll_freewait(struct poll_wqueues *pwq)
 		} while (entry > p->entries);
 		old = p;
 		p = p->next;
-		free_page((unsigned long) old);
+		kmem_free_pages(old, 0);
 	}
 }
 
@@ -368,5 +366,4 @@ out_fds:
 
 	return err;
 }
-#endif /* CONFIG_LINUX */
 

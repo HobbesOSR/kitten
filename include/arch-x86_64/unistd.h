@@ -25,14 +25,8 @@ __SYSCALL(__NR_stat, sys_stat)
 __SYSCALL(__NR_fstat, sys_fstat)
 #define __NR_lstat                               6
 __SYSCALL(__NR_lstat, syscall_not_implemented)
-
 #define __NR_poll                                7
-#ifdef CONFIG_LINUX
 __SYSCALL(__NR_poll, sys_poll)
-#else
-__SYSCALL(__NR_poll, syscall_not_implemented)
-#endif
-
 #define __NR_lseek                               8
 __SYSCALL(__NR_lseek, sys_lseek)
 #define __NR_mmap                                9
