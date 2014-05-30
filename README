@@ -1,5 +1,5 @@
 Quick Start
-===========
+============
     make config  (or make menuconfig, choosing all defaults will work)
     make isoimage
     qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -serial stdio -smp 4
