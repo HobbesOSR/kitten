@@ -597,11 +597,13 @@ socket_api_test( void )
 
 char test_buf[4096];
 char hello_buf[512];
-char resp_buf[4066];
+char resp_buf[4096];
 
 int block_layer_test(void) {
     int fd = 0;
     int ret = 0;
+
+    printf("\nTEST BEGIN: Block Layer\n");
 
     memset(test_buf, 0, 4096);
     memset(hello_buf, 0, 512);
@@ -610,27 +612,27 @@ int block_layer_test(void) {
     sprintf(hello_buf, "Hello There\n");
 
     fd = open("/dev/block/sata-0", O_RDWR);
-    printf("Opened SATA-0\n");
+    printf("  Opened SATA-0\n");
 
     ret = read(fd, test_buf, 4096);
-    printf("Read %d bytes. Buf:\n", ret);
-    printf("%s\n", test_buf);
+    printf("  Read %d bytes. Buf:\n", ret);
+    printf("  %s\n", test_buf);
 
     lseek(fd, 100 * 4096, 0);
 
     write(fd, hello_buf, 512);
 
     read(fd, resp_buf, 512);
-    printf("Resp1: %s\n", resp_buf);
+    printf("  Resp1: %s\n", resp_buf);
 
     lseek(fd, 100 * 4096, 0);
 
     read(fd, resp_buf + 1024, 512);
-    printf("Resp2: %s\n", resp_buf + 1024);
+    printf("  Resp2: %s\n", resp_buf + 1024);
 
     close(fd);
 
-
+    printf("TEST END: Block Layer\n");
     return 0;
 }
 
