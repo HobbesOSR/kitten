@@ -343,7 +343,8 @@ main(int argc, char ** argv, char * envp[])
 			    
 			    /* Issue VM Create command to Palacios */
 			    if (issue_v3_cmd(V3_CREATE_GUEST, (uintptr_t)&(vm_cmd.path)) == -1) {
-				    printf("Error: Could not create VM (%s)\n", vm_cmd.path.vm_name);
+				    printf("Error: Could not create VM (%s) at (%s)\n", 
+					   vm_cmd.path.vm_name, vm_cmd.path.file_name);
 				    send_resp(pisces_fd, -1);
 				    break;
 			    }
@@ -394,7 +395,7 @@ main(int argc, char ** argv, char * envp[])
 
 
 			    /* Issue Device Add operation to Palacios */
-			    if (issue_v3_cmd(V3_ADD_PCI_HW_DEV, (uintptr_t)&(v3_pci_spec)) == -1) {
+			    if (issue_v3_cmd(V3_ADD_PCI, (uintptr_t)&(v3_pci_spec)) == -1) {
 				    printf("Error: Could not add PCI device to Palacios\n");
 				    send_resp(pisces_fd, -1);
 				    break;

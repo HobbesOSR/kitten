@@ -13,21 +13,21 @@
 #include <arch/pisces/pisces_xbuf.h>
 
 
-#define XBUF_READY     0x01
-#define XBUF_PENDING   0x02
-#define XBUF_STAGED    0x04
-#define XBUF_ACTIVE    0x08
-#define XBUF_COMPLETE  0x10
+#define XBUF_READY     0x01ULL
+#define XBUF_PENDING   0x02ULL
+#define XBUF_STAGED    0x04ULL
+#define XBUF_ACTIVE    0x08ULL
+#define XBUF_COMPLETE  0x10ULL
 
 struct pisces_xbuf {
 	union {
 		u64 flags;
 		struct {
-			u8 ready          : 1;   /* Flag set by enclave OS, after channel is init'd      */
-			u8 pending        : 1;   /* Set when a message is ready to be received           */
-			u8 staged         : 1;   /* Used by the endpoints for staged data transfers      */
-			u8 active         : 1;   /* Set when a message has been accepted by the receiver */
-			u8 complete       : 1;   /* Set by the receiver when message has been handled    */
+			u64 ready          : 1;   /* Flag set by enclave OS, after channel is init'd      */
+			u64 pending        : 1;   /* Set when a message is ready to be received           */
+			u64 staged         : 1;   /* Used by the endpoints for staged data transfers      */
+			u64 active         : 1;   /* Set when a message has been accepted by the receiver */
+			u64 complete       : 1;   /* Set by the receiver when message has been handled    */
 			u64 rsvd          : 59;
 		} __attribute__((packed));
 	} __attribute__((packed));
