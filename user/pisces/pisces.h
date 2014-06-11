@@ -35,7 +35,7 @@
 struct pisces_cmd {
     u64 cmd;
     u32 data_len;
-    u8 data[0];
+    u8  data[0];
 } __attribute__((packed));
 
 
@@ -68,7 +68,7 @@ struct vm_path {
 
 struct cmd_create_vm {
     struct pisces_cmd hdr;
-    struct vm_path path;
+    struct vm_path    path;
 } __attribute__((packed));
 
 
@@ -82,8 +82,19 @@ struct cmd_vm_ctrl {
 
 struct cmd_vm_cons_keycode {
     struct pisces_cmd hdr;
+
     u32 vm_id;
-    u8 scan_code;
+    u8  scan_code;
+} __attribute__((packed));
+
+
+
+struct cmd_vm_debug {
+    struct pisces_cmd hdr;
+
+    u32          vm_id;
+    unsigned int core; 
+    unsigned int cmd;
 } __attribute__((packed));
 
 

@@ -86,8 +86,6 @@ issue_vm_cmd(int vm_id, u64 cmd, uintptr_t arg)
 	memset(vm_fname, 0, 128);
 	snprintf(vm_fname, 128, V3_VM_PATH "%d", vm_id);
 	
-	printf("Issuing Command (%llu) to VM (%d)\n", cmd, vm_id);
-	
 	palacios_fd = open(vm_fname,  O_RDWR);
 	
 	if (palacios_fd == -1) {
@@ -110,8 +108,7 @@ static int
 issue_v3_cmd(u64 cmd, uintptr_t arg) 
 {
 	int palacios_fd = 0;
-	
-	printf("Issuing Command to Palacios VMM\n");
+	int ret         = 0;
 	
 	palacios_fd = open(V3_CMD_PATH, O_RDWR);
 	
@@ -120,14 +117,12 @@ issue_v3_cmd(u64 cmd, uintptr_t arg)
 		return -1;
 	}
 	
-	if (ioctl(palacios_fd, cmd, arg) < 0) {
-		printf("ERROR: Couldnot issue command (%llu) to Palacios\n", cmd);
-		return -1;
-	}
+	ret = ioctl(palacios_fd, cmd, arg);
+
 	
 	close(palacios_fd);
 
-	return 0;
+	return ret;
 }
 
 int
@@ -342,7 +337,9 @@ main(int argc, char ** argv, char * envp[])
 
 			    
 			    /* Issue VM Create command to Palacios */
-			    if (issue_v3_cmd(V3_CREATE_GUEST, (uintptr_t)&(vm_cmd.path)) == -1) {
+			    vm_id = issue_v3_cmd(V3_CREATE_GUEST, (uintptr_t)&(vm_cmd.path));
+
+			    if (vm_id == -1) {
 				    printf("Error: Could not create VM (%s) at (%s)\n", 
 					   vm_cmd.path.vm_name, vm_cmd.path.file_name);
 				    send_resp(pisces_fd, -1);
@@ -379,7 +376,7 @@ main(int argc, char ** argv, char * envp[])
 
 			    memset(&cmd, 0, sizeof(struct cmd_add_pci_dev));
 
-			    printf("Adding V3 PCI Device (1)\n");
+			    printf("Adding V3 PCI Device\n");
 
 			    ret = read(pisces_fd, &cmd, sizeof(struct cmd_add_pci_dev));
 
@@ -397,6 +394,38 @@ main(int argc, char ** argv, char * envp[])
 			    /* Issue Device Add operation to Palacios */
 			    if (issue_v3_cmd(V3_ADD_PCI, (uintptr_t)&(v3_pci_spec)) == -1) {
 				    printf("Error: Could not add PCI device to Palacios\n");
+				    send_resp(pisces_fd, -1);
+				    break;
+			    }
+
+			    send_resp(pisces_fd, 0);
+			    break;
+		    }
+		    case ENCLAVE_CMD_FREE_V3_PCI: {
+			    struct cmd_add_pci_dev cmd;
+			    struct v3_hw_pci_dev   v3_pci_spec;
+			    int ret = 0;
+
+			    memset(&cmd, 0, sizeof(struct cmd_add_pci_dev));
+
+			    printf("Removing V3 PCI Device\n");
+
+			    ret = read(pisces_fd, &cmd, sizeof(struct cmd_add_pci_dev));
+
+			    if (ret != sizeof(struct cmd_add_pci_dev)) {
+				    send_resp(pisces_fd, -1);
+				    break;
+			    }
+
+			    memcpy(v3_pci_spec.name, cmd.spec.name, 128);
+			    v3_pci_spec.bus  = cmd.spec.bus;
+			    v3_pci_spec.dev  = cmd.spec.dev;
+			    v3_pci_spec.func = cmd.spec.func;
+
+
+			    /* Issue Device Add operation to Palacios */
+			    if (issue_v3_cmd(V3_REMOVE_PCI, (uintptr_t)&(v3_pci_spec)) == -1) {
+				    printf("Error: Could not remove PCI device from Palacios\n");
 				    send_resp(pisces_fd, -1);
 				    break;
 			    }
@@ -559,7 +588,30 @@ main(int argc, char ** argv, char * envp[])
 			    break;
 		    }
 
+		    case ENCLAVE_CMD_VM_DBG: {
+			    struct cmd_vm_debug pisces_cmd;
+			    struct v3_debug_cmd v3_cmd;
+			    
+			    ret = read(pisces_fd, &pisces_cmd, sizeof(struct cmd_vm_debug));
+			    
+			    if (ret != sizeof(struct cmd_vm_debug)) {
+				    send_resp(pisces_fd, -1);
+				    break;
+			    }
+			    
+			    v3_cmd.core = pisces_cmd.core;
+			    v3_cmd.cmd  = pisces_cmd.cmd;
+			    
+			    if (issue_vm_cmd(pisces_cmd.vm_id, V3_VM_DEBUG, (uintptr_t)&v3_cmd) == -1) {
+				    send_resp(pisces_fd, -1);
+				    break;
+			    }
+			    
+			    send_resp(pisces_fd, 0);
+			    break;
+		    }
 		    default: {
+			    printf("Unknown Pisces Command (%llu)\n", cmd.cmd);
 			    send_resp(pisces_fd, -1);
 			    break;
 		    }
