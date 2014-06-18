@@ -41,10 +41,11 @@ config PC
         help
 	  Support for standard PC compatible systems.
 
-config CRAY_XT
-        bool "Red Storm (Cray XT3/XT4)"
-         help
-	  Support for Cray XT3 and XT4 systems.
+config CRAY_GEMINI
+	bool "Cray XE and XK systems"
+	help
+	  Support for Cray XE and XK systems.
+	  These systems use the Cray Gemini interconnect.
 
 config PISCES
 	bool "Multi-instance environment"

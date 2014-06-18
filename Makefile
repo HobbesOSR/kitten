@@ -738,9 +738,9 @@ vmlwk: $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) $(kallsyms.o) FORCE
 	$(call if_changed_rule,vmlwk__)
 	$(Q)rm -f .old_version
 
-ifeq ($(CONFIG_CRAY_XT),y)
+ifeq ($(CONFIG_CRAY_GEMINI),y)
 # Generate the necessary padding to push the executable image
-# to the start address since the XT3 bootloader always loads
+# to the start address since the Cray bootloader always loads
 # at 0x10000.
 vmlwk.bin: vmlwk
 	$(OBJCOPY) -O binary $< $@.tmp

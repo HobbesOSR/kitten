@@ -118,7 +118,7 @@
 #define MAX_IO_APICS 16
 #define MAX_LOCAL_APIC 256
 
-#define MAX_IO_APIC_PINS 32   /* Max pins per I/O APIC */
+#define MAX_IO_APIC_PINS 64   /* Max pins per I/O APIC */
 #define MAX_IO_APIC_SRCS 32   /* Max devices sharing an I/O APIC pin */
 
 /*

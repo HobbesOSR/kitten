@@ -68,20 +68,16 @@ pit_calibrate_tsc(void)
 }
 #endif
 
-#ifdef CONFIG_CRAY_XT
+#ifdef CONFIG_CRAY_GEMINI
 /**
- * The Cray XT platform does not have any real time clocks. Therefore,
+ * The Cray platform does not have any real time clocks. Therefore,
  * we have to inspect various MSRs to determine the CPU frequency and
  * trust that it is accurate.
  *
  * Returns the detected CPU frequency in KHz.
- *
- * NOTE: This function should only be used on Cray XT3/XT4/XT? platforms.
- *       While it will work on (some) AMD Opteron K8 and K10 systems, using a
- *       timer based mechanism to detect the actual CPU frequency is preferred.
  */
 static unsigned int __init
-crayxt_detect_cpu_freq(void)
+cray_detect_cpu_freq(void)
 {
 	unsigned int MHz = 200;
 	unsigned int lower, upper;
@@ -135,7 +131,9 @@ crayxt_detect_cpu_freq(void)
 			case 42:  MHz *= 25; break;
 		}
 	} else {
-		panic("Unknown AMD CPU family (%d).", amd_family);
+		//panic("Unknown AMD CPU family (%d).", amd_family);
+		printk(KERN_WARNING "FIXME: Assuming 2.4 GHz processor.\n");
+		MHz *= 12;
 	}
 
 	return (MHz * 1000); /* return CPU freq. in KHz */
@@ -171,8 +169,8 @@ time_init(void)
 #if defined CONFIG_PC 
 	cpu_khz = pit_calibrate_tsc();
 	pit_stop_timer0();
-#elif defined CONFIG_CRAY_XT
-	cpu_khz = crayxt_detect_cpu_freq();
+#elif defined CONFIG_CRAY_GEMINI
+	cpu_khz = cray_detect_cpu_freq();
 #elif defined CONFIG_PISCES
 	cpu_khz = pisces_detect_cpu_freq();
 #else

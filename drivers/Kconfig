@@ -10,8 +10,8 @@ config VGA_CONSOLE
 
 config SERIAL_CONSOLE
 	bool "Serial console support"
-	depends on PC
-	default PC
+	depends on PC || CRAY_GEMINI
+	default y
 
 config VM_CONSOLE
 	bool "VM console"
@@ -30,16 +30,6 @@ config KEYBOARD
 config DEVFS
 	bool
 	default y
-
-config RCAL0_CONSOLE
-	bool "Cray XT3 L0 console support"
-	depends on CRAY_XT
-	default CRAY_XT
-
-config SEASTAR
-        bool "Cray XT3 Seastar network"
-        depends on CRAY_XT && NETWORK
-        default CRAY_XT
 
 config E1000
         bool "E1000 Device Driver (e1000)"
@@ -64,7 +54,6 @@ config VMNET
           Paravirtualized network device driver for use by guest
           virtual machines.
           If the kernel will be run under Palacios, say yes.
-
 
 config SATA
 	bool "SATA block driver"

@@ -101,25 +101,14 @@ Instructions for Booting on Real Hardware
             console=vga,serial
             console=serial serial.port=0x2f8 serial.baud=9600
 
-    Cray XT hardware:
-        These instructions are for 2.0 management system; 2.1 requires
-        a different set of steps.
-
+    Cray XE and XK hardware:
         Do 'make config' and choose:
-            System Architecture ---> Red Storm (Cray XT3/XT4)
-        Rebuild, and copy the following files to /bootimages/cageN/CNL0/:
+            System Architecture ---> Cray XE and XK systems
+        Rebuild, and then use the following files:
             kernel image: ./vmlwk.bin
             initrd:       ./init_task
-        Update the /bootimages/cageN/CNL0.load file:
-            CNL0/vmlwk.bin 0x100000
-            CNL0/parameters-vmlwk 0x90800
-            CNL0/init_task 0xFA00000
-
-        Create the /bootimages/cageN/CNL0/parameters-vmlwk:
-            console=rcal0 net=seastar
-
-        Run 'create_bi cageN'
-        Reboot the nodes 'xtbootsys --reboot --partition p4 c5-0c0s1n0'
+        Pass the following kernel command line to setup the console:
+            console=serial serial.baud=115200
 
 
 Instructions for Building with Palacios VMM Support

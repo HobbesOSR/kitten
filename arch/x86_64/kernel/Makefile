@@ -8,8 +8,6 @@ obj-y		:= setup.o e820.o cpuinfo.o resource.o \
 		   sys_not_implemented.o
 obj-$(CONFIG_KGDB) += kgdb.o
 
-obj-$(CONFIG_CRAY_XT) += rca/
-
 obj-$(CONFIG_PALACIOS_INTERNAL) += palacios/
 
 obj-$(CONFIG_PALACIOS_GDB) += gdb.o

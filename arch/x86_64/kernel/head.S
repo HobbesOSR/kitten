@@ -27,7 +27,7 @@
 	.text
 	.section .bootstrap.text
 
-#ifdef CONFIG_CRAY_XT
+#ifdef CONFIG_CRAY_GEMINI
 	.code32
 	.globl startup_32
 startup_32:
@@ -65,7 +65,7 @@ startup_32:
 	 * This jump transitions us into true 64-bit mode.
 	 */
 	ljmp	$__KERNEL_CS, $(startup_64 - __START_KERNEL_map)
-#endif /* CONFIG_CRAY_XT */
+#endif /* CONFIG_CRAY_GEMINI */
 
 	.code64
 	.globl startup_64
@@ -358,11 +358,7 @@ NEXT_PAGE(level3_kernel_pgt)
 	.fill	510,8,0
 	/* (2^48-(2*1024*1024*1024)-((2^39)*511))/(2^30) = 510 */
 	.quad	level2_kernel_pgt - __START_KERNEL_map + _KERNPG_TABLE
-#ifndef CONFIG_CRAY_XT
         .fill   1,8,0
-#else
-        .quad   level2_seastar_pgt - __START_KERNEL_map + _PAGE_TABLE
-#endif
 
 NEXT_PAGE(level2_ident_pgt)
 	/* Since I easily can, map the first 1G.
@@ -377,12 +373,6 @@ NEXT_PAGE(level2_kernel_pgt)
 	PMDS(0x0000000000000000, __PAGE_KERNEL_LARGE_EXEC|_PAGE_GLOBAL, KERNEL_TEXT_SIZE/PMD_SIZE)
 	/* Module mapping starts here */
 	.fill	(PTRS_PER_PMD - (KERNEL_TEXT_SIZE/PMD_SIZE)),8,0
-
-#ifdef CONFIG_CRAY_XT
-NEXT_PAGE(level2_seastar_pgt)
-        .fill 511,8,0
-        .quad   0x00000000ffe00193
-#endif
 
 NEXT_PAGE(level2_spare_pgt)
 	.fill   512,8,0
@@ -402,7 +392,7 @@ gdt:
 	.quad	0
 	.endr
 
-#ifdef CONFIG_CRAY_XT
+#ifdef CONFIG_CRAY_GEMINI
 	.align 16
 	.globl gdt32_descr
 gdt32_descr:
