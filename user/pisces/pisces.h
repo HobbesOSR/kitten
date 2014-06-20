@@ -31,6 +31,8 @@
 
 #define ENCLAVE_CMD_XPMEM_CMD_EX       300
 
+#define ENCLAVE_CMD_SHUTDOWN           900
+
 
 struct pisces_cmd {
     u64 cmd;

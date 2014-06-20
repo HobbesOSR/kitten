@@ -14,6 +14,8 @@
 #define V3_CREATE_GUEST          112
 #define V3_FREE_GUEST            113
 
+#define V3_SHUTDOWN              900
+
 /* VM Specific IOCTLs */
 #define V3_VM_PAUSE              123
 #define V3_VM_CONTINUE           124

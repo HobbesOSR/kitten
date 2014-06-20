@@ -610,6 +610,23 @@ main(int argc, char ** argv, char * envp[])
 			    send_resp(pisces_fd, 0);
 			    break;
 		    }
+
+		    case ENCLAVE_CMD_SHUTDOWN: {
+
+			if (issue_v3_cmd(V3_SHUTDOWN, 0) == -1) {
+			    printf("Error: Could not shutdown Palacios VMM\n");
+			    send_resp(pisces_fd, -1);
+			    break;
+			}
+			
+			/* Perform additional Cleanup is necessary */
+
+			send_resp(pisces_fd, 0);
+
+			close(pisces_fd);
+			exit(0);
+
+		    }
 		    default: {
 			    printf("Unknown Pisces Command (%llu)\n", cmd.cmd);
 			    send_resp(pisces_fd, -1);
