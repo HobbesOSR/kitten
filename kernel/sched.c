@@ -1,132 +1,122 @@
 /** \file
  * Process scheduler implementation.
  */
-#include <lwk/kernel.h>
-#include <lwk/spinlock.h>
 #include <lwk/smp.h>
-#include <lwk/percpu.h>
 #include <lwk/aspace.h>
 #include <lwk/sched.h>
-#include <lwk/xcall.h>
 #include <lwk/timer.h>
-#include <lwk/bootstrap.h>
 #include <lwk/params.h>
 #include <lwk/preempt_notifier.h>
-#include <lwk/kthread.h>
+#include <lwk/xcall.h>
+#include <lwk/bootstrap.h>
 
-/**
- * User-level tasks are preemptively scheduled sched_hz times per second.
- * Kernel threads are not preemptively scheduled and must call schedule()
- * themselves.
- */
+#include <lwk/sched_rr.h>
+
+#ifdef CONFIG_SCHED_EDF
+#include <lwk/sched_edf.h>
+#endif
+
 unsigned int sched_hz = 10;  /* default to 10 Hz */
 param(sched_hz, uint);
 
-
-/**
- * Process run queue.
- *
- * Kitten maintains a linked list of tasks per CPU that are in a
- * ready to run state.  Since the number of tasks is expected to
- * be low, the overhead is very smal.
- *
- * If there are no tasks on the queue's task_list, the idle task
- * is run instead.
- */
 struct run_queue {
-	spinlock_t           lock;
-	size_t               num_tasks;
-	int                  online;
-	struct list_head     task_list;
-	struct list_head     migrate_list;
-	struct task_struct * idle_task;
+        spinlock_t           lock;
+        size_t               num_tasks;
+        int                  online;
+        struct list_head     migrate_list;
+        struct task_struct * idle_task;
+        struct rr_rq rr;
+#ifdef CONFIG_SCHED_EDF
+        struct edf_rq edf;
+#endif
 };
 
 static DEFINE_PER_CPU(struct run_queue, run_queue);
 
 /** Spin until something else is ready to run */
-static void
+void
 idle_task_loop(void)
 {
-        struct run_queue *runq = &per_cpu(run_queue, this_cpu);
+	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
 
-	while (1) {
-		if (runq->online == 0) {
-			local_irq_disable();
-			kmem_free_pages(runq->idle_task, TASK_ORDER);
-			cpu_clear(this_cpu, cpu_online_map);
-			arch_idle_task_loop_body();
+        while (1) {
+                if (runq->online == 0) {
+                        local_irq_disable();
+                        kmem_free_pages(runq->idle_task, TASK_ORDER);
+                        cpu_clear(this_cpu, cpu_online_map);
+                        arch_idle_task_loop_body();
 
-			panic("CPU offline should not return!\n");
-		} else {
-			arch_idle_task_loop_body();
+                        panic("CPU offline should not return!\n");
+                } else {
+                        arch_idle_task_loop_body();
 			schedule();
 		}
-	}
+        }
 }
 
-int __init
-sched_init_runqueue(int cpu_id) {
-	struct run_queue * runq = &per_cpu(run_queue, cpu_id);
 
+int __init
+sched_init_runqueue(int cpu_id)
+{
+	struct run_queue *runq = &per_cpu(run_queue, cpu_id);
 
 	spin_lock_init(&runq->lock);
 	runq->num_tasks = 0;
 	runq->online    = 1;
-	list_head_init(&runq->task_list);
 	list_head_init(&runq->migrate_list);
- 
-	/*
-	 * Create this CPU's idle task. When a CPU has no
-	 * other work to do, it runs the idle task. 
-	 */
-	start_state_t start_state = {
-		.task_id     = IDLE_TASK_ID,
-		.task_name   = "idle_task",
-		.user_id     = 0,
-		.group_id    = 0,
-		.aspace_id   = KERNEL_ASPACE_ID,
-		.cpu_id      = cpu_id,
-		.stack_ptr   = 0, /* will be set automatically */
-		.entry_point = (vaddr_t) idle_task_loop,
-		.use_args    = 0,
-	};
- 
-	struct task_struct * idle_task = __task_create(&start_state, NULL);
-	if (!idle_task)
-		panic("Failed to create idle_task for CPU %u.", cpu_id);
 
-	runq->idle_task = idle_task;
 
- 	return 0;
+	rr_sched_init_runqueue(&runq->rr, cpu_id);
+#ifdef CONFIG_SCHED_EDF
+	edf_sched_init_runqueue(&runq->edf, cpu_id);
+#endif
+
+        /*
+         * Create this CPU's idle task. When a CPU has no
+         * other work to do, it runs the idle task.
+         */
+        start_state_t start_state = {
+                .task_id     = IDLE_TASK_ID,
+                .task_name   = "idle_task",
+                .user_id     = 0,
+                .group_id    = 0,
+                .aspace_id   = KERNEL_ASPACE_ID,
+                .cpu_id      = cpu_id,
+                .stack_ptr   = 0, /* will be set automatically */
+                .entry_point = (vaddr_t) idle_task_loop,
+                .use_args    = 0,
+#ifdef CONFIG_SCHED_EDF
+		.edf.period   = 0,
+#endif
+        };
+
+        struct task_struct * idle_task = __task_create(&start_state, NULL);
+        if (!idle_task)
+                panic("Failed to create idle_task for CPU %u.", cpu_id);
+
+        runq->idle_task = idle_task;
+
+	return 0;
 }
 
-
-/* set the offlining flag and migrate all tasks away
- * The idle task will complete the offline operation when it runs
- */
 void sched_cpu_remove(void * arg)
 {
-	struct run_queue   * runq = &per_cpu(run_queue, this_cpu);
-	struct task_struct * task = NULL;
-	struct task_struct * tmp  = NULL;
-
+	struct run_queue *runq = &per_cpu(run_queue, current->cpu_id);
 
 	local_irq_disable();
 	spin_lock(&runq->lock);
 
         runq->online = 0;
 
-	list_for_each_entry_safe(task, tmp, &runq->task_list, sched_link) {
-                kthread_bind(task, 0);
-                cpu_clear(this_cpu, task->aspace->cpu_mask);
-	}
+	rr_sched_cpu_remove(&runq->rr, arg);
 
+#ifdef CONFIG_SCHED_EDF
+	edf_sched_cpu_remove(&runq->edf, arg);
+#endif
 	spin_unlock(&runq->lock);
         local_irq_enable();
 }
-
-
+/* preempt_notifier functions (common to all schedulers)*/
 void 
 preempt_notifier_register(struct preempt_notifier * notifier)
 {
@@ -140,7 +130,7 @@ preempt_notifier_unregister(struct preempt_notifier * notifier)
 	hlist_del(&notifier->link);
 }
 
-static void 
+void
 fire_sched_out_preempt_notifiers(struct task_struct * curr,
 				 struct task_struct * next)
 {
@@ -152,7 +142,7 @@ fire_sched_out_preempt_notifiers(struct task_struct * curr,
 	}
 }
 
-static void
+void
 fire_sched_in_preempt_notifiers(struct task_struct * curr) 
 {
 	struct preempt_notifier * notifier;
@@ -172,8 +162,16 @@ sched_add_task(struct task_struct *task)
 
 	runq = &per_cpu(run_queue, cpu);
 	spin_lock_irqsave(&runq->lock, irqstate);
-	list_add_tail(&task->sched_link, &runq->task_list);
 	++runq->num_tasks;
+
+#ifdef CONFIG_SCHED_EDF
+	if (task->edf.period) {
+		edf_sched_add_task(&runq->edf, task);
+	} else
+#endif
+	{
+		rr_sched_add_task(&runq->rr, task);
+	}
 	spin_unlock_irqrestore(&runq->lock, irqstate);
 
 	if (cpu != this_cpu)
@@ -185,13 +183,24 @@ sched_del_task(struct task_struct *task)
 {
 	struct run_queue *runq;
 	unsigned long irqstate;
-
 	runq = &per_cpu(run_queue, task->cpu_id);
 	spin_lock_irqsave(&runq->lock, irqstate);
-	list_del(&task->sched_link);
 	--runq->num_tasks;
+
+#ifdef CONFIG_SCHED_EDF
+	if (task->edf.period) {
+	    edf_sched_del_task(&runq->edf, task);
+	} else
+#endif
+	{
+	    rr_sched_del_task(&runq->rr, task);
+	}
+
 	spin_unlock_irqrestore(&runq->lock, irqstate);
+
 }
+
+
 
 int
 sched_wakeup_task(struct task_struct *task, taskstate_t valid_states)
@@ -226,7 +235,8 @@ repeat_lock_runq:
 	return status;
 }
 
-static struct task_struct *
+/* Context switch function common to all schedulers*/
+struct task_struct *
 context_switch(struct task_struct *prev, struct task_struct *next)
 {
 	/* Switch to the next task's address space */
@@ -268,53 +278,55 @@ schedule(void)
 	if ((prev->state == TASK_INTERRUPTIBLE) && signal_pending(prev))
 		set_task_state(prev, TASK_RUNNING);
 
-	/* Move the currently running task to the end of the run queue.
-	 * This implements round-robin scheduling. */
-	if (!list_empty(&prev->sched_link)) {
-		list_del(&prev->sched_link);
+	/* Remove the currently running task from either the round-robin
+	 * runqueue or migrate list to the end of the run queue. */
 
-		/* If the task has exited, don't re-link it to any run queue list.
-		 * The task will be deleted in the second-half of schedule(). */
+	if (!list_empty(&prev->migrate_link)) {
+		list_del(&prev->migrate_link);
+	}
+	if(prev !=runq->idle_task){
+		if (!list_empty(&prev->rr.sched_link)) {
+			list_del(&prev->rr.sched_link);
+		}
 		if (prev->state != TASK_EXITED) {
-			/* If the task is migrating, move it to the migrate_list.
-			 * The task will be migrated in the second-half of schedule().
-			 * Otherwise, link it back onto the task_list. */
+			/* If the task is migrating, move it to the
+			* migrate_list.  The task will be migrated in
+			* the second-half of schedule().  Otherwise,
+			* link it back onto the task_list. */
 			if (prev->cpu_id != prev->cpu_target_id) {
-				list_add_tail(&prev->sched_link, &runq->migrate_list);
+				list_add_tail(&prev->migrate_link,
+				      &runq->migrate_list);
 				--runq->num_tasks;
+
 			} else {
-				list_add_tail(&prev->sched_link, &runq->task_list);
+#ifdef CONFIG_SCHED_EDF
+				/*If not scheduled by EDF adjust rr schedule*/
+				if (!prev->edf.period
+				||	!edf_adjust_schedule(&runq->edf, prev))
+#endif
+				{
+					rr_adjust_schedule(&runq->rr, prev);
+				}
 			}
 		}
 	}
-
-	/* Look for a ready to execute task */
-	list_for_each_entry_safe(task, tmp, &runq->task_list, sched_link) {
-		/* If the task is migrating, move it to the migrate_list.
-		 * The task will be migrated in the second-half of schedule(). */
-		if (task->cpu_id != task->cpu_target_id) {
-			list_del(&task->sched_link);
-			list_add_tail(&task->sched_link, &runq->migrate_list);
-			continue;
-		}
-
-		/* Pick the first running task */
-		if (task->state == TASK_RUNNING) {
-			next = task;
-			break;
-		}
+#ifdef CONFIG_SCHED_EDF
+	if (!( next = edf_schedule(&runq->edf, &runq->migrate_list) ))
+#endif
+	{
+		next = rr_schedule(&runq->rr, &runq->migrate_list);
 	}
-
 	/* If no tasks are ready to run, run the idle task */
 	if (next == NULL)
 		next = runq->idle_task;
 
 	/* A reschedule has occurred, so clear prev's TF_NEED_RESCHED_BIT */
 	clear_bit(TF_NEED_RESCHED_BIT, &prev->arch.flags);
-
 	if (prev != next) {
 		fire_sched_out_preempt_notifiers(prev, next);
-
+#ifdef CONFIG_SCHED_EDF
+		set_wakeup_task(&runq->edf,next);
+#endif
 		prev = context_switch(prev, next);
 
 		/* "next" is now running. Since it may have changed CPUs
@@ -329,29 +341,48 @@ schedule(void)
 		fire_sched_in_preempt_notifiers(current);
 
 		/* Free memory used by prev if it has exited */
-		if (prev->state == TASK_EXITED)
+		if (prev->state == TASK_EXITED) {
+#ifdef CONFIG_SCHED_EDF
+			/* Remove the current task from the EDF tree*/
+			edf_sched_del_task(&runq->edf,prev);
+#endif
 			kmem_free_pages(prev, TASK_ORDER);
+		}
 	}
 
 	spin_unlock(&runq->lock);
 	BUG_ON(irqs_enabled());
 
 	/* Migrate any tasks that need migrating.
-	 * Since schedule() is the only code that adds to the local CPUs 
+	 * Since schedule() is the only code that adds to the local CPUs
 	 * migrate_list, and since interrupts are disabled, we can safely
 	 * manipulate migrate_list without holding runq->lock. This is
 	 * important/required for avoiding deadlock with other CPUs. */
-	list_for_each_entry_safe(task, tmp, &runq->migrate_list, sched_link) {
+	list_for_each_entry_safe(task, tmp, &runq->migrate_list, migrate_link) {
 		id_t dest_cpu = task->cpu_target_id;
 		struct run_queue *dest_runq = &per_cpu(run_queue, dest_cpu);
 
 		/* Remove the task from the source runq's migrate_list */
-		list_del(&task->sched_link);
-
+		list_del(&task->migrate_link);
+#ifdef CONFIG_SCHED_EDF
+		/* Remove the current task from the EDF tree*/
+		edf_sched_del_task(&runq->edf,prev);
+#endif
 		/* Add the task to the destination runq's task_list */
 		spin_lock(&dest_runq->lock);
 		task->cpu_id = dest_cpu;
-		list_add_tail(&task->sched_link, &dest_runq->task_list);
+		/* XXX this should be a general schedule call for the
+		 * task on that CPU, but not this one which saves IRQs! */
+#ifdef CONFIG_SCHED_EDF
+		if (task->edf.period) {
+			edf_sched_add_task(&dest_runq->edf, task);
+		} else
+#endif
+		{
+			rr_sched_add_task(&dest_runq->rr, task);
+		}
+
+		list_head_init(&task->migrate_link);
 		++dest_runq->num_tasks;
 		spin_unlock(&dest_runq->lock);
 
@@ -366,22 +397,7 @@ schedule(void)
 		local_irq_enable();
 }
 
-void
-schedule_new_task_tail(struct task_struct *prev, struct task_struct *next)
-{
-	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
-
-	/* Free memory used by prev if it has exited.
-	 * Have to be careful not to free the bootstrap task_struct,
-	 * since it is not part of the kmem allocator heap. */
-	if ((prev->state == TASK_EXITED) && (prev != &bootstrap_task))
-		kmem_free_pages(prev, TASK_ORDER);
-
-	spin_unlock(&runq->lock);
-	BUG_ON(irqs_enabled());
-	/* arch code will re-enable IRQs as part of starting the new task */
-}
-
+/* schedule_timeout function common to all schedulers*/
 ktime_t
 schedule_timeout(ktime_t timeout)
 {
@@ -398,4 +414,25 @@ schedule_timeout(ktime_t timeout)
 		when = TIME_T_MAX;
 
 	return timer_sleep_until(when);
+}
+
+void
+schedule_new_task_tail(struct task_struct *prev, struct task_struct *next)
+{
+        struct run_queue *runq = &per_cpu(run_queue, this_cpu);
+
+        /* Free memory used by prev if it has exited.
+         * Have to be careful not to free the bootstrap task_struct,
+         * since it is not part of the kmem allocator heap. */
+        if ((prev->state == TASK_EXITED) && (prev != &bootstrap_task)){
+#ifdef CONFIG_SCHED_EDF
+		/* Remove the current task from the EDF tree*/
+		edf_sched_del_task(&runq->edf,prev);
+#endif
+		kmem_free_pages(prev, TASK_ORDER);
+	}
+
+        spin_unlock(&runq->lock);
+        BUG_ON(irqs_enabled());
+        /* arch code will re-enable IRQs as part of starting the new task */
 }

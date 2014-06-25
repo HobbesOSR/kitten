@@ -77,7 +77,8 @@ arch_boot_cpu(unsigned int cpu)
 	new_task->aspace  = &bootstrap_aspace;
 	new_task->cpu_id  = cpu;
 	strcpy(new_task->name, "bootstrap");
-	list_head_init(&new_task->sched_link);
+	list_head_init(&new_task->rr.sched_link);
+	list_head_init(&new_task->migrate_link);
 
 	/*
 	 * Set the initial kernel entry point and stack pointer for the new CPU.

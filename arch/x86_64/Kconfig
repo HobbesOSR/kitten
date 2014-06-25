@@ -89,8 +89,10 @@ config GENERIC_CPU
 
 endchoice
 
-
-
+config SCHED_EDF
+	bool "Kitten Earliest Deadline First (EDF)"
+	help
+	  A real time EDF scheduler is used.
 #
 # Define implied options from the CPU selection
 #

@@ -7,7 +7,6 @@
 #include <lwk/idspace.h>
 #include <lwk/cpumask.h>
 
-
 // Setting start_state.entry_point to USE_PARENT_IP will cause the new task
 // to begin executing at the current value of the caller's instruction pointer. 
 #define USE_PARENT_IP		0
@@ -23,6 +22,12 @@ typedef struct {
 	id_t			aspace_id;	// Address space the task executes in
 	id_t			cpu_id;		// CPU ID the task starts executing on
 
+#ifdef CONFIG_SCHED_EDF
+	struct {
+		uint64_t                slice;          // EDF Sched slice
+		uint64_t                period;         // EDF Sched period
+	} edf;
+#endif
 	vaddr_t			stack_ptr;	// Ignored for kernel tasks
 	vaddr_t			entry_point;	// Instruction address to start executing at
 
@@ -53,6 +58,7 @@ task_switch_cpus(
 #include <lwk/types.h>
 #include <lwk/init.h>
 #include <lwk/list.h>
+#include <lwk/rbtree.h>
 #include <lwk/seqlock.h>
 #include <lwk/idspace.h>
 #include <lwk/rlimit.h>
@@ -109,8 +115,6 @@ struct task_struct {
 	cpumask_t		cpu_mask;	// CPUs this task may migrate to
 	id_t			cpu_target_id;	// CPU this task should migrate to
 
-	struct list_head	sched_link;	// For per-CPU scheduling lists
-	bool			sched_irqs_on;	// IRQs on at schedule() entry?
 
 	int __user *		set_child_tid;	// CLONE_CHILD_SETTID
 	int __user *		clear_child_tid;// CLONE_CHILD_CLEARTID
@@ -122,7 +126,26 @@ struct task_struct {
 
 	struct arch_task	arch;		// arch specific task info
 	struct fdTable*		fdTable;
-
+	struct list_head	migrate_link;	// For per-CPU scheduling lists
+	struct task_rr {
+		struct list_head sched_link;
+	} rr;
+#ifdef CONFIG_SCHED_EDF
+        struct task_edf {
+		struct rb_node 	node;
+		struct list_head sched_link;
+		uint64_t	period;
+		uint64_t	slice;
+		int 		cpu_reservation;
+		uint64_t	curr_deadline;
+		uint64_t	last_wakeup;
+		uint64_t	used_time;
+		int		miss_deadlines;
+		uint64_t	print_miss_deadlines;
+		int		extra_time;
+	} edf;       	// EDF Scheduler task structure
+#endif
+	bool			sched_irqs_on;	// IRQs on at schedule() entry?
 	// Stuff needed for the Linux compatibility layer
 	char *			comm;		// The task's name
 	struct aspace *		mm;		// Address space task is in

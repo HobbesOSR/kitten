@@ -17,6 +17,7 @@ obj-y := \
 	xcall.o \
 	elf_liblwk.o \
 	sched.o \
+	sched_rr.o \
 	completion.o \
 	waitq.o \
 	timer.o \
@@ -34,6 +35,7 @@ obj-y := \
 	workq.o \
 	percpu.o \
 
+obj-$(CONFIG_SCHED_EDF) += sched_edf.o
 obj-$(CONFIG_KGDB) += kgdb.o
 obj-$(CONFIG_KGDB_SERIAL_CONSOLE) += kgdboc.o
 obj-$(CONFIG_DEBUG_HW_NOISE) += noise.o

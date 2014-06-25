@@ -13,13 +13,28 @@
 /**
  * Initializes architecture-independent fields in the bootstrap task structure.
  */
+#ifdef CONFIG_SCHED_EDF
 #define BOOTSTRAP_TASK(task_info) \
 	.id		=	0,					\
 	.name		=	"bootstrap",				\
 	.state		=	TASK_RUNNING,				\
 	.cpu_id		=	0,					\
 	.aspace		=	&bootstrap_aspace,			\
-	.sched_link	=	LIST_HEAD_INIT(task_info.sched_link),	\
+	.edf.period	= 	0,					\
+	.migrate_link	 =	LIST_HEAD_INIT(task_info.migrate_link),	\
+	.rr.sched_link	=	LIST_HEAD_INIT(task_info.rr.sched_link),\
+
+#else
+#define BOOTSTRAP_TASK(task_info) \
+	.id		=	0,					\
+	.name		=	"bootstrap",				\
+	.state		=	TASK_RUNNING,				\
+	.cpu_id		=	0,					\
+	.aspace		=	&bootstrap_aspace,			\
+	.migrate_link	=	LIST_HEAD_INIT(task_info.migrate_link),	\
+	.rr.sched_link	=	LIST_HEAD_INIT(task_info.rr.sched_link),\
+
+#endif
 
 #define bootstrap_task  bootstrap_task_union.task_info
 #define bootstrap_stack bootstrap_task_union.stack
