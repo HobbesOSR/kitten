@@ -106,8 +106,7 @@ pisces_reset_trampoline( void )
 	/* Report Kitten's secondary startup target to the Linux CPU driver */
 	{
 		extern void (*secondary_startup_64)(void);
-		pisces_boot_params->launch_code[LAUNCH_CODE_DATA_RIP] = (u64) &secondary_startup_64;
-		printk("&secondary_startup_64 = %p\n", (void *)(u64)&secondary_startup_64);
+		pisces_boot_params->launch_code_target_addr = (u64) &secondary_startup_64;
 	}
 
 	/* Replase Kitten's trampoline with the one from Linux */
@@ -267,6 +266,11 @@ setup_pisces_arch(void)
 	printk(KERN_INFO "No I/O APIC in Pisces guest\n");
 
 	lapic_set_timer_freq(sched_hz);
+
+
+
+	/* Signal Linux boot loader that we are up */
+	pisces_boot_params->initialized = 1;
 
 }
 

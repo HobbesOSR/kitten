@@ -26,21 +26,32 @@ struct pisces_enclave;
 
 
 
-#define LAUNCH_CODE_SIZE      64
-#define LAUNCH_CODE_DATA_RSI  6
-#define LAUNCH_CODE_DATA_RIP  7
 
 /* All addresses in this structure are physical addresses */
 struct pisces_boot_params {
 
 	/* Embedded asm to load esi and jump to kernel */
-	u64 launch_code[8]; 
-
+	union {
+		u64 launch_code[8];
+		struct {
+			u8    launch_code_asm[48];
+			u64   launch_code_esi;
+			u64   launch_code_target_addr;
+		} __attribute__((packed));
+	} __attribute__((packed));
+	
 	u8 init_dbg_buf[16];
-
 
 	u64 magic;
 
+	union {
+		u64 flags;
+		struct {
+			u64 initialized  : 1;
+			u64 flags__rsvd  : 63;
+		} __attribute__((packed));
+	} __attribute__((packed));
+	
 	u64 boot_params_size;
 
 	u64 cpu_id;
