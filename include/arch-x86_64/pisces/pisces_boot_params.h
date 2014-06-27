@@ -19,17 +19,11 @@ struct pisces_enclave;
  * 2. Console ring buffer (64KB)  // 4KB aligned
  * 3. To enclave CMD buffer       // (4KB)
  * 4. From enclave CMD buffer     // (4KB)
- * 5. Identity mapped page tables // 4KB aligned (5 Pages)
- * 6. kernel image                // 2M aligned
- * 7. initrd                      // 2M aligned
+ * 5. kernel image                // 2M aligned
+ * 6. initrd                      // 2M aligned
  *
  */
 
-struct pisces_ident_pgt {
-	pdpe64_t      pdp[MAX_PDPE64_ENTRIES];
-	pde64_2MB_t   pd0[MAX_PDE64_ENTRIES];  /* 1G mapping from 0            */
-	pde64_2MB_t   pd1[MAX_PDE64_ENTRIES];  /* 1G mapping from bootmem_addr */
-};
 
 
 #define LAUNCH_CODE_SIZE      64
@@ -88,9 +82,6 @@ struct pisces_boot_params {
 	/* Address and size of the enclave->linux XPMEM channel */
 	u64 xpmem_buf_addr;
 	u64 xpmem_buf_size;
-
-	/* 1G ident mapping for guest kernel */
-	pml4e64_t ident_pml4e64;
 
 	u64 base_mem_paddr;
 	u64 base_mem_size;
