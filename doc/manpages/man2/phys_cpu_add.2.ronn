@@ -1,0 +1,14 @@
+phys_cpu_add - add a physical cpu to the kitten kernel
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int  phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id)
+## DESCRIPTION
+
+phys_cpu_add() adds a schedulable cpu with cpu id *phys_cpu_id* and apic *apic_id* to the kitten kernel.
+
+## RETURN VALUE
+
+phys_cpu_add returns the logical cpu number on success and -1 on failure.

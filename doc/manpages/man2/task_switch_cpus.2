@@ -1,0 +1,19 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "TASK_SWITCH_CPUS" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBtask_switch_cpus\fR \- migrate task to cpu
+.
+.SH "SYNOPSIS"
+int task_switch_cpus(id_t cpu_id);
+.
+.SH "DESCRIPTION"
+task_switch_cpus() moves the calling task to \fIcpu_id\fR\. The caller must not hold any locks and must have local interrupts enabled\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned\. On error, errno is returned\.
+.
+.SH "ERRORS"
+EINVAL the cpu_id is greater than the number of cpus or the cpu is not set\.

@@ -1,0 +1,25 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "PMEM_QUERY" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBpmem_query\fR \- query physical memory
+.
+.SH "SYNOPSIS"
+int pmem_query(const struct pmem_region \fIquery, struct pmem_region\fRresult);
+.
+.SH "DESCRIPTION"
+pmem_query() checks a region \fIquery\fR for validity\. attempts to allocate physical memory of size \fIsize\fR, aligned to \fIalignment\fR bytes and not existing in \fIcosntraint\fR physical memory\.
+.
+.P
+This memory can then be bound into virtual memory aspace(2)es for use by user programs\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and *result is populated by the new physical memory region\. On error, errno is returned\.
+.
+.SH "ERRORS"
+EINVAL The region being queried is not
+.
+.P
+ENOMEM The system was unable to find a satisfactory region of physical memory\.

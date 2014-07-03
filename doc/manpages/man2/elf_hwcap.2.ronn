@@ -1,0 +1,23 @@
+elf_hwcap - query a cpu for hardware capabilities
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int elf_hwcap(id_t cpu_id, uint32_t *hwcap);
+
+## DESCRIPTION
+
+elf_hwcap() gets the hardware capabilities of a particular cpu corresponding to *cpu_id* and places a unsigned 32 bit value representing these capabilities in *hwcap*. If *cpu_id* is ANY_ID then it corresponds to cpu 0.
+
+## RETURN VALUE
+
+On success 0 is returned. On error, errno is returned.
+
+## ERRORS
+
+EINVAL
+	*hwcap* is an invalid address.
+
+ENOENT
+	*cpu_id* is not a valid cpu.

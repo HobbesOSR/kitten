@@ -1,0 +1,16 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "PHYS_CPU_ADD" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBphys_cpu_add\fR \- add a physical cpu to the kitten kernel
+.
+.SH "SYNOPSIS"
+int phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id)
+.
+.SH "DESCRIPTION"
+phys_cpu_add() adds a schedulable cpu with cpu id \fIphys_cpu_id\fR and apic \fIapic_id\fR to the kitten kernel\.
+.
+.SH "RETURN VALUE"
+phys_cpu_add returns the logical cpu number on success and \-1 on failure\.

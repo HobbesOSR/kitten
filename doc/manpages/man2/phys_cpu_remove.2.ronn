@@ -1,0 +1,16 @@
+v3_start_guest - start a guest virtual machine using the palacious virtual machine monitor
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int v3_start_guest(paddr_t iso_start, size_t iso_size);
+
+## DESCRIPTION
+
+v3_start_guest() starts a guest virtual machine whose iso9660 image is stored in physical memory at *iso_start* of size *iso_size*. 
+
+
+## RETURN VALUE
+
+On success 0 is returned and the virtual machine is started. On failure -1 is returned.

@@ -1,0 +1,18 @@
+aspace_get_myid - get id of current aspace
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int aspace_get_myid(id_t *id);
+
+
+## DESCRIPTION
+
+pmem_query() checks a region *query* for validity. attempts to allocate physical memory of size *size*, aligned to *alignment* bytes and not existing in *constraint* physical memory.
+
+This memory can then be bound into virtual memory aspace(2)es for use by user programs.
+
+## RETURN VALUE
+
+On success 0 is returned and *result is populated by the new physical memory region. On error, errno is returned.

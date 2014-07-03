@@ -1,0 +1,25 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "LWK_ARP" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBlwk_arp\fR \- send an arp request
+.
+.SH "SYNOPSIS"
+int lwk_arp(struct lwk_arpreq* req);
+.
+.SH "DESCRIPTION"
+lwk_arp() sends an arp request, \fIreq\fR, over an infiniband device\.
+.
+.SH "RETURN VALUE"
+On success 0\. On error, errno is returned\.
+.
+.SH "ERRORS"
+EINVAL device in not the infiniband interface or invalid arp request\.
+.
+.P
+EFAULT could not copy *req from user to kernel space\.
+.
+.SH "BUGS"
+lwk_ifconfig only supports infinband network devices\.

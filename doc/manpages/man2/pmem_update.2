@@ -1,0 +1,28 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "PMEM_UPDATE" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBpmem_update\fR \- update physical memory region
+.
+.SH "SYNOPSIS"
+int pmem_update(const struct pmem_region *update);
+.
+.SH "DESCRIPTION"
+pmem_update() updates a physical memory region to the values contained within \fIupdate\fR\. It is often used to change the values of a region found by pmem_query(2)\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and *result is populated by the new physical memory region\. On error, errno is returned\.
+.
+.SH "ERRORS"
+EINVAL The passed region is invalid\.
+.
+.P
+ENOENT The passed region is unknown
+.
+.P
+EPERM The user does not have access to the specified region\.
+.
+.P
+ENOMEM pmem_update could not allocate kernel data structures\.

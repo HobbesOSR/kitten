@@ -1,0 +1,25 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "LWK_IFCONFIG" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBlwk_ifconfig\fR \- configure a network device
+.
+.SH "SYNOPSIS"
+int lwk_ifconfig( struct lwk_ifreq* req );
+.
+.SH "DESCRIPTION"
+lwk_ifconfig() provides a system call interface to configure the network device\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and *result is populated by the new physical memory region\. On error, errno is returned\.
+.
+.SH "ERRORS"
+EINVAL device in not an infiniband interface\.
+.
+.P
+EFAULT could not copy *req from user to kernel space\.
+.
+.SH "BUGS"
+lwk_ifconfig only supports infinband network devices\.

@@ -1,0 +1,27 @@
+lwk_ifconfig - configure a network device
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int lwk_ifconfig( struct lwk_ifreq* req );
+
+## DESCRIPTION
+
+lwk_ifconfig() provides a system call interface to configure the network device.
+
+## RETURN VALUE
+
+On success 0 is returned and *result is populated by the new physical memory region. On error, errno is returned.
+
+## ERRORS
+
+EINVAL
+	device in not an infiniband interface.
+
+EFAULT
+	could not copy *req from user to kernel space.
+
+## BUGS
+
+lwk_ifconfig only supports infinband network devices.

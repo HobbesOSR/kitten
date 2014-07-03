@@ -1,0 +1,19 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "ASPACE_GET_MYID" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBaspace_get_myid\fR \- get id of current aspace
+.
+.SH "SYNOPSIS"
+int aspace_get_myid(id_t *id);
+.
+.SH "DESCRIPTION"
+pmem_query() checks a region \fIquery\fR for validity\. attempts to allocate physical memory of size \fIsize\fR, aligned to \fIalignment\fR bytes and not existing in \fIconstraint\fR physical memory\.
+.
+.P
+This memory can then be bound into virtual memory aspace(2)es for use by user programs\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and *result is populated by the new physical memory region\. On error, errno is returned\.

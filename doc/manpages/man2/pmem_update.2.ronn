@@ -1,0 +1,32 @@
+pmem_update - update physical memory region
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int pmem_update(const struct pmem_region *update);
+
+
+## DESCRIPTION
+
+pmem_update() updates a physical memory region to the values contained within *update*. It is often used to change the values of a region found by pmem_query(2).
+
+## RETURN VALUE
+
+On success 0 is returned and *result is populated by the new physical memory region. On error, errno is returned.
+
+## ERRORS
+
+EINVAL
+	The passed region is invalid.
+
+ENOENT
+	The passed region is unknown
+
+EPERM
+	The user does not have access to the specified region.
+
+ENOMEM
+	pmem_update could not allocate kernel data structures.
+
+

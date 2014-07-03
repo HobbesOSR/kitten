@@ -1,0 +1,19 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "ASPACE_VIRT_TO_PHYS" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBaspace_virt_to_phys\fR \- convert virtual address to physical address\.
+.
+.SH "SYNOPSIS"
+int aspace_virt_to_phys(id_t id, vaddr_t vaddr, paddr_t *paddr);
+.
+.SH "DESCRIPTION"
+aspace_virt_to_phys() queries the architectures address conversion facilities to convert a virtual address \fIvaddr\fR in a task aspace \fIid\fR into a physical address, \fIpaddr\fR\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned\. On error, errno is returned\.
+.
+.SH "ERRORS"
+ENOENT No valid conversion exists\.

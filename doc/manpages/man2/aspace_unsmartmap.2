@@ -1,0 +1,19 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "ASPACE_UNSMARTMAP" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBaspace_unsmartmap\fR \- remove a smartmap binding
+.
+.SH "SYNOPSIS"
+int aspace_unsmartmap(id_t src, id_t dst);
+.
+.SH "DESCRIPTION"
+aspace_unsmartmap() removes a smartmap from the aspace id \fIsrc\fR into aspace id \fIdst\fR\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned\. On error, errno is returned\.
+.
+.SH "ERRORS"
+EINVAL could not find smartmap\.

@@ -1,0 +1,20 @@
+task_switch_cpus - migrate task to cpu
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int task_switch_cpus(id_t cpu_id);
+
+## DESCRIPTION
+
+task_switch_cpus() moves the calling task to *cpu_id*. The caller must not hold any locks and must have local interrupts enabled.
+
+## RETURN VALUE
+
+On success 0 is returned. On error, errno is returned.
+
+## ERRORS
+
+EINVAL
+	the cpu_id is greater than the number of cpus or the cpu is not set.

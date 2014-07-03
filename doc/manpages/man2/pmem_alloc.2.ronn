@@ -1,0 +1,30 @@
+pmem_alloc - allocate physical memory
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int
+pmem_alloc(size_t size, size_t alignment,
+           const struct pmem_region *constraint,
+           struct pmem_region *result);
+
+## DESCRIPTION
+
+pmem_alloc() attempts to allocate physical memory of size *size*, aligned to *alignment* bytes and not existing in *cosntraint* physical memory.
+
+This memory can then be bound into virtual memory aspace(2)es for use by user programs.
+
+## RETURN VALUE
+
+On success 0 is returned and *result is populated by the new physical memory region. On error, errno is returned.
+
+## ERRORS
+
+EINVAL
+	size is 0, alignment is 0 or not a power of two, or the pmem_region has been previously allocated.
+
+ENOMEM
+	The system was unable to find a satisfactory region of physical memory.
+
+

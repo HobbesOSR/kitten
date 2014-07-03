@@ -1,0 +1,25 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "TASK_CREATE" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBtask_create\fR \- create a task
+.
+.SH "SYNOPSIS"
+int task_create(const start_state_t * start_state, id_t * task_id);
+.
+.SH "DESCRIPTION"
+task_create() checks a new task in Kitten using \fIstart_state\fR to specify the initial state of the task\.
+.
+.P
+\fIstart_state\fR must contain the following:
+.
+.P
+a \fItask_id\fR, an \fIaspace_id\fR pointing to the address space, a target \fIcpu_id\fR to choose the cpu to run on and a a \fIuser_id\fR that should not be 0 (for root) a \fIgroup_id\fR to specify the group and a \fItask_name\fR string to name the task\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and *task_id is populated by the new task id\. On error, errno is returned\.
+.
+.P
+EINVAL

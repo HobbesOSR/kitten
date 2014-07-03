@@ -1,0 +1,19 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "V3_START_GUEST" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBv3_start_guest\fR \- start a guest virtual machine using the palacious virtual machine monitor
+.
+.SH "SYNOPSIS"
+#include <lwk\.h>
+.
+.P
+int v3_start_guest(paddr_t iso_start, size_t iso_size);
+.
+.SH "DESCRIPTION"
+v3_start_guest() starts a guest virtual machine whose iso9660 image is stored in physical memory at \fIiso_start\fR of size \fIiso_size\fR\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and the virtual machine is started\. On failure \-1 is returned\.

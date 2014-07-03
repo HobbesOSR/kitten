@@ -1,0 +1,19 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "ASPACE_DESTROY" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBaspace_destroy\fR \- destroy an aspace
+.
+.SH "SYNOPSIS"
+int aspace_create(id_t id_request, const char \fIname, id_t\fRid);
+.
+.SH "DESCRIPTION"
+pmem_query() checks a region \fIquery\fR for validity\. attempts to allocate physical memory of size \fIsize\fR, aligned to \fIalignment\fR bytes and not existing in \fIconstraint\fR physical memory\.
+.
+.P
+This memory can then be bound into virtual memory aspace(2)es for use by user programs\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and *result is populated by the new physical memory region\. On error, errno is returned\.

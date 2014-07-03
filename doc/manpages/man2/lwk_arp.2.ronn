@@ -1,0 +1,27 @@
+lwk_arp - send an arp request
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int lwk_arp(struct lwk_arpreq* req);
+
+## DESCRIPTION
+
+lwk_arp() sends an arp request, *req*, over an infiniband device.
+
+## RETURN VALUE
+
+On success 0. On error, errno is returned.
+
+## ERRORS
+
+EINVAL
+	device in not the infiniband interface or invalid arp request.
+
+EFAULT
+	could not copy *req from user to kernel space.
+
+## BUGS
+
+lwk_ifconfig only supports infinband network devices.

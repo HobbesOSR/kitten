@@ -1,0 +1,28 @@
+task_create - create a task
+======
+
+## SYNOPSIS
+
+#include <lwk.h>
+int task_create(const start_state_t *	start_state, id_t *	task_id);
+
+## DESCRIPTION
+
+task_create() checks a new task in Kitten using *start_state* to specify the initial state of the task.
+
+
+*start_state* must contain the following:
+
+a *task_id*, an *aspace_id* pointing to the address space, a target *cpu_id* to choose the cpu to run on and a 
+a *user_id* that should not be 0 (for root) a *group_id* to specify the group and a *task_name* string to name the task.
+
+## RETURN VALUE
+
+On success 0 is returned and *task_id is populated by the new task id. On error, errno is returned.
+
+EINVAL
+	
+
+
+
+

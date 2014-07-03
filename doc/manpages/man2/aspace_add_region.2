@@ -1,0 +1,19 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "ASPACE_ADD_REGION" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBaspace_add_region\fR \- add a region of memory to an aspace
+.
+.SH "SYNOPSIS"
+int aspace_add_region(id_t id, vaddr_t start, size_t extent, vmflags_t flags, vmpagesize_t pagesz, const char *name);
+.
+.SH "DESCRIPTION"
+aspace_add_region() checks a region \fIquery\fR for validity\. attempts to allocate physical memory of size \fIsize\fR, aligned to \fIalignment\fR bytes and not existing in \fIconstraint\fR physical memory\.
+.
+.P
+This memory can then be bound into virtual memory aspace(2)es for use by user programs\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned and *result is populated by the new physical memory region\. On error, errno is returned\.

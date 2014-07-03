@@ -1,0 +1,22 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "ELF_HWCAP" "2" "June 2014" "" ""
+.
+.SH "NAME"
+\fBelf_hwcap\fR \- query a cpu for hardware capabilities
+.
+.SH "SYNOPSIS"
+int elf_hwcap(id_t cpu_id, uint32_t *hwcap);
+.
+.SH "DESCRIPTION"
+elf_hwcap() gets the hardware capabilities of a particular cpu corresponding to \fIcpu_id\fR and places a unsigned 32 bit value representing these capabilities in \fIhwcap\fR\. If \fIcpu_id\fR is ANY_ID then it corresponds to cpu 0\.
+.
+.SH "RETURN VALUE"
+On success 0 is returned\. On error, errno is returned\.
+.
+.SH "ERRORS"
+EINVAL \fIhwcap\fR is an invalid address\.
+.
+.P
+ENOENT \fIcpu_id\fR is not a valid cpu\.
