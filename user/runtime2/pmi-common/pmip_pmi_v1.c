@@ -137,6 +137,9 @@ static HYD_status fn_app_init(pct_t *pct, app_t *app, const ptl_event_t *ev, cha
 	/* Remember the Portals pt index of the server */
 	app->pmi_state.server.pt_index = PCT_PMI_SERVER_PT_INDEX;
 
+	/* Server is initialized */
+	app->pmi_state.server.inited          = 1;
+
 	/* Set our local app's information */
 	app->base_rank = atoi(base_rank);
 	app->local_size = atoi(local_size);
@@ -418,7 +421,7 @@ found_val:
 		status = send_cmd_downstream(&app->pmi_state, ev->initiator, cmd);
 		HYDU_ERR_POP(status, "error sending PMI response\n");
 		HYDU_FREE(cmd);
-	} else {
+	} else if (app->pmi_state.server.inited == 1) {
 		/* Need to send the request to the server */
 		tmp[i++] = HYDU_strdup("cmd=get_server kvsname=");
 		tmp[i++] = HYDU_strdup(kvsname);
@@ -437,6 +440,19 @@ found_val:
 		
 		/* Send get to server */
 		status = send_cmd_to_server(&app->pmi_state, app->pmi_state.server.ptl_id, cmd);
+		HYDU_ERR_POP(status, "error sending PMI response\n");
+		HYDU_FREE(cmd);
+	} else {
+		/* Fail */
+		tmp[i++] = HYDU_strdup("cmd=get_result rc=");
+		tmp[i++] = HYDU_strdup("-1 msg=key_");
+		tmp[i++] = HYDU_strdup(key);
+		tmp[i++] = HYDU_strdup("_not_found value=unknown");
+		tmp[i++] = HYDU_strdup("\n");
+		tmp[i++] = NULL;
+
+		/* Send result to app */
+		status = send_cmd_downstream(&app->pmi_state, ev->initiator, cmd);
 		HYDU_ERR_POP(status, "error sending PMI response\n");
 		HYDU_FREE(cmd);
 	}
@@ -656,21 +672,26 @@ static HYD_status fn_barrier_in(pct_t *pct, app_t *app, const ptl_event_t *ev, c
 		goto fn_exit;
 	}
 
-	/* All local apps are here - tell server */
+	/* Reset barrier count */
 	barrier_count = 0;
 
-	i = 0;
-	tmp[i++] = HYDU_strdup("cmd=barrier_server\n");
-	tmp[i++] = NULL;
+	if (app->pmi_state.server.inited == 1) {
+		/* All local processes are here - tell server */
+		i = 0;
+		tmp[i++] = HYDU_strdup("cmd=barrier_server\n");
+		tmp[i++] = NULL;
 
-	status = HYDU_str_alloc_and_join(tmp, &cmd);
-	HYDU_ERR_POP(status, "unable to join strings\n");
-	HYDU_free_strlist(tmp);
+		status = HYDU_str_alloc_and_join(tmp, &cmd);
+		HYDU_ERR_POP(status, "unable to join strings\n");
+		HYDU_free_strlist(tmp);
 
-	/* Send barrier to server */
-	status = send_cmd_to_server(&app->pmi_state, app->pmi_state.server.ptl_id, cmd);
-	HYDU_ERR_POP(status, "error sending PMI response\n");
-	HYDU_FREE(cmd);
+		status = send_cmd_to_server(&app->pmi_state, app->pmi_state.server.ptl_id, cmd);
+		HYDU_ERR_POP(status, "error sending PMI response\n");
+		HYDU_FREE(cmd);
+	} else {
+		/* All local processes are here - running in standalone so no server to tell */
+		fn_barrier_out(pct, app, NULL, NULL);
+	}
 
   fn_exit:
 	HYDU_FUNC_EXIT();
@@ -728,33 +749,37 @@ static HYD_status fn_commit(pct_t *pct, app_t *app, const ptl_event_t *ev, char 
 		goto out;
 	}
 	
-	/* Everyone locally has committed - send whole commit to server */
+	/* Reset commit count */
 	commit_count = 0;
 
-	/* Construct a string of all of our key-val pairs, and send it to the server */
-	/* Try to find the value associated with the key */
-	status = HYD_pmcd_pmi_get_kvs_string(HYD_pmcd_pmip.local.kvs, &kvs_buf);
-	
-	if (status)
-		goto fn_fail;
+	if (app->pmi_state.server.inited == 1) {
+		/* Everyone locally has commited - send whole commit to server */
 
-	/* Prepare commit */
-	tmp[0] = HYDU_strdup("cmd=commit_server kvsname=");
-	tmp[1] = HYDU_strdup(kvsname);
-	tmp[2] = HYDU_strdup(" kvs=");
-	tmp[3] = HYDU_strdup(kvs_buf);
-	tmp[4] = HYDU_strdup("\n");
-	tmp[5] = NULL;
-	HYDU_FREE(kvs_buf);
+		/* Construct a string of all of our key-val pairs, and send it to the server */
+		/* Try to find the value associated with the key */
+		status = HYD_pmcd_pmi_get_kvs_string(HYD_pmcd_pmip.local.kvs, &kvs_buf);
 	
-	status = HYDU_str_alloc_and_join(tmp, &launch_cmd);
-	HYDU_ERR_POP(status, "unable to join strings\n");
-	HYDU_free_strlist(tmp);
+		if (status)
+			goto fn_fail;
 
-	/* Send commit to server */
-	status = send_cmd_to_server(&app->pmi_state, app->pmi_state.server.ptl_id, launch_cmd);
-	HYDU_ERR_POP(status, "error sending PMI response\n");
-	HYDU_FREE(launch_cmd);
+		/* Prepare commit */
+		tmp[0] = HYDU_strdup("cmd=commit_server kvsname=");
+		tmp[1] = HYDU_strdup(kvsname);
+		tmp[2] = HYDU_strdup(" kvs=");
+		tmp[3] = HYDU_strdup(kvs_buf);
+		tmp[4] = HYDU_strdup("\n");
+		tmp[5] = NULL;
+		HYDU_FREE(kvs_buf);
+	
+		status = HYDU_str_alloc_and_join(tmp, &launch_cmd);
+		HYDU_ERR_POP(status, "unable to join strings\n");
+		HYDU_free_strlist(tmp);
+
+		/* Send commit to server */
+		status = send_cmd_to_server(&app->pmi_state, app->pmi_state.server.ptl_id, launch_cmd);
+		HYDU_ERR_POP(status, "error sending PMI response\n");
+		HYDU_FREE(launch_cmd);
+	}
 
 out:
 	/* Send result to app */
@@ -831,11 +856,13 @@ static HYD_status fn_finalize(pct_t *pct, app_t *app, const ptl_event_t *ev, cha
 
 	HYDU_FUNC_ENTER();
 
-	/* Tell the server we're done */
-	cmd = HYDU_strdup("cmd=finalize_server\n");
-	status = send_cmd_to_server(&app->pmi_state, app->pmi_state.server.ptl_id, cmd);
-	HYDU_ERR_POP(status, "error sending PMI response\n");
-	HYDU_FREE(cmd);
+	/* If there is a server, tell the server we're done */
+	if (app->pmi_state.server.inited == 1) {
+		cmd = HYDU_strdup("cmd=finalize_server\n");
+		status = send_cmd_to_server(&app->pmi_state, app->pmi_state.server.ptl_id, cmd);
+		HYDU_ERR_POP(status, "error sending PMI response\n");
+		HYDU_FREE(cmd);
+	}
 
 	/* Respond to app */
 	cmd = HYDU_strdup("cmd=finalize_ack\n");

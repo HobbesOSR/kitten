@@ -40,6 +40,9 @@ typedef struct pmi_state {
 	} client;
 
 	struct {
+		// Server initialization
+		int             inited;
+
 		// Server's pt index
 		ptl_pt_index_t  pt_index;
 

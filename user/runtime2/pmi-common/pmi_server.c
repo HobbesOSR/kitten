@@ -22,8 +22,10 @@ pmi_init(pct_t *pct, app_t *app, ptl_pt_index_t pt_index, ptl_process_t match_id
 	pmi_state_t *state = &app->pmi_state;
 	int status;
 
+	memset(state, 0, sizeof(pmi_state_t));
+
 	/* Initialize the Portals RX queue for incoming client requests */
-		PTL_CHECK(PtlEQAlloc(pct->ni_h, 1024, &state->client.rx_eq_h));
+	PTL_CHECK(PtlEQAlloc(pct->ni_h, 1024, &state->client.rx_eq_h));
 	
 	PTL_CHECK(
 		//ptl_queue_init(pct->ni_h, app->user_id, match_id, pt_index,
