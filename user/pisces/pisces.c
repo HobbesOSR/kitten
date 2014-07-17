@@ -43,7 +43,7 @@ char resp_buf[4066]  __attribute__ ((aligned (512)));
 
 
 
-
+#if 0
 static void * fn(void * arg) {
 	int    var  = 12345;
 	void * addr = (void *)((uintptr_t)&var & ~(PAGE_SIZE - 1));
@@ -62,7 +62,7 @@ static void * fn(void * arg) {
     
 	return NULL;
 }
-
+#endif
 
 static int 
 send_resp(int fd, u64 err_code) 
@@ -144,6 +144,7 @@ main(int argc, char ** argv, char * envp[])
 		return -1;
 	}
 
+#if 0
 	xpmem_pisces_add_pisces_dom();
 	xpmem_pisces_add_local_dom();
 
@@ -153,9 +154,11 @@ main(int argc, char ** argv, char * envp[])
 		pthread_create(&t, NULL, fn, NULL);
 	}
 
+#endif
 	while (1) {
 		int ret = 0;
 
+#if 0
 		/* Poll the ctrl and xpmem file descriptors */
 		{
 			struct pollfd    * poll_fds    = NULL;
@@ -211,7 +214,7 @@ main(int argc, char ** argv, char * envp[])
 				continue;
 			}
 		}
-
+#endif
 
 		ret = read(pisces_fd, &cmd, sizeof(struct pisces_cmd));
 
