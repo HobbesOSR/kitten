@@ -307,8 +307,7 @@ static void check_deadlines(struct edf_rq *runqueue)
 		next_task = task_container_of(node);
 		if(next_task->edf.curr_deadline < host_time ){
 			/* This task's deadline is over - deactivate it */
-			list_head_init(&next_task->edf.sched_link);
-			list_add(&resched_list, &next_task->edf.sched_link);
+			list_add(&next_task->edf.sched_link, &resched_list);
 			/*This task missed its deadline*/
 			if(next_task->edf.used_time < next_task->edf.slice){
 				next_task->edf.miss_deadlines++;
@@ -325,27 +324,27 @@ static void check_deadlines(struct edf_rq *runqueue)
 	 * tree for its new deadline */
 	struct task_struct *task, *tmp;
 	list_for_each_entry_safe(task, tmp, &resched_list,
-				      edf.sched_link) {
+				 edf.sched_link) {
 
 		/*Task Statistics*/
 		/*
-		time_prints = host_time - task->edf.print_miss_deadlines;
-		if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
-			deadlines = time_prints / task->edf.period;
-			deadlines_percentage = 100 * task->edf.miss_deadlines / deadlines;
-			printk(KERN_INFO
-			"EDF_SCHED. rq_U %d, Tsk: id %d, name %s, used_t %llu, sl %llu, T %llu,  miss_dl_per %d\n",
-				runqueue->cpu_u,
-				task->id,
-				task->name,
-				task->edf.used_time,
-				task->edf.slice,
-				task->edf.period,
-				deadlines_percentage);
-			task->edf.miss_deadlines=0;
-			deadlines_percentage = 0;
-			task->edf.print_miss_deadlines=host_time;
-		}
+		  time_prints = host_time - task->edf.print_miss_deadlines;
+		  if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
+		  deadlines = time_prints / task->edf.period;
+		  deadlines_percentage = 100 * task->edf.miss_deadlines / deadlines;
+		  printk(KERN_INFO
+		  "EDF_SCHED. rq_U %d, Tsk: id %d, name %s, used_t %llu, sl %llu, T %llu,  miss_dl_per %d\n",
+		  runqueue->cpu_u,
+		  task->id,
+		  task->name,
+		  task->edf.used_time,
+		  task->edf.slice,
+		  task->edf.period,
+		  deadlines_percentage);
+		  task->edf.miss_deadlines=0;
+		  deadlines_percentage = 0;
+		  task->edf.print_miss_deadlines=host_time;
+		  }
 		*/
 		deactivate_task(task,runqueue);
 		if ((task->cpu_id == task->cpu_target_id)
@@ -384,8 +383,8 @@ pick_next_task(struct edf_rq *runqueue){
 		if ((next_task->edf.used_time < next_task->edf.slice)
 		    && (next_task->state == TASK_RUNNING)
 		    && (next_task->cpu_id == next_task->cpu_target_id)) {
-				found = next_task;
-				break;
+			found = next_task;
+			break;
 		}
 		node = rb_next(node);
 	}
@@ -460,7 +459,7 @@ int
 edf_sched_init_runqueue(struct edf_rq *runq, int cpuid)
 {
 	printk(KERN_DEBUG "EDF_SCHED. edf_sched_init. Initializing CPU %d\n",
-		cpuid);
+	       cpuid);
 
 	runq->tasks_tree = RB_ROOT;
 	runq->cpu_u=0;

@@ -16,9 +16,27 @@
 #include <lwk/sched_edf.h>
 #endif
 
+/**
+ * User-level tasks are preemptively scheduled sched_hz times per second.
+ * Kernel threads are not preemptively scheduled and must call schedule()
+ * themselves.
+ */
 unsigned int sched_hz = 10;  /* default to 10 Hz */
 param(sched_hz, uint);
 
+/**
+ * Process run queue.
+ *
+ * Kitten maintains a round roubin and (optionally) an EDF runqueue.
+ * A task is on only one queue; tasks with a non-zero EDF period are
+ * scheduled VIA EDF, other tasks are scheduled via round robin.
+ * EDF tasks have absolute priority over round robin tasks.
+ * Since the number of tasks is expected to be low, the overhead in
+ * either case is very small.
+ *
+ * If there are no tasks in the EDF or round robing scheduler, the idle task
+ * is run instead.
+ */
 struct run_queue {
         spinlock_t           lock;
         size_t               num_tasks;
@@ -189,11 +207,11 @@ sched_del_task(struct task_struct *task)
 
 #ifdef CONFIG_SCHED_EDF
 	if (task->edf.period) {
-	    edf_sched_del_task(&runq->edf, task);
+		edf_sched_del_task(&runq->edf, task);
 	} else
 #endif
 	{
-	    rr_sched_del_task(&runq->rr, task);
+		rr_sched_del_task(&runq->rr, task);
 	}
 
 	spin_unlock_irqrestore(&runq->lock, irqstate);
@@ -290,19 +308,19 @@ schedule(void)
 		}
 		if (prev->state != TASK_EXITED) {
 			/* If the task is migrating, move it to the
-			* migrate_list.  The task will be migrated in
-			* the second-half of schedule().  Otherwise,
-			* link it back onto the task_list. */
+			 * migrate_list.  The task will be migrated in
+			 * the second-half of schedule().  Otherwise,
+			 * link it back onto the task_list. */
 			if (prev->cpu_id != prev->cpu_target_id) {
 				list_add_tail(&prev->migrate_link,
-				      &runq->migrate_list);
+					      &runq->migrate_list);
 				--runq->num_tasks;
 
 			} else {
 #ifdef CONFIG_SCHED_EDF
 				/*If not scheduled by EDF adjust rr schedule*/
 				if (!prev->edf.period
-				||	!edf_adjust_schedule(&runq->edf, prev))
+				    ||	!edf_adjust_schedule(&runq->edf, prev))
 #endif
 				{
 					rr_adjust_schedule(&runq->rr, prev);

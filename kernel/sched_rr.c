@@ -40,7 +40,7 @@ rr_sched_init_runqueue(struct rr_rq *q, int cpu_id) {
 
 void rr_adjust_schedule(struct rr_rq *q, struct task_struct *task)
 {
-    list_add_tail(&task->rr.sched_link, &q->taskq);
+	list_add_tail(&task->rr.sched_link, &q->taskq);
 }
 
 /* Migrate all tasks away. Called with the runq lock held =and local
