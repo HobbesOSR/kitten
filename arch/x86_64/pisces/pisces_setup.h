@@ -247,6 +247,17 @@ setup_pisces_arch(void)
 	 * a given IO APIC by accessing the appropriate region. All CPUs can
 	 * access all IO APICs.
 	 */
+
+	/*
+	 * Get the address of the local APIC from the local API address MSR.
+	 * This is needed because Cray sets the local APIC to a non-standard
+	 * address, 0xfdfff000.
+	 */
+	unsigned int low, high;
+	rdmsr(MSR_IA32_APICBASE, low, high);
+	lapic_phys_addr = (((unsigned long)high << 32) | low) & ~0xFFF;
+	printk(KERN_INFO "PISCES: Setting lapic_phys_addr to 0x%08lx\n", lapic_phys_addr);
+
 	lapic_map();
 	//ioapic_map();
 
