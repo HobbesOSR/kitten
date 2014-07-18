@@ -338,13 +338,14 @@ schedule(void)
 	if (next == NULL)
 		next = runq->idle_task;
 
+#ifdef CONFIG_SCHED_EDF
+		set_wakeup_task(&runq->edf,next);
+#endif
+
 	/* A reschedule has occurred, so clear prev's TF_NEED_RESCHED_BIT */
 	clear_bit(TF_NEED_RESCHED_BIT, &prev->arch.flags);
 	if (prev != next) {
 		fire_sched_out_preempt_notifiers(prev, next);
-#ifdef CONFIG_SCHED_EDF
-		set_wakeup_task(&runq->edf,next);
-#endif
 		prev = context_switch(prev, next);
 
 		/* "next" is now running. Since it may have changed CPUs

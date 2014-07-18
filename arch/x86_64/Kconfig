@@ -93,6 +93,29 @@ config SCHED_EDF
 	bool "Kitten Earliest Deadline First (EDF)"
 	help
 	  A real time EDF scheduler is used.
+choice
+	prompt "EDF Scheduler version"
+	default SCHED_EDF_NWC
+
+config SCHED_EDF_NWC
+	bool "Non-Work-Conserving EDF Scheduler"
+	depends on SCHED_EDF
+	help
+	Non-Work-Conserving version of EDF is used
+
+config SCHED_EDF_WC
+	bool "Work Conserving EDF Scheduler"
+	depends on SCHED_EDF
+	help
+	Work-Conserving version of EDF is used
+
+config  SCHED_EDF_RR
+        bool "NWC EDF + Round Robin when CPU is idle"
+	depends on SCHED_EDF
+        help
+        Round Robin is used after all tasks have consumed their slices within a period.
+endchoice
+
 #
 # Define implied options from the CPU selection
 #

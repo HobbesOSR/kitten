@@ -116,16 +116,20 @@ insert_task_edf(struct task_struct *task, struct edf_rq *runqueue){
  */
 
 static uint64_t
-next_start_period(uint64_t curr_time_us, uint64_t period_us){
+next_start_period(uint64_t curr_time_us, struct task_struct *task){
 
+	uint64_t period_us = task->edf.period;
+	uint64_t next_start_us = 0;
+
+#ifdef CONFIG_SCHED_EDF_WC
+	next_start_us = task->edf.curr_deadline + period_us;
+#else
 	uint64_t time_period_us = curr_time_us % period_us;
 	uint64_t remaining_time_us = period_us - time_period_us;
-	uint64_t next_start_us = curr_time_us + remaining_time_us;
-
+	next_start_us = curr_time_us + remaining_time_us;
+#endif
 	return next_start_us;
-
 }
-
 
 /*
  * edf_sched_cpu_remove: Adapted rr_sched_cpu_remove (rr_sched.c)
@@ -176,8 +180,7 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 	if (is_admissible_task(task, runqueue)){
 
 		uint64_t curr_time_us = get_curr_host_time();
-		uint64_t curr_deadline = next_start_period(curr_time_us,
-							   task->edf.period);
+		uint64_t curr_deadline = next_start_period(curr_time_us, task);
 
 		task->edf.curr_deadline = curr_deadline;
 		task->edf.used_time=0;
@@ -277,6 +280,34 @@ delete_task_edf( struct task_struct *task_edf, struct edf_rq *runqueue){
 static void
 deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
 
+	/*
+	 time_us host_time = get_curr_host_time();
+	 time_us time_prints=0;
+	 int deadlines=0;
+	 int deadlines_percentage=0;
+	*/
+
+	/*Task Statistics*/
+	/*if(task->edf.print_miss_deadlines == 0)
+		task->edf.print_miss_deadlines = host_time;
+	time_prints = host_time - task->edf.print_miss_deadlines;
+	if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
+	 deadlines = time_prints / task->edf.period;
+	 deadlines_percentage = 100 * task->edf.miss_deadlines / deadlines;
+	 printk(KERN_INFO
+	 "EDF_SCHED. rq_U %d, Tsk: id %d, name %s, used_t %llu, sl %llu, T %llu,  miss_dl_per %d\n",
+	 runqueue->cpu_u,
+	 task->id,
+	 task->name,
+	 task->edf.used_time,
+	 task->edf.slice,
+	 task->edf.period,
+	 deadlines_percentage);
+	 task->edf.miss_deadlines=0;
+	 deadlines_percentage = 0;
+	 task->edf.print_miss_deadlines=host_time;
+	 }*/
+
 	if(delete_task_edf(task, runqueue)){
 		runqueue->cpu_u -= task->edf.cpu_reservation;
 	}
@@ -289,20 +320,14 @@ deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
 
 static void check_deadlines(struct edf_rq *runqueue)
 {
-#ifdef CONFIG_SCHED_EDF_RR
-	struct task_struct *task,*tmp;
-#endif
 	struct list_head resched_list;
 
 	struct rb_node *node = rb_first(&runqueue->tasks_tree);
 	struct task_struct *next_task;
 	time_us host_time = get_curr_host_time();
-	time_us time_prints=0;
-	int deadlines=0;
-	int deadlines_percentage=0;
 
 	list_head_init(&resched_list);
-	/* Tasks which deadline is over are re-insertd in the rbtree*/
+	/* Tasks which deadline is over are re-inserted in the rbtree*/
 	while(node){
 		next_task = task_container_of(node);
 		if(next_task->edf.curr_deadline < host_time ){
@@ -326,36 +351,18 @@ static void check_deadlines(struct edf_rq *runqueue)
 	list_for_each_entry_safe(task, tmp, &resched_list,
 				 edf.sched_link) {
 
-		/*Task Statistics*/
-		/*
-		  time_prints = host_time - task->edf.print_miss_deadlines;
-		  if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
-		  deadlines = time_prints / task->edf.period;
-		  deadlines_percentage = 100 * task->edf.miss_deadlines / deadlines;
-		  printk(KERN_INFO
-		  "EDF_SCHED. rq_U %d, Tsk: id %d, name %s, used_t %llu, sl %llu, T %llu,  miss_dl_per %d\n",
-		  runqueue->cpu_u,
-		  task->id,
-		  task->name,
-		  task->edf.used_time,
-		  task->edf.slice,
-		  task->edf.period,
-		  deadlines_percentage);
-		  task->edf.miss_deadlines=0;
-		  deadlines_percentage = 0;
-		  task->edf.print_miss_deadlines=host_time;
-		  }
-		*/
 		deactivate_task(task,runqueue);
+#ifdef CONFIG_SCHED_EDF_RR
+		if (!list_empty(&task->rr.sched_link)) {
+			list_del(&task->rr.sched_link);
+			list_head_init(&task->rr.sched_link);
+		}
+#endif
 		if ((task->cpu_id == task->cpu_target_id)
 		    && (task->state != TASK_EXITED)) {
 			activate_task(task,runqueue);
 		}
 	}
-#ifdef CONFIG_SCHED_EDF_RR
-	// XXX
-#endif
-
 }
 
 /*
@@ -407,43 +414,36 @@ edf_schedule(struct edf_rq *runq, struct list_head *migrate_list)
 	if (!task)
 		return NULL;
 
-	deactivate_task(task,runq);
-	activate_task(task,runq);
-
 	return task;
 }
 
 /*
  * adjust_slice - Adjust task parameters values
  */
-
-static int adjust_slice(struct task_struct *task){
+static int adjust_slice(struct edf_rq * runq,struct task_struct *task){
 
 	uint64_t host_time = get_curr_host_time();
 	uint64_t used_time =  host_time - task->edf.last_wakeup;
 	int edf_scheduled = 1;
-
-#ifdef CONFIG_SCHED_EDF_RR
-
-	if(task->edf.last_wakeup != 0){
-
-		struct edf_rq * runqueue = &per_cpu(edf_rq, this_cpu);
-
-		/* If slice is consumed add the task to the rr_list */
-		if((task->edf.used_time <= task->edf.slice)
-		   && (task->edf.used_time + used_time > task->edf.slice)){
-			list_add_tail(&task->sched_link, &runqueue->rr_list);
-			edf_scheduled=0;
-		}
-	}
-#endif
 	task->edf.used_time += used_time;
+
+	/* If slice is consumed add the task to the rr_list */
+	if(task->edf.used_time >= task->edf.slice){
+#ifdef CONFIG_SCHED_EDF_RR
+		edf_scheduled=0;
+#endif
+
+#ifdef CONFIG_SCHED_EDF_WC
+	deactivate_task(task,runq);
+	activate_task(task,runq);
+#endif
+	}
 	return edf_scheduled;
 }
 
 int
 edf_adjust_schedule(struct edf_rq * runq, struct task_struct * task){
-	return adjust_slice(task);
+	return adjust_slice(runq, task);
 }
 
 int

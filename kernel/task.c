@@ -7,7 +7,6 @@
 #include <lwk/kfs.h>
 #include <lwk/sched.h>
 #include <lwk/smp.h>
-#include <lwk/timer.h>
 
 #ifdef CONFIG_SCHED_EDF
 #include <lwk/sched_edf.h>
@@ -141,7 +140,7 @@ __task_create(
     tsk->edf.used_time = 0;
     tsk->edf.last_wakeup = 0;
     tsk->edf.miss_deadlines = 0;
-    tsk->edf.print_miss_deadlines = get_time()/1000 ;
+    tsk->edf.print_miss_deadlines = 0;
     tsk->edf.extra_time = false;
 #endif
 
