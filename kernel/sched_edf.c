@@ -280,34 +280,29 @@ delete_task_edf( struct task_struct *task_edf, struct edf_rq *runqueue){
 static void
 deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
 
-	/*
-	 time_us host_time = get_curr_host_time();
-	 time_us time_prints=0;
-	 int deadlines=0;
-	 int deadlines_percentage=0;
-	*/
+	time_us host_time = get_curr_host_time();
+	time_us time_prints=0;
+	int deadlines=0;
+	int deadlines_percentage=0;
 
-	/*Task Statistics*/
-	/*if(task->edf.print_miss_deadlines == 0)
+#if 0
+	/* Task Statistics */
+	if(task->edf.print_miss_deadlines == 0)
 		task->edf.print_miss_deadlines = host_time;
 	time_prints = host_time - task->edf.print_miss_deadlines;
 	if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
-	 deadlines = time_prints / task->edf.period;
-	 deadlines_percentage = 100 * task->edf.miss_deadlines / deadlines;
-	 printk(KERN_INFO
-	 "EDF_SCHED. rq_U %d, Tsk: id %d, name %s, used_t %llu, sl %llu, T %llu,  miss_dl_per %d\n",
-	 runqueue->cpu_u,
-	 task->id,
-	 task->name,
-	 task->edf.used_time,
-	 task->edf.slice,
-	 task->edf.period,
-	 deadlines_percentage);
-	 task->edf.miss_deadlines=0;
-	 deadlines_percentage = 0;
-	 task->edf.print_miss_deadlines=host_time;
-	 }*/
-
+		deadlines = time_prints / task->edf.period;
+		deadlines_percentage = 100 * task->edf.miss_deadlines / deadlines;
+		printk(KERN_INFO
+			"EDF_SCHED. rq_U %d, Tsk: id %d, name %s, used_t %llu, sl %llu, T %llu,  miss_dl_per %d\n",
+			runqueue->cpu_u, task->id, task->name,
+			task->edf.used_time, task->edf.slice, task->edf.period,
+			deadlines_percentage);
+		task->edf.miss_deadlines=0;
+		deadlines_percentage = 0;
+		task->edf.print_miss_deadlines=host_time;
+	}
+#endif /* 0 - task statistics */
 	if(delete_task_edf(task, runqueue)){
 		runqueue->cpu_u -= task->edf.cpu_reservation;
 	}
