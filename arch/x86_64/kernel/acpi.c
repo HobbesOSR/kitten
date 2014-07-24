@@ -105,6 +105,9 @@ void __init acpi_init(void)
 		return;
 	}
 
+	/* Parse the MADT table to get available CPUs */
+	acpi_parse_madt();
+
 	/* Parse the SRAT/SLIT NUMA-related tables */
 	acpi_numa_init();
 }

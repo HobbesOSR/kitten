@@ -18,10 +18,25 @@
 #include <lwk/bootmem.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/params.h>
+#include <lwk/acpi.h>
 #include <arch/io.h>
 #include <arch/mpspec.h>
 #include <arch/proto.h>
 #include <arch/io_apic.h>
+
+/**
+ * Command line argument to enable ACPI MADT table parsing.
+ * Default is to use MP table, not ACPI MADT table to get the list of CPUs.
+ * Add "acpi_enable_madt=1" to the kernel boot command line to enable.
+ */
+unsigned int acpi_enable_madt = 0;
+param(acpi_enable_madt, uint);
+
+/**
+ * Set true if using ACPI MADT table to get CPU info.
+ * If false, will use MP table.
+ */
+static bool using_acpi = false;
 
 /**
  * Points to the MP table, once and if it is found.
@@ -73,20 +88,18 @@ mpf_checksum(unsigned char *mp, int len)
 	return sum & 0xFF;
 }
 
-/**
- * Parses an MP table CPU entry.
- */
 static void __init
-MP_processor_info(struct mpc_config_processor *m)
+add_cpu_info(unsigned int apicid, int version, int is_bp)
 {
-	int cpu;
-	int is_bp;
-	unsigned char ver;
+	unsigned int cpu;
 	cpumask_t tmp_map;
 
-	if (!(m->mpc_cpuflag & CPU_ENABLED)) {
-		printk(KERN_WARNING "A disabled CPU was encountered\n");
-		return;
+	/* Validate APIC version, fixing up if necessary. */
+	if (version == 0x0) {
+		printk(KERN_ERR "BIOS bug, APIC version is 0 for PhysCPU#%d! "
+		                "fixing up to 0x10. (tell your hw vendor)\n",
+		                version);
+		version = 0x10;
 	}
 
 	/* Count the new CPU */
@@ -94,58 +107,63 @@ MP_processor_info(struct mpc_config_processor *m)
 		panic("NR_CPUS limit of %i reached.\n", NR_CPUS);
 
 	/*
- 	 * Determine if this is the bootstrap processor...
-	 * the one responsible for booting the other CPUs.
-	 */
-	is_bp = (m->mpc_cpuflag & CPU_BOOTPROCESSOR);
-
-	/*
 	 * Assign a logical CPU ID.
 	 * The bootstrap CPU is always assigned logical ID 0.
 	 * All other CPUs are assigned the lowest ID available.
 	 */
- 	if (is_bp) {
+	if (is_bp) {
 		cpu = 0;
 	} else {
 		cpus_complement(tmp_map, cpu_present_map);
 		cpu = first_cpu(tmp_map);
 	}
 
-	/* Validate APIC version, fixing up if necessary. */
-	ver = m->mpc_apicver;
-	if (ver == 0x0) {
-		printk(KERN_ERR "BIOS bug, APIC version is 0 for PhysCPU#%d! "
-		                "fixing up to 0x10. (tell your hw vendor)\n",
-		                m->mpc_apicid);
-		ver = 0x10;
-	}
-
 	/* Remember the APIC's version */
-	apic_version[m->mpc_apicid] = ver;
+	apic_version[apicid] = version;
 
 	/* Add the CPU to the map of physical CPU IDs present. */
-	physid_set(m->mpc_apicid, phys_cpu_present_map);
+	physid_set(apicid, phys_cpu_present_map);
 
 	/* Remember the physical CPU ID of the bootstrap CPU. */
-	if (is_bp)
-		boot_phys_cpu_id = m->mpc_apicid;
+	if (is_bp == true)
+		boot_phys_cpu_id = apicid;
 
 	/* Add the CPU to the map of logical CPU IDs present. */
 	cpu_set(cpu, cpu_present_map);
 
 	/* Store ID information. */
 	cpu_info[cpu].logical_id   = cpu;
-	cpu_info[cpu].physical_id  = m->mpc_apicid;
-	cpu_info[cpu].arch.apic_id = m->mpc_apicid;
+	cpu_info[cpu].physical_id  = apicid;
+	cpu_info[cpu].arch.apic_id = apicid;
 
 	printk(KERN_DEBUG
-	  "Physical CPU #%d -> Logical CPU #%d, %d:%d APIC version %d%s\n",
-		m->mpc_apicid,
+		"%sPhysical CPU #%u -> Logical CPU #%u, APIC version %d%s\n",
+		using_acpi ? "ACPI: " : "",
+		apicid,
 		cpu,
-	       (m->mpc_cpufeature & CPU_FAMILY_MASK) >> 8,
-	       (m->mpc_cpufeature & CPU_MODEL_MASK)  >> 4,
-		ver,
+		version,
 		is_bp ? " (Bootstrap CPU)" : "");
+}
+
+/**
+ * Parses an MP table CPU entry.
+ */
+static void __init
+MP_processor_info(struct mpc_config_processor *m)
+{
+	bool is_bp;
+
+	if (!(m->mpc_cpuflag & CPU_ENABLED)) {
+		printk(KERN_WARNING "A disabled CPU was encountered\n");
+		return;
+	}
+
+	/* Determine if this is the bootstrap processor...
+	 * the one responsible for booting the other CPUs. */
+	is_bp = (m->mpc_cpuflag & CPU_BOOTPROCESSOR);
+
+	/* Remember the CPU */
+	add_cpu_info(m->mpc_apicid, m->mpc_apicver, is_bp);
 }
 
 /**
@@ -458,6 +476,11 @@ read_mpc(struct mp_config_table *mpc)
 void __init
 get_mp_config(void)
 {
+	if (using_acpi) {
+		printk(KERN_INFO "Skipping MP table parse, used ACPI MADT table instead\n");
+		return;
+	}
+
 	struct intel_mp_floating *mpf = mpf_found;
 	if (!mpf) {
 		printk(KERN_WARNING "Assuming 1 CPU.\n");
@@ -576,3 +599,112 @@ find_mp_config(void)
 	printk(KERN_DEBUG "No MP table found.\n");
 }
 
+int __init
+ACPI_parse_madt_header(struct acpi_table_header *table)
+{
+	struct acpi_table_madt *madt = (struct acpi_table_madt *)table;
+
+	if (madt == NULL)
+		return -ENODEV;
+
+	if (madt->address) {
+		printk(KERN_INFO "ACPI: Local APIC mapped to paddr 0x%08x.\n", madt->address);
+		lapic_phys_addr = madt->address;
+	}
+
+	return 0;
+}
+
+int __init
+ACPI_parse_madt_lapic_entry(struct acpi_subtable_header *header, const unsigned long end)
+{
+	struct acpi_madt_local_apic *p = (struct acpi_madt_local_apic *)header;
+
+	if (BAD_MADT_ENTRY(p, end))
+		return -EINVAL;
+
+	/* If the CPU is enabled, register it */
+	if (p->lapic_flags & ACPI_MADT_ENABLED) {
+		/* If we found a CPU, assume we are using ACPI MADT for all CPUs */
+		using_acpi = true;
+		add_cpu_info(p->id, 0x10, (p->id == 0));
+	}
+
+	return 0;
+}
+
+int __init
+ACPI_parse_madt_local_x2apic_entry(struct acpi_subtable_header *header, const unsigned long end)
+{
+	struct acpi_madt_local_x2apic *p = (struct acpi_madt_local_x2apic *)header;
+
+	if (BAD_MADT_ENTRY(p, end))
+		return -EINVAL;
+
+	/* If the CPU is enabled, register it */
+	if (p->lapic_flags & ACPI_MADT_ENABLED) {
+		acpi_table_print_madt_entry(header);
+		add_cpu_info(p->local_apic_id, 0x10, (p->local_apic_id == 0));
+	}
+
+	return 0;
+}
+
+int __init
+ACPI_parse_madt_ioapic_entry(struct acpi_subtable_header *header, const unsigned long end)
+{
+	struct acpi_madt_io_apic *p = (struct acpi_madt_io_apic *)header;
+
+	if (BAD_MADT_ENTRY(p, end))
+		return -EINVAL;
+
+	acpi_table_print_madt_entry(header);
+
+	/* Register the IO-APIC */
+	ioapic_info_store(p->id, p->address);
+
+	return 0;
+}
+
+int __init
+ACPI_parse_madt_generic_entry(struct acpi_subtable_header *header, const unsigned long end)
+{
+	if (BAD_MADT_ENTRY(header, end))
+		return -EINVAL;
+	acpi_table_print_madt_entry(header);
+	return 0;
+}
+
+int
+acpi_parse_madt(void)
+{
+	if (!acpi_enable_madt) {
+		printk(KERN_INFO "ACPI: Skipping parse of ACPI MADT table\n");
+		return -1;
+	}
+
+	if (acpi_table_parse(ACPI_SIG_MADT, ACPI_parse_madt_header) != 0) {
+		printk(KERN_INFO "ACPI: Could not find MADT table\n");
+		return -1;
+	}
+
+	printk(KERN_INFO "ACPI: Parsing MADT table\n");
+
+	/* Parse stuff we handle */
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_LOCAL_APIC,   ACPI_parse_madt_lapic_entry,        MAX_APICS);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_LOCAL_X2APIC, ACPI_parse_madt_local_x2apic_entry, MAX_APICS);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_IO_APIC,      ACPI_parse_madt_ioapic_entry,       MAX_APICS);
+
+	/* Parse stuff we don't handle but want to print to the console */
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_INTERRUPT_OVERRIDE,  ACPI_parse_madt_generic_entry, UINT_MAX);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_NMI_SOURCE,          ACPI_parse_madt_generic_entry, UINT_MAX);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_LOCAL_APIC_NMI,      ACPI_parse_madt_generic_entry, UINT_MAX);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_LOCAL_X2APIC_NMI,    ACPI_parse_madt_generic_entry, UINT_MAX);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_LOCAL_APIC_OVERRIDE, ACPI_parse_madt_generic_entry, UINT_MAX);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_IO_SAPIC,            ACPI_parse_madt_generic_entry, UINT_MAX);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_LOCAL_SAPIC,         ACPI_parse_madt_generic_entry, UINT_MAX);
+	acpi_table_parse_entries(ACPI_SIG_MADT, sizeof(struct acpi_table_madt), ACPI_MADT_TYPE_INTERRUPT_SOURCE,    ACPI_parse_madt_generic_entry, UINT_MAX);
+
+	printk(KERN_INFO "ACPI: Done parsing MADT table\n");
+	return 0;
+}

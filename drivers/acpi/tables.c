@@ -37,17 +37,11 @@
 
 #define ACPI_MAX_TABLES		128
 
-#if 0
 static char *mps_inti_flags_polarity[] = { "dfl", "high", "res", "low" };
 static char *mps_inti_flags_trigger[] = { "dfl", "edge", "res", "level" };
-#endif
 
 static struct acpi_table_desc initial_tables[ACPI_MAX_TABLES] __initdata;
 
-static int acpi_apic_instance __initdata;
-
-/* IF ZERO */
-#if 0
 void acpi_table_print_madt_entry(struct acpi_subtable_header *header)
 {
 	if (!header)
@@ -202,7 +196,6 @@ void acpi_table_print_madt_entry(struct acpi_subtable_header *header)
 		break;
 	}
 }
-#endif
 
 
 int __init
@@ -224,10 +217,7 @@ acpi_table_parse_entries(char *id,
 	if (!handler)
 		return -EINVAL;
 
-	if (strncmp(id, ACPI_SIG_MADT, 4) == 0)
-		acpi_get_table_with_size(id, acpi_apic_instance, &table_header, &tbl_size);
-	else
-		acpi_get_table_with_size(id, 0, &table_header, &tbl_size);
+	acpi_get_table_with_size(id, 0, &table_header, &tbl_size);
 
 	if (!table_header) {
 		printk(KERN_WARNING PREFIX "%4.4s not present\n", id);
@@ -293,10 +283,7 @@ int __init acpi_table_parse(char *id, acpi_table_handler handler)
 	if (!handler)
 		return -EINVAL;
 
-	if (strncmp(id, ACPI_SIG_MADT, 4) == 0)
-		acpi_get_table_with_size(id, acpi_apic_instance, &table, &tbl_size);
-	else
-		acpi_get_table_with_size(id, 0, &table, &tbl_size);
+	acpi_get_table_with_size(id, 0, &table, &tbl_size);
 
 	if (table) {
 		handler(table);

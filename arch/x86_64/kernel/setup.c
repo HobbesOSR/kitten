@@ -314,15 +314,15 @@ setup_pc_arch(void)
 	reserve_memory();
 
 	/*
+	 * Initialize the ACPI subsystem.
+	 */
+	acpi_init();
+
+	/*
 	 * Get the multiprocessor configuration...
 	 * number of CPUs, PCI bus info, APIC info, etc.
 	 */
 	get_mp_config();
-
-	/*
-	 * Initialize the ACPI subsystem.
-	 */
-	acpi_init();
 
 	/*
 	 * Initialize resources.  Resources reserve sections of normal memory

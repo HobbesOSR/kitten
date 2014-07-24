@@ -14,9 +14,9 @@
 
 /**
  * Physical address of the local APIC memory mapping.
- * If the system BIOS provided an MP configuration table, this is set in
- * arch/x86_64/kernel/mpparse.c to the value parsed from the table.
- * Otherwise, the default address is used.
+ * If the system BIOS provided an MP configuration table or APIC MADT table,
+ * this is set in arch/x86_64/kernel/mpparse.c to the value parsed from the
+ * table. Otherwise, the default address is used.
  */
 unsigned long lapic_phys_addr = APIC_DEFAULT_PHYS_BASE;
 
@@ -136,6 +136,15 @@ lapic_init(void)
 	             | APIC_ERROR_VECTOR   /* IDT vector to route to */
 	);
 	apic_write(APIC_ESR, 0); /* spec says to clear after enabling LVTERR */
+}
+
+/**
+ * Returns the caller's local APIC ID.
+ */
+unsigned int
+lapic_read_id(void)
+{
+	return GET_APIC_ID(apic_read(APIC_ID));
 }
 
 static void 
