@@ -33,36 +33,12 @@ typedef unsigned long long u64;
 
 #include "palacios.h"
 #include "pisces.h"
-#include "xpmem-pisces.h"
-#include <xpmem-ext.h>
-#include <pthread.h>
 
 char test_buf[4096]  __attribute__ ((aligned (512)));
 char hello_buf[512]  __attribute__ ((aligned (512)));
 char resp_buf[4066]  __attribute__ ((aligned (512)));
 
 
-
-#if 0
-static void * fn(void * arg) {
-	int    var  = 12345;
-	void * addr = (void *)((uintptr_t)&var & ~(PAGE_SIZE - 1));
-
-	xpmem_segid_t segid;
-
-	printf("addr: %p, var: %p, (offset: %d)\n", 
-	       addr,
-	       (void *)&var,
-	       (int)((void *)&var - addr));
-
-	segid = xpmem_make(addr, 4096, XPMEM_PERMIT_MODE, NULL);
-	printf("xpmem segid: %lli\n", (signed long long)segid);
-
-	while (1) {}
-    
-	return NULL;
-}
-#endif
 
 static int 
 send_resp(int fd, u64 err_code) 
@@ -144,77 +120,8 @@ main(int argc, char ** argv, char * envp[])
 		return -1;
 	}
 
-#if 0
-	xpmem_pisces_add_pisces_dom();
-	xpmem_pisces_add_local_dom();
-
-
-	{
-		pthread_t t;
-		pthread_create(&t, NULL, fn, NULL);
-	}
-
-#endif
 	while (1) {
 		int ret = 0;
-
-#if 0
-		/* Poll the ctrl and xpmem file descriptors */
-		{
-			struct pollfd    * poll_fds    = NULL;
-			struct xpmem_dom * domain_list = NULL;
-			struct xpmem_dom * src_dom     = NULL;
-			int list_size = 0;
-			int i = 0;
-
-			domain_list = xpmem_pisces_get_dom_list(&list_size);
-
-			if (!domain_list) {
-				fprintf(stderr, "Could not get XPMEM domain list\n");
-				return -1;
-			}
-
-			poll_fds = malloc(sizeof(struct pollfd) * (list_size + 1));
-
-			if (!poll_fds) {
-				perror("malloc");
-				return -1;
-			}
-
-			/* Pisces Ctrl fd */
-			poll_fds[0].fd     = pisces_fd;
-			poll_fds[0].events = (POLLIN | POLLRDNORM);
-	
-			/* XPMEM domain fd's */
-			for (i = 1; i <= list_size; i++) {
-				poll_fds[i].fd     = domain_list[i - 1].enclave.fd;
-				poll_fds[i].events = (POLLIN | POLLRDNORM);
-			}
-
-	
-			
-			if (poll(poll_fds, list_size + 1, -1) <= 0) {
-				perror("poll");
-				return -1;
-			}
-
-			if (!(poll_fds[0].revents & (POLLIN | POLLRDNORM))) {
-				for (i = 1; i <= list_size; i++) {
-					if (poll_fds[i].revents & (POLLIN | POLLRDNORM)) {
-						src_dom = &(domain_list[i - 1]);
-						xpmem_pisces_xpmem_cmd(src_dom);
-						break;
-					}
-				}
-			}
-
-			free(poll_fds);
-
-			if (src_dom != NULL) {
-				continue;
-			}
-		}
-#endif
 
 		ret = read(pisces_fd, &cmd, sizeof(struct pisces_cmd));
 
@@ -643,4 +550,3 @@ main(int argc, char ** argv, char * envp[])
 
 	return 0;
 }
-
