@@ -62,4 +62,29 @@ config SATA
 	help 
 	  SATA compatible block driver for raw disk access
 
+
+config XPMEM
+        bool "XPMEM driver"
+	default PISCES
+	help
+	  XPMEM driver
+
+choice
+        prompt "XPMEM name/forwarding service"
+        depends on XPMEM
+        default XPMEM_FWD
+
+config XPMEM_NS
+        bool "The XPMEM name service"
+        help 
+	        Select this if you want to run the XPMEM name service
+
+config XPMEM_FWD
+        bool "The XPMEM forwarding service"
+        help 
+	        Select this if you want to run the XPMEM forwarding service
+    
+endchoice
+
+
 endmenu

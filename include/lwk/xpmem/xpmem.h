@@ -17,7 +17,6 @@
 #include <lwk/kfs.h>
 #include <arch/ioctl.h>
 
-#ifdef __KERNEL__
 
 /*
  * basic argument type definitions
@@ -66,10 +65,6 @@ struct xpmem_addr {
 #define XPMEM_CMD_DETACH	_IO(XPMEM_IOC_MAGIC, 6)
 #define XPMEM_CMD_FORK_BEGIN	_IO(XPMEM_IOC_MAGIC, 7)
 #define XPMEM_CMD_FORK_END	_IO(XPMEM_IOC_MAGIC, 8)
-#define XPMEM_CMD_EXT_LOCAL_CONNECT     _IO(XPMEM_IOC_MAGIC, 9)
-#define XPMEM_CMD_EXT_LOCAL_DISCONNECT  _IO(XPMEM_IOC_MAGIC, 10)
-#define XPMEM_CMD_EXT_REMOTE_CONNECT    _IO(XPMEM_IOC_MAGIC, 11)
-#define XPMEM_CMD_EXT_REMOTE_DISCONNECT _IO(XPMEM_IOC_MAGIC, 12)
 
 /*
  * Structures used with the preceding ioctl() commands to pass data.
@@ -112,18 +107,30 @@ struct xpmem_cmd_detach {
 };
 
 
-struct xpmem_partition {
-    struct pisces_xpmem_state * pisces_state;
+#ifdef __KERNEL__
+
+/*
+ * Both the xpmem_segid_t and xpmem_apid_t are of type __s64 and designed
+ * to be opaque to the user. Both consist of the same underlying fields.
+ *
+ * The 'uniq' field is designed to give each segid or apid a unique value.
+ * Each type is only unique with respect to itself.
+ *
+ * An ID is never less than or equal to zero.
+ */
+struct xpmem_id {
+    pid_t tgid;             /* thread group that owns ID */
+    unsigned short uniq;  /* this value makes the ID unique */
 };
 
-extern int xpmem_pisces_init(struct xpmem_partition *);
-extern int xpmem_pisces_deinit(struct xpmem_partition *);
-extern int xpmem_local_connect(struct pisces_xpmem_state *);
-extern int xpmem_local_disconnect(struct pisces_xpmem_state *);
-extern int xpmem_remote_connect(struct pisces_xpmem_state *);
-extern int xpmem_remote_disconnect(struct pisces_xpmem_state *);
+#define XPMEM_MAX_UNIQ_ID   ((1 << (sizeof(short) * 8)) - 1)
+#define XPMEM_MAX_UNIQ_APID 256
+#define XPMEM_MAX_UNIQ_SEGID XPMEM_MAX_UNIQ_ID - XPMEM_MAX_UNIQ_APID
 
-xpmem_apid_t xpmem_get_local_apid(xpmem_apid_t remote_apid);
+struct xpmem_partition * get_local_partition(void);
+
 
 #endif /* __KERNEL__ */
+
+
 #endif /* _XPMEM_H */

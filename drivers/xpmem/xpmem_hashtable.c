@@ -35,8 +35,9 @@
 
 #include <lwk/types.h>
 #include <lwk/kmem.h>
-#include "hashtable.h"
 #include <arch/string.h>
+
+#include <xpmem_hashtable.h>
 
 
 struct hash_entry {
@@ -46,7 +47,7 @@ struct hash_entry {
     struct hash_entry * next;
 };
 
-struct hashtable {
+struct xpmem_hashtable {
     u32 table_length;
     struct hash_entry ** table;
     u32 entry_count;
@@ -59,7 +60,7 @@ struct hashtable {
 
 /* HASH FUNCTIONS */
 
-static inline u32 do_hash(struct hashtable * htable, uintptr_t key) {
+static inline u32 do_hash(struct xpmem_hashtable * htable, uintptr_t key) {
     /* Aim to protect against poor hash functions by adding logic here
      * - logic taken from java 1.4 hashtable source */
     u32 i = htable->hash_fn(key);
@@ -80,7 +81,7 @@ static inline u32 do_hash(struct hashtable * htable, uintptr_t key) {
 #define BITS_PER_LONG 64
 
 
-u32 pisces_hash_long(u64 val, u32 bits) {
+u32 hash_long(u64 val, u32 bits) {
     u64 hash = val;
 
 
@@ -105,7 +106,7 @@ u32 pisces_hash_long(u64 val, u32 bits) {
 
 /* HASH GENERIC MEMORY BUFFER */
 /* ELF HEADER HASH FUNCTION */
-u32 pisces_hash_buffer(u8 * msg, u32 length) {
+u32 hash_buffer(u8 * msg, u32 length) {
     u32 hash = 0;
     u32 temp = 0;
     u32 i;
@@ -169,10 +170,10 @@ static const u32 load_factors[] = {
 
 const u32 prime_table_len = sizeof(primes) / sizeof(primes[0]);
 
-struct hashtable * pisces_create_htable(u32 min_size,
+struct xpmem_hashtable * create_htable(u32 min_size,
 				    u32 (*hash_fn) (uintptr_t),
 				    int (*eq_fn) (uintptr_t, uintptr_t)) {
-    struct hashtable * htable;
+    struct xpmem_hashtable * htable;
     u32 prime_index;
     u32 size = primes[0];
 
@@ -189,7 +190,7 @@ struct hashtable * pisces_create_htable(u32 min_size,
 	}
     }
 
-    htable = (struct hashtable *)kmem_alloc(sizeof(struct hashtable));
+    htable = (struct xpmem_hashtable *)kmem_alloc(sizeof(struct xpmem_hashtable));
 
     if (htable == NULL) {
 	return NULL; /*oom*/
@@ -215,7 +216,7 @@ struct hashtable * pisces_create_htable(u32 min_size,
 }
 
 
-static int hashtable_expand(struct hashtable * htable) {
+static int xpmem_hashtable_expand(struct xpmem_hashtable * htable) {
     /* Double the size of the table to accomodate more entries */
     struct hash_entry ** new_table;
     struct hash_entry * tmp_entry;
@@ -296,11 +297,11 @@ static int hashtable_expand(struct hashtable * htable) {
     return -1;
 }
 
-u32 pisces_htable_count(struct hashtable * htable) {
+u32 htable_count(struct xpmem_hashtable * htable) {
     return htable->entry_count;
 }
 
-int pisces_htable_insert(struct hashtable * htable, uintptr_t key, uintptr_t value) {
+int htable_insert(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
     /* This method allows duplicate keys - but they shouldn't be used */
     u32 index;
     struct hash_entry * new_entry;
@@ -310,7 +311,7 @@ int pisces_htable_insert(struct hashtable * htable, uintptr_t key, uintptr_t val
 	 * still try cramming just this value into the existing table
 	 * -- we may not have memory for a larger table, but one more
 	 * element may be ok. Next time we insert, we'll try expanding again.*/
-	hashtable_expand(htable);
+	xpmem_hashtable_expand(htable);
     }
 
     new_entry = (struct hash_entry *)kmem_alloc(sizeof(struct hash_entry));
@@ -335,7 +336,7 @@ int pisces_htable_insert(struct hashtable * htable, uintptr_t key, uintptr_t val
 }
 
 
-int pisces_htable_change(struct hashtable * htable, uintptr_t key, uintptr_t value, int free_value) {
+int htable_change(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value, int free_value) {
     struct hash_entry * tmp_entry;
     u32 hash_value;
     u32 index;
@@ -364,7 +365,7 @@ int pisces_htable_change(struct hashtable * htable, uintptr_t key, uintptr_t val
 
 
 
-int pisces_htable_inc(struct hashtable * htable, uintptr_t key, uintptr_t value) {
+int htable_inc(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
     struct hash_entry * tmp_entry;
     u32 hash_value;
     u32 index;
@@ -388,7 +389,7 @@ int pisces_htable_inc(struct hashtable * htable, uintptr_t key, uintptr_t value)
 }
 
 
-int pisces_htable_dec(struct hashtable * htable, uintptr_t key, uintptr_t value) {
+int htable_dec(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
     struct hash_entry * tmp_entry;
     u32 hash_value;
     u32 index;
@@ -413,7 +414,7 @@ int pisces_htable_dec(struct hashtable * htable, uintptr_t key, uintptr_t value)
 
 
 /* returns value associated with key */
-uintptr_t pisces_htable_search(struct hashtable * htable, uintptr_t key) {
+uintptr_t htable_search(struct xpmem_hashtable * htable, uintptr_t key) {
     struct hash_entry * cursor;
     u32 hash_value;
     u32 index;
@@ -439,7 +440,7 @@ uintptr_t pisces_htable_search(struct hashtable * htable, uintptr_t key) {
 
 
 /* returns value associated with key */
-uintptr_t pisces_htable_remove(struct hashtable * htable, uintptr_t key, int free_key) {
+uintptr_t htable_remove(struct xpmem_hashtable * htable, uintptr_t key, int free_key) {
     /* TODO: consider compacting the table when the load factor drops enough,
      *       or provide a 'compact' method. */
   
@@ -481,7 +482,7 @@ uintptr_t pisces_htable_remove(struct hashtable * htable, uintptr_t key, int fre
 
 
 /* destroy */
-void pisces_free_htable(struct hashtable * htable, int free_values, int free_keys) {
+void free_htable(struct xpmem_hashtable * htable, int free_values, int free_keys) {
     u32 i;
     struct hash_entry * cursor;
     struct hash_entry * tmp;

@@ -32,10 +32,10 @@
 */
 
 
-#ifndef __PISCES_HASHTABLE_H__
-#define __PISCES_HASHTABLE_H__
+#ifndef __XPMEM_HASHTABLE_H__
+#define __XPMEM_HASHTABLE_H__
 
-struct hashtable;
+struct xpmem_hashtable;
 
 
 /* Example of use:
@@ -94,38 +94,17 @@ struct hashtable;
  *
  */
 
-
-
-#define DEFINE_HASHTABLE_INSERT(fnname, keytype, valuetype)		\
-    static int fnname (struct hashtable * htable, keytype key, valuetype value) { \
-	return v3_htable_insert(htable, (uintptr_t)key, (uintptr_t)value);	\
-    }
-
-#define DEFINE_HASHTABLE_SEARCH(fnname, keytype, valuetype)		\
-    static valuetype * fnname (struct hashtable * htable, keytype  key) { \
-	return (valuetype *) (v3_htable_search(htable, (uintptr_t)key));	\
-    }
-
-#define DEFINE_HASHTABLE_REMOVE(fnname, keytype, valuetype, free_key)	\
-    static valuetype * fnname (struct hashtable * htable, keytype key) { \
-	return (valuetype *) (v3_htable_remove(htable, (uintptr_t)key, free_key)); \
-    }
-
-
-
-
-
 /* These cannot be inlined because they are referenced as fn ptrs */
-u32 pisces_hash_long(u64 val, u32 bits);
-u32 pisces_hash_buffer(u8 * msg, u32 length);
+u32 hash_long(u64 val, u32 bits);
+u32 hash_buffer(u8 * msg, u32 length);
 
 
 
-struct hashtable * pisces_create_htable(u32 min_size,
+struct xpmem_hashtable * create_htable(u32 min_size,
 				    u32 (*hashfunction) (uintptr_t key),
 				    int (*key_eq_fn) (uintptr_t key1, uintptr_t key2));
 
-void pisces_free_htable(struct hashtable * htable, int free_values, int free_keys);
+void free_htable(struct xpmem_hashtable * htable, int free_values, int free_keys);
 
 /*
  * returns non-zero for successful insertion
@@ -139,22 +118,22 @@ void pisces_free_htable(struct hashtable * htable, int free_values, int free_key
  * entries is reversed.
  * If in doubt, remove before insert.
  */
-int pisces_htable_insert(struct hashtable * htable, uintptr_t key, uintptr_t value);
+int htable_insert(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value);
 
-int pisces_htable_change(struct hashtable * htable, uintptr_t key, uintptr_t value, int free_value);
+int htable_change(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value, int free_value);
 
-
-// returns the value associated with the key, or NULL if none found
-uintptr_t pisces_htable_search(struct hashtable * htable, uintptr_t key);
 
 // returns the value associated with the key, or NULL if none found
-uintptr_t pisces_htable_remove(struct hashtable * htable, uintptr_t key, int free_key);
+uintptr_t htable_search(struct xpmem_hashtable * htable, uintptr_t key);
 
-u32 pisces_htable_count(struct hashtable * htable);
+// returns the value associated with the key, or NULL if none found
+uintptr_t htable_remove(struct xpmem_hashtable * htable, uintptr_t key, int free_key);
+
+u32 htable_count(struct xpmem_hashtable * htable);
 
 // Specialty functions for a counting hashtable 
-int pisces_htable_inc(struct hashtable * htable, uintptr_t key, uintptr_t value);
-int pisces_htable_dec(struct hashtable * htable, uintptr_t key, uintptr_t value);
+int htable_inc(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value);
+int htable_dec(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value);
 
 
 #endif

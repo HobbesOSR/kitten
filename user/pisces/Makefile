@@ -3,8 +3,8 @@ include $(BASE)/Makefile.header
 
 PROGRAMS = pisces
 
-pisces_SOURCES = pisces.c sched_getcpu.c xpmem-pisces.c
-pisces_LDADD   = -llwk -lpthread -lxpmem-ext
+pisces_SOURCES = pisces.c sched_getcpu.c
+pisces_LDADD   = -llwk -lpthread
 
 include $(BASE)/Makefile.footer
 

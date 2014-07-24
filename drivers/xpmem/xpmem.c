@@ -22,63 +22,45 @@
 #include <arch/uaccess.h>
 #include <arch/mutex.h>
 #include <arch/atomic.h>
-#include "hashtable.h"
 
-#include <xpmem.h>
-#include <xpmem_extended.h>
+#include <lwk/xpmem/xpmem.h>
+#include <lwk/xpmem/xpmem_extended.h>
+
+#include <arch/pisces/pisces_xpmem.h>
+
+#include <xpmem_partition.h>
+#include <xpmem_hashtable.h>
 
 
-/* TODO: Set this based on a config option */
-#define EXT_PISCES
-
-
-static struct xpmem_partition * my_part = NULL;
-static struct hashtable * segid_map = NULL;
+static struct xpmem_partition * xpmem_my_part = NULL;
+static struct xpmem_hashtable * segid_map = NULL;
 DEFINE_SPINLOCK(map_lock);
 
 
-struct xpmem_id {
-    pid_t tgid;
-    unsigned short uniq;
-};
-
-static u32 segid_hash_fn(uintptr_t key) {
-    return pisces_hash_long(key, 32);
+static u32 
+segid_hash_fn(uintptr_t key)
+{
+    return hash_long(key, 32);
 }
 
-static int segid_eq_fn(uintptr_t key1, uintptr_t key2) {
+static int 
+segid_eq_fn(uintptr_t key1, 
+            uintptr_t key2)
+{
     return (key1 == key2);
 }
 
 static int
-xpmem_open_op(struct inode * inodep, struct file * filp)
+xpmem_open_op(struct inode * inodep, 
+              struct file  * filp)
 {
     filp->private_data = inodep->priv;
     return 0;
 }
 
-static int
-xpmem_release_op(struct inode * inodep, struct file * filp)
-{
-    return 0;
-}
-
-
-
-static ssize_t
-xpmem_read_op(struct file * filp, char __user * ubuf, size_t size, loff_t * off)
-{
-    return 0;
-}
-
-static ssize_t
-xpmem_write_op(struct file * filp, const char __user * ubuf, size_t size, loff_t * off)
-{
-    return 0;
-}
-
 static unsigned long
-make_xpmem_addr(pid_t src, void * vaddr) 
+make_xpmem_addr(pid_t  src, 
+                void * vaddr) 
 {
     unsigned long slot;
 
@@ -91,7 +73,11 @@ make_xpmem_addr(pid_t src, void * vaddr)
 }
 
 static int
-xpmem_make(void *vaddr, size_t size, int permit_type, void * permit_value, xpmem_segid_t * segid_p)
+xpmem_make(void          * vaddr, 
+           size_t          size, 
+	   int             permit_type, 
+	   void          * permit_value, 
+	   xpmem_segid_t * segid_p)
 {
     int ret = 0;
 
@@ -107,18 +93,17 @@ xpmem_make(void *vaddr, size_t size, int permit_type, void * permit_value, xpmem
 
     *segid_p = make_xpmem_addr(current->aspace->id, vaddr);
 
-    if (extend_enabled) {
+    {
 	xpmem_segid_t ext_segid;
 	struct xpmem_id * id = (struct xpmem_id *)&ext_segid;
 	id->tgid = current->aspace->id;
 	id->uniq = 0;
 
-	ret = xpmem_extended_ops->make(my_part, &ext_segid);
+        ret = xpmem_make_remote(&(xpmem_my_part->part_state), &ext_segid);
 	if (ret) {
 	    *segid_p = -1;
 	} else {
-	    printk("Stored segid/apid %lli in map\n", ext_segid);
-	    pisces_htable_insert(segid_map, (uintptr_t)ext_segid, (uintptr_t)*segid_p);
+	    htable_insert(segid_map, (uintptr_t)ext_segid, (uintptr_t)*segid_p);
 	    *segid_p = ext_segid;
 	}
     }
@@ -129,26 +114,26 @@ xpmem_make(void *vaddr, size_t size, int permit_type, void * permit_value, xpmem
 static int
 xpmem_remove(xpmem_segid_t segid)
 {
-    if (extend_enabled) {
-	pisces_htable_remove(segid_map, (uintptr_t)segid, 0);
-	return xpmem_extended_ops->remove(my_part, segid);
-    }
-
-    return 0;
+    htable_remove(segid_map, (uintptr_t)segid, 0);
+    return xpmem_remove_remote(&(xpmem_my_part->part_state), segid);
 }
 
 static int
-xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void * permit_value, xpmem_apid_t * apid_p)
+xpmem_get(xpmem_segid_t  segid, 
+          int            flags, 
+	  int            permit_type, 
+	  void         * permit_value, 
+	  xpmem_apid_t * apid_p)
 {
     int ret = 0;
 
     *apid_p = segid;
 
-    if (extend_enabled) {
-	xpmem_segid_t search = (xpmem_segid_t)pisces_htable_search(segid_map, segid);
+    {
+	xpmem_segid_t search = (xpmem_segid_t)htable_search(segid_map, segid);
 	if (search == 0) {
 	    /* Miss means the segid is registered remotely */
-	    ret = xpmem_extended_ops->get(my_part, segid, flags, permit_type, (u64)permit_value, apid_p);
+	    ret = xpmem_get_remote(&(xpmem_my_part->part_state), segid, flags, permit_type, (u64)permit_value, apid_p);
 	}
     }
     
@@ -158,15 +143,14 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void * permit_value, 
 static int
 xpmem_release(xpmem_apid_t apid)
 {
-    if (extend_enabled) {
-	return xpmem_extended_ops->release(my_part, apid);
-    }
-
-    return 0;
+    return xpmem_release_remote(&(xpmem_my_part->part_state), apid);
 }
 
 static int
-xpmem_attach(xpmem_apid_t apid, off_t off, size_t size, u64 * vaddr)
+xpmem_attach(xpmem_apid_t apid, 
+             off_t        off, 
+	     size_t       size, 
+	     u64        * vaddr)
 {
     int ret = 0;
 
@@ -185,17 +169,15 @@ xpmem_attach(xpmem_apid_t apid, off_t off, size_t size, u64 * vaddr)
 	size += PAGE_SIZE - (size & (PAGE_SIZE - 1));
     }
 
-    if (extend_enabled) {
-	xpmem_segid_t search = (xpmem_segid_t)pisces_htable_search(segid_map, apid);
+    {
+	xpmem_segid_t search = (xpmem_segid_t)htable_search(segid_map, apid);
 	if (search == 0) {
 	    /* Miss means the apid is registered remotely */
-	    ret = xpmem_extended_ops->attach(my_part, apid, off, size, vaddr);
+	    ret = xpmem_attach_remote(&(xpmem_my_part->part_state), apid, off, size, vaddr);
 	} else {
 	    /* Hit means the apid is registered locally and is the smartmap'd virtual adddress */
 	    *vaddr = (u64)((void *)search + off);
 	}
-    } else {
-	*vaddr = (u64)((void *)apid + off);
     }
     
     return ret;
@@ -204,18 +186,16 @@ xpmem_attach(xpmem_apid_t apid, off_t off, size_t size, u64 * vaddr)
 static int
 xpmem_detach(u64 vaddr)
 {
-    if (extend_enabled) {
-	return xpmem_extended_ops->detach(my_part, vaddr);
-    }
-
-    return 0;
+    return xpmem_detach_remote(&(xpmem_my_part->part_state), vaddr);
 }
 
 
 static long
-xpmem_ioctl_op(struct file * filp, unsigned int cmd, unsigned long arg)
+xpmem_ioctl_op(struct file * filp, 
+               unsigned int  cmd, 
+	       unsigned long arg)
 {
-    long ret;
+    long ret = 0;
 
     switch (cmd) {
 	case XPMEM_CMD_VERSION: {
@@ -303,22 +283,6 @@ xpmem_ioctl_op(struct file * filp, unsigned int cmd, unsigned long arg)
 	    return xpmem_detach(detach_info.vaddr);
 	}
 
-	case XPMEM_CMD_EXT_LOCAL_CONNECT: {
-	    return xpmem_local_connect(my_part->pisces_state);
-	}
-
-	case XPMEM_CMD_EXT_LOCAL_DISCONNECT: {
-	    return xpmem_local_disconnect(my_part->pisces_state);
-	}
-
-	case XPMEM_CMD_EXT_REMOTE_CONNECT: {
-	    return xpmem_remote_connect(my_part->pisces_state);
-	}
-
-	case XPMEM_CMD_EXT_REMOTE_DISCONNECT: {
-	    return xpmem_remote_disconnect(my_part->pisces_state);
-	}
-
 	default: {
 	    ret = -1;
 	}
@@ -331,9 +295,6 @@ static struct kfs_fops
 xpmem_fops = 
 {
     .open               = xpmem_open_op,
-    .release            = xpmem_release_op,
-    .read               = xpmem_read_op,
-    .write              = xpmem_write_op,
     .unlocked_ioctl	= xpmem_ioctl_op,
     .compat_ioctl	= xpmem_ioctl_op,
 };
@@ -342,8 +303,8 @@ xpmem_fops =
 static int
 xpmem_init(void)
 {
-    my_part = kmem_alloc(sizeof(struct xpmem_partition));
-    if (!my_part) {
+    xpmem_my_part = kmem_alloc(sizeof(struct xpmem_partition));
+    if (!xpmem_my_part) {
 	return -ENOMEM;
     }
     
@@ -354,16 +315,18 @@ xpmem_init(void)
 	NULL,
 	0);
 
-#ifdef EXT_PISCES
-    xpmem_pisces_init(my_part);
-    xpmem_extended_ops = &pisces_ops;
-    extend_enabled = 1;
+
+#ifdef CONFIG_XPMEM_NS
+    xpmem_partition_init(&(xpmem_my_part->part_state), 1);
 #else
-    xpmem_extended_ops = NULL;
-    extend_enabled = 0;
+    xpmem_partition_init(&(xpmem_my_part->part_state), 0);
 #endif
 
-    segid_map = pisces_create_htable(0, segid_hash_fn, segid_eq_fn);
+#ifdef CONFIG_PISCES
+    pisces_xpmem_init();
+#endif
+
+    segid_map = create_htable(0, segid_hash_fn, segid_eq_fn);
     if (!segid_map) {
 	printk(KERN_ERR "XPMEM: Could not create segid map\n");
 	return -ENOMEM;
@@ -373,12 +336,22 @@ xpmem_init(void)
 }
 
 
-xpmem_apid_t xpmem_get_local_apid(xpmem_apid_t remote_apid) {
+
+struct xpmem_partition * 
+get_local_partition(void)
+{
+    return xpmem_my_part;
+}
+
+
+xpmem_apid_t 
+xpmem_get_local_apid(xpmem_apid_t remote_apid)
+{
     if (!segid_map) {
 	return -1;
     }
 
-    return pisces_htable_search(segid_map, remote_apid);
+    return (xpmem_apid_t)htable_search(segid_map, remote_apid);
 }
 
 
