@@ -55,7 +55,7 @@ __SYSCALL(__NR_readv, sys_readv)
 #define __NR_writev                             20
 __SYSCALL(__NR_writev, sys_writev)
 #define __NR_access                             21
-__SYSCALL(__NR_access, syscall_not_implemented)
+__SYSCALL(__NR_access, sys_access)
 #define __NR_pipe                               22
 __SYSCALL(__NR_pipe, sys_pipe)
 #define __NR_select                             23

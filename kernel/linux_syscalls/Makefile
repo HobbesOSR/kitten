@@ -55,4 +55,5 @@ obj-y := \
 	fstat.o	 \
 	getdents.o \
 	getdents64.o \
-	readlink.o
+	readlink.o \
+	access.o \
