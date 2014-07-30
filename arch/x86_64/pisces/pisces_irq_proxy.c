@@ -126,12 +126,10 @@ pisces_setup_irq_proxy(pci_dev_t     * pci_dev,
 
 	if ((hdr->msi.valid == 1) &&
 	    (hdr->msi.msi_ctrl & PCIM_MSICTRL_MSI_ENABLE)) {
-		setup_msi_proxy(&proxy);
+		return setup_msi_proxy(&proxy);
 	} else {
 		//TODO: add MSI-X proxy support
 		printk(KERN_ERR "Error: unsupported device for irq proxy\n");
 		return -1;
 	}
-
-	return 0;
 }
