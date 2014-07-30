@@ -714,6 +714,9 @@ kfs_init( void )
 				0,
 				0);
 
+	if (!kfs_mkdir("/tmp", 0777))
+		panic("Failed to 'mkdir /tmp'.");
+
 	// Bring up any kfs drivers that we have linked in
 	driver_init_by_name( "kfs", "*" );
 }
