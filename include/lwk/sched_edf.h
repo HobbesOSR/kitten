@@ -46,7 +46,7 @@
 #define MAX_SLICE 1000000000
 #define MIN_SLICE 200000
 #define MIN_SPEED_KHZ  500000
-#define CPU_PERCENT 150 /* It should be 100. Temporarly set to 150 because running the hypervisor test with EDF may fail because there is a moment in which the init_task is running at the same time with the Vcores and they will not be admited if the utilization is greater than 100, need to be fixed*/
+#define CPU_PERCENT 100
 
 #define DEADLINE_INTERVAL 10000000 // Period in which the missed deadline ratio is checked
 

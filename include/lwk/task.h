@@ -140,7 +140,8 @@ struct task_struct {
 		uint64_t	curr_deadline;
 		uint64_t	last_wakeup;
 		uint64_t	used_time;
-		int		miss_deadlines;
+		uint64_t	deadlines;
+		uint64_t	miss_deadlines;
 		uint64_t	print_miss_deadlines;
 		int		extra_time;
 	} edf;       	// EDF Scheduler task structure

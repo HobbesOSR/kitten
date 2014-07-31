@@ -396,7 +396,9 @@ schedule(void)
 		if (prev->state == TASK_EXITED) {
 #ifdef CONFIG_SCHED_EDF
 			/* Remove the current task from the EDF tree*/
+		if(prev->edf.period){
 			edf_sched_del_task(&runq->edf,prev);
+		}
 #endif
 			kmem_free_pages(prev, TASK_ORDER);
 		}
@@ -418,7 +420,9 @@ schedule(void)
 		list_del(&task->migrate_link);
 #ifdef CONFIG_SCHED_EDF
 		/* Remove the current task from the EDF tree*/
+	if(prev->edf.period){
 		edf_sched_del_task(&runq->edf,prev);
+	}
 #endif
 		/* Add the task to the destination runq's task_list */
 		spin_lock(&dest_runq->lock);
@@ -479,7 +483,9 @@ schedule_new_task_tail(struct task_struct *prev, struct task_struct *next)
         if ((prev->state == TASK_EXITED) && (prev != &bootstrap_task)){
 #ifdef CONFIG_SCHED_EDF
 		/* Remove the current task from the EDF tree*/
-		edf_sched_del_task(&runq->edf,prev);
+		if(prev->edf.period){
+			edf_sched_del_task(&runq->edf,prev);
+		}
 #endif
 		kmem_free_pages(prev, TASK_ORDER);
 	}

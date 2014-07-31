@@ -122,7 +122,10 @@ next_start_period(uint64_t curr_time_us, struct task_struct *task){
 	uint64_t next_start_us = 0;
 
 #ifdef CONFIG_SCHED_EDF_WC
-	next_start_us = task->edf.curr_deadline + period_us;
+	if(!task->edf.curr_deadline)
+		next_start_us = curr_time_us + period_us;
+	else
+		next_start_us = task->edf.curr_deadline + period_us;
 #else
 	uint64_t time_period_us = curr_time_us % period_us;
 	uint64_t remaining_time_us = period_us - time_period_us;
@@ -224,7 +227,8 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 int
 edf_sched_add_task(struct edf_rq *runqueue, struct task_struct * task){
 
-	//printk("EDF_SCHED. Adding Task: id %d name %s to CPU %d\n",task->id,task->name,this_cpu);
+	//printk("EDF_SCHED. Adding Task: id %d name %s cpu_id %d\n", task->id,task->name, task->cpu_id);
+
 	activate_task(task, runqueue);
 	return 0;
 }
@@ -272,6 +276,54 @@ delete_task_edf( struct task_struct *task_edf, struct edf_rq *runqueue){
 	}
 }
 
+#if 0
+static void
+check_statistics(struct task_struct * task, struct  edf_rq *runqueue){
+
+	time_us host_time = get_curr_host_time();
+	time_us time_prints=0;
+	int deadlines=0;
+	int deadlines_percentage=0;
+
+
+	/*Task Statistics*/
+
+	if(task->edf.print_miss_deadlines == 0){
+		task->edf.print_miss_deadlines = host_time;
+		task->edf.deadlines = 0;
+		task->edf.miss_deadlines = 0;
+	}
+
+	time_prints = host_time - task->edf.print_miss_deadlines;
+	if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
+		if (task->edf.deadlines)
+			deadlines_percentage = 100 * task->edf.miss_deadlines / task->edf.deadlines;
+		printk(KERN_INFO
+		"EDF_SCHED. rq_U %d, Tsk: id %d, name %s, state %d, used_t %llu, sl %llu, T %llu, host_t %llu,  dl %llu, nr_dl %llu, miss_dl %llu miss_dl_per %d\n",
+			runqueue->cpu_u,
+			task->id,
+			task->name,
+			task->state,
+			task->edf.used_time,
+			task->edf.slice,
+			task->edf.period,
+			host_time,
+			task->edf.curr_deadline,
+			task->edf.deadlines,
+			task->edf.miss_deadlines,
+			deadlines_percentage);
+
+		task->edf.deadlines=0;
+		task->edf.miss_deadlines=0;
+		deadlines_percentage = 0;
+		task->edf.print_miss_deadlines=host_time;
+
+	}
+	if (task->state != TASK_RUNNING){
+		task->edf.print_miss_deadlines=0;
+	}
+}
+#endif
 
 /*
  * deactivate_task - Removes a task from the red-black tree.
@@ -279,30 +331,9 @@ delete_task_edf( struct task_struct *task_edf, struct edf_rq *runqueue){
 
 static void
 deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
-
-	time_us host_time = get_curr_host_time();
-	time_us time_prints=0;
-	int deadlines=0;
-	int deadlines_percentage=0;
-
 #if 0
-	/* Task Statistics */
-	if(task->edf.print_miss_deadlines == 0)
-		task->edf.print_miss_deadlines = host_time;
-	time_prints = host_time - task->edf.print_miss_deadlines;
-	if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
-		deadlines = time_prints / task->edf.period;
-		deadlines_percentage = 100 * task->edf.miss_deadlines / deadlines;
-		printk(KERN_INFO
-			"EDF_SCHED. rq_U %d, Tsk: id %d, name %s, used_t %llu, sl %llu, T %llu,  miss_dl_per %d\n",
-			runqueue->cpu_u, task->id, task->name,
-			task->edf.used_time, task->edf.slice, task->edf.period,
-			deadlines_percentage);
-		task->edf.miss_deadlines=0;
-		deadlines_percentage = 0;
-		task->edf.print_miss_deadlines=host_time;
-	}
-#endif /* 0 - task statistics */
+	check_statistics(task,runqueue);
+#endif
 	if(delete_task_edf(task, runqueue)){
 		runqueue->cpu_u -= task->edf.cpu_reservation;
 	}
@@ -327,9 +358,11 @@ static void check_deadlines(struct edf_rq *runqueue)
 		next_task = task_container_of(node);
 		if(next_task->edf.curr_deadline < host_time ){
 			/* This task's deadline is over - deactivate it */
-			list_add(&next_task->edf.sched_link, &resched_list);
+			next_task->edf.deadlines++;
+			list_add_tail(&next_task->edf.sched_link, &resched_list);
 			/*This task missed its deadline*/
-			if(next_task->edf.used_time < next_task->edf.slice){
+			if(next_task->edf.used_time < next_task->edf.slice
+			   && next_task->state == TASK_RUNNING){
 				next_task->edf.miss_deadlines++;
 			}
 		} else {

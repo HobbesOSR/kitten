@@ -125,20 +125,16 @@ __task_create(
 
     if(start_state->edf.period){
         tsk->edf.period = start_state->edf.period;
-    } else{
-        tsk->edf.period=MIN_PERIOD;
     }
-
     if(start_state->edf.slice){
         tsk->edf.slice = start_state->edf.slice;
-    } else{
-        tsk->edf.slice=MIN_SLICE;
     }
     list_head_init(&tsk->edf.sched_link);
     tsk->edf.cpu_reservation = 0;
     tsk->edf.curr_deadline = 0;
     tsk->edf.used_time = 0;
     tsk->edf.last_wakeup = 0;
+    tsk->edf.deadlines = 0;
     tsk->edf.miss_deadlines = 0;
     tsk->edf.print_miss_deadlines = 0;
     tsk->edf.extra_time = false;
@@ -180,8 +176,8 @@ __task_create(
 	// End critical section
 	spin_unlock_irqrestore(&aspace->lock, irqstate);
 
-       // Success
-       return tsk;
+	// Success
+	return tsk;
 
 fail_arch:
 fail_cpu_id_alloc:
@@ -209,7 +205,7 @@ task_create(
 		return -EINVAL;
 
 	// Add the new task to the target CPU's run queue
-    sched_add_task(tsk);
+	sched_add_task(tsk);
 
 	if (task_id)
 		*task_id = tsk->id;
@@ -349,7 +345,7 @@ task_exit_group(
 int
 task_switch_cpus(id_t cpu_id)
 {
-    BUG_ON(irqs_disabled());
+	BUG_ON(irqs_disabled());
 
 	/* Make sure target CPU is valid */
 	if ((cpu_id >= NR_CPUS) || !cpu_isset(cpu_id, current->cpu_mask))
