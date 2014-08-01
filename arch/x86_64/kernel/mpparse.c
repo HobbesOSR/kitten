@@ -153,6 +153,11 @@ MP_processor_info(struct mpc_config_processor *m)
 {
 	bool is_bp;
 
+	/* If ACPI MADT table is being used to get CPU info,
+	 * we ignore the MP table CPU entries. */
+	if (using_acpi)
+		return;
+
 	if (!(m->mpc_cpuflag & CPU_ENABLED)) {
 		printk(KERN_WARNING "A disabled CPU was encountered\n");
 		return;
@@ -476,13 +481,8 @@ read_mpc(struct mp_config_table *mpc)
 void __init
 get_mp_config(void)
 {
-	if (using_acpi) {
-		printk(KERN_INFO "Skipping MP table parse, used ACPI MADT table instead\n");
-		return;
-	}
-
 	struct intel_mp_floating *mpf = mpf_found;
-	if (!mpf) {
+	if (!mpf && !num_cpus) {
 		printk(KERN_WARNING "Assuming 1 CPU.\n");
 		num_cpus = 1;
 		/* Assign the only CPU logical=physical ID 0 */
