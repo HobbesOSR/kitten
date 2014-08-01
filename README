@@ -36,6 +36,25 @@ Quick Start
         The source code for the hello world init_task is at
         user/hello_world/hello_world.c
  
+NOTE:
+    If the hello_world output includes a bunch of errors like:
+
+        [c0-0c1s7n2][init_task.thread_16] SYS_MMAP: ENOMEM (len=134217728, heap_brk=6f5000, mmap_brk=2650000)
+        [c0-0c1s7n2][init_task.thread_16] SYS_MMAP: ENOMEM (len=67108864, heap_brk=6f5000, mmap_brk=2650000)
+
+    It is likely due to Glibc's malloc implementation using per-thread
+    arenas. This works fine on an OS that uses an allocate on first-touch
+    memory allocation policy. On Kitten this is very wasteful because
+    Kitten allocates all memory up-front at allocation time, even if
+    it is never used/touched. To disable Glibc's per-thread arenas,
+    set the following environment variable:
+
+        MALLOC_ARENA_MAX=1
+
+    This can be passed to the init_task via the Kitten boot command line:
+
+        init_envp="MALLOC_ARENA_MAX=1"
+
 
 Overview
 ========
