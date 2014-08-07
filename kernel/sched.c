@@ -43,6 +43,7 @@ struct run_queue {
         int                  online;
         struct list_head     migrate_list;
         struct task_struct * idle_task;
+	struct timer	     next_int;
         struct rr_rq rr;
 #ifdef CONFIG_SCHED_EDF
         struct edf_rq edf;
@@ -72,6 +73,11 @@ idle_task_loop(void)
         }
 }
 
+static void 
+interrupt_task(uintptr_t task)
+{
+	return;
+}
 
 int __init
 sched_init_runqueue(int cpu_id)
@@ -79,10 +85,15 @@ sched_init_runqueue(int cpu_id)
 	struct run_queue *runq = &per_cpu(run_queue, cpu_id);
 
 	spin_lock_init(&runq->lock);
+
 	runq->num_tasks = 0;
 	runq->online    = 1;
 	list_head_init(&runq->migrate_list);
 
+        runq->next_int.expires = 0;
+        runq->next_int.function = interrupt_task;
+        runq->next_int.data = 0;
+        list_head_init(&runq->next_int.link);
 
 	rr_sched_init_runqueue(&runq->rr, cpu_id);
 #ifdef CONFIG_SCHED_EDF
@@ -280,11 +291,26 @@ context_switch(struct task_struct *prev, struct task_struct *next)
 	return prev;
 }
 
+static void
+set_quantum_timer(struct run_queue *runq, ktime_t inttime)
+{
+	timer_del(&runq->next_int);
+	if (!inttime) {
+        	const ktime_t now = get_time();
+		inttime =  now + 1000000000ul/sched_hz;
+	}
+        runq->next_int.expires = inttime;
+        timer_add(&runq->next_int);
+	
+	return;
+}
+
 void
 schedule(void)
 {
 	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
 	struct task_struct *prev = current, *next = NULL, *task, *tmp;
+	ktime_t inttime = 0;
 
 	/* Remember prev's external interrupt state */
 	prev->sched_irqs_on = irqs_enabled();
@@ -328,22 +354,29 @@ schedule(void)
 			}
 		}
 	}
+	next = NULL;
+	inttime = 0;
 #ifdef CONFIG_SCHED_EDF
-	if (!( next = edf_schedule(&runq->edf, &runq->migrate_list) ))
+	next = edf_schedule(&runq->edf, &runq->migrate_list, &inttime);
 #endif
-	{
+	if (next == NULL) {
 		next = rr_schedule(&runq->rr, &runq->migrate_list);
 	}
+
 	/* If no tasks are ready to run, run the idle task */
-	if (next == NULL)
+	if (next == NULL) {
 		next = runq->idle_task;
+	}
+
+	set_quantum_timer(runq, inttime);
 
 #ifdef CONFIG_SCHED_EDF
-		set_wakeup_task(&runq->edf,next);
+	set_wakeup_task(&runq->edf,next);
 #endif
 
 	/* A reschedule has occurred, so clear prev's TF_NEED_RESCHED_BIT */
 	clear_bit(TF_NEED_RESCHED_BIT, &prev->arch.flags);
+
 	if (prev != next) {
 		fire_sched_out_preempt_notifiers(prev, next);
 		prev = context_switch(prev, next);

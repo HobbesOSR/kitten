@@ -32,6 +32,7 @@
  * If there are no tasks on the queue's taskq, the idle task
  * is run instead.
  */
+
 int
 rr_sched_init_runqueue(struct rr_rq *q, int cpu_id) {
 	list_head_init(&q->taskq);
@@ -43,7 +44,7 @@ void rr_adjust_schedule(struct rr_rq *q, struct task_struct *task)
 	list_add_tail(&task->rr.sched_link, &q->taskq);
 }
 
-/* Migrate all tasks away. Called with the runq lock held =and local
+/* Migrate all tasks away. Called with the runq lock held and local
  * IRQs disabled!
  */
 void rr_sched_cpu_remove(struct rr_rq *runq, void * arg)
@@ -91,5 +92,6 @@ rr_schedule(struct rr_rq *runq, struct list_head *migrate_list)
 			break;
 		}
 	}
+
 	return next;
 }

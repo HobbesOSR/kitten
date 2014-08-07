@@ -399,15 +399,20 @@ pick_next_task(struct edf_rq *runqueue){
  */
 
 struct task_struct *
-edf_schedule(struct edf_rq *runq, struct list_head *migrate_list)
+edf_schedule(struct edf_rq *runq, struct list_head *migrate_list, ktime_t *inttime)
 {
 
 	struct task_struct *task;
 
 	task = pick_next_task(runq); /* Pick next task to schedule */
 
-	if (!task)
-		return NULL;
+        /* Set the timer to finish this quantum; note that the EDF timer
+         * could be set and expire before this if there's an upcoming
+         * EDF period, but no current EDF task with slice available. */
+	if (task && inttime) {
+                const uint64_t now = get_time();
+		*inttime = (now + task->edf.slice);
+	}
 
 	return task;
 }

@@ -193,7 +193,15 @@ pisces_detect_cpu_freq(void)
 
 #endif
 
+void 
+arch_set_timer_freq(unsigned int hz){
+	lapic_set_timer_freq(hz);
+}
 
+void 
+arch_set_timer_oneshot(unsigned int nsec){
+	lapic_set_timer_oneshot(nsec);
+}
 
 void __init
 time_init(void)

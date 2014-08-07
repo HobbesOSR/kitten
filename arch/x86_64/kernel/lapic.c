@@ -148,7 +148,7 @@ lapic_read_id(void)
 }
 
 static void 
-lapic_set_timer_count(uint32_t count)
+lapic_set_timer_count(uint32_t count, int periodic)
 {
 	uint32_t lvt;
 
@@ -161,7 +161,11 @@ lapic_set_timer_count(uint32_t count)
 	/* Enable the local APIC timer */
 	lvt = apic_read(APIC_LVTT);
 	lvt &= ~APIC_LVT_MASKED;
-	lvt |= APIC_LVT_TIMER_PERIODIC;
+	if (periodic)
+		lvt |= APIC_LVT_TIMER_PERIODIC;
+	else
+		lvt &= ~APIC_LVT_TIMER_PERIODIC;
+
 	apic_write(APIC_LVTT, lvt);
 }
 
@@ -172,11 +176,22 @@ void
 lapic_set_timer_freq(unsigned int hz)
 {
 	uint64_t count = cpu_info[this_cpu].arch.lapic_khz * 1000ul / hz;
-	lapic_set_timer_count((uint32_t)count);
+	lapic_set_timer_count((uint32_t)count, 1);
 
 	printk(KERN_DEBUG
 	       "CPU %u: LAPIC timer set to %u Hz (count=%llu).\n",
                this_cpu, hz, count);
+}
+
+void
+lapic_set_timer_oneshot(unsigned int nsec)
+{
+	uint64_t lapic_khz = cpu_info[this_cpu].arch.lapic_khz;
+	uint64_t count = (lapic_khz * nsec) / 1000000ul;
+
+	lapic_set_timer_count((uint32_t)count, 0);
+
+	return;
 }
 
 void
@@ -210,7 +225,7 @@ lapic_calibrate_timer(void)
 	unsigned int apic_Hz;
 
 	/* Start the APIC counter running for calibration */
-	lapic_set_timer_count(4000000000);
+	lapic_set_timer_count(4000000000, 1);
 
 	apic_start = apic_read(APIC_TMCCT);
 	tsc_start  = get_cycles_sync();

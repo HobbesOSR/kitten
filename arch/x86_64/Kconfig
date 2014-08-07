@@ -89,11 +89,32 @@ config GENERIC_CPU
 
 endchoice
 
+choice
+	prompt "Timer Interrupt Strategy"
+	default TIMER_PERIODIC
+
+config TIMER_PERIODIC
+	bool "Periodic timer interrupts"
+	help
+	  Use a periodic interrupt at SCHED_HZ to drive timer
+	  expiration and scheduling in Kitten.
+
+config TIMER_ONESHOT
+	bool "One-shot timer interrupts"
+	help
+	  Uses one-shot timers to drive scheduling in kitten. Results
+	  in more accurate scheduling, particularly with EDF scheduling,
+	  but can result in higher overheads if fine-grained scheduling
+	  or timers are requested.
+
+endchoice
+
 config SCHED_EDF
 	bool "Kitten Earliest Deadline First (EDF)"
 	help
 	  A real time EDF scheduler is used.
 choice
+depends on SCHED_EDF
 	prompt "EDF Scheduler version"
 	default SCHED_EDF_NWC
 

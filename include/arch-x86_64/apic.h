@@ -107,6 +107,7 @@ extern void __init lapic_init(void);
 extern unsigned int lapic_read_id(void);
 extern void __init lapic_stop_timer(void);
 extern void lapic_set_timer_freq(unsigned int hz);
+extern void lapic_set_timer_oneshot(unsigned int nsec);
 extern unsigned int lapic_calibrate_timer(void);
 extern void lapic_dump(void);
 extern void lapic_send_init_ipi(unsigned int cpu);

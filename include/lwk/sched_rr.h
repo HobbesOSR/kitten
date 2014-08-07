@@ -10,9 +10,11 @@
 
 #include <lwk/task.h>
 #include <lwk/init.h>
+#include <lwk/timer.h>
 
 struct rr_rq {
 	struct list_head taskq;
+	struct timer nextint;
 };
 
 extern int __init rr_sched_init_runqueue(struct rr_rq *, int cpu_id);

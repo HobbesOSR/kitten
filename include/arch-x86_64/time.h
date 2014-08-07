@@ -3,4 +3,6 @@
 
 #include <arch/tsc.h>
 
+void arch_set_timer_freq(unsigned int hz);
+void arch_set_timer_oneshot(unsigned int nsec);
 #endif

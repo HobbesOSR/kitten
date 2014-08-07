@@ -21,18 +21,21 @@
  *
  * EDF Scheduling
  *
- * The EDF scheduler uses a dynamic calculated priority as scheduling criteria to choose
- * what thread (e.g. Kitten task or Palacios vcore) will be scheduled. That priority is
- * calculated according with the relative deadline of the threads that are ready to run in
- * the runqueue. This runqueue is a per-CPU data structure used to keep the runnable
- * threads allocated to that CPU. The threads with less time before its deadline will receive
- * better priorities. The runqueue is sorted each time that a thread becomes runnable or when
- * its period is over. At that time the thread is enqueue. A new scheduling decision is taken each
- * time that an interruption is received. At that time if the earliest deadline thread is different
- * that the current thread, the current thread goes to sleep and the earliest deadline thread is
- * woke up. Each time a thread is scheduled, the parameter "used_time" is set to zero and the current
- * deadline is calculated using its period. One thread uses at least slice seconds of CPU. Some extra
- * time may be allocated to that virtual core after all the other virtual cores consumes their slices.
+ * The EDF scheduler uses a dynamic calculated priority as scheduling criteria to 
+ * choose * what thread (e.g. Kitten task or Palacios vcore) will be scheduled. That
+ * priority is calculated according with the relative deadline of the threads that 
+ * are ready to run in the runqueue. This runqueue is a per-CPU data structure used 
+ * to keep the runnable threads allocated to that CPU. The threads with less time 
+ * before its deadline will receive better priorities. The runqueue is sorted each 
+ * time that a thread becomes runnable or when its period is over. At that time the 
+ * thread is enqueue. A new scheduling decision is taken each time that an 
+ * interrupt is received. At that time if the earliest deadline thread is different
+ * that the current thread, the current thread goes to sleep and the earliest 
+ * deadline thread is woken up. Each time a thread is scheduled, the parameter 
+ * "used_time" is set to zero and the current deadline is calculated using its 
+ * period. One thread uses at least slice seconds of CPU. Some extra time may be 
+ * allocated to that virtual core after all the other virtual cores consumes their 
+ * slices.
  */
 
 // Default configuration values for the EDF Scheduler
@@ -67,11 +70,10 @@ struct edf_sched_config {
  * Contains a pointer to the red black tree, the data structure of configuration options, and other info
  */
 
-struct edf_rq{
-
-    int cpu_u;	                                // CPU utilization (must be less or equal to the cpu_percent in edf_sched_config)
+struct edf_rq {
+    int cpu_u;	                                // CPU utilization (<= cpu_percent)
     struct rb_root tasks_tree;	                // Red-Black Tree
-    struct edf_sched_config edf_config;	        // Scheduling configuration structure
+    struct edf_sched_config edf_config;	        // Scheduling config structure
     struct task_struct *curr_task;	        // Current running CPU
     time_us start_time;                         // Time at which first core started running in this runqueue
 };
@@ -85,7 +87,7 @@ int edf_sched_deinit(void);
 int edf_sched_add_task(struct edf_rq *, struct task_struct *info);
 int edf_sched_del_task(struct edf_rq *, struct task_struct *info);
 int edf_adjust_schedule(struct edf_rq *, struct task_struct *info);
-struct task_struct * edf_schedule(struct edf_rq *, struct list_head *);
+struct task_struct * edf_schedule(struct edf_rq *, struct list_head *, ktime_t *t);
 extern void edf_sched_cpu_remove(struct edf_rq *, void *);
 ktime_t edf_schedule_timeout(ktime_t nsec);
 int set_wakeup_task(struct edf_rq *, struct task_struct *task);

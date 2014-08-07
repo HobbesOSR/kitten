@@ -375,8 +375,6 @@ setup_pc_arch(void)
 
 	ioapic_init();
 
-	lapic_set_timer_freq(sched_hz);
-    
 	mcheck_init();
 }
 
