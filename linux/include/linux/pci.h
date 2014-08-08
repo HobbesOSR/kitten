@@ -139,11 +139,6 @@ enum pci_bus_flags {
 	PCI_BUS_FLAGS_NO_MMRBC = (__force pci_bus_flags_t) 2,
 };
 
-struct pci_cap_saved_state {
-	struct hlist_node next;
-	char cap_nr;
-	u32 data[0];
-};
 
 struct pcie_link_state;
 struct pci_vpd;
@@ -209,22 +204,20 @@ struct pci_dev {
 	struct resource resource[DEVICE_COUNT_RESOURCE]; /* I/O and memory regions + expansion ROMs */
 
 	/* These fields are used by common fixups */
-	unsigned int	transparent:1;	/* Transparent PCI bridge */
-	unsigned int	multifunction:1;/* Part of multi-function device */
+	unsigned int	transparent          :1;	/* Transparent PCI bridge */
+	unsigned int	multifunction        :1;        /* Part of multi-function device */
 	/* keep track of device state */
-	unsigned int	is_added:1;
-	unsigned int	is_busmaster:1; /* device is busmaster */
-	unsigned int	no_msi:1;	/* device may not use msi */
-	unsigned int	broken_parity_status:1;	/* Device generates false positive parity */
-	unsigned int 	msi_enabled:1;
-	unsigned int	msix_enabled:1;
-	unsigned int	is_managed:1;
-	unsigned int	is_pcie:1;
+	unsigned int	is_added             :1;
+	unsigned int	is_busmaster         :1;        /* device is busmaster */
+	unsigned int	no_msi               :1;	/* device may not use msi */
+	unsigned int	broken_parity_status :1;	/* Device generates false positive parity */
+	unsigned int 	msi_enabled          :1;
+	unsigned int	msix_enabled         :1;
+	unsigned int	is_managed           :1;
+	unsigned int	is_pcie              :1;
 	pci_dev_flags_t dev_flags;
 	atomic_t	enable_cnt;	/* pci_enable_device has been called */
 
-	u32		saved_config_space[16]; /* config space saved at suspend time */
-	struct hlist_head saved_cap_space;
 	struct bin_attribute *rom_attr; /* attribute descriptor for sysfs ROM entry */
 	int rom_attr_enabled;		/* has display of the rom attribute been enabled? */
 	struct bin_attribute *res_attr[DEVICE_COUNT_RESOURCE]; /* sysfs file for resources */
@@ -246,24 +239,8 @@ static inline int pci_channel_offline(struct pci_dev *pdev)
 	return (pdev->error_state != pci_channel_io_normal);
 }
 
-static inline struct pci_cap_saved_state *pci_find_saved_cap(
-	struct pci_dev *pci_dev, char cap)
-{
-	struct pci_cap_saved_state *tmp;
-	struct hlist_node *pos;
 
-	hlist_for_each_entry(tmp, pos, &pci_dev->saved_cap_space, next) {
-		if (tmp->cap_nr == cap)
-			return tmp;
-	}
-	return NULL;
-}
 
-static inline void pci_add_saved_cap(struct pci_dev *pci_dev,
-	struct pci_cap_saved_state *new_cap)
-{
-	hlist_add_head(&new_cap->next, &pci_dev->saved_cap_space);
-}
 
 /*
  *  For PCI devices, the region numbers are assigned this way:
@@ -778,8 +755,6 @@ int  ht_create_irq(struct pci_dev *dev, int idx);
 void ht_destroy_irq(unsigned int irq);
 #endif /* CONFIG_HT_IRQ */
 
-extern void pci_block_user_cfg_access(struct pci_dev *dev);
-extern void pci_unblock_user_cfg_access(struct pci_dev *dev);
 
 /*
  * PCI domain support.  Sometimes called PCI segment (eg by ACPI),

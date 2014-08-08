@@ -1024,9 +1024,6 @@ void pci_device_add(struct pci_dev *dev, struct pci_bus *bus)
 	pci_set_dma_seg_boundary(dev, 0xffffffff);
 
 
-	/* Buffers for saving PCIe and PCI-X capabilities */
-	pci_allocate_cap_save_buffers(dev);
-
 	/* Initialize power management of the device */
 	pci_pm_init(dev);
 

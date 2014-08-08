@@ -288,64 +288,7 @@ static void pci_intx_for_msi(struct pci_dev *dev, int enable)
 		pci_intx(dev, enable);
 }
 
-static void __pci_restore_msi_state(struct pci_dev *dev)
-{
-	int pos;
-	u16 control;
-	struct msi_desc *entry;
 
-	if (!dev->msi_enabled)
-		return;
-
-	entry = get_irq_msi(dev->irq);
-	pos = entry->msi_attrib.pos;
-
-	pci_intx_for_msi(dev, 0);
-	msi_set_enable(dev, 0);
-	write_msi_msg(dev->irq, &entry->msg);
-	if (entry->msi_attrib.maskbit)
-		msi_set_mask_bits(dev->irq, entry->msi_attrib.maskbits_mask,
-				  entry->msi_attrib.masked);
-
-	pci_read_config_word(dev, pos + PCI_MSI_FLAGS, &control);
-	control &= ~PCI_MSI_FLAGS_QSIZE;
-	control |= PCI_MSI_FLAGS_ENABLE;
-	pci_write_config_word(dev, pos + PCI_MSI_FLAGS, control);
-}
-
-static void __pci_restore_msix_state(struct pci_dev *dev)
-{
-	int pos;
-	struct msi_desc *entry;
-	u16 control;
-
-	if (!dev->msix_enabled)
-		return;
-
-	/* route the table */
-	pci_intx_for_msi(dev, 0);
-	msix_set_enable(dev, 0);
-
-	list_for_each_entry(entry, &dev->msi_list, list) {
-		write_msi_msg(entry->irq, &entry->msg);
-		msi_set_mask_bits(entry->irq, 1, entry->msi_attrib.masked);
-	}
-
-	BUG_ON(list_empty(&dev->msi_list));
-	entry = list_entry(dev->msi_list.next, struct msi_desc, list);
-	pos = entry->msi_attrib.pos;
-	pci_read_config_word(dev, pos + PCI_MSIX_FLAGS, &control);
-	control &= ~PCI_MSIX_FLAGS_MASKALL;
-	control |= PCI_MSIX_FLAGS_ENABLE;
-	pci_write_config_word(dev, pos + PCI_MSIX_FLAGS, control);
-}
-
-void pci_restore_msi_state(struct pci_dev *dev)
-{
-	__pci_restore_msi_state(dev);
-	__pci_restore_msix_state(dev);
-}
-EXPORT_SYMBOL_GPL(pci_restore_msi_state);
 
 /**
  * msi_capability_init - configure device's MSI capability structure
