@@ -325,11 +325,6 @@ struct pci_bus_region {
 	resource_size_t end;
 };
 
-struct pci_dynids {
-	spinlock_t lock;            /* protects list, index */
-	struct list_head list;      /* for IDs added at runtime */
-	unsigned int use_driver_data:1; /* pci_device_id->driver_data is used */
-};
 
 /* ---------------------------------------------------------------- */
 /** PCI Error Recovery System (PCI-ERS).  If a PCI device driver provides
@@ -393,7 +388,6 @@ struct pci_driver {
 	struct pm_ext_ops *pm;
 	struct pci_error_handlers *err_handler;
 	struct device_driver	driver;
-	struct pci_dynids dynids;
 };
 
 #define	to_pci_driver(drv) container_of(drv, struct pci_driver, driver)

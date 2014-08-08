@@ -18,105 +18,8 @@
 #include <linux/sched.h>
 #include "pci.h"
 
-/*
- * Dynamic device IDs are disabled for !CONFIG_HOTPLUG
- */
 
-struct pci_dynid {
-	struct list_head node;
-	struct pci_device_id id;
-};
 
-#ifdef CONFIG_HOTPLUG
-
-/**
- * store_new_id - add a new PCI device ID to this driver and re-probe devices
- * @driver: target device driver
- * @buf: buffer for scanning device ID data
- * @count: input size
- *
- * Adds a new dynamic pci device ID to this driver,
- * and causes the driver to probe for all devices again.
- */
-static ssize_t
-store_new_id(struct device_driver *driver, const char *buf, size_t count)
-{
-	struct pci_dynid *dynid;
-	struct pci_driver *pdrv = to_pci_driver(driver);
-	__u32 vendor, device, subvendor=PCI_ANY_ID,
-		subdevice=PCI_ANY_ID, class=0, class_mask=0;
-	unsigned long driver_data=0;
-	int fields=0;
-	int retval = 0;
-
-	fields = sscanf(buf, "%x %x %x %x %x %x %lux",
-			&vendor, &device, &subvendor, &subdevice,
-			&class, &class_mask, &driver_data);
-	if (fields < 2)
-		return -EINVAL;
-
-	dynid = kzalloc(sizeof(*dynid), GFP_KERNEL);
-	if (!dynid)
-		return -ENOMEM;
-
-	dynid->id.vendor = vendor;
-	dynid->id.device = device;
-	dynid->id.subvendor = subvendor;
-	dynid->id.subdevice = subdevice;
-	dynid->id.class = class;
-	dynid->id.class_mask = class_mask;
-	dynid->id.driver_data = pdrv->dynids.use_driver_data ?
-		driver_data : 0UL;
-
-	spin_lock(&pdrv->dynids.lock);
-	list_add_tail(&dynid->node, &pdrv->dynids.list);
-	spin_unlock(&pdrv->dynids.lock);
-
-	if (get_driver(&pdrv->driver)) {
-		retval = driver_attach(&pdrv->driver);
-		put_driver(&pdrv->driver);
-	}
-
-	if (retval)
-		return retval;
-	return count;
-}
-static DRIVER_ATTR(new_id, S_IWUSR, NULL, store_new_id);
-
-static void
-pci_free_dynids(struct pci_driver *drv)
-{
-	struct pci_dynid *dynid, *n;
-
-	spin_lock(&drv->dynids.lock);
-	list_for_each_entry_safe(dynid, n, &drv->dynids.list, node) {
-		list_del(&dynid->node);
-		kfree(dynid);
-	}
-	spin_unlock(&drv->dynids.lock);
-}
-
-static int
-pci_create_newid_file(struct pci_driver *drv)
-{
-	int error = 0;
-	if (drv->probe != NULL)
-		error = driver_create_file(&drv->driver, &driver_attr_new_id);
-	return error;
-}
-
-static void pci_remove_newid_file(struct pci_driver *drv)
-{
-	driver_remove_file(&drv->driver, &driver_attr_new_id);
-}
-#else /* !CONFIG_HOTPLUG */
-static inline void pci_free_dynids(struct pci_driver *drv) {}
-static inline int pci_create_newid_file(struct pci_driver *drv)
-{
-	return 0;
-}
-static inline void pci_remove_newid_file(struct pci_driver *drv) {}
-#endif
 
 /**
  * pci_match_id - See if a pci device matches a given pci_id table
@@ -155,18 +58,6 @@ const struct pci_device_id *pci_match_id(const struct pci_device_id *ids,
 static const struct pci_device_id *pci_match_device(struct pci_driver *drv,
 						    struct pci_dev *dev)
 {
-	struct pci_dynid *dynid;
-
-	/* Look at the dynamic ids first, before the static ones */
-	spin_lock(&drv->dynids.lock);
-	list_for_each_entry(dynid, &drv->dynids.list, node) {
-		if (pci_match_one_device(&dynid->id, dev)) {
-			spin_unlock(&drv->dynids.lock);
-			return &dynid->id;
-		}
-	}
-	spin_unlock(&drv->dynids.lock);
-
 	return pci_match_id(drv->id_table, dev);
 }
 
@@ -721,17 +612,12 @@ int __pci_register_driver(struct pci_driver *drv, struct module *owner,
 	if (drv->pm)
 		drv->driver.pm = &drv->pm->base;
 
-	spin_lock_init(&drv->dynids.lock);
-	INIT_LIST_HEAD(&drv->dynids.list);
 
 	/* register with core */
 	error = driver_register(&drv->driver);
 	if (error)
 		return error;
 
-	error = pci_create_newid_file(drv);
-	if (error)
-		driver_unregister(&drv->driver);
 
 	return error;
 }
@@ -749,9 +635,7 @@ int __pci_register_driver(struct pci_driver *drv, struct module *owner,
 void
 pci_unregister_driver(struct pci_driver *drv)
 {
-	pci_remove_newid_file(drv);
 	driver_unregister(&drv->driver);
-	pci_free_dynids(drv);
 }
 
 static struct pci_driver pci_compat_driver = {
@@ -833,12 +717,11 @@ void pci_dev_put(struct pci_dev *dev)
 		put_device(&dev->dev);
 }
 
-#ifndef CONFIG_HOTPLUG
+
 int pci_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	return -ENODEV;
 }
-#endif
 
 struct bus_type pci_bus_type = {
 	.name		= "pci",

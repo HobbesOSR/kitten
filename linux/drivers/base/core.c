@@ -163,48 +163,6 @@ static int dev_uevent(struct kset *kset, struct kobject *kobj,
 	struct device *dev = to_dev(kobj);
 	int retval = 0;
 
-	/* add the major/minor if present */
-	if (MAJOR(dev->devt)) {
-		add_uevent_var(env, "MAJOR=%u", MAJOR(dev->devt));
-		add_uevent_var(env, "MINOR=%u", MINOR(dev->devt));
-	}
-
-	if (dev->type && dev->type->name)
-		add_uevent_var(env, "DEVTYPE=%s", dev->type->name);
-
-	if (dev->driver)
-		add_uevent_var(env, "DRIVER=%s", dev->driver->name);
-
-#ifdef CONFIG_SYSFS_DEPRECATED
-	if (dev->class) {
-		struct device *parent = dev->parent;
-
-		/* find first bus device in parent chain */
-		while (parent && !parent->bus)
-			parent = parent->parent;
-		if (parent && parent->bus) {
-			const char *path;
-
-			path = kobject_get_path(&parent->kobj, GFP_KERNEL);
-			if (path) {
-				add_uevent_var(env, "PHYSDEVPATH=%s", path);
-				kfree(path);
-			}
-
-			add_uevent_var(env, "PHYSDEVBUS=%s", parent->bus->name);
-
-			if (parent->driver)
-				add_uevent_var(env, "PHYSDEVDRIVER=%s",
-					       parent->driver->name);
-		}
-	} else if (dev->bus) {
-		add_uevent_var(env, "PHYSDEVBUS=%s", dev->bus->name);
-
-		if (dev->driver)
-			add_uevent_var(env, "PHYSDEVDRIVER=%s",
-				       dev->driver->name);
-	}
-#endif
 
 	/* have the bus specific function add its stuff */
 	if (dev->bus && dev->bus->uevent) {
@@ -284,20 +242,10 @@ out:
 	return count;
 }
 
+/* JRL: DELETE? */
 static ssize_t store_uevent(struct device *dev, struct device_attribute *attr,
 			    const char *buf, size_t count)
 {
-	enum kobject_action action;
-
-	if (kobject_action_type(buf, count, &action) == 0) {
-		kobject_uevent(&dev->kobj, action);
-		goto out;
-	}
-
-	dev_err(dev, "uevent: unsupported action-string; this will "
-		     "be ignored in a future kernel version\n");
-	kobject_uevent(&dev->kobj, KOBJ_ADD);
-out:
 	return count;
 }
 
@@ -1004,7 +952,6 @@ int device_add(struct device *dev)
 	if (error)
 		goto DPMError;
 	device_pm_add(dev);
-	kobject_uevent(&dev->kobj, KOBJ_ADD);
 	bus_attach_device(dev);
 	if (parent)
 		klist_add_tail(&dev->knode_parent, &parent->klist_children);
@@ -1042,7 +989,6 @@ done:
  ueventattrError:
 	device_remove_file(dev, &uevent_attr);
  attrError:
-	kobject_uevent(&dev->kobj, KOBJ_REMOVE);
 	kobject_del(&dev->kobj);
  Error:
 	cleanup_device_parent(dev);
@@ -1154,7 +1100,6 @@ void device_del(struct device *dev)
 	if (dev->bus)
 		blocking_notifier_call_chain(&dev->bus->p->bus_notifier,
 					     BUS_NOTIFY_DEL_DEVICE, dev);
-	kobject_uevent(&dev->kobj, KOBJ_REMOVE);
 	cleanup_device_parent(dev);
 	kobject_del(&dev->kobj);
 	put_device(parent);

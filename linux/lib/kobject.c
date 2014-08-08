@@ -435,10 +435,6 @@ int kobject_rename(struct kobject *kobj, const char *new_name)
 	dup_name = kobj->name;
 	kobj->name = name;
 
-	/* This function is mostly/only used for network interface.
-	 * Some hotplug package track interfaces by their name and
-	 * therefore want to know when the name is changed by the user. */
-	kobject_uevent_env(kobj, KOBJ_MOVE, envp);
 
 out:
 	kfree(dup_name);
@@ -492,7 +488,6 @@ int kobject_move(struct kobject *kobj, struct kobject *new_parent)
 	kobj->parent = new_parent;
 	new_parent = NULL;
 	kobject_put(old_parent);
-	kobject_uevent_env(kobj, KOBJ_MOVE, envp);
 out:
 	kobject_put(new_parent);
 	kobject_put(kobj);
@@ -545,12 +540,6 @@ static void kobject_cleanup(struct kobject *kobj)
 			 "function, it is broken and must be fixed.\n",
 			 kobject_name(kobj), kobj);
 
-	/* send "remove" if the caller did not do it but sent "add" */
-	if (kobj->state_add_uevent_sent && !kobj->state_remove_uevent_sent) {
-		pr_debug("kobject: '%s' (%p): auto cleanup 'remove' event\n",
-			 kobject_name(kobj), kobj);
-		kobject_uevent(kobj, KOBJ_REMOVE);
-	}
 
 	/* remove from sysfs if the caller did not do it */
 	if (kobj->state_in_sysfs) {
@@ -717,7 +706,6 @@ int kset_register(struct kset *k)
 	err = kobject_add_internal(&k->kobj);
 	if (err)
 		return err;
-	kobject_uevent(&k->kobj, KOBJ_ADD);
 	return 0;
 }
 
