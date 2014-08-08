@@ -5,36 +5,7 @@ extern int pci_create_sysfs_dev_files(struct pci_dev *pdev);
 extern void pci_remove_sysfs_dev_files(struct pci_dev *pdev);
 extern void pci_cleanup_rom(struct pci_dev *dev);
 
-/**
- * Firmware PM callbacks
- *
- * @is_manageable - returns 'true' if given device is power manageable by the
- *                  platform firmware
- *
- * @set_state - invokes the platform firmware to set the device's power state
- *
- * @choose_state - returns PCI power state of given device preferred by the
- *                 platform; to be used during system-wide transitions from a
- *                 sleeping state to the working state and vice versa
- *
- * @can_wakeup - returns 'true' if given device is capable of waking up the
- *               system from a sleeping state
- *
- * @sleep_wake - enables/disables the system wake up capability of given device
- *
- * If given platform is generally capable of power managing PCI devices, all of
- * these callbacks are mandatory.
- */
-struct pci_platform_pm_ops {
-	bool (*is_manageable)(struct pci_dev *dev);
-	int (*set_state)(struct pci_dev *dev, pci_power_t state);
-	pci_power_t (*choose_state)(struct pci_dev *dev);
-	bool (*can_wakeup)(struct pci_dev *dev);
-	int (*sleep_wake)(struct pci_dev *dev, bool enable);
-};
 
-extern int pci_set_platform_pm(struct pci_platform_pm_ops *ops);
-extern void pci_pm_init(struct pci_dev *dev);
 
 extern int pci_user_read_config_byte(struct pci_dev *dev, int where, u8 *val);
 extern int pci_user_read_config_word(struct pci_dev *dev, int where, u16 *val);
@@ -81,8 +52,6 @@ extern void pci_remove_legacy_files(struct pci_bus *bus);
 /* Lock for read/write access to pci device and bus lists */
 extern struct rw_semaphore pci_bus_sem;
 
-extern unsigned int pci_pm_d3_delay;
-
 #ifdef CONFIG_PCI_MSI
 void pci_no_msi(void);
 extern void pci_msi_init_pci_dev(struct pci_dev *dev);
@@ -97,15 +66,7 @@ void pci_no_aer(void);
 static inline void pci_no_aer(void) { }
 #endif
 
-static inline int pci_no_d1d2(struct pci_dev *dev)
-{
-	unsigned int parent_dstates = 0;
 
-	if (dev->bus->self)
-		parent_dstates = dev->bus->self->no_d1d2;
-	return (dev->no_d1d2 || parent_dstates);
-
-}
 extern int pcie_mch_quirk;
 extern struct device_attribute pci_dev_attrs[];
 extern struct device_attribute dev_attr_cpuaffinity;

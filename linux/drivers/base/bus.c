@@ -16,7 +16,6 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include "base.h"
-#include "power/power.h"
 
 #define to_bus_attr(_attr) container_of(_attr, struct bus_attribute, attr)
 #define to_bus(obj) container_of(obj, struct bus_type_private, subsys.kobj)

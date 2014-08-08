@@ -23,7 +23,6 @@
 #include <linux/wait.h>
 
 #include "base.h"
-#include "power/power.h"
 
 
 static void driver_bound(struct device *dev)

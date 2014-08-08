@@ -20,7 +20,6 @@
 #include <linux/compiler.h>
 #include <linux/types.h>
 #include <linux/module.h>
-#include <linux/pm.h>
 #include <linux/semaphore.h>
 #include <asm/atomic.h>
 #include <asm/device.h>
@@ -59,13 +58,6 @@ struct bus_type {
 	int (*probe)(struct device *dev);
 	int (*remove)(struct device *dev);
 	void (*shutdown)(struct device *dev);
-
-	int (*suspend)(struct device *dev, pm_message_t state);
-	int (*suspend_late)(struct device *dev, pm_message_t state);
-	int (*resume_early)(struct device *dev);
-	int (*resume)(struct device *dev);
-
-	struct pm_ext_ops *pm;
 
 	struct bus_type_private *p;
 };
@@ -126,11 +118,8 @@ struct device_driver {
 	int (*probe) (struct device *dev);
 	int (*remove) (struct device *dev);
 	void (*shutdown) (struct device *dev);
-	int (*suspend) (struct device *dev, pm_message_t state);
-	int (*resume) (struct device *dev);
 	struct attribute_group **groups;
 
-	struct pm_ops *pm;
 
 	struct driver_private *p;
 };
@@ -192,10 +181,6 @@ struct class {
 	void (*class_release)(struct class *class);
 	void (*dev_release)(struct device *dev);
 
-	int (*suspend)(struct device *dev, pm_message_t state);
-	int (*resume)(struct device *dev);
-
-	struct pm_ops *pm;
 	struct class_private *p;
 };
 
@@ -273,10 +258,6 @@ struct device_type {
 	int (*uevent)(struct device *dev, struct kobj_uevent_env *env);
 	void (*release)(struct device *dev);
 
-	int (*suspend)(struct device *dev, pm_message_t state);
-	int (*resume)(struct device *dev);
-
-	struct pm_ops *pm;
 };
 
 /* interface for exporting device attributes */
@@ -372,7 +353,6 @@ struct device {
 	void		*driver_data;	/* data private to the driver */
 	void		*platform_data;	/* Platform specific data, device
 					   core doesn't touch it */
-	struct dev_pm_info	power;
 
 #ifdef CONFIG_NUMA
 	int		numa_node;	/* NUMA node this device is close to */
@@ -404,8 +384,6 @@ struct device {
 	void	(*release)(struct device *dev);
 };
 
-/* Get the wakeup routines, which depend on struct device */
-#include <linux/pm_wakeup.h>
 
 static inline const char *dev_name(const struct device *dev)
 {

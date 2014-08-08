@@ -63,36 +63,6 @@ static int pcie_port_remove_service(struct device *dev)
 
 static void pcie_port_shutdown_service(struct device *dev) {}
 
-static int pcie_port_suspend_service(struct device *dev, pm_message_t state)
-{
-	struct pcie_device *pciedev;
-	struct pcie_port_service_driver *driver;
-
-	if (!dev || !dev->driver)
-		return 0;
-
-	pciedev = to_pcie_device(dev);
- 	driver = to_service_driver(dev->driver);
-	if (driver && driver->suspend)
-		driver->suspend(pciedev, state);
-	return 0;
-}
-
-static int pcie_port_resume_service(struct device *dev)
-{
-	struct pcie_device *pciedev;
-	struct pcie_port_service_driver *driver;
-
-	if (!dev || !dev->driver)
-		return 0;
-
-	pciedev = to_pcie_device(dev);
- 	driver = to_service_driver(dev->driver);
-
-	if (driver && driver->resume)
-		driver->resume(pciedev);
-	return 0;
-}
 
 /*
  * release_pcie_device
@@ -321,44 +291,7 @@ int pcie_port_device_register(struct pci_dev *dev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int suspend_iter(struct device *dev, void *data)
-{
-	struct pcie_port_service_driver *service_driver;
-	pm_message_t state = * (pm_message_t *) data;
 
- 	if ((dev->bus == &pcie_port_bus_type) &&
- 	    (dev->driver)) {
- 		service_driver = to_service_driver(dev->driver);
- 		if (service_driver->suspend)
- 			service_driver->suspend(to_pcie_device(dev), state);
-  	}
-	return 0;
-}
-
-int pcie_port_device_suspend(struct pci_dev *dev, pm_message_t state)
-{
-	return device_for_each_child(&dev->dev, &state, suspend_iter);
-}
-
-static int resume_iter(struct device *dev, void *data)
-{
-	struct pcie_port_service_driver *service_driver;
-
-	if ((dev->bus == &pcie_port_bus_type) &&
-	    (dev->driver)) {
-		service_driver = to_service_driver(dev->driver);
-		if (service_driver->resume)
-			service_driver->resume(to_pcie_device(dev));
-	}
-	return 0;
-}
-
-int pcie_port_device_resume(struct pci_dev *dev)
-{
-	return device_for_each_child(&dev->dev, NULL, resume_iter);
-}
-#endif
 
 static int remove_iter(struct device *dev, void *data)
 {
@@ -416,8 +349,6 @@ int pcie_port_service_register(struct pcie_port_service_driver *new)
 	new->driver.probe = pcie_port_probe_service;
 	new->driver.remove = pcie_port_remove_service;
 	new->driver.shutdown = pcie_port_shutdown_service;
-	new->driver.suspend = pcie_port_suspend_service;
-	new->driver.resume = pcie_port_resume_service;
 
 	return driver_register(&new->driver);
 }

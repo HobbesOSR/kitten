@@ -83,15 +83,6 @@ enum pci_mmap_state {
 
 #define DEVICE_COUNT_RESOURCE	12
 
-typedef int __bitwise pci_power_t;
-
-#define PCI_D0		((pci_power_t __force) 0)
-#define PCI_D1		((pci_power_t __force) 1)
-#define PCI_D2		((pci_power_t __force) 2)
-#define PCI_D3hot	((pci_power_t __force) 3)
-#define PCI_D3cold	((pci_power_t __force) 4)
-#define PCI_UNKNOWN	((pci_power_t __force) 5)
-#define PCI_POWER_ERROR	((pci_power_t __force) -1)
 
 /** The pci_channel state describes connectivity between the CPU and
  *  the pci device.  If some PCI bus between here and the pci device
@@ -140,7 +131,6 @@ enum pci_bus_flags {
 };
 
 
-struct pcie_link_state;
 struct pci_vpd;
 
 /*
@@ -176,20 +166,7 @@ struct pci_dev {
 
 	struct device_dma_parameters dma_parms;
 
-	pci_power_t     current_state;  /* Current operating state. In ACPI-speak,
-					   this is D0-D3, D0 being fully functional,
-					   and D3 being off. */
-	int		pm_cap;		/* PM capability offset in the
-					   configuration space */
-	unsigned int	pme_support:5;	/* Bitmask of states from which PME#
-					   can be generated */
-	unsigned int	d1_support:1;	/* Low power state D1 is supported */
-	unsigned int	d2_support:1;	/* Low power state D2 is supported */
-	unsigned int	no_d1d2:1;	/* Only allow D0 and D3 */
 
-#ifdef CONFIG_PCIEASPM
-	struct pcie_link_state	*link_state;	/* ASPM link state. */
-#endif
 
 	pci_channel_state_t error_state;	/* current connectivity state */
 	struct	device	dev;		/* Generic device interface */
@@ -380,12 +357,7 @@ struct pci_driver {
 	const struct pci_device_id *id_table;	/* must be non-NULL for probe to be called */
 	int  (*probe)  (struct pci_dev *dev, const struct pci_device_id *id);	/* New device inserted */
 	void (*remove) (struct pci_dev *dev);	/* Device removed (NULL if not a hot-plug capable driver) */
-	int  (*suspend) (struct pci_dev *dev, pm_message_t state);	/* Device suspended */
-	int  (*suspend_late) (struct pci_dev *dev, pm_message_t state);
-	int  (*resume_early) (struct pci_dev *dev);
-	int  (*resume) (struct pci_dev *dev);	                /* Device woken up */
 	void (*shutdown) (struct pci_dev *dev);
-	struct pm_ext_ops *pm;
 	struct pci_error_handlers *err_handler;
 	struct device_driver	driver;
 };
@@ -611,17 +583,6 @@ void __iomem __must_check *pci_map_rom(struct pci_dev *pdev, size_t *size);
 void pci_unmap_rom(struct pci_dev *pdev, void __iomem *rom);
 size_t pci_get_rom_size(struct pci_dev *pdev, void __iomem *rom, size_t size);
 
-/* Power management related routines */
-int pci_save_state(struct pci_dev *dev);
-int pci_restore_state(struct pci_dev *dev);
-int pci_set_power_state(struct pci_dev *dev, pci_power_t state);
-pci_power_t pci_choose_state(struct pci_dev *dev, pm_message_t state);
-bool pci_pme_capable(struct pci_dev *dev, pci_power_t state);
-void pci_pme_active(struct pci_dev *dev, bool enable);
-int pci_enable_wake(struct pci_dev *dev, pci_power_t state, int enable);
-pci_power_t pci_target_state(struct pci_dev *dev);
-int pci_prepare_to_sleep(struct pci_dev *dev);
-int pci_back_from_sleep(struct pci_dev *dev);
 
 /* Functions for PCI Hotplug drivers to use */
 int pci_bus_find_capability(struct pci_bus *bus, unsigned int devfn, int cap);
@@ -895,33 +856,6 @@ static inline int pci_find_ext_capability(struct pci_dev *dev, int cap)
 	return 0;
 }
 
-/* Power management related routines */
-static inline int pci_save_state(struct pci_dev *dev)
-{
-	return 0;
-}
-
-static inline int pci_restore_state(struct pci_dev *dev)
-{
-	return 0;
-}
-
-static inline int pci_set_power_state(struct pci_dev *dev, pci_power_t state)
-{
-	return 0;
-}
-
-static inline pci_power_t pci_choose_state(struct pci_dev *dev,
-					   pm_message_t state)
-{
-	return PCI_D0;
-}
-
-static inline int pci_enable_wake(struct pci_dev *dev, pci_power_t state,
-				  int enable)
-{
-	return 0;
-}
 
 static inline int pci_request_regions(struct pci_dev *dev, const char *res_name)
 {

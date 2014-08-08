@@ -36,10 +36,6 @@ struct pcie_port_device_ext {
 extern struct bus_type pcie_port_bus_type;
 extern int pcie_port_device_probe(struct pci_dev *dev);
 extern int pcie_port_device_register(struct pci_dev *dev);
-#ifdef CONFIG_PM
-extern int pcie_port_device_suspend(struct pci_dev *dev, pm_message_t state);
-extern int pcie_port_device_resume(struct pci_dev *dev);
-#endif
 extern void pcie_port_device_remove(struct pci_dev *dev);
 extern int __must_check pcie_port_bus_register(void);
 extern void pcie_port_bus_unregister(void);

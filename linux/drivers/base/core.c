@@ -26,7 +26,6 @@
 #include <lwk/params.h>
 #endif
 #include "base.h"
-#include "power/power.h"
 
 int (*platform_notify)(struct device *dev) = NULL;
 int (*platform_notify_remove)(struct device *dev) = NULL;
@@ -495,8 +494,6 @@ void device_initialize(struct device *dev)
 	init_MUTEX(&dev->sem);
 	spin_lock_init(&dev->devres_lock);
 	INIT_LIST_HEAD(&dev->devres_head);
-	device_init_wakeup(dev, 0);
-	device_pm_init(dev);
 	set_dev_node(dev, -1);
 }
 
@@ -948,10 +945,7 @@ int device_add(struct device *dev)
 	error = bus_add_device(dev);
 	if (error)
 		goto BusError;
-	error = dpm_sysfs_add(dev);
-	if (error)
-		goto DPMError;
-	device_pm_add(dev);
+
 	bus_attach_device(dev);
 	if (parent)
 		klist_add_tail(&dev->knode_parent, &parent->klist_children);
@@ -971,8 +965,6 @@ int device_add(struct device *dev)
 done:
 	put_device(dev);
 	return error;
- DPMError:
-	bus_remove_device(dev);
  BusError:
 	if (dev->bus)
 		blocking_notifier_call_chain(&dev->bus->p->bus_notifier,
@@ -1060,8 +1052,6 @@ void device_del(struct device *dev)
 	struct device *parent = dev->parent;
 	struct class_interface *class_intf;
 
-	device_pm_remove(dev);
-	dpm_sysfs_remove(dev);
 	if (parent)
 		klist_del(&dev->knode_parent);
 	if (MAJOR(dev->devt)) {
