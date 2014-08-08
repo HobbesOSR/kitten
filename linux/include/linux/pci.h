@@ -199,9 +199,9 @@ struct pci_dev {
 	int rom_attr_enabled;		/* has display of the rom attribute been enabled? */
 	struct bin_attribute *res_attr[DEVICE_COUNT_RESOURCE]; /* sysfs file for resources */
 	struct bin_attribute *res_attr_wc[DEVICE_COUNT_RESOURCE]; /* sysfs file for WC mapping of resources */
-#ifdef CONFIG_PCI_MSI
+
 	struct list_head msi_list;
-#endif
+
 	struct pci_vpd *vpd;
 };
 
@@ -416,8 +416,6 @@ struct pci_driver {
 	PCI_VENDOR_ID_##vendor, (device),	\
 	PCI_ANY_ID, PCI_ANY_ID, 0, 0
 
-/* these external functions are only available when PCI support is enabled */
-#ifdef CONFIG_PCI
 
 extern struct bus_type pci_bus_type;
 
@@ -648,14 +646,6 @@ unsigned char pci_bus_max_busnr(struct pci_bus *bus);
 #define	pci_pool_alloc(pool, flags, handle) dma_pool_alloc(pool, flags, handle)
 #define	pci_pool_free(pool, vaddr, addr) dma_pool_free(pool, vaddr, addr)
 
-enum pci_dma_burst_strategy {
-	PCI_DMA_BURST_INFINITY,	/* make bursts as large as possible,
-				   strategy_parameter is N/A */
-	PCI_DMA_BURST_BOUNDARY, /* disconnect at every strategy_parameter
-				   byte boundaries */
-	PCI_DMA_BURST_MULTIPLE, /* disconnect at some multiple of
-				   strategy_parameter byte boundaries */
-};
 
 struct msix_entry {
 	u16 	vector;	/* kernel uses to write allocated vector */
@@ -663,34 +653,7 @@ struct msix_entry {
 };
 
 
-#ifndef CONFIG_PCI_MSI
-static inline int pci_enable_msi(struct pci_dev *dev)
-{
-	return -1;
-}
 
-static inline void pci_msi_shutdown(struct pci_dev *dev)
-{ }
-static inline void pci_disable_msi(struct pci_dev *dev)
-{ }
-
-static inline int pci_enable_msix(struct pci_dev *dev,
-				  struct msix_entry *entries, int nvec)
-{
-	return -1;
-}
-
-static inline void pci_msix_shutdown(struct pci_dev *dev)
-{ }
-static inline void pci_disable_msix(struct pci_dev *dev)
-{ }
-
-static inline void msi_remove_pci_irq_vectors(struct pci_dev *dev)
-{ }
-
-static inline void pci_restore_msi_state(struct pci_dev *dev)
-{ }
-#else
 extern int pci_enable_msi(struct pci_dev *dev);
 extern void pci_msi_shutdown(struct pci_dev *dev);
 extern void pci_disable_msi(struct pci_dev *dev);
@@ -700,7 +663,6 @@ extern void pci_msix_shutdown(struct pci_dev *dev);
 extern void pci_disable_msix(struct pci_dev *dev);
 extern void msi_remove_pci_irq_vectors(struct pci_dev *dev);
 extern void pci_restore_msi_state(struct pci_dev *dev);
-#endif
 
 #ifdef CONFIG_HT_IRQ
 /* The functions a driver should call */
@@ -729,160 +691,6 @@ static inline int pci_proc_domain(struct pci_bus *bus)
 }
 #endif /* CONFIG_PCI_DOMAINS */
 
-#else /* CONFIG_PCI is not enabled */
-
-/*
- *  If the system does not have PCI, clearly these return errors.  Define
- *  these as simple inline functions to avoid hair in drivers.
- */
-
-#define _PCI_NOP(o, s, t) \
-	static inline int pci_##o##_config_##s(struct pci_dev *dev, \
-						int where, t val) \
-		{ return PCIBIOS_FUNC_NOT_SUPPORTED; }
-
-#define _PCI_NOP_ALL(o, x)	_PCI_NOP(o, byte, u8 x) \
-				_PCI_NOP(o, word, u16 x) \
-				_PCI_NOP(o, dword, u32 x)
-_PCI_NOP_ALL(read, *)
-_PCI_NOP_ALL(write,)
-
-static inline struct pci_dev *pci_find_device(unsigned int vendor,
-					      unsigned int device,
-					      struct pci_dev *from)
-{
-	return NULL;
-}
-
-static inline struct pci_dev *pci_find_slot(unsigned int bus,
-					    unsigned int devfn)
-{
-	return NULL;
-}
-
-static inline struct pci_dev *pci_get_device(unsigned int vendor,
-					     unsigned int device,
-					     struct pci_dev *from)
-{
-	return NULL;
-}
-
-static inline struct pci_dev *pci_get_subsys(unsigned int vendor,
-					     unsigned int device,
-					     unsigned int ss_vendor,
-					     unsigned int ss_device,
-					     struct pci_dev *from)
-{
-	return NULL;
-}
-
-static inline struct pci_dev *pci_get_class(unsigned int class,
-					    struct pci_dev *from)
-{
-	return NULL;
-}
-
-#define pci_dev_present(ids)	(0)
-#define no_pci_devices()	(1)
-#define pci_dev_put(dev)	do { } while (0)
-
-static inline void pci_set_master(struct pci_dev *dev)
-{ }
-
-static inline int pci_enable_device(struct pci_dev *dev)
-{
-	return -EIO;
-}
-
-static inline void pci_disable_device(struct pci_dev *dev)
-{ }
-
-static inline int pci_set_dma_mask(struct pci_dev *dev, u64 mask)
-{
-	return -EIO;
-}
-
-static inline int pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask)
-{
-	return -EIO;
-}
-
-static inline int pci_set_dma_max_seg_size(struct pci_dev *dev,
-					unsigned int size)
-{
-	return -EIO;
-}
-
-static inline int pci_set_dma_seg_boundary(struct pci_dev *dev,
-					unsigned long mask)
-{
-	return -EIO;
-}
-
-static inline int pci_assign_resource(struct pci_dev *dev, int i)
-{
-	return -EBUSY;
-}
-
-static inline int __pci_register_driver(struct pci_driver *drv,
-					struct module *owner)
-{
-	return 0;
-}
-
-static inline int pci_register_driver(struct pci_driver *drv)
-{
-	return 0;
-}
-
-static inline void pci_unregister_driver(struct pci_driver *drv)
-{ }
-
-static inline int pci_find_capability(struct pci_dev *dev, int cap)
-{
-	return 0;
-}
-
-static inline int pci_find_next_capability(struct pci_dev *dev, u8 post,
-					   int cap)
-{
-	return 0;
-}
-
-static inline int pci_find_ext_capability(struct pci_dev *dev, int cap)
-{
-	return 0;
-}
-
-
-static inline int pci_request_regions(struct pci_dev *dev, const char *res_name)
-{
-	return -EIO;
-}
-
-static inline void pci_release_regions(struct pci_dev *dev)
-{ }
-
-#define pci_dma_burst_advice(pdev, strat, strategy_parameter) do { } while (0)
-
-static inline void pci_block_user_cfg_access(struct pci_dev *dev)
-{ }
-
-static inline void pci_unblock_user_cfg_access(struct pci_dev *dev)
-{ }
-
-static inline struct pci_bus *pci_find_next_bus(const struct pci_bus *from)
-{ return NULL; }
-
-static inline struct pci_dev *pci_get_slot(struct pci_bus *bus,
-						unsigned int devfn)
-{ return NULL; }
-
-static inline struct pci_dev *pci_get_bus_and_slot(unsigned int bus,
-						unsigned int devfn)
-{ return NULL; }
-
-#endif /* CONFIG_PCI */
 
 /* Include architecture-dependent settings and functions */
 

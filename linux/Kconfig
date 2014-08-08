@@ -9,6 +9,16 @@ config LINUX
 
 source "linux/ofed/Kconfig"
 
+config PCI_MSI
+	bool
+	depends on LINUX
+	default "n"
+	help
+	  Enable the MSI support for Linux compatible components.
+          This should be Enabled at all times, but it wasn't initially so I'm leary of just turning it on
+	  This should be removed and hardcoded to ON in the near future
+		
+
 config SYSFS
 	bool
 	depends on LINUX
