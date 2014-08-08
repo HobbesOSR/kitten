@@ -1216,12 +1216,13 @@ define all-sources
 	  done ; \
 	  find $(__srctree)include/arch-generic $(RCS_FIND_IGNORE) \
 	       -name '*.[chS]' -print; \
+	  find $(__srctree)linux/include $(RCS_FIND_IGNORE) \
+	       \( -name config -o -name 'arch-*' \) -prune \
+	       -o -name '*.[chS]' -print; \
 	  for ARCH in $(ALLINCLUDE_ARCHS) ; do \
-	       find $(__srctree)linux/include/asm-$${ARCH} $(RCS_FIND_IGNORE) \
+	       find $(__srctree)linux/arch/$${ARCH} $(RCS_FIND_IGNORE) \
 	            -name '*.[chS]' -print; \
-	  done ; \
-	  find $(__srctree)linux/include/asm-generic $(RCS_FIND_IGNORE) \
-	       -name '*.[chS]' -print )
+	  done ; )
 endef
 
 quiet_cmd_cscope-file = FILELST cscope.files
