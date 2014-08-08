@@ -1139,7 +1139,7 @@ int __init pcibios_irq_init(void)
 {
 	DBG(KERN_DEBUG "PCI: IRQ init\n");
 
-	if (pcibios_enable_irq || raw_pci_ops == NULL)
+	if (pcibios_enable_irq)
 		return 0;
 
 	dmi_check_system(pciirq_dmi_table);

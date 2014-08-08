@@ -4,6 +4,9 @@
  *	(c) 1999 Martin Mares <mj@ucw.cz>
  */
 
+
+#include <arch/pci/pcicfg.h>
+
 #undef DEBUG
 
 #ifdef DEBUG
@@ -85,17 +88,6 @@ extern spinlock_t pci_config_lock;
 extern int (*pcibios_enable_irq)(struct pci_dev *dev);
 extern void (*pcibios_disable_irq)(struct pci_dev *dev);
 
-struct pci_raw_ops {
-	int (*read)(unsigned int domain, unsigned int bus, unsigned int devfn,
-						int reg, int len, u32 *val);
-	int (*write)(unsigned int domain, unsigned int bus, unsigned int devfn,
-						int reg, int len, u32 val);
-};
-
-extern struct pci_raw_ops *raw_pci_ops;
-extern struct pci_raw_ops *raw_pci_ext_ops;
-
-extern struct pci_raw_ops pci_direct_conf1;
 
 /* arch_initcall level */
 extern int pci_direct_probe(void);

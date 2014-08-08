@@ -22,4 +22,24 @@ arch_pcicfg_write(
 	uint32_t	value
 );
 
+int 
+raw_pci_read(
+	unsigned int    seg, 
+	unsigned int    bus,
+	unsigned int    devfn, 
+	int             reg, 
+	int             len,
+	u32           * value
+);
+
+int 
+raw_pci_write(
+	unsigned int   seg, 
+	 unsigned int   bus,
+	 unsigned int   devfn,
+	 int            reg, 
+	 int            len, 
+	 u32            value
+);
+
 #endif

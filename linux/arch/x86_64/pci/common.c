@@ -10,6 +10,7 @@
 #include <linux/init.h>
 #include <linux/dmi.h>
 
+
 #include <asm/acpi.h>
 #include <asm/segment.h>
 #include <asm/io.h>
@@ -26,39 +27,18 @@ int pci_routeirq;
 int pcibios_last_bus = -1;
 unsigned long pirq_table_addr;
 struct pci_bus *pci_root_bus;
-struct pci_raw_ops *raw_pci_ops;
-struct pci_raw_ops *raw_pci_ext_ops;
 
-int raw_pci_read(unsigned int domain, unsigned int bus, unsigned int devfn,
-						int reg, int len, u32 *val)
-{
-	if (domain == 0 && reg < 256 && raw_pci_ops)
-		return raw_pci_ops->read(domain, bus, devfn, reg, len, val);
-	if (raw_pci_ext_ops)
-		return raw_pci_ext_ops->read(domain, bus, devfn, reg, len, val);
-	return -EINVAL;
-}
-
-int raw_pci_write(unsigned int domain, unsigned int bus, unsigned int devfn,
-						int reg, int len, u32 val)
-{
-	if (domain == 0 && reg < 256 && raw_pci_ops)
-		return raw_pci_ops->write(domain, bus, devfn, reg, len, val);
-	if (raw_pci_ext_ops)
-		return raw_pci_ext_ops->write(domain, bus, devfn, reg, len, val);
-	return -EINVAL;
-}
 
 static int pci_read(struct pci_bus *bus, unsigned int devfn, int where, int size, u32 *value)
 {
 	return raw_pci_read(pci_domain_nr(bus), bus->number,
-				 devfn, where, size, value);
+			    devfn, where, size, value);
 }
 
 static int pci_write(struct pci_bus *bus, unsigned int devfn, int where, int size, u32 value)
 {
 	return raw_pci_write(pci_domain_nr(bus), bus->number,
-				  devfn, where, size, value);
+			     devfn, where, size, value);
 }
 
 struct pci_ops pci_root_ops = {
@@ -408,10 +388,6 @@ int __init pcibios_init(void)
 {
 	struct arch_cpuinfo *c = &boot_cpu_data.arch;
 
-	if (!raw_pci_ops) {
-		printk(KERN_WARNING "PCI: System does not support PCI\n");
-		return 0;
-	}
 
 	/*
 	 * Assume PCI cacheline size of 32 bytes for all x86s except K7/K8
