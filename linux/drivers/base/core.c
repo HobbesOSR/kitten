@@ -492,8 +492,6 @@ void device_initialize(struct device *dev)
 	INIT_LIST_HEAD(&dev->dma_pools);
 	INIT_LIST_HEAD(&dev->node);
 	init_MUTEX(&dev->sem);
-	spin_lock_init(&dev->devres_lock);
-	INIT_LIST_HEAD(&dev->devres_head);
 	set_dev_node(dev, -1);
 }
 
@@ -1075,12 +1073,6 @@ void device_del(struct device *dev)
 	device_remove_attrs(dev);
 	bus_remove_device(dev);
 
-	/*
-	 * Some platform devices are driven without driver attached
-	 * and managed resources may have been acquired.  Make sure
-	 * all resources are released.
-	 */
-	devres_release_all(dev);
 
 	/* Notify the platform of the removal, in case they
 	 * need to do anything...
