@@ -770,8 +770,6 @@ static int pci_setup_device(struct pci_dev * dev)
 	/* "Unknown power state" */
 	dev->current_state = PCI_UNKNOWN;
 
-	/* Early fixups, before probing the BARs */
-	pci_fixup_device(pci_fixup_early, dev);
 	class = dev->class >> 8;
 
 	switch (dev->hdr_type) {		    /* header type */
@@ -1025,8 +1023,6 @@ void pci_device_add(struct pci_dev *dev, struct pci_bus *bus)
 	pci_set_dma_max_seg_size(dev, 65536);
 	pci_set_dma_seg_boundary(dev, 0xffffffff);
 
-	/* Fix up broken headers */
-	pci_fixup_device(pci_fixup_header, dev);
 
 	/* Buffers for saving PCIe and PCI-X capabilities */
 	pci_allocate_cap_save_buffers(dev);

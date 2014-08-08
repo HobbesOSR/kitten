@@ -816,7 +816,6 @@ static int do_pci_enable_device(struct pci_dev *dev, int bars)
 	err = pcibios_enable_device(dev, bars);
 	if (err < 0)
 		return err;
-	pci_fixup_device(pci_fixup_enable, dev);
 
 	return 0;
 }
@@ -1901,11 +1900,6 @@ static void __devinit pci_no_domains(void)
 
 static int __devinit pci_init(void)
 {
-	struct pci_dev *dev = NULL;
-
-	while ((dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, dev)) != NULL) {
-		pci_fixup_device(pci_fixup_final, dev);
-	}
 	return 0;
 }
 

@@ -1038,57 +1038,6 @@ static inline void pci_resource_to_user(const struct pci_dev *dev, int bar,
 #endif /* HAVE_ARCH_PCI_RESOURCE_TO_USER */
 
 
-/*
- *  The world is not perfect and supplies us with broken PCI devices.
- *  For at least a part of these bugs we need a work-around, so both
- *  generic (drivers/pci/quirks.c) and per-architecture code can define
- *  fixup hooks to be called for particular buggy devices.
- */
-
-struct pci_fixup {
-	u16 vendor, device;	/* You can use PCI_ANY_ID here of course */
-	void (*hook)(struct pci_dev *dev);
-};
-
-enum pci_fixup_pass {
-	pci_fixup_early,	/* Before probing BARs */
-	pci_fixup_header,	/* After reading configuration header */
-	pci_fixup_final,	/* Final phase of device fixups */
-	pci_fixup_enable,	/* pci_enable_device() time */
-	pci_fixup_resume,	/* pci_device_resume() */
-	pci_fixup_suspend,	/* pci_device_suspend */
-	pci_fixup_resume_early, /* pci_device_resume_early() */
-};
-
-/* Anonymous variables would be nice... */
-#define DECLARE_PCI_FIXUP_SECTION(section, name, vendor, device, hook)	\
-	static const struct pci_fixup __pci_fixup_##name __used		\
-	__attribute__((__section__(#section))) = { vendor, device, hook };
-#define DECLARE_PCI_FIXUP_EARLY(vendor, device, hook)			\
-	DECLARE_PCI_FIXUP_SECTION(.pci_fixup_early,			\
-			vendor##device##hook, vendor, device, hook)
-#define DECLARE_PCI_FIXUP_HEADER(vendor, device, hook)			\
-	DECLARE_PCI_FIXUP_SECTION(.pci_fixup_header,			\
-			vendor##device##hook, vendor, device, hook)
-#define DECLARE_PCI_FIXUP_FINAL(vendor, device, hook)			\
-	DECLARE_PCI_FIXUP_SECTION(.pci_fixup_final,			\
-			vendor##device##hook, vendor, device, hook)
-#define DECLARE_PCI_FIXUP_ENABLE(vendor, device, hook)			\
-	DECLARE_PCI_FIXUP_SECTION(.pci_fixup_enable,			\
-			vendor##device##hook, vendor, device, hook)
-#define DECLARE_PCI_FIXUP_RESUME(vendor, device, hook)			\
-	DECLARE_PCI_FIXUP_SECTION(.pci_fixup_resume,			\
-			resume##vendor##device##hook, vendor, device, hook)
-#define DECLARE_PCI_FIXUP_RESUME_EARLY(vendor, device, hook)		\
-	DECLARE_PCI_FIXUP_SECTION(.pci_fixup_resume_early,		\
-			resume_early##vendor##device##hook, vendor, device, hook)
-#define DECLARE_PCI_FIXUP_SUSPEND(vendor, device, hook)			\
-	DECLARE_PCI_FIXUP_SECTION(.pci_fixup_suspend,			\
-			suspend##vendor##device##hook, vendor, device, hook)
-
-
-void pci_fixup_device(enum pci_fixup_pass pass, struct pci_dev *dev);
-
 void __iomem *pcim_iomap(struct pci_dev *pdev, int bar, unsigned long maxlen);
 void pcim_iounmap(struct pci_dev *pdev, void __iomem *addr);
 void __iomem * const *pcim_iomap_table(struct pci_dev *pdev);
