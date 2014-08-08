@@ -547,9 +547,7 @@ static inline int pci_write_config_dword(struct pci_dev *dev, int where,
 int __must_check pci_enable_device(struct pci_dev *dev);
 int __must_check pci_enable_device_io(struct pci_dev *dev);
 int __must_check pci_enable_device_mem(struct pci_dev *dev);
-int __must_check pci_reenable_device(struct pci_dev *);
 int __must_check pcim_enable_device(struct pci_dev *pdev);
-void pcim_pin_device(struct pci_dev *pdev);
 
 static inline int pci_is_managed(struct pci_dev *pdev)
 {
@@ -940,13 +938,6 @@ static inline void pci_resource_to_user(const struct pci_dev *dev, int bar,
 #endif /* HAVE_ARCH_PCI_RESOURCE_TO_USER */
 
 
-void __iomem *pcim_iomap(struct pci_dev *pdev, int bar, unsigned long maxlen);
-void pcim_iounmap(struct pci_dev *pdev, void __iomem *addr);
-void __iomem * const *pcim_iomap_table(struct pci_dev *pdev);
-int pcim_iomap_regions(struct pci_dev *pdev, u16 mask, const char *name);
-int pcim_iomap_regions_request_all(struct pci_dev *pdev, u16 mask,
-				   const char *name);
-void pcim_iounmap_regions(struct pci_dev *pdev, u16 mask);
 
 extern int pci_pci_problems;
 #define PCIPCI_FAIL		1	/* No PCI PCI DMA */

@@ -355,20 +355,6 @@ static int do_pci_enable_device(struct pci_dev *dev, int bars)
 	return 0;
 }
 
-/**
- * pci_reenable_device - Resume abandoned device
- * @dev: PCI device to be resumed
- *
- *  Note this function is a backend of pci_default_resume and is not supposed
- *  to be called by normal code, write proper resume handler and use it instead.
- */
-int pci_reenable_device(struct pci_dev *dev)
-{
-	if (atomic_read(&dev->enable_cnt))
-		return do_pci_enable_device(dev, (1 << PCI_NUM_RESOURCES) - 1);
-	return 0;
-}
-
 static int __pci_enable_device_flags(struct pci_dev *dev,
 				     resource_size_t flags)
 {
@@ -1115,7 +1101,6 @@ early_param("pci", pci_setup);
 
 device_initcall(pci_init);
 
-EXPORT_SYMBOL(pci_reenable_device);
 EXPORT_SYMBOL(pci_enable_device_io);
 EXPORT_SYMBOL(pci_enable_device_mem);
 EXPORT_SYMBOL(pci_enable_device);
