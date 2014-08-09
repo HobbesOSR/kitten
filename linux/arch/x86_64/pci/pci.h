@@ -85,10 +85,7 @@ extern int (*pcibios_enable_irq)(struct pci_dev *dev);
 extern void (*pcibios_disable_irq)(struct pci_dev *dev);
 
 
-/* arch_initcall level */
-extern int pci_direct_probe(void);
-extern void pci_direct_init(int type);
-extern void pci_pcbios_init(void);
+
 
 /* some common used subsys_initcalls */
 extern int __init pcibios_irq_init(void);

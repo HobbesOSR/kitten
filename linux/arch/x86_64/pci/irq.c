@@ -567,24 +567,8 @@ int __init pcibios_irq_init(void)
 	return 0;
 }
 
-static void pirq_penalize_isa_irq(int irq, int active)
-{
-	/*
-	 *  If any ISAPnP device reports an IRQ in its list of possible
-	 *  IRQ's, we try to avoid assigning it to PCI devices.
-	 */
-	if (irq < 16) {
-		if (active)
-			pirq_penalty[irq] += 1000;
-		else
-			pirq_penalty[irq] += 100;
-	}
-}
 
-void pcibios_penalize_isa_irq(int irq, int active)
-{
-        pirq_penalize_isa_irq(irq, active);
-}
+
 
 static int pirq_enable_irq(struct pci_dev *dev)
 {
