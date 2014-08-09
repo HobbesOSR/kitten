@@ -3,13 +3,11 @@
 #
 
 obj-y		+= access.o bus.o probe.o remove.o pci.o  slot.o \
-			pci-driver.o search.o pci-sysfs.o rom.o setup-res.o
+		   pci-driver.o search.o pci-sysfs.o rom.o setup-res.o \
+		   msi.o
 
 # Build PCI Express stuff if needed
 obj-$(CONFIG_PCIEPORTBUS) += pcie/
-
-# Build the PCI MSI interrupt support
-obj-$(CONFIG_PCI_MSI) += msi.o
 
 #
 # Some architectures use the generic PCI setup functions

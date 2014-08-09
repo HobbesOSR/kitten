@@ -103,28 +103,7 @@ static void msix_set_enable(struct pci_dev *dev, int enable)
 	}
 }
 
-static void msix_flush_writes(unsigned int irq)
-{
-	struct msi_desc *entry;
 
-	entry = get_irq_msi(irq);
-	BUG_ON(!entry || !entry->dev);
-	switch (entry->msi_attrib.type) {
-	case PCI_CAP_ID_MSI:
-		/* nothing to do */
-		break;
-	case PCI_CAP_ID_MSIX:
-	{
-		int offset = entry->msi_attrib.entry_nr * PCI_MSIX_ENTRY_SIZE +
-			PCI_MSIX_ENTRY_VECTOR_CTRL_OFFSET;
-		readl(entry->mask_base + offset);
-		break;
-	}
-	default:
-		BUG();
-		break;
-	}
-}
 
 /*
  * PCI 2.3 does not specify mask bits for each MSI interrupt.  Attempting to
@@ -135,11 +114,10 @@ static void msix_flush_writes(unsigned int irq)
  * Returns 1 if it succeeded in masking the interrupt and 0 if the device
  * doesn't support MSI masking.
  */
-static int msi_set_mask_bits(unsigned int irq, u32 mask, u32 flag)
+static int msi_set_mask_bits(struct msi_desc *entry, u32 mask, u32 flag)
 {
-	struct msi_desc *entry;
 
-	entry = get_irq_msi(irq);
+
 	BUG_ON(!entry || !entry->dev);
 	switch (entry->msi_attrib.type) {
 	case PCI_CAP_ID_MSI:
@@ -172,97 +150,8 @@ static int msi_set_mask_bits(unsigned int irq, u32 mask, u32 flag)
 	return 1;
 }
 
-void read_msi_msg(unsigned int irq, struct msi_msg *msg)
-{
-	struct msi_desc *entry = get_irq_msi(irq);
-	switch(entry->msi_attrib.type) {
-	case PCI_CAP_ID_MSI:
-	{
-		struct pci_dev *dev = entry->dev;
-		int pos = entry->msi_attrib.pos;
-		u16 data;
 
-		pci_read_config_dword(dev, msi_lower_address_reg(pos),
-					&msg->address_lo);
-		if (entry->msi_attrib.is_64) {
-			pci_read_config_dword(dev, msi_upper_address_reg(pos),
-						&msg->address_hi);
-			pci_read_config_word(dev, msi_data_reg(pos, 1), &data);
-		} else {
-			msg->address_hi = 0;
-			pci_read_config_word(dev, msi_data_reg(pos, 0), &data);
-		}
-		msg->data = data;
-		break;
-	}
-	case PCI_CAP_ID_MSIX:
-	{
-		void __iomem *base;
-		base = entry->mask_base +
-			entry->msi_attrib.entry_nr * PCI_MSIX_ENTRY_SIZE;
 
-		msg->address_lo = readl(base + PCI_MSIX_ENTRY_LOWER_ADDR_OFFSET);
-		msg->address_hi = readl(base + PCI_MSIX_ENTRY_UPPER_ADDR_OFFSET);
-		msg->data = readl(base + PCI_MSIX_ENTRY_DATA_OFFSET);
- 		break;
- 	}
- 	default:
-		BUG();
-	}
-}
-
-void write_msi_msg(unsigned int irq, struct msi_msg *msg)
-{
-	struct msi_desc *entry = get_irq_msi(irq);
-	switch (entry->msi_attrib.type) {
-	case PCI_CAP_ID_MSI:
-	{
-		struct pci_dev *dev = entry->dev;
-		int pos = entry->msi_attrib.pos;
-
-		pci_write_config_dword(dev, msi_lower_address_reg(pos),
-					msg->address_lo);
-		if (entry->msi_attrib.is_64) {
-			pci_write_config_dword(dev, msi_upper_address_reg(pos),
-						msg->address_hi);
-			pci_write_config_word(dev, msi_data_reg(pos, 1),
-						msg->data);
-		} else {
-			pci_write_config_word(dev, msi_data_reg(pos, 0),
-						msg->data);
-		}
-		break;
-	}
-	case PCI_CAP_ID_MSIX:
-	{
-		void __iomem *base;
-		base = entry->mask_base +
-			entry->msi_attrib.entry_nr * PCI_MSIX_ENTRY_SIZE;
-
-		writel(msg->address_lo,
-			base + PCI_MSIX_ENTRY_LOWER_ADDR_OFFSET);
-		writel(msg->address_hi,
-			base + PCI_MSIX_ENTRY_UPPER_ADDR_OFFSET);
-		writel(msg->data, base + PCI_MSIX_ENTRY_DATA_OFFSET);
-		break;
-	}
-	default:
-		BUG();
-	}
-	entry->msg = *msg;
-}
-
-void mask_msi_irq(unsigned int irq)
-{
-	msi_set_mask_bits(irq, 1, 1);
-	msix_flush_writes(irq);
-}
-
-void unmask_msi_irq(unsigned int irq)
-{
-	msi_set_mask_bits(irq, 1, 0);
-	msix_flush_writes(irq);
-}
 
 static int msi_free_irqs(struct pci_dev* dev);
 
@@ -436,7 +325,6 @@ static int msix_capability_init(struct pci_dev *dev,
 	i = 0;
 	list_for_each_entry(entry, &dev->msi_list, list) {
 		entries[i].vector = entry->irq;
-		set_irq_msi(entry->irq, entry);
 		i++;
 	}
 	/* Set MSI-X enabled bits */
@@ -541,7 +429,7 @@ void pci_msi_shutdown(struct pci_dev* dev)
 	/* Return the the pci reset with msi irqs unmasked */
 	if (entry->msi_attrib.maskbit) {
 		u32 mask = entry->msi_attrib.maskbits_mask;
-		msi_set_mask_bits(dev->irq, mask, ~mask);
+		msi_set_mask_bits(entry, mask, ~mask);
 	}
 	if (!entry->dev || entry->msi_attrib.type != PCI_CAP_ID_MSI)
 		return;
@@ -569,11 +457,6 @@ EXPORT_SYMBOL(pci_disable_msi);
 static int msi_free_irqs(struct pci_dev* dev)
 {
 	struct msi_desc *entry, *tmp;
-
-	list_for_each_entry(entry, &dev->msi_list, list) {
-		if (entry->irq)
-			BUG_ON(irq_has_action(entry->irq));
-	}
 
 	arch_teardown_msi_irqs(dev);
 

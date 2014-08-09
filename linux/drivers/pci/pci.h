@@ -52,13 +52,9 @@ extern void pci_remove_legacy_files(struct pci_bus *bus);
 /* Lock for read/write access to pci device and bus lists */
 extern struct rw_semaphore pci_bus_sem;
 
-#ifdef CONFIG_PCI_MSI
 void pci_no_msi(void);
 extern void pci_msi_init_pci_dev(struct pci_dev *dev);
-#else
-static inline void pci_no_msi(void) { }
-static inline void pci_msi_init_pci_dev(struct pci_dev *dev) { }
-#endif
+
 
 #ifdef CONFIG_PCIEAER
 void pci_no_aer(void);
