@@ -17,9 +17,6 @@ static __init int pci_arch_init(void)
 	pci_pcbios_init();
 #endif
 
-	dmi_check_pciprobe();
-
-	dmi_check_skip_isa_align();
 
 	return 0;
 }

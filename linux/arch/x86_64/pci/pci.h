@@ -94,8 +94,6 @@ extern int pci_direct_probe(void);
 extern void pci_direct_init(int type);
 extern void pci_pcbios_init(void);
 extern int pci_olpc_init(void);
-extern void __init dmi_check_pciprobe(void);
-extern void __init dmi_check_skip_isa_align(void);
 
 /* some common used subsys_initcalls */
 extern int __init pci_acpi_init(void);
