@@ -17,10 +17,8 @@
 
 #include "pci.h"
 
-unsigned int pci_probe = PCI_PROBE_BIOS | PCI_PROBE_CONF1 | PCI_PROBE_CONF2 |
-				PCI_PROBE_MMCONF;
+unsigned int pci_probe = 0;
 
-unsigned int pci_early_dump_regs;
 static int pci_bf_sort;
 int pci_routeirq;
 int pcibios_last_bus = -1;
@@ -51,11 +49,7 @@ struct pci_ops pci_root_ops = {
  */
 int pcibios_scanned;
 
-/*
- * This interrupt-safe spinlock protects all accesses to PCI
- * configuration space.
- */
-DEFINE_SPINLOCK(pci_config_lock);
+
 
 
 static void __devinit pcibios_fixup_device_resources(struct pci_dev *dev)
@@ -146,41 +140,9 @@ char * __devinit  pcibios_setup(char *str)
 		pci_bf_sort = pci_force_nobf;
 		return NULL;
 	}
-#ifdef CONFIG_PCI_BIOS
-	else if (!strcmp(str, "bios")) {
-		pci_probe = PCI_PROBE_BIOS;
-		return NULL;
-	} else if (!strcmp(str, "nobios")) {
-		pci_probe &= ~PCI_PROBE_BIOS;
-		return NULL;
-	} else if (!strcmp(str, "biosirq")) {
-		pci_probe |= PCI_BIOS_IRQ_SCAN;
-		return NULL;
-	} else if (!strncmp(str, "pirqaddr=", 9)) {
-		pirq_table_addr = simple_strtoul(str+9, NULL, 0);
-		return NULL;
-	}
-#endif
-#ifdef CONFIG_PCI_DIRECT
-	else if (!strcmp(str, "conf1")) {
-		pci_probe = PCI_PROBE_CONF1 | PCI_NO_CHECKS;
-		return NULL;
-	}
-	else if (!strcmp(str, "conf2")) {
-		pci_probe = PCI_PROBE_CONF2 | PCI_NO_CHECKS;
-		return NULL;
-	}
-#endif
-#ifdef CONFIG_PCI_MMCONFIG
-	else if (!strcmp(str, "nommconf")) {
-		pci_probe &= ~PCI_PROBE_MMCONF;
-		return NULL;
-	}
-	else if (!strcmp(str, "check_enable_amd_mmconf")) {
-		pci_probe |= PCI_CHECK_ENABLE_AMD_MMCONF;
-		return NULL;
-	}
-#endif
+
+
+
 	else if (!strcmp(str, "noacpi")) {
 		acpi_noirq_set();
 		return NULL;
@@ -189,18 +151,7 @@ char * __devinit  pcibios_setup(char *str)
 		pci_probe |= PCI_PROBE_NOEARLY;
 		return NULL;
 	}
-#ifndef CONFIG_X86_VISWS
-	else if (!strcmp(str, "usepirqmask")) {
-		pci_probe |= PCI_USE_PIRQ_MASK;
-		return NULL;
-	} else if (!strncmp(str, "irqmask=", 8)) {
-		pcibios_irq_mask = simple_strtol(str+8, NULL, 0);
-		return NULL;
-	} else if (!strncmp(str, "lastbus=", 8)) {
-		pcibios_last_bus = simple_strtol(str+8, NULL, 0);
-		return NULL;
-	}
-#endif
+
 	else if (!strcmp(str, "rom")) {
 		pci_probe |= PCI_ASSIGN_ROMS;
 		return NULL;
@@ -212,9 +163,6 @@ char * __devinit  pcibios_setup(char *str)
 		return NULL;
 	} else if (!strcmp(str, "use_crs")) {
 		pci_probe |= PCI_USE__CRS;
-		return NULL;
-	} else if (!strcmp(str, "earlydump")) {
-		pci_early_dump_regs = 1;
 		return NULL;
 	} else if (!strcmp(str, "routeirq")) {
 		pci_routeirq = 1;
