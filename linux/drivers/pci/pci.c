@@ -665,130 +665,7 @@ pci_set_master(struct pci_dev *dev)
 	pcibios_set_master(dev);
 }
 
-#ifdef PCI_DISABLE_MWI
-int pci_set_mwi(struct pci_dev *dev)
-{
-	return 0;
-}
 
-int pci_try_set_mwi(struct pci_dev *dev)
-{
-	return 0;
-}
-
-void pci_clear_mwi(struct pci_dev *dev)
-{
-}
-
-#else
-
-#ifndef PCI_CACHE_LINE_BYTES
-#define PCI_CACHE_LINE_BYTES L1_CACHE_BYTES
-#endif
-
-/* This can be overridden by arch code. */
-/* Don't forget this is measured in 32-bit words, not bytes */
-u8 pci_cache_line_size = PCI_CACHE_LINE_BYTES / 4;
-
-/**
- * pci_set_cacheline_size - ensure the CACHE_LINE_SIZE register is programmed
- * @dev: the PCI device for which MWI is to be enabled
- *
- * Helper function for pci_set_mwi.
- * Originally copied from drivers/net/acenic.c.
- * Copyright 1998-2001 by Jes Sorensen, <jes@trained-monkey.org>.
- *
- * RETURNS: An appropriate -ERRNO error value on error, or zero for success.
- */
-static int
-pci_set_cacheline_size(struct pci_dev *dev)
-{
-	u8 cacheline_size;
-
-	if (!pci_cache_line_size)
-		return -EINVAL;		/* The system doesn't support MWI. */
-
-	/* Validate current setting: the PCI_CACHE_LINE_SIZE must be
-	   equal to or multiple of the right value. */
-	pci_read_config_byte(dev, PCI_CACHE_LINE_SIZE, &cacheline_size);
-	if (cacheline_size >= pci_cache_line_size &&
-	    (cacheline_size % pci_cache_line_size) == 0)
-		return 0;
-
-	/* Write the correct value. */
-	pci_write_config_byte(dev, PCI_CACHE_LINE_SIZE, pci_cache_line_size);
-	/* Read it back. */
-	pci_read_config_byte(dev, PCI_CACHE_LINE_SIZE, &cacheline_size);
-	if (cacheline_size == pci_cache_line_size)
-		return 0;
-
-	dev_printk(KERN_DEBUG, &dev->dev, "cache line size of %d is not "
-		   "supported\n", pci_cache_line_size << 2);
-
-	return -EINVAL;
-}
-
-/**
- * pci_set_mwi - enables memory-write-invalidate PCI transaction
- * @dev: the PCI device for which MWI is enabled
- *
- * Enables the Memory-Write-Invalidate transaction in %PCI_COMMAND.
- *
- * RETURNS: An appropriate -ERRNO error value on error, or zero for success.
- */
-int
-pci_set_mwi(struct pci_dev *dev)
-{
-	int rc;
-	u16 cmd;
-
-	rc = pci_set_cacheline_size(dev);
-	if (rc)
-		return rc;
-
-	pci_read_config_word(dev, PCI_COMMAND, &cmd);
-	if (! (cmd & PCI_COMMAND_INVALIDATE)) {
-		dev_dbg(&dev->dev, "enabling Mem-Wr-Inval\n");
-		cmd |= PCI_COMMAND_INVALIDATE;
-		pci_write_config_word(dev, PCI_COMMAND, cmd);
-	}
-	
-	return 0;
-}
-
-/**
- * pci_try_set_mwi - enables memory-write-invalidate PCI transaction
- * @dev: the PCI device for which MWI is enabled
- *
- * Enables the Memory-Write-Invalidate transaction in %PCI_COMMAND.
- * Callers are not required to check the return value.
- *
- * RETURNS: An appropriate -ERRNO error value on error, or zero for success.
- */
-int pci_try_set_mwi(struct pci_dev *dev)
-{
-	int rc = pci_set_mwi(dev);
-	return rc;
-}
-
-/**
- * pci_clear_mwi - disables Memory-Write-Invalidate for device dev
- * @dev: the PCI device to disable
- *
- * Disables PCI Memory-Write-Invalidate transaction on the device
- */
-void
-pci_clear_mwi(struct pci_dev *dev)
-{
-	u16 cmd;
-
-	pci_read_config_word(dev, PCI_COMMAND, &cmd);
-	if (cmd & PCI_COMMAND_INVALIDATE) {
-		cmd &= ~PCI_COMMAND_INVALIDATE;
-		pci_write_config_word(dev, PCI_COMMAND, cmd);
-	}
-}
-#endif /* ! PCI_DISABLE_MWI */
 
 /**
  * pci_intx - enables/disables PCI INTx for device dev
@@ -1114,9 +991,6 @@ EXPORT_SYMBOL(pci_request_region);
 EXPORT_SYMBOL(pci_release_selected_regions);
 EXPORT_SYMBOL(pci_request_selected_regions);
 EXPORT_SYMBOL(pci_set_master);
-EXPORT_SYMBOL(pci_set_mwi);
-EXPORT_SYMBOL(pci_try_set_mwi);
-EXPORT_SYMBOL(pci_clear_mwi);
 EXPORT_SYMBOL_GPL(pci_intx);
 EXPORT_SYMBOL(pci_set_dma_mask);
 EXPORT_SYMBOL(pci_set_consistent_dma_mask);

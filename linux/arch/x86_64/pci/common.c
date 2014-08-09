@@ -382,23 +382,10 @@ struct pci_bus * __devinit pcibios_scan_root(int busnum)
 	return bus;
 }
 
-extern u8 pci_cache_line_size;
 
 int __init pcibios_init(void)
 {
 	struct arch_cpuinfo *c = &boot_cpu_data.arch;
-
-
-	/*
-	 * Assume PCI cacheline size of 32 bytes for all x86s except K7/K8
-	 * and P4. It's also good for 386/486s (which actually have 16)
-	 * as quite a few PCI devices do not support smaller values.
-	 */
-	pci_cache_line_size = 32 >> 2;
-	if (c->x86_family >= 6 && c->x86_vendor == X86_VENDOR_AMD)
-		pci_cache_line_size = 64 >> 2;	/* K7 & K8 */
-	else if (c->x86_family > 6 && c->x86_vendor == X86_VENDOR_INTEL)
-		pci_cache_line_size = 128 >> 2;	/* P4 */
 
 	pcibios_resource_survey();
 

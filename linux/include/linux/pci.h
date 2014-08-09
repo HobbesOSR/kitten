@@ -190,7 +190,6 @@ struct pci_dev {
 	unsigned int	broken_parity_status :1;	/* Device generates false positive parity */
 	unsigned int 	msi_enabled          :1;
 	unsigned int	msix_enabled         :1;
-	unsigned int	is_managed           :1;
 	unsigned int	is_pcie              :1;
 	pci_dev_flags_t dev_flags;
 	atomic_t	enable_cnt;	/* pci_enable_device has been called */
@@ -545,20 +544,11 @@ static inline int pci_write_config_dword(struct pci_dev *dev, int where,
 int __must_check pci_enable_device(struct pci_dev *dev);
 int __must_check pci_enable_device_io(struct pci_dev *dev);
 int __must_check pci_enable_device_mem(struct pci_dev *dev);
-int __must_check pcim_enable_device(struct pci_dev *pdev);
-
-static inline int pci_is_managed(struct pci_dev *pdev)
-{
-	return pdev->is_managed;
-}
 
 void pci_disable_device(struct pci_dev *dev);
 void pci_set_master(struct pci_dev *dev);
 int pci_set_pcie_reset_state(struct pci_dev *dev, enum pcie_reset_state state);
-#define HAVE_PCI_SET_MWI
-int __must_check pci_set_mwi(struct pci_dev *dev);
-int pci_try_set_mwi(struct pci_dev *dev);
-void pci_clear_mwi(struct pci_dev *dev);
+
 void pci_intx(struct pci_dev *dev, int enable);
 void pci_msi_off(struct pci_dev *dev);
 int pci_set_dma_mask(struct pci_dev *dev, u64 mask);
@@ -591,8 +581,7 @@ void pci_assign_unassigned_resources(void);
 void pdev_enable_device(struct pci_dev *);
 void pdev_sort_resources(struct pci_dev *, struct resource_list *);
 int pci_enable_resources(struct pci_dev *, int mask);
-void pci_fixup_irqs(u8 (*)(struct pci_dev *, u8 *),
-		    int (*)(struct pci_dev *, u8, u8));
+
 #define HAVE_PCI_REQ_REGIONS	2
 int __must_check pci_request_regions(struct pci_dev *, const char *);
 void pci_release_regions(struct pci_dev *);
@@ -747,14 +736,6 @@ static inline void pci_resource_to_user(const struct pci_dev *dev, int bar,
 
 
 
-extern int pci_pci_problems;
-#define PCIPCI_FAIL		1	/* No PCI PCI DMA */
-#define PCIPCI_TRITON		2
-#define PCIPCI_NATOMA		4
-#define PCIPCI_VIAETBF		8
-#define PCIPCI_VSFX		16
-#define PCIPCI_ALIMAGIK		32	/* Need low latency setting */
-#define PCIAGP_FAIL		64	/* No PCI to AGP DMA */
 
 extern unsigned long pci_cardbus_io_size;
 extern unsigned long pci_cardbus_mem_size;
