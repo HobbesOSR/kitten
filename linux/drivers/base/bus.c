@@ -144,18 +144,7 @@ static struct kobj_type bus_ktype = {
 	.sysfs_ops	= &bus_sysfs_ops,
 };
 
-static int bus_uevent_filter(struct kset *kset, struct kobject *kobj)
-{
-	struct kobj_type *ktype = get_ktype(kobj);
 
-	if (ktype == &bus_ktype)
-		return 1;
-	return 0;
-}
-
-static struct kset_uevent_ops bus_uevent_ops = {
-	.filter = bus_uevent_filter,
-};
 
 static struct kset *bus_kset;
 
@@ -483,13 +472,6 @@ static void driver_remove_attrs(struct bus_type *bus,
 }
 
 
-/* JRL: DELETE? */
-static ssize_t driver_uevent_store(struct device_driver *drv,
-				   const char *buf, size_t count)
-{
-	return count;
-}
-static DRIVER_ATTR(uevent, S_IWUSR, NULL, driver_uevent_store);
 
 /**
  * bus_add_driver - Add a driver to the bus.
@@ -529,11 +511,7 @@ int bus_add_driver(struct device_driver *drv)
 	klist_add_tail(&priv->knode_bus, &bus->p->klist_drivers);
 	module_add_driver(drv->owner, drv);
 
-	error = driver_create_file(drv, &driver_attr_uevent);
-	if (error) {
-		printk(KERN_ERR "%s: uevent attr (%s) failed\n",
-			__func__, drv->name);
-	}
+
 	error = driver_add_attrs(bus, drv);
 	if (error) {
 		/* How the hell do we get out of this pickle? Give up */
@@ -563,7 +541,6 @@ void bus_remove_driver(struct device_driver *drv)
 		return;
 
 	driver_remove_attrs(drv->bus, drv);
-	driver_remove_file(drv, &driver_attr_uevent);
 	klist_remove(&drv->p->knode_bus);
 	pr_debug("bus: '%s': remove driver %s\n", drv->bus->name, drv->name);
 	driver_detach(drv);
@@ -691,13 +668,6 @@ static void klist_devices_put(struct klist_node *n)
 	put_device(dev);
 }
 
-/* JRL: DELETE? */
-static ssize_t bus_uevent_store(struct bus_type *bus,
-				const char *buf, size_t count)
-{
-	return count;
-}
-static BUS_ATTR(uevent, S_IWUSR, NULL, bus_uevent_store);
 
 /**
  * bus_register - register a bus with the system.
@@ -733,9 +703,7 @@ int bus_register(struct bus_type *bus)
 	if (retval)
 		goto out;
 
-	retval = bus_create_file(bus, &bus_attr_uevent);
-	if (retval)
-		goto bus_uevent_fail;
+
 
 	priv->devices_kset = kset_create_and_add("devices", NULL,
 						 &priv->subsys.kobj);
@@ -767,8 +735,6 @@ bus_attrs_fail:
 bus_drivers_fail:
 	kset_unregister(bus->p->devices_kset);
 bus_devices_fail:
-	bus_remove_file(bus, &bus_attr_uevent);
-bus_uevent_fail:
 	kset_unregister(&bus->p->subsys);
 	kfree(bus->p);
 out:
@@ -789,7 +755,6 @@ void bus_unregister(struct bus_type *bus)
 	bus_remove_attrs(bus);
 	kset_unregister(bus->p->drivers_kset);
 	kset_unregister(bus->p->devices_kset);
-	bus_remove_file(bus, &bus_attr_uevent);
 	kset_unregister(&bus->p->subsys);
 	kfree(bus->p);
 }
@@ -821,8 +786,8 @@ EXPORT_SYMBOL_GPL(bus_get_device_klist);
 
 int __init buses_init(void)
 {
-	bus_kset = kset_create_and_add("bus", &bus_uevent_ops, NULL);
-	if (!bus_kset)
-		return -ENOMEM;
-	return 0;
+    bus_kset = kset_create_and_add("bus", NULL,  NULL);
+    if (!bus_kset)
+	return -ENOMEM;
+    return 0;
 }

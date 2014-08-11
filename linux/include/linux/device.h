@@ -22,7 +22,6 @@
 #include <linux/module.h>
 #include <linux/semaphore.h>
 #include <asm/atomic.h>
-#include <asm/device.h>
 
 #define BUS_ID_SIZE		20
 
@@ -54,7 +53,6 @@ struct bus_type {
 	struct driver_attribute	*drv_attrs;
 
 	int (*match)(struct device *dev, struct device_driver *drv);
-	int (*uevent)(struct device *dev, struct kobj_uevent_env *env);
 	int (*probe)(struct device *dev);
 	int (*remove)(struct device *dev);
 	void (*shutdown)(struct device *dev);
@@ -176,7 +174,9 @@ struct class {
 	struct device_attribute		*dev_attrs;
 	struct kobject			*dev_kobj;
 
+
 	int (*dev_uevent)(struct device *dev, struct kobj_uevent_env *env);
+	int (*uevent)(struct device *dev, struct kobj_uevent_env *env);
 
 	void (*class_release)(struct class *class);
 	void (*dev_release)(struct device *dev);
@@ -255,7 +255,6 @@ extern void class_destroy(struct class *cls);
 struct device_type {
 	const char *name;
 	struct attribute_group **groups;
-	int (*uevent)(struct device *dev, struct kobj_uevent_env *env);
 	void (*release)(struct device *dev);
 
 };
@@ -280,12 +279,7 @@ extern int __must_check device_create_bin_file(struct device *dev,
 					       struct bin_attribute *attr);
 extern void device_remove_bin_file(struct device *dev,
 				   struct bin_attribute *attr);
-extern int device_schedule_callback_owner(struct device *dev,
-		void (*func)(struct device *dev), struct module *owner);
 
-/* This is a macro to avoid include problems with THIS_MODULE */
-#define device_schedule_callback(dev, func)			\
-	device_schedule_callback_owner(dev, func, THIS_MODULE)
 
 
 struct device_dma_parameters {
@@ -308,7 +302,7 @@ struct device {
 	char	bus_id[BUS_ID_SIZE];	/* position on parent bus */
 	const char		*init_name; /* initial name of the device */
 	struct device_type	*type;
-	unsigned		uevent_suppress:1;
+
 
 	struct semaphore	sem;	/* semaphore to synchronize calls to
 					 * its driver.
@@ -337,8 +331,6 @@ struct device {
 
 	struct dma_coherent_mem	*dma_mem; /* internal for coherent mem
 					     override */
-	/* arch specific additions */
-	struct dev_archdata	archdata;
 
 	struct list_head	node;
 	struct class		*class;
@@ -404,10 +396,8 @@ extern int __must_check device_add(struct device *dev);
 extern void device_del(struct device *dev);
 extern int device_for_each_child(struct device *dev, void *data,
 		     int (*fn)(struct device *dev, void *data));
-extern struct device *device_find_child(struct device *dev, void *data,
-				int (*match)(struct device *dev, void *data));
-extern int device_rename(struct device *dev, char *new_name);
-extern int device_move(struct device *dev, struct device *new_parent);
+
+
 
 /*
  * Manual binding of a device to driver. See drivers/base/bus.c

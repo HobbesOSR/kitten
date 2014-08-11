@@ -301,15 +301,11 @@ void pci_dev_put(struct pci_dev *dev)
 }
 
 
-int pci_uevent(struct device *dev, struct kobj_uevent_env *env)
-{
-	return -ENODEV;
-}
+
 
 struct bus_type pci_bus_type = {
 	.name		= "pci",
 	.match		= pci_bus_match,
-	.uevent		= pci_uevent,
 	.probe		= pci_device_probe,
 	.remove		= pci_device_remove,
 	.shutdown	= pci_device_shutdown,

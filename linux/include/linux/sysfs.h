@@ -83,7 +83,6 @@ struct sysfs_ops {
 	ssize_t	(*store)(struct kobject *,struct attribute *,const char *, size_t);
 };
 
-#ifdef CONFIG_SYSFS
 
 int sysfs_schedule_callback(struct kobject *kobj, void (*func)(void *),
 			    void *data, struct module *owner);
@@ -126,116 +125,5 @@ void sysfs_notify(struct kobject *kobj, char *dir, char *attr);
 
 extern int __must_check sysfs_init(void);
 
-#else /* CONFIG_SYSFS */
-
-static inline int sysfs_schedule_callback(struct kobject *kobj,
-		void (*func)(void *), void *data, struct module *owner)
-{
-	return -ENOSYS;
-}
-
-static inline int sysfs_create_dir(struct kobject *kobj)
-{
-	return 0;
-}
-
-static inline void sysfs_remove_dir(struct kobject *kobj)
-{
-}
-
-static inline int sysfs_rename_dir(struct kobject *kobj, const char *new_name)
-{
-	return 0;
-}
-
-static inline int sysfs_move_dir(struct kobject *kobj,
-				 struct kobject *new_parent_kobj)
-{
-	return 0;
-}
-
-static inline int sysfs_create_file(struct kobject *kobj,
-				    const struct attribute *attr)
-{
-	return 0;
-}
-
-static inline int sysfs_chmod_file(struct kobject *kobj,
-				   struct attribute *attr, mode_t mode)
-{
-	return 0;
-}
-
-static inline void sysfs_remove_file(struct kobject *kobj,
-				     const struct attribute *attr)
-{
-}
-
-static inline int sysfs_create_bin_file(struct kobject *kobj,
-					struct bin_attribute *attr)
-{
-	return 0;
-}
-
-static inline void sysfs_remove_bin_file(struct kobject *kobj,
-					 struct bin_attribute *attr)
-{
-}
-
-static inline int sysfs_create_link(struct kobject *kobj,
-				    struct kobject *target, const char *name)
-{
-	return 0;
-}
-
-static inline int sysfs_create_link_nowarn(struct kobject *kobj,
-					   struct kobject *target,
-					   const char *name)
-{
-	return 0;
-}
-
-static inline void sysfs_remove_link(struct kobject *kobj, const char *name)
-{
-}
-
-static inline int sysfs_create_group(struct kobject *kobj,
-				     const struct attribute_group *grp)
-{
-	return 0;
-}
-
-static inline int sysfs_update_group(struct kobject *kobj,
-				const struct attribute_group *grp)
-{
-	return 0;
-}
-
-static inline void sysfs_remove_group(struct kobject *kobj,
-				      const struct attribute_group *grp)
-{
-}
-
-static inline int sysfs_add_file_to_group(struct kobject *kobj,
-		const struct attribute *attr, const char *group)
-{
-	return 0;
-}
-
-static inline void sysfs_remove_file_from_group(struct kobject *kobj,
-		const struct attribute *attr, const char *group)
-{
-}
-
-static inline void sysfs_notify(struct kobject *kobj, char *dir, char *attr)
-{
-}
-
-static inline int __must_check sysfs_init(void)
-{
-	return 0;
-}
-
-#endif /* CONFIG_SYSFS */
 
 #endif /* _SYSFS_H_ */
