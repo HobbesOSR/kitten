@@ -67,15 +67,7 @@ struct class_private {
 extern int devices_init(void);
 extern int buses_init(void);
 extern int classes_init(void);
-extern int firmware_init(void);
-#ifdef CONFIG_SYS_HYPERVISOR
-extern int hypervisor_init(void);
-#else
-static inline int hypervisor_init(void) { return 0; }
-#endif
-extern int platform_bus_init(void);
-extern int system_bus_init(void);
-extern int cpu_dev_init(void);
+
 
 extern int bus_add_device(struct device *dev);
 extern void bus_attach_device(struct device *dev);

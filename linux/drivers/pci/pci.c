@@ -936,47 +936,7 @@ int pci_select_bars(struct pci_dev *dev, unsigned long flags)
 	return bars;
 }
 
-static void __devinit pci_no_domains(void)
-{
-#ifdef CONFIG_PCI_DOMAINS
-	pci_domains_supported = 0;
-#endif
-}
 
-static int __devinit pci_init(void)
-{
-	return 0;
-}
-
-static int __devinit pci_setup(char *str)
-{
-	while (str) {
-		char *k = strchr(str, ',');
-		if (k)
-			*k++ = 0;
-		if (*str && (str = pcibios_setup(str)) && *str) {
-			if (!strcmp(str, "nomsi")) {
-				pci_no_msi();
-			} else if (!strcmp(str, "noaer")) {
-				pci_no_aer();
-			} else if (!strcmp(str, "nodomains")) {
-				pci_no_domains();
-			} else if (!strncmp(str, "cbiosize=", 9)) {
-				pci_cardbus_io_size = memparse(str + 9, &str);
-			} else if (!strncmp(str, "cbmemsize=", 10)) {
-				pci_cardbus_mem_size = memparse(str + 10, &str);
-			} else {
-				printk(KERN_ERR "PCI: Unknown option `%s'\n",
-						str);
-			}
-		}
-		str = k;
-	}
-	return 0;
-}
-early_param("pci", pci_setup);
-
-device_initcall(pci_init);
 
 EXPORT_SYMBOL(pci_enable_device_io);
 EXPORT_SYMBOL(pci_enable_device_mem);

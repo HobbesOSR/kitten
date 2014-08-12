@@ -23,18 +23,6 @@ void __init driver_init(void)
 	devices_init();
 	buses_init();
 	classes_init();
-#ifndef __LWK__
-	firmware_init();
-	hypervisor_init();
-#endif
 
-	/* These are also core pieces, but must come after the
-	 * core core pieces.
-	 */
-#ifndef __LWK__
-	platform_bus_init();
-	system_bus_init();
-	cpu_dev_init();
-	memory_dev_init();
-#endif
+
 }

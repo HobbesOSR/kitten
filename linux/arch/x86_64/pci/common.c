@@ -128,51 +128,6 @@ int __init pcibios_init(void)
 	return 0;
 }
 
-char * __devinit  pcibios_setup(char *str)
-{
-	if (!strcmp(str, "off")) {
-		pci_probe = 0;
-		return NULL;
-	} else if (!strcmp(str, "bfsort")) {
-		pci_bf_sort = pci_force_bf;
-		return NULL;
-	} else if (!strcmp(str, "nobfsort")) {
-		pci_bf_sort = pci_force_nobf;
-		return NULL;
-	}
-
-
-
-	else if (!strcmp(str, "noacpi")) {
-		acpi_noirq_set();
-		return NULL;
-	}
-	else if (!strcmp(str, "noearly")) {
-		pci_probe |= PCI_PROBE_NOEARLY;
-		return NULL;
-	}
-
-	else if (!strcmp(str, "rom")) {
-		pci_probe |= PCI_ASSIGN_ROMS;
-		return NULL;
-	} else if (!strcmp(str, "norom")) {
-		pci_probe |= PCI_NOASSIGN_ROMS;
-		return NULL;
-	} else if (!strcmp(str, "assign-busses")) {
-		pci_probe |= PCI_ASSIGN_ALL_BUSSES;
-		return NULL;
-	} else if (!strcmp(str, "use_crs")) {
-		pci_probe |= PCI_USE__CRS;
-		return NULL;
-	} else if (!strcmp(str, "routeirq")) {
-		pci_routeirq = 1;
-		return NULL;
-	} else if (!strcmp(str, "skip_isa_align")) {
-		pci_probe |= PCI_CAN_SKIP_ISA_ALIGN;
-		return NULL;
-	}
-	return str;
-}
 
 unsigned int pcibios_assign_all_busses(void)
 {
