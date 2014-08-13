@@ -240,7 +240,7 @@ palacios_xcall(
  * Starts a kernel thread on the specified CPU.
  */
 static void *
-palacios_start_thread_on_cpu(
+palacios_create_thread_on_cpu(
 	int			cpu_id, 
 	int			(*fn)(void * arg), 
 	void *			arg, 
@@ -468,6 +468,13 @@ palacios_mutex_unlock_irqrestore(
 	spin_unlock_irqrestore((spinlock_t *)mutex, (unsigned long)flags);
 }
 
+static void
+palacios_start_thread(struct task_struct * task){
+
+	// Start the kernel thread executing on the target CPU's run queue
+	sched_add_task(task);
+}
+
 /**
  * Structure used by the Palacios hypervisor to interface with the host kernel.
  */
@@ -494,7 +501,8 @@ struct v3_os_hooks palacios_os_hooks = {
 	.get_cpu		= palacios_get_cpu,
 	.interrupt_cpu		= palacios_interrupt_cpu,
 	.call_on_cpu		= palacios_xcall,
-	.start_thread_on_cpu	= palacios_start_thread_on_cpu,
+	.create_thread_on_cpu	= palacios_create_thread_on_cpu,
+	.start_thread		= palacios_start_thread,
 };
 
 /**
