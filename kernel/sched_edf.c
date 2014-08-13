@@ -21,7 +21,10 @@
 #include <lwk/list.h>
 #include <lwk/sched_rr.h>
 
-#define task_container_of(rb_node) container_of(container_of(rb_node, struct task_edf, node), struct task_struct, edf)
+#define task_container_of(rb_node, member) container_of(container_of(rb_node, struct task_edf, member), struct task_struct, edf)
+#define READY_QUEUE	0
+#define RESCHED_QUEUE	1
+
 /*
  * Interaction with the round-robin scheduler:
  * - EDF tasks have task->period > 0
@@ -51,8 +54,8 @@ init_edf_config(struct edf_sched_config *edf_config){
 static uint64_t
 get_curr_host_time(void)
 {
-        uint64_t curr_time_us = get_time()/1000; // Time is returned by get_time() in ns and converted to us
-        return curr_time_us;
+	uint64_t curr_time_us = get_time()/1000ul; // Time is returned by get_time() in ns and converted to us
+	return curr_time_us;
 }
 
 
@@ -78,21 +81,38 @@ is_admissible_task(struct task_struct * new_sched_task, struct edf_rq *runqueue)
 
 
 /*
- * insert_task_edf: Finds a place in the tree for a newly activated task, adds the node
+ * insert_task_edf: Finds a place in the tree, adds the node
  * and rebalaces the tree
  */
 
 static bool
-insert_task_edf(struct task_struct *task, struct edf_rq *runqueue){
+insert_task_edf(struct task_struct *task, struct edf_rq *runqueue, int queue){
 
-	struct rb_node **new_rb = &(runqueue->tasks_tree.rb_node);
+	struct rb_node *task_node = NULL;
+	struct rb_root * tree = NULL;
+
 	struct rb_node *parent = NULL;
 	struct task_struct *curr_task;
+
+	if (queue == READY_QUEUE){
+		task_node = &task->edf.node;
+		tree = &runqueue->tasks_tree;
+	}
+	else{	// RESCHED_QUEUE
+		task_node = &task->edf.resched_node;
+		tree = &runqueue->resched_tree;
+	}
+
+	struct rb_node **new_rb = &tree->rb_node;
 
 	// Find out place in the tree for the new core
 	while (*new_rb) {
 
-		curr_task = task_container_of(*new_rb);
+		if (queue == READY_QUEUE)
+			curr_task = task_container_of(*new_rb, node);
+		else
+			curr_task = task_container_of(*new_rb, resched_node);
+
 		parent = *new_rb;
 
 		if (task->edf.curr_deadline < curr_task->edf.curr_deadline)
@@ -103,8 +123,8 @@ insert_task_edf(struct task_struct *task, struct edf_rq *runqueue){
 			return false;
 	}
 	// Add new node and rebalance tree.
-	rb_link_node(&task->edf.node, parent, new_rb);
-	rb_insert_color(&task->edf.node, &runqueue->tasks_tree);
+	rb_link_node(task_node, parent, new_rb);
+	rb_insert_color(task_node, tree);
 
 	return true;
 }
@@ -118,20 +138,34 @@ insert_task_edf(struct task_struct *task, struct edf_rq *runqueue){
 static uint64_t
 next_start_period(uint64_t curr_time_us, struct task_struct *task){
 
-	uint64_t period_us = task->edf.period;
 	uint64_t next_start_us = 0;
 
-#ifdef CONFIG_SCHED_EDF_WC
 	if(!task->edf.curr_deadline)
-		next_start_us = curr_time_us + period_us;
+		next_start_us = curr_time_us + task->edf.period;
 	else
-		next_start_us = task->edf.curr_deadline + period_us;
-#else
-	uint64_t time_period_us = curr_time_us % period_us;
-	uint64_t remaining_time_us = period_us - time_period_us;
-	next_start_us = curr_time_us + remaining_time_us;
-#endif
+		next_start_us = task->edf.curr_deadline + task->edf.period;
 	return next_start_us;
+}
+
+
+static void cpu_remove_tasks(struct rb_root *tree, int queue){
+
+	struct task_struct * task = NULL;
+	struct rb_node *nd;
+
+	nd = rb_first(tree);
+
+	while(nd){
+
+		if ( queue == READY_QUEUE)
+			task = task_container_of(nd, node);
+		else
+			task = task_container_of(nd, resched_node);
+
+		kthread_bind(task, 0);
+		cpu_clear(this_cpu, task->aspace->cpu_mask);
+		nd = rb_next(nd);
+	}
 }
 
 /*
@@ -143,17 +177,8 @@ next_start_period(uint64_t curr_time_us, struct task_struct *task){
  */
 void edf_sched_cpu_remove(struct edf_rq *runqueue, void * arg)
 {
-	struct task_struct * task = NULL;
-	struct rb_node *node;
-
-	node = rb_first(&runqueue->tasks_tree);
-
-	while(node){
-		task = task_container_of(node);
-		kthread_bind(task, 0);
-		cpu_clear(this_cpu, task->aspace->cpu_mask);
-		node = rb_next(node);
-	}
+	cpu_remove_tasks(&runqueue->tasks_tree, READY_QUEUE);
+	cpu_remove_tasks(&runqueue->resched_tree, RESCHED_QUEUE);
 }
 
 /*
@@ -188,7 +213,7 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 		task->edf.curr_deadline = curr_deadline;
 		task->edf.used_time=0;
 
-		bool ins = insert_task_edf(task, runqueue);
+		bool ins = insert_task_edf(task, runqueue, READY_QUEUE);
 		/*
 		 * If not inserted is possible that there is other task
 		 * with the same deadline.
@@ -196,7 +221,7 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 		 */
 		while(!ins){
 			task->edf.curr_deadline ++;
-			ins = insert_task_edf(task, runqueue);
+			ins = insert_task_edf(task, runqueue, READY_QUEUE);
 		}
 
 		if (task->state == TASK_RUNNING) {
@@ -212,8 +237,11 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 
 	}
 	else
-		printk(KERN_INFO "EDF_SCHED. activate_task. CPU cannot activate the core. It is not admissible\n");
-	return 0;
+		printk(KERN_INFO "EDF_SCHED. activate_task. could not activate task %s. Not admissible (U = %d)\n",
+		       task->name,
+		       runqueue->cpu_u);
+
+		return 0;
 
 }
 
@@ -238,12 +266,27 @@ edf_sched_add_task(struct edf_rq *runqueue, struct task_struct * task){
  * search_task_edf: Searches a task in the red-black tree by using its curr_deadline
  */
 static struct task_struct *
-search_task_edf(time_us curr_deadline, struct edf_rq *runqueue){
+search_task_edf(time_us curr_deadline, struct edf_rq *runqueue, int queue){
 
-	struct rb_node *node = runqueue->tasks_tree.rb_node;
+	struct rb_root * tree = NULL;
+
+	if (queue == READY_QUEUE){
+		tree = &runqueue->tasks_tree;
+	}
+	else{	// RESCHED_QUEUE
+		tree = &runqueue->resched_tree;
+	}
+
+	struct rb_node *node = tree->rb_node;
 
 	while (node) {
-		struct task_struct *task = task_container_of(node);
+
+		struct task_struct *task = NULL;
+
+		if ( queue == READY_QUEUE)
+			task = task_container_of(node, node);
+		else
+			task = task_container_of(node, resched_node);
 
 		if (curr_deadline < task->edf.curr_deadline)
 			node = node->rb_left;
@@ -262,12 +305,24 @@ search_task_edf(time_us curr_deadline, struct edf_rq *runqueue){
  */
 
 static bool
-delete_task_edf( struct task_struct *task_edf, struct edf_rq *runqueue){
+delete_task_edf( struct task_struct *task, struct edf_rq *runqueue, int queue){
 
-	struct task_struct *task = search_task_edf(task_edf->edf.curr_deadline,
-						   runqueue);
-	if (task){
-		rb_erase(&task->edf.node, &runqueue->tasks_tree);
+	struct rb_node *task_node = NULL;
+	struct rb_root * tree = NULL;
+
+	if (queue == READY_QUEUE){
+		task_node = &task->edf.node;
+		tree = &runqueue->tasks_tree;
+	}
+	else{	// RESCHED_QUEUE
+		task_node = &task->edf.resched_node;
+		tree = &runqueue->resched_tree;
+	}
+
+	struct task_struct *tsk = search_task_edf(task->edf.curr_deadline,
+						   runqueue, queue);
+	if (tsk){
+		rb_erase(task_node, tree);
 		return true;
 	}
 	else{
@@ -282,7 +337,6 @@ check_statistics(struct task_struct * task, struct  edf_rq *runqueue){
 
 	time_us host_time = get_curr_host_time();
 	time_us time_prints=0;
-	int deadlines=0;
 	int deadlines_percentage=0;
 
 
@@ -331,12 +385,13 @@ check_statistics(struct task_struct * task, struct  edf_rq *runqueue){
 
 static void
 deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
+
 #if 0
 	check_statistics(task,runqueue);
 #endif
-	if(delete_task_edf(task, runqueue)){
-		runqueue->cpu_u -= task->edf.cpu_reservation;
-	}
+	delete_task_edf(task, runqueue, READY_QUEUE);
+	runqueue->cpu_u -= task->edf.cpu_reservation;
+
 }
 
 /*
@@ -353,18 +408,15 @@ static void check_deadlines(struct edf_rq *runqueue)
 	time_us host_time = get_curr_host_time();
 
 	list_head_init(&resched_list);
-	/* Tasks which deadline is over are re-inserted in the rbtree*/
+
+	/* Tasks which deadline is over are inserted in the resched rbtree
+	 * resched rbtree includes the tasks which have consumed their slices and
+	 * tasks which deadline is over*/
 	while(node){
-		next_task = task_container_of(node);
-		if(next_task->edf.curr_deadline < host_time ){
-			/* This task's deadline is over - deactivate it */
-			next_task->edf.deadlines++;
-			list_add_tail(&next_task->edf.sched_link, &resched_list);
-			/*This task missed its deadline*/
-			if(next_task->edf.used_time < next_task->edf.slice
-			   && next_task->state == TASK_RUNNING){
-				next_task->edf.miss_deadlines++;
-			}
+		next_task = task_container_of(node, node);
+		if(next_task->edf.curr_deadline <= host_time ){
+			/* This task's deadline is over, send to resched tree */
+			insert_task_edf(next_task, runqueue, RESCHED_QUEUE);
 		} else {
 			/* If current task's deadline is still valid we
 			 * do not check more tasks*/
@@ -373,13 +425,35 @@ static void check_deadlines(struct edf_rq *runqueue)
 		node = rb_next(node);
 	}
 
+	/* Check tasks in the resched rbtree to find the ones which deadline is over
+	 * and deactivate them*/
+	node = rb_first(&runqueue->resched_tree);
+
+	while(node){
+
+		next_task = task_container_of(node, resched_node);
+		/*If Task's deadline is over, remove task from the tasks runqueue*/
+		if(next_task->edf.curr_deadline <= host_time ){
+			next_task->edf.deadlines++;
+			deactivate_task(next_task,runqueue);
+			list_add_tail(&next_task->edf.sched_link, &resched_list);
+			/*This task missed its deadline*/
+			if(next_task->edf.used_time < next_task->edf.slice
+				&& next_task->state == TASK_RUNNING){
+				next_task->edf.miss_deadlines++;
+			}
+		} else{
+			break;
+		}
+		node = rb_next(node);
+	}
+
 	/* Reinsert tasks which deadline is over into the
-	 * tree for its new deadline */
+	 * tasks_tree for its new deadline and remove from resched tree*/
+
 	struct task_struct *task, *tmp;
 	list_for_each_entry_safe(task, tmp, &resched_list,
 				 edf.sched_link) {
-
-		deactivate_task(task,runqueue);
 #ifdef CONFIG_SCHED_EDF_RR
 		if (!list_empty(&task->rr.sched_link)) {
 			list_del(&task->rr.sched_link);
@@ -388,6 +462,7 @@ static void check_deadlines(struct edf_rq *runqueue)
 #endif
 		if ((task->cpu_id == task->cpu_target_id)
 		    && (task->state != TASK_EXITED)) {
+			delete_task_edf(task, runqueue, RESCHED_QUEUE);
 			activate_task(task,runqueue);
 		}
 	}
@@ -402,7 +477,7 @@ pick_next_task(struct edf_rq *runqueue){
 
 	struct task_struct *next_task;
 
-	//Pick first earliest deadline task
+	/*Pick first earliest deadline task*/
 
 	struct rb_node *node=NULL;
 	struct task_struct * found = NULL;
@@ -411,19 +486,20 @@ pick_next_task(struct edf_rq *runqueue){
 
 	node = rb_first(&runqueue->tasks_tree);
 
-	// Pick the next task that has not used its whole slice
+	/* Pick the next task that has not used its whole slice */
 	while(node){
 
-		next_task = task_container_of(node);
-		if ((next_task->edf.used_time < next_task->edf.slice)
-		    && (next_task->state == TASK_RUNNING)
-		    && (next_task->cpu_id == next_task->cpu_target_id)) {
+		next_task = task_container_of(node, node);
+		if ((next_task->state == TASK_RUNNING)
+			&& (next_task->cpu_id == next_task->cpu_target_id)) {
 			found = next_task;
 			break;
 		}
 		node = rb_next(node);
 	}
+
 	return found;
+
 }
 
 
@@ -469,6 +545,9 @@ static int adjust_slice(struct edf_rq * runq,struct task_struct *task){
 #ifdef CONFIG_SCHED_EDF_WC
 	deactivate_task(task,runq);
 	activate_task(task,runq);
+#else
+	delete_task_edf(task, runq, READY_QUEUE);
+	insert_task_edf(task, runq, RESCHED_QUEUE);
 #endif
 	}
 	return edf_scheduled;
@@ -495,6 +574,7 @@ edf_sched_init_runqueue(struct edf_rq *runq, int cpuid)
 	       cpuid);
 
 	runq->tasks_tree = RB_ROOT;
+	runq->resched_tree = RB_ROOT;
 	runq->cpu_u=0;
 	runq->curr_task=NULL;
 	runq->start_time = 0;

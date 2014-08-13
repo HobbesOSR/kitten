@@ -133,6 +133,7 @@ struct task_struct {
 #ifdef CONFIG_SCHED_EDF
         struct task_edf {
 		struct rb_node 	node;
+		struct rb_node	resched_node;
 		struct list_head sched_link;
 		uint64_t	period;
 		uint64_t	slice;
