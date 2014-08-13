@@ -279,7 +279,7 @@ cpu_init(void)
 
 
 #include <arch/mpspec.h>
-#include <asm/processor.h>
+#include <lwk/cpuinfo.h>
 extern unsigned int num_cpus;
 extern unsigned char apic_version[MAX_APICS];
 extern physid_mask_t phys_cpu_present_map;
