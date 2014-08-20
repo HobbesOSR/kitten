@@ -28,11 +28,14 @@
 #ifndef	_LINUX_FILE_H_
 #define	_LINUX_FILE_H_
 
+/*
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/refcount.h>
 #include <sys/proc.h>
+*/
+
 
 #include <linux/fs.h>
 
@@ -40,70 +43,59 @@ struct linux_file;
 
 #undef file
 
-extern struct fileops linuxfileops;
+extern struct file_operations linuxfileops;
+
 
 static inline struct linux_file *
 linux_fget(unsigned int fd)
 {
 	struct file *file;
 
-	if (fget_unlocked(curthread->td_proc->p_fd, fd, NULL, 0, &file,
-	    NULL) != 0) {
+	file = fget(fd);
+
+	if (file == NULL) {
 		return (NULL);
 	}
-	return (struct linux_file *)file->f_data;
+
+	return (struct linux_file *)file->private_data;
 }
 
 static inline void
-fput(struct linux_file *filp)
+linux_fput(struct linux_file *filp)
 {
 	if (filp->_file == NULL) {
 		kfree(filp);
 		return;
 	}
-	if (refcount_release(&filp->_file->f_count)) {
-		_fdrop(filp->_file, curthread);
-		kfree(filp);
-	}
+
+	fput(filp->_file);
 }
 
+
+
+
 static inline void
-put_unused_fd(unsigned int fd)
+linux_fd_install(unsigned int fd, struct linux_file *filp)
 {
 	struct file *file;
 
-	if (fget_unlocked(curthread->td_proc->p_fd, fd, NULL, 0, &file,
-	    NULL) != 0) {
-		return;
-	}
-	fdclose(curthread->td_proc->p_fd, file, fd, curthread);
-}
+	file = kmem_alloc(sizeof(*file));
+	
+	if (file) {
 
-static inline void
-fd_install(unsigned int fd, struct linux_file *filp)
-{
-	struct file *file;
+	    memset(file, 0, sizeof(*file));
 
-	if (fget_unlocked(curthread->td_proc->p_fd, fd, NULL, 0, &file,
-	    NULL) != 0) {
-		file = NULL;
+	    file->f_mode       = filp->f_mode;
+	    file->f_op         = linuxfileops;
+	    file->private_data = filp;
+	    atomic_set(&file->f_count, 1);
 	}
+
 	filp->_file = file;
-        finit(file, filp->f_mode, DTYPE_DEV, filp, &linuxfileops);
+
+	fd_install(fd, file);
 }
 
-static inline int
-get_unused_fd(void)
-{
-	struct file *file;
-	int error;
-	int fd;
-
-	error = falloc(curthread, &file, &fd, 0);
-	if (error)
-		return -error;
-	return fd;
-}
 
 static inline struct linux_file *
 _alloc_file(int mode, const struct file_operations *fops)
@@ -111,9 +103,12 @@ _alloc_file(int mode, const struct file_operations *fops)
 	struct linux_file *filp;
 
 	filp = kzalloc(sizeof(*filp), GFP_KERNEL);
-	if (filp == NULL) 
+
+	if (filp == NULL) {
 		return (NULL);
-	filp->f_op = fops;
+	}
+
+	filp->f_op   = fops;
 	filp->f_mode = mode;
 
 	return filp;
@@ -121,7 +116,10 @@ _alloc_file(int mode, const struct file_operations *fops)
 
 #define	alloc_file(mnt, root, mode, fops)	_alloc_file((mode), (fops))
 
-#define	file	linux_file
-#define	fget	linux_fget
+
+#define	file	   linux_file
+#define	fget	   linux_fget
+#define fput       linux_fput
+#define fd_install linux_fd_install 
 
 #endif	/* _LINUX_FILE_H_ */

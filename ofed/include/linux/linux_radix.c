@@ -26,18 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/sysctl.h>
+
 
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/radix-tree.h>
 #include <linux/err.h>
 
-static MALLOC_DEFINE(M_RADIX, "radix", "Linux radix compat");
 
 static inline int
 radix_max(struct radix_tree_root *root)
@@ -105,7 +100,7 @@ radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 			node->count--;
 			if (node->count > 0)
 				break;
-			free(node, M_RADIX);
+			kmem_free(node);
 			if (node == root->rnode) {
 				root->rnode = NULL;
 				root->height = 0;
@@ -130,7 +125,7 @@ radix_tree_insert(struct radix_tree_root *root, unsigned long index, void *item)
  	 * Expand the tree to fit indexes as big as requested.
 	 */
 	while (root->rnode == NULL || radix_max(root) < index) {
-		node = malloc(sizeof(*node), M_RADIX, root->gfp_mask | M_ZERO);
+		node = kmem_alloc(sizeof(*node));
 		if (node == NULL)
 			return (-ENOMEM);
 		node->slots[0] = root->rnode;
@@ -148,8 +143,7 @@ radix_tree_insert(struct radix_tree_root *root, unsigned long index, void *item)
 	while (height) {
 		idx = radix_pos(index, height);
 		if (node->slots[idx] == NULL) {
-			node->slots[idx] = malloc(sizeof(*node), M_RADIX,
-			    root->gfp_mask | M_ZERO);
+			node->slots[idx] = kmem_alloc(sizeof(*node));
 			if (node->slots[idx] == NULL)
 				return (-ENOMEM);
 			node->count++;

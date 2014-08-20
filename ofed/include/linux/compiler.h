@@ -28,9 +28,9 @@
 
 #ifndef	_LINUX_COMPILER_H_
 #define	_LINUX_COMPILER_H_
-
+/*
 #include <sys/cdefs.h>
-
+*/
 #define __user
 #define __kernel
 #define __safe

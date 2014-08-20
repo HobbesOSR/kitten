@@ -30,60 +30,124 @@
 
 #include <linux/types.h>
 
-#include <sys/param.h>
-#include <sys/kernel.h>
-#include <sys/callout.h>
+#include <lwk/timer.h>
 
-struct timer_list {
-	struct callout	timer_callout;
-	void		(*function)(unsigned long);
-	unsigned long	data;
-	unsigned long	expires;
-};
 
-static inline void
-_timer_fn(void *context)
+#define timer_list timer
+
+
+#define DEFINE_TIMER(_name, _function, _expires, _data)			\
+	struct timer_list _name =					\
+		TIMER_INITIALIZER(_name, _function, _expires, _data)
+
+/** ** **/
+static inline void 
+init_timer(struct timer_list *timer) 
 {
-	struct timer_list *timer;
-
-	timer = context;
-	timer->function(timer->data);
+	list_head_init(&timer->link);
+	timer->cpu      = this_cpu;
 }
 
-#define	setup_timer(timer, func, dat)					\
-do {									\
-	(timer)->function = (func);					\
-	(timer)->data = (dat);						\
-	callout_init(&(timer)->timer_callout, CALLOUT_MPSAFE);		\
-} while (0)
+static inline void
+init_timer_deferrable( struct timer_list *timer )
+{
+	init_timer(timer);
+}
 
-#define	init_timer(timer)						\
-do {									\
-	(timer)->function = NULL;					\
-	(timer)->data = 0;						\
-	callout_init(&(timer)->timer_callout, CALLOUT_MPSAFE);		\
-} while (0)
 
-#define	mod_timer(timer, exp)						\
-do {									\
-	(timer)->expires = (exp);					\
-	callout_reset(&(timer)->timer_callout, (exp) - jiffies,		\
-	    _timer_fn, (timer));					\
-} while (0)
 
-#define	add_timer(timer)						\
-	callout_reset(&(timer)->timer_callout,				\
-	    (timer)->expires - jiffies, _timer_fn, (timer))
+static inline void setup_timer(struct timer_list * timer,
+			       void (*function)(unsigned long),
+			       unsigned long data)
+{
+	timer->function = function;
+	timer->data = data;
+	init_timer(timer);
+}
 
-#define	del_timer(timer)	callout_stop(&(timer)->timer_callout)
-#define	del_timer_sync(timer)	callout_drain(&(timer)->timer_callout)
 
-#define	timer_pending(timer)	callout_pending(&(timer)->timer_callout)
+int
+__mod_timer( struct timer_list *             timer,
+	     unsigned long                   expires )
+{
+	int not_expired = 0;
+	
+	BUG_ON(!timer->function);
+	
+	not_expired = del_timer(timer);
+	
+	timer->expires = expires;
+	
+	timer->cpu      = this_cpu;
+	timer->expires  = expires;
+	
+	timer_add(timer);
+	
+	return not_expired;
+}
 
+int
+mod_timer( struct timer_list *             timer,
+	   unsigned long                   expires )
+{
+	if (timer_pending(timer) && timer->expires == expires)
+		return 1;
+	
+	return __mod_timer(timer, expires);
+}
+
+
+/**
+ * add_timer - start a timer
+ * @timer: the timer to be added
+ *
+ * The kernel will do a ->function(->data) callback from the
+ * timer interrupt at the ->expires point in the future. The
+ * current time is 'jiffies'.
+ *
+ * The timer's ->expires, ->function (and if the handler uses it, ->data)
+ * fields must be set prior calling this function.
+ *
+ * Timers with an ->expires field in the past will be executed in the next
+ * timer tick.
+ */
+static inline void add_timer(struct timer_list *timer)
+{
+	BUG_ON(timer_pending(timer));
+	__mod_timer(timer, timer->expires);
+}
+
+static inline int
+del_timer( struct timer_list * timer )
+{
+	int ret = 0;
+	if ( timer_pending(timer) ) {
+		if ( ( ret = timer_del(timer) ) ) {
+			list_head_init(&timer->link);
+		}
+	}
+	return ret;
+}
+
+static inline int
+del_timer_sync( struct timer_list * timer )
+{
+	return del_timer(timer);
+}
+
+
+
+/**
+ * This is supposed to round the input jiffies value to a multiple
+ * of one second.  Linux does a whole bunch of stuff to add some
+ * skew for each CPU and what not.  The LWK doesn't bother and
+ * assumes the caller passed in something fairly close to being
+ * a multiple of a second.
+ */
 static inline unsigned long
 round_jiffies(unsigned long j)
 {
-	return roundup(j, hz);
+	return j;
 }
 
 #endif /* _LINUX_TIMER_H_ */

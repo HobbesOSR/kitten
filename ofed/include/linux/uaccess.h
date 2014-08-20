@@ -27,8 +27,7 @@
  */
 #ifndef	_LINUX_UACCESS_H_
 #define	_LINUX_UACCESS_H_
+#include <arch/uaccess.h>
 
-#define	get_user(_x, _p)	-copyin((_p), &(_x), sizeof(*(_p)))
-#define	put_user(_x, _p)	-copyout(&(_x), (_p), sizeof(*(_p)))
 
 #endif	/* _LINUX_UACCESS_H_ */

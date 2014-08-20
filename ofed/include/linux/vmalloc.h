@@ -30,12 +30,25 @@
 #define	_LINUX_VMALLOC_H_
 
 #include <asm/page.h>
+#include <lwk/aspace.h>
+#include <arch/pgtable.h>
 
-#define	VM_MAP		0x0000
-#define	PAGE_KERNEL	0x0000
 
-void *vmap(struct page **pages, unsigned int count, unsigned long flags,
-    int prot);
-void vunmap(void *addr);
+#define	VM_MAP		VM_SMARTMAP
+
+
+	
+static inline void *
+vmap(struct page **pages, unsigned int count,
+	   unsigned long flags, pgprot_t prot)
+{
+    printk("vmap :  %lx %d\n",(unsigned long)pages[0], count);
+    return (page_to_virt(pages[0]));
+}
+
+static inline void 
+vunmap(const void *addr)
+{
+}
 
 #endif	/* _LINUX_VMALLOC_H_ */

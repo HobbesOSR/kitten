@@ -33,180 +33,29 @@
 #include <linux/timer.h>
 #include <linux/slab.h>
 
-#include <sys/taskqueue.h>
 
-struct workqueue_struct {
-	struct taskqueue	*taskqueue;
-};
-
-struct work_struct {
-	struct	task 		work_task;
-	struct	taskqueue	*taskqueue;
-	void			(*fn)(struct work_struct *);
-};
-
-struct delayed_work {
-	struct work_struct	work;
-	struct callout		timer;
-};
-
-static inline struct delayed_work *
-to_delayed_work(struct work_struct *work)
-{
-
- 	return container_of(work, struct delayed_work, work);
-}
+#include <lwk/workq.h>
 
 
-static inline void
-_work_fn(void *context, int pending)
-{
-	struct work_struct *work;
 
-	work = context;
-	work->fn(work);
-}
+#define	INIT_DEFERRABLE_WORK	INIT_DELAYED_WORK_DEFERRABLE
 
-#define	INIT_WORK(work, func) 	 					\
-do {									\
-	(work)->fn = (func);						\
-	(work)->taskqueue = NULL;					\
-	TASK_INIT(&(work)->work_task, 0, _work_fn, (work));		\
-} while (0)
 
-#define	INIT_DELAYED_WORK(_work, func)					\
-do {									\
-	INIT_WORK(&(_work)->work, func);				\
-	callout_init(&(_work)->timer, CALLOUT_MPSAFE);			\
-} while (0)
-
-#define	INIT_DEFERRABLE_WORK	INIT_DELAYED_WORK
-
-#define	schedule_work(work)						\
-do {									\
-	(work)->taskqueue = taskqueue_thread;				\
-	taskqueue_enqueue(taskqueue_thread, &(work)->work_task);	\
-} while (0)
-
-#define	flush_scheduled_work()	flush_taskqueue(taskqueue_thread)
-
-#define	queue_work(q, work)						\
-do {									\
-	(work)->taskqueue = (q)->taskqueue;				\
-	taskqueue_enqueue((q)->taskqueue, &(work)->work_task);		\
-} while (0)
-
-static inline void
-_delayed_work_fn(void *arg)
-{
-	struct delayed_work *work;
-
-	work = arg;
-	taskqueue_enqueue(work->work.taskqueue, &work->work.work_task);
-}
-
-static inline int
-queue_delayed_work(struct workqueue_struct *wq, struct delayed_work *work,
-    unsigned long delay)
-{
-	int pending;
-
-	pending = work->work.work_task.ta_pending;
-	work->work.taskqueue = wq->taskqueue;
-	if (delay != 0)
-		callout_reset(&work->timer, delay, _delayed_work_fn, work);
-	else
-		_delayed_work_fn((void *)work);
-
-	return (!pending);
-}
 
 static inline bool schedule_delayed_work(struct delayed_work *dwork,
                                          unsigned long delay)
 {
-        struct workqueue_struct wq;
-        wq.taskqueue = taskqueue_thread;
         return queue_delayed_work(&wq, dwork, delay);
 }
 
-static inline struct workqueue_struct *
-_create_workqueue_common(char *name, int cpus)
-{
-	struct workqueue_struct *wq;
-
-	wq = kmalloc(sizeof(*wq), M_WAITOK);
-	wq->taskqueue = taskqueue_create((name), M_WAITOK,
-	    taskqueue_thread_enqueue,  &wq->taskqueue);
-	taskqueue_start_threads(&wq->taskqueue, cpus, PWAIT, "%s", name);
-
-	return (wq);
-}
 
 
-#define	create_singlethread_workqueue(name)				\
-	_create_workqueue_common(name, 1)
-
-#define	create_workqueue(name)						\
-	_create_workqueue_common(name, MAXCPU)
-
-static inline void
-destroy_workqueue(struct workqueue_struct *wq)
-{
-	taskqueue_free(wq->taskqueue);
-	kfree(wq);
-}
-
-#define	flush_workqueue(wq)	flush_taskqueue((wq)->taskqueue)
-
-static inline void
-_flush_fn(void *context, int pending)
-{
-}
-
-static inline void
-flush_taskqueue(struct taskqueue *tq)
-{
-	struct task flushtask;
-
-	PHOLD(curproc);
-	TASK_INIT(&flushtask, 0, _flush_fn, NULL);
-	taskqueue_enqueue(tq, &flushtask);
-	taskqueue_drain(tq, &flushtask);
-	PRELE(curproc);
-}
-
-static inline int
-cancel_work_sync(struct work_struct *work)
-{
-	if (work->taskqueue &&
-	    taskqueue_cancel(work->taskqueue, &work->work_task, NULL))
-		taskqueue_drain(work->taskqueue, &work->work_task);
-	return 0;
-}
-
-/*
- * This may leave work running on another CPU as it does on Linux.
- */
-static inline int
-cancel_delayed_work(struct delayed_work *work)
-{
-
-	callout_stop(&work->timer);
-	if (work->work.taskqueue)
-		return (taskqueue_cancel(work->work.taskqueue,
-		    &work->work.work_task, NULL) == 0);
-	return 0;
-}
 
 static inline int
 cancel_delayed_work_sync(struct delayed_work *work)
 {
-
-        callout_drain(&work->timer);
-        if (work->work.taskqueue &&
-            taskqueue_cancel(work->work.taskqueue, &work->work.work_task, NULL))
-                taskqueue_drain(work->work.taskqueue, &work->work.work_task);
-        return 0;
+	panic("%s() not implemented\n", __func__);
+	return 0;
 }
 
 #endif	/* _LINUX_WORKQUEUE_H_ */

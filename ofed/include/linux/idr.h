@@ -29,7 +29,9 @@
 #ifndef	_LINUX_IDR_H_
 #define	_LINUX_IDR_H_
 
-#include <sys/kernel.h>
+#include <lwk/spinlock.h>
+
+
 
 #define	IDR_BITS	5
 #define	IDR_SIZE	(1 << IDR_BITS)
@@ -50,7 +52,7 @@ struct idr_layer {
 };
 
 struct idr {
-	struct mtx		lock;
+	struct mutex            lock;
 	struct idr_layer	*top;
 	struct idr_layer	*free;
 	int			layers;

@@ -29,13 +29,11 @@
 #ifndef	_LINUX_NOTIFIER_H_
 #define	_LINUX_NOTIFIER_H_
 
-#include <sys/eventhandler.h>
-
 /*
  * Max number of FreeBSD events to map to Linux events per notify type.
  */
 #define	NOTIFY_DONE	0
-#define	_NOTIFY_COUNT	5
+
 
 struct notifier_block {
 	int (*notifier_call)(struct notifier_block *, unsigned long, void *);

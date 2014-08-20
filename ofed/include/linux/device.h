@@ -39,16 +39,19 @@
 #include <linux/kdev_t.h>
 #include <asm/atomic.h>
 
-#include <sys/bus.h>
 
-enum irqreturn	{ IRQ_NONE = 0, IRQ_HANDLED, IRQ_WAKE_THREAD, };
-typedef enum irqreturn	irqreturn_t;
+#include <lwk/interrupt.h>
+/*
+#include <sys/bus.h>
+*/
+
+
 
 struct class {
 	const char	*name;
 	struct module	*owner;
 	struct kobject	kobj;
-	devclass_t	bsdclass;
+    //	devclass_t	bsdclass;
 	void		(*class_release)(struct class *class);
 	void		(*dev_release)(struct device *dev);
 };
@@ -56,7 +59,7 @@ struct class {
 struct device {
 	struct device	*parent;
 	struct list_head irqents;
-	device_t	bsddev;
+    //	device_t	bsddev;
 	dev_t		devt;
 	struct class	*class;
 	void		(*release)(struct device *dev);
@@ -193,7 +196,7 @@ static inline int
 class_register(struct class *class)
 {
 
-	class->bsdclass = devclass_create(class->name);
+    //	class->bsdclass = devclass_create(class->name);
 	kobject_init(&class->kobj, &class_ktype);
 	kobject_set_name(&class->kobj, class->name);
 	kobject_add(&class->kobj, &class_root, class->name);
@@ -264,15 +267,17 @@ static struct kobj_type dev_ktype = {
 static inline int
 device_register(struct device *dev)
 {
-	device_t bsddev;
+    /*
+    	device_t bsddev;
 	int unit;
 
-	bsddev = NULL;
+		bsddev = NULL;
 	if (dev->devt) {
 		unit = MINOR(dev->devt);
 		bsddev = devclass_get_device(dev->class->bsdclass, unit);
 	} else
 		unit = -1;
+
 	if (bsddev == NULL)
 		bsddev = device_add_child(dev->parent->bsddev,
 		    dev->class->kobj.name, unit);
@@ -282,6 +287,8 @@ device_register(struct device *dev)
 		device_set_softc(bsddev, dev);
 	}
 	dev->bsddev = bsddev;
+*/
+
 	kobject_init(&dev->kobj, &dev_ktype);
 	kobject_add(&dev->kobj, &dev->class->kobj, dev_name(dev));
 
@@ -291,6 +298,7 @@ device_register(struct device *dev)
 static inline void
 device_unregister(struct device *dev)
 {
+    /*
 	device_t bsddev;
 
 	bsddev = dev->bsddev;
@@ -298,6 +306,7 @@ device_unregister(struct device *dev)
 	if (bsddev)
 		device_delete_child(device_get_parent(bsddev), bsddev);
 	mtx_unlock(&Giant);
+    */
 	put_device(dev);
 }
 
@@ -307,6 +316,7 @@ struct device *device_create(struct class *class, struct device *parent,
 static inline void
 device_destroy(struct class *class, dev_t devt)
 {
+    /*
 	device_t bsddev;
 	int unit;
 
@@ -314,6 +324,7 @@ device_destroy(struct class *class, dev_t devt)
 	bsddev = devclass_get_device(class->bsdclass, unit);
 	if (bsddev)
 		device_unregister(device_get_softc(bsddev));
+    */
 }
 
 static inline void

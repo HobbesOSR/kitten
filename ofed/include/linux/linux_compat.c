@@ -26,24 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/sysctl.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
-#include <sys/bus.h>
-#include <sys/fcntl.h>
-#include <sys/file.h>
-#include <sys/filio.h>
-#include <sys/rwlock.h>
 
-#include <vm/vm.h>
-#include <vm/pmap.h>
-
-#include <machine/stdarg.h>
-#include <machine/pmap.h>
 
 #include <linux/kobject.h>
 #include <linux/device.h>
@@ -56,19 +39,15 @@
 #include <linux/io.h>
 #include <linux/vmalloc.h>
 
-#include <vm/vm_pager.h>
 
-MALLOC_DEFINE(M_KMALLOC, "linux", "Linux kmalloc compat");
+
+
+struct inode *sysfs_root;
+
 
 #include <linux/rbtree.h>
-/* Undo Linux compat changes. */
-#undef RB_ROOT
-#undef file
-#undef cdev
-#define	RB_ROOT(head)	(head)->rbh_root
-#undef LIST_HEAD
+
 /* From sys/queue.h */
-#define LIST_HEAD(name, type)						\
 struct name {								\
 	struct type *lh_first;	/* first element */			\
 }
@@ -79,6 +58,7 @@ struct class miscclass;
 struct list_head pci_drivers;
 struct list_head pci_devices;
 spinlock_t pci_lock;
+
 
 int
 panic_cmp(struct rb_node *one, struct rb_node *two)
@@ -617,30 +597,6 @@ vmmap_remove(void *addr)
 	return (vmmap);
 }
 
-void *
-_ioremap_attr(vm_paddr_t phys_addr, unsigned long size, int attr)
-{
-	void *addr;
-
-	addr = pmap_mapdev_attr(phys_addr, size, attr);
-	if (addr == NULL)
-		return (NULL);
-	vmmap_add(addr, size);
-
-	return (addr);
-}
-
-void
-iounmap(void *addr)
-{
-	struct vmmap *vmmap;
-
-	vmmap = vmmap_remove(addr);
-	if (vmmap == NULL)
-		return;
-	pmap_unmapdev((vm_offset_t)addr, vmmap->vm_size);
-	kfree(vmmap);
-}
 
 
 void *

@@ -29,8 +29,7 @@
 #ifndef	_LINUX_KDEV_T_H_
 #define	_LINUX_KDEV_T_H_
 
-#define MAJOR(dev)      major((dev))
-#define MINOR(dev)      minor((dev))
-#define MKDEV(ma, mi)   makedev((ma), (mi))
+#include <lwk/dev.h>
+
 
 #endif	/* _LINUX_KDEV_T_H_ */

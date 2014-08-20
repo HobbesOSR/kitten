@@ -33,15 +33,9 @@
 
 #include <linux/types.h>
 
-#include <sys/param.h>
-#include <sys/bus.h>
-#include <sys/pciio.h>
-#include <sys/rman.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pci_private.h>
-
-#include <machine/resource.h>
+#include <lwk/pci/pcicfg_regs.h>
+#include <lwk/pci/pci.h>
+#include <lwk/resource.h>
 
 #include <linux/init.h>
 #include <linux/list.h>
@@ -87,12 +81,10 @@ struct pci_device_id {
 
 #define	PCI_VENDOR_ID	PCIR_DEVVENDOR
 #define	PCI_COMMAND	PCIR_COMMAND
-#define	PCI_EXP_DEVCTL	PCIER_DEVICE_CTL
-#define	PCI_EXP_LNKCTL	PCIER_LINK_CTL
+#define PCI_EXP_DEVCTL  8
+#define PCI_EXP_LNKCTL  16
 
-#define	IORESOURCE_MEM	SYS_RES_MEMORY
-#define	IORESOURCE_IO	SYS_RES_IOPORT
-#define	IORESOURCE_IRQ	SYS_RES_IRQ
+
 
 struct pci_dev;
 
@@ -106,7 +98,10 @@ struct pci_driver {
         int  (*suspend) (struct pci_dev *dev, pm_message_t state);      /* Device suspended */
         int  (*resume) (struct pci_dev *dev);                   /* Device woken up */
 	driver_t			driver;
-	devclass_t			bsdclass;
+ 
+	// LWK device state
+
+
         struct pci_error_handlers       *err_handler;
 };
 
@@ -117,16 +112,18 @@ extern spinlock_t pci_lock;
 #define	__devexit_p(x)	x
 
 struct pci_dev {
-	struct device		dev;
-	struct list_head	links;
-	struct pci_driver	*pdrv;
-	uint64_t		dma_mask;
-	uint16_t		device;
-	uint16_t		vendor;
-	unsigned int		irq;
-        unsigned int            devfn;
-        u8                      revision;
-        struct pci_devinfo      *bus; /* bus this device is on, equivalent to linux struct pci_bus */
+	struct device		 dev;
+	struct list_head 	 links;
+	struct pci_driver      * pdrv;
+	uint64_t		 dma_mask;
+	uint16_t		 device;
+	uint16_t		 vendor;
+	unsigned int		 irq;
+        unsigned int             devfn;
+        u8                       revision;
+	pci_dev_t              * lwk_dev;
+	pci_bus_t              * bus; // LWK bus structure
+	//        struct pci_devinfo     * bus; /* bus this device is on, equivalent to linux struct pci_bus */
 };
 
 static inline struct resource_list_entry *

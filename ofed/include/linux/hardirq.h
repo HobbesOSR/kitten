@@ -28,12 +28,12 @@
 #ifndef _LINUX_HARDIRQ_H_
 #define	_LINUX_HARDIRQ_H_
 
-#include <linux/types.h>
+#include <lwk/interrupt.h>
 
-#include <sys/param.h>
-#include <sys/bus.h>
-#include <sys/interrupt.h>
-
-#define	synchronize_irq(irq)	_intr_drain((irq))
+static inline void
+synchronize_irq(unsigned int irq)
+{
+	irq_synchronize(irq);
+}
 
 #endif	/* _LINUX_HARDIRQ_H_ */

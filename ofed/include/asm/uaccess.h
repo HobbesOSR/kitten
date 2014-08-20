@@ -29,21 +29,7 @@
 #define _ASM_UACCESS_H_
 
 #include <linux/uaccess.h>
+#include <arch/uaccess.h>
 
-static inline long
-copy_to_user(void *to, const void *from, unsigned long n)
-{
-	if (copyout(from, to, n) != 0)
-		return n;
-	return 0;
-}
-
-static inline long
-copy_from_user(void *to, const void *from, unsigned long n)
-{
-	if (copyin(from, to, n) != 0)
-		return n;
-	return 0;
-}
 
 #endif	/* _ASM_UACCESS_H_ */

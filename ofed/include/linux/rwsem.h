@@ -28,29 +28,24 @@
 #ifndef	_LINUX_RWSEM_H_
 #define	_LINUX_RWSEM_H_
 
-#include <sys/param.h>
-#include <sys/lock.h>
-#include <sys/sx.h>
+#include <lwk/semaphore.h>
 
 struct rw_semaphore {
 	struct sx sx;
 };
 
-#define	down_write(_rw)			sx_xlock(&(_rw)->sx)
-#define	up_write(_rw)			sx_xunlock(&(_rw)->sx)
-#define	down_read(_rw)			sx_slock(&(_rw)->sx)
-#define	up_read(_rw)			sx_sunlock(&(_rw)->sx)
-#define	down_read_trylock(_rw)		!!sx_try_slock(&(_rw)->sx)
-#define	down_write_trylock(_rw)		!!sx_try_xlock(&(_rw)->sx)
-#define	downgrade_write(_rw)		sx_downgrade(&(_rw)->sx)
+#define rw_semaphore semaphore
+#defien init_rwsem   init_MUTEX
+
+#define	down_write(_rw)		        down	
+#define	up_write(_rw)		        up
+#define	down_read(_rw)			down
+#define	up_read(_rw)			up
+#define	down_read_trylock(_rw)		down_trylock
+#define	down_write_trylock(_rw)		down_trylock
+#define	downgrade_write(_rw)		
 #define	down_read_nested(_rw, _sc)	down_read(_rw)
 
-static inline void
-init_rwsem(struct rw_semaphore *rw)
-{
 
-	memset(&rw->sx, 0, sizeof(rw->sx));
-	sx_init_flags(&rw->sx, "lnxrwsem", SX_NOWITNESS);
-}
 
 #endif	/* _LINUX_RWSEM_H_ */

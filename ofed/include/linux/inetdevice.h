@@ -30,27 +30,26 @@
 #define	_LINUX_INETDEVICE_H_
 
 #include <linux/netdevice.h>
+#include <lwip/netif.h>
+
+/** 
+ * JRL: Byte ordering in the ip addresses??
+ */
 
 static inline struct net_device *
 ip_dev_find(struct net *net, uint32_t addr)
 {
-	struct sockaddr_in sin;
-	struct ifaddr *ifa;
-	struct ifnet *ifp;
-
-	ifp = NULL;
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_addr.s_addr = addr;
-	sin.sin_port = 0;
-	sin.sin_len = sizeof(sin);
-	sin.sin_family = AF_INET;
-	ifa = ifa_ifwithaddr((struct sockaddr *)&sin);
-	if (ifa) {
-		ifp = ifa->ifa_ifp;
-		if_ref(ifp);
-		ifa_free(ifa);
+    struct netif *netif;
+    
+    for(netif = netif_list; netif != NULL; netif = netif->next) {
+	if (addr == netif->ip_addr.addr ) {
+	    printk("netif_find: found %c%c\n", netif->name[0], netif->name[1]);
+	    return netif;
 	}
-	return (ifp);
+    }
+    
+    printk("Error: Could not find net_device in %s()\n", __func__);
+    return NULL;
 }
 
 #endif	/* _LINUX_INETDEVICE_H_ */

@@ -28,7 +28,6 @@
 #ifndef	_LINUX_KOBJECT_H_
 #define	_LINUX_KOBJECT_H_
 
-#include <machine/stdarg.h>
 
 #include <linux/kernel.h>
 #include <linux/kref.h>

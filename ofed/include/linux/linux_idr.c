@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
@@ -35,6 +36,7 @@
 #include <sys/mutex.h>
 
 #include <machine/stdarg.h>
+*/
 
 #include <linux/bitops.h>
 #include <linux/kobject.h>
@@ -49,7 +51,7 @@
  * however it should be fairly fast.  It is basically a radix tree with
  * a builtin bitmap for allocation.
  */
-static MALLOC_DEFINE(M_IDR, "idr", "Linux IDR compat");
+
 
 static inline int
 idr_max(struct idr *idr)
@@ -67,7 +69,7 @@ void
 idr_init(struct idr *idr)
 {
 	bzero(idr, sizeof(*idr));
-	mtx_init(&idr->lock, "idr", NULL, MTX_DEF);
+	mutex_init(&(idr->lock));
 }
 
 /* Only frees cached pages. */
@@ -76,12 +78,12 @@ idr_destroy(struct idr *idr)
 {
 	struct idr_layer *il, *iln;
 
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	for (il = idr->free; il != NULL; il = iln) {
 		iln = il->ary[0];
-		free(il, M_IDR);
+		kmem_free(il);
 	}
-	mtx_unlock(&idr->lock);
+	mutex_unlock(&idr->lock);
 }
 
 static void
@@ -92,7 +94,7 @@ idr_remove_layer(struct idr_layer *il, int layer)
 	if (il == NULL)
 		return;
 	if (layer == 0) {
-		free(il, M_IDR);
+		kmem_free(il);
 		return;
 	}
 	for (i = 0; i < IDR_SIZE; i++)
@@ -104,11 +106,11 @@ void
 idr_remove_all(struct idr *idr)
 {
 
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	idr_remove_layer(idr->top, idr->layers - 1);
 	idr->top = NULL;
 	idr->layers = 0;
-	mtx_unlock(&idr->lock);
+	mutex_unlock(&idr->lock);
 }
 
 void
@@ -119,11 +121,11 @@ idr_remove(struct idr *idr, int id)
 	int idx;
 
 	id &= MAX_ID_MASK;
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	il = idr->top;
 	layer = idr->layers - 1;
 	if (il == NULL || id > idr_max(idr)) {
-		mtx_unlock(&idr->lock);
+		mutex_unlock(&idr->lock);
 		return;
 	}
 	/*
@@ -147,7 +149,7 @@ idr_remove(struct idr *idr, int id)
 		    id, idr, il);
 	il->ary[idx] = NULL;
 	il->bitmap |= 1 << idx;
-	mtx_unlock(&idr->lock);
+	mutex_unlock(&idr->lock);
 	return;
 }
 
@@ -161,7 +163,7 @@ idr_replace(struct idr *idr, void *ptr, int id)
 
 	res = ERR_PTR(-EINVAL);
 	id &= MAX_ID_MASK;
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	il = idr->top;
 	layer = idr->layers - 1;
 	if (il == NULL || id > idr_max(idr))
@@ -179,7 +181,7 @@ idr_replace(struct idr *idr, void *ptr, int id)
 		il->ary[idx] = ptr;
 	}
 out:
-	mtx_unlock(&idr->lock);
+	mutex_unlock(&idr->lock);
 	return (res);
 }
 
@@ -192,7 +194,7 @@ idr_find(struct idr *idr, int id)
 
 	res = NULL;
 	id &= MAX_ID_MASK;
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	il = idr->top;
 	layer = idr->layers - 1;
 	if (il == NULL || id > idr_max(idr))
@@ -204,7 +206,7 @@ idr_find(struct idr *idr, int id)
 	if (il != NULL)
 		res = il->ary[id & IDR_MASK];
 out:
-	mtx_unlock(&idr->lock);
+	mutex_unlock(&idr->lock);
 	return (res);
 }
 
@@ -215,16 +217,16 @@ idr_pre_get(struct idr *idr, gfp_t gfp_mask)
 	struct idr_layer *head;
 	int need;
 
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	for (;;) {
 		need = idr->layers + 1;
 		for (il = idr->free; il != NULL; il = il->ary[0])
 			need--;
-		mtx_unlock(&idr->lock);
+		mutex_unlock(&idr->lock);
 		if (need == 0)
 			break;
 		for (head = NULL; need; need--) {
-			iln = malloc(sizeof(*il), M_IDR, M_ZERO | gfp_mask);
+			iln = kmem_alloc(sizeof(*il));
 			if (iln == NULL)
 				break;
 			bitmap_fill(&iln->bitmap, IDR_SIZE);
@@ -236,7 +238,7 @@ idr_pre_get(struct idr *idr, gfp_t gfp_mask)
 		}
 		if (head == NULL)
 			return (0);
-		mtx_lock(&idr->lock);
+		mutex_lock(&idr->lock);
 		il->ary[0] = idr->free;
 		idr->free = head;
 	}
@@ -254,7 +256,7 @@ idr_get(struct idr *idr)
 		il->ary[0] = NULL;
 		return (il);
 	}
-	il = malloc(sizeof(*il), M_IDR, M_ZERO | M_NOWAIT);
+	il = kmem_malloc(sizeof(*il));
 	bitmap_fill(&il->bitmap, IDR_SIZE);
 	return (il);
 }
@@ -274,7 +276,7 @@ idr_get_new(struct idr *idr, void *ptr, int *idp)
 	int id;
 
 	error = -EAGAIN;
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	/*
 	 * Expand the tree until there is free space.
 	 */
@@ -329,7 +331,7 @@ idr_get_new(struct idr *idr, void *ptr, int *idp)
 	}
 	error = 0;
 out:
-	mtx_unlock(&idr->lock);
+	mutex_unlock(&idr->lock);
 #ifdef INVARIANTS
 	if (error == 0 && idr_find(idr, id) != ptr) {
 		panic("idr_get_new: Failed for idr %p, id %d, ptr %p\n",
@@ -350,7 +352,7 @@ idr_get_new_above(struct idr *idr, void *ptr, int starting_id, int *idp)
 	int id;
 
 	error = -EAGAIN;
-	mtx_lock(&idr->lock);
+	mutex_lock(&idr->lock);
 	/*
 	 * Compute the layers required to support starting_id and the mask
 	 * at the top layer.
@@ -436,7 +438,7 @@ restart:
 	}
 	error = 0;
 out:
-	mtx_unlock(&idr->lock);
+	mutex_unlock(&idr->lock);
 #ifdef INVARIANTS
 	if (error == 0 && idr_find(idr, id) != ptr) {
 		panic("idr_get_new_above: Failed for idr %p, id %d, ptr %p\n",

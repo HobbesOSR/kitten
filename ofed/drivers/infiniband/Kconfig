@@ -43,7 +43,7 @@ source "ofed/drivers/infiniband/hw/mlx4/Kconfig"
 
 source "ofed/drivers/infiniband/ulp/ipoib/Kconfig"
 
-source "ofed/drivers/infiniband/ulp/sdp/Kconfig"
+#source "ofed/drivers/infiniband/ulp/sdp/Kconfig"
 
 source "ofed/drivers/infiniband/util/Kconfig"
 

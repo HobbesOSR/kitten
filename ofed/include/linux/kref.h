@@ -28,35 +28,51 @@
 #ifndef _LINUX_KREF_H_
 #define _LINUX_KREF_H_
 
-#include <sys/refcount.h>
+
 
 struct kref {
-        volatile u_int count;
+    atomic_t refcount;
 };
+
+/**
+ * kref_set - initialize object and set refcount to requested number.
+ * @kref: object in question.
+ * @num: initial reference counter
+ */
+static inline void 
+kref_set(struct kref *kref, int num)
+{
+    atomic_set(&kref->refcount, num);
+    smp_mb();
+}
 
 static inline void
 kref_init(struct kref *kref)
 {
-
-	refcount_init(&kref->count, 1);
+    kref_set(kref, 1);
 }
 
 static inline void
 kref_get(struct kref *kref)
 {
-
-	refcount_acquire(&kref->count);
+    WARN_ON(!atomic_read(&kref->refcount));
+    atomic_inc(&kref->refcount);
+    smp_mb__after_atomic_inc();
 }
 
 static inline int
-kref_put(struct kref *kref, void (*rel)(struct kref *kref))
+kref_put(struct kref *kref, void (*release)(struct kref *kref))
 {
+    
+    WARN_ON(release == NULL);
+    //WARN_ON(release == (void (*)(struct kref *))kfree);
+    
+    if (atomic_dec_and_test(&kref->refcount)) {
+	release(kref);
+	return 1;
+    }
+    return 0;
 
-	if (refcount_release(&kref->count)) {
-		rel(kref);
-		return 1;
-	}
-	return 0;
 }
 
 #endif /* _KREF_H_ */

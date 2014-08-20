@@ -33,7 +33,7 @@
 #include <linux/gfp.h>
 #include <linux/slab.h>
 
-#include <sys/libkern.h>
+
 
 static inline void *
 kmemdup(const void *src, size_t len, gfp_t gfp)

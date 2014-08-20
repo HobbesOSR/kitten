@@ -31,26 +31,27 @@
 #include <linux/types.h>
 #include <linux/kernel.h>
 
-#include <sys/time.h>
-#include <sys/kernel.h>
 
-static inline int
-msecs_to_jiffies(int msec)
+
+
+/**
+ * Converts milliseconds to jiffies (aka nanoseconds).
+ */
+static inline unsigned long
+msecs_to_jiffies(const unsigned int m)
 {
-	struct timeval tv;
-
-	tv.tv_sec = msec / 1000;
-	tv.tv_usec = (msec % 1000) * 1000;
-	return (tvtohz(&tv));
+    return m * 1000L * 1000L;
 }
+	
 
-#define	jiffies	ticks
+#define	jiffies	get_time()
 
 #define	time_after(a, b)	((long)(b) - (long)(a) < 0)
 #define	time_before(a, b)	time_after(b,a)
 #define	time_after_eq(a, b)	((long)(a) - (long)(b) >= 0)
 #define	time_before_eq(a, b)	time_after_eq(b, a)
 
-#define	HZ	hz
+#define	HZ	1000000000ul
+
 
 #endif	/* _LINUX_JIFFIES_H_ */

@@ -30,9 +30,7 @@
 
 #include <linux/types.h>
 
-#include <net/ethernet.h>
-
-#define	ETH_P_8021Q	ETHERTYPE_VLAN
+#define	ETH_P_8021Q	0x8100
 
 /*
  * defined Ethernet Protocol ID's.

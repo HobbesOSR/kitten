@@ -29,97 +29,83 @@
 #ifndef	_LINUX_GFP_H_
 #define	_LINUX_GFP_H_
 
-#include <sys/systm.h>
-#include <sys/malloc.h>
+
 
 #include <linux/page.h>
 
-#include <vm/vm_param.h>
-#include <vm/vm_object.h>
-#include <vm/vm_extern.h>
-#include <vm/vm_kern.h>
 
 #define	__GFP_NOWARN	0
 #define	__GFP_HIGHMEM	0
-#define	__GFP_ZERO	M_ZERO
+#define __GFP_ZERO      ((__force gfp_t)0x8000u) /* Return zeroed page on success */
 
-#define	GFP_NOWAIT	M_NOWAIT
-#define	GFP_ATOMIC	(M_NOWAIT | M_USE_RESERVE)
-#define	GFP_KERNEL	M_WAITOK
-#define	GFP_USER	M_WAITOK
-#define	GFP_HIGHUSER	M_WAITOK
-#define	GFP_HIGHUSER_MOVABLE	M_WAITOK
-#define	GFP_IOFS	M_NOWAIT
+#define __GFP_HIGH      ((__force gfp_t)0x20u)
+#define	GFP_NOWAIT	0
+#define	GFP_ATOMIC	(__GFP_HIGH)
+#define	GFP_KERNEL	0
+#define	GFP_USER	0
+#define	GFP_HIGHUSER	0
+#define	GFP_HIGHUSER_MOVABLE	0
+#define	GFP_IOFS	GFP_ATOMIC
 
 static inline void *
 page_address(struct page *page)
 {
 
-	if (page->object != kmem_object && page->object != kernel_object)
-		return (NULL);
-	return ((void *)(uintptr_t)(VM_MIN_KERNEL_ADDRESS +
-	    IDX_TO_OFF(page->pindex)));
+    return (void *)page->virtual;
 }
 
 static inline unsigned long
-_get_page(gfp_t mask)
+alloc_pages(gfp_t gfp_mask, int order)
 {
+    struct page * page = kmem_alloc(sizeof(struct page));
 
-	return kmem_malloc(kmem_arena, PAGE_SIZE, mask);
+    if (!page) {
+	goto error;
+    }
+
+    page->virtual = kmem_get_pages(order);
+    page->order   = order;
+    page->user    = 0;
+    
+    return page;
+
+ error:
+    if (gfp_mask & GFP_ATOMIC)
+	    panic("Out of memory! alloc_pages(GFP_ATOMIC) failed.");
+    if (page)
+	    kmem_free(page);
+    return NULL;
 }
 
-#define	get_zeroed_page(mask)	_get_page((mask) | M_ZERO)
-#define	alloc_page(mask)	virt_to_page(_get_page((mask)))
-#define	__get_free_page(mask)	_get_page((mask))
+#define	get_zeroed_page(mask)	alloc_pages(GFP_ZERO,   0);
+#define	alloc_page(mask)	alloc_pages(GFP_KERNEL, 0);
+#define	__get_free_page(mask)	alloc_pages(GFP_ZERO,   0);
 
 static inline void
-free_page(unsigned long page)
+free_page(unsigned long addr)
 {
 
-	if (page == 0)
+	if (addr == 0)
 		return;
-	kmem_free(kmem_arena, page, PAGE_SIZE);
+	kmem_free_pages((void *)addr, 0)
 }
+
 
 static inline void
-__free_page(struct page *m)
+__free_pages(struct page * page, unsigned int order)
 {
-
-	if (m->object != kmem_object)
-		panic("__free_page:  Freed page %p not allocated via wrappers.",
-		    m);
-	kmem_free(kmem_arena, (vm_offset_t)page_address(m), PAGE_SIZE);
+	kmem_free_pages(page->virtual, order);
+	kmem_free(page);
 }
+
 
 static inline void
-__free_pages(struct page *m, unsigned int order)
+__free_page(struct page * page)
 {
-	size_t size;
-
-	if (m == NULL)
-		return;
-	size = PAGE_SIZE << order;
-	kmem_free(kmem_arena, (vm_offset_t)page_address(m), size);
+	__free_pages(page, 0);
 }
 
-/*
- * Alloc pages allocates directly from the buddy allocator on linux so
- * order specifies a power of two bucket of pages and the results
- * are expected to be aligned on the size as well.
- */
-static inline struct page *
-alloc_pages(gfp_t gfp_mask, unsigned int order)
-{
-	unsigned long page;
-	size_t size;
 
-	size = PAGE_SIZE << order;
-	page = kmem_alloc_contig(kmem_arena, size, gfp_mask, 0, -1,
-	    size, 0, VM_MEMATTR_DEFAULT);
-	if (page == 0)
-		return (NULL);
-        return (virt_to_page(page));
-}
 
 #define alloc_pages_node(node, mask, order)     alloc_pages(mask, order)
 

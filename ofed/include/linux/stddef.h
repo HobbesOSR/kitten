@@ -29,6 +29,6 @@
 #ifndef	_LINUX_STDDEF_H_
 #define	_LINUX_STDDEF_H_
 
-#include <sys/stddef.h>
+#include <lwk/stddef.h>
 
 #endif	/* _LINUX_STDDEF_H_ */

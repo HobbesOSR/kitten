@@ -29,11 +29,15 @@
 #ifndef	_LINUX_ERRNO_H_
 #define	_LINUX_ERRNO_H_
 
-#include <sys/errno.h>
+#include <lwk/errno.h>
 
-#define	ECOMM		ESTALE
-#define	ENODATA		ECONNREFUSED
+
+#if 0
+/* Not sure about these... 
+   The symbols exist in the LWK, but different values... 
+*/
 #define	ENOIOCTLCMD	ENOIOCTL		/* XXX this is negative */
 #define ERESTARTSYS     ERESTART		/* XXX this is negative */
+#endif
 
 #endif	/* _LINUX_ERRNO_H_ */

@@ -28,12 +28,16 @@
 #ifndef	_LINUX_IN_H_
 #define	_LINUX_IN_H_
 
-#include "opt_inet.h"
 
-#include <netinet/in.h>
-#include <asm/byteorder.h>
 
-#define	ipv4_is_zeronet		IN_ZERONET
-#define	ipv4_is_loopback	IN_LOOPBACK
+static inline bool ipv4_is_loopback(__be32 addr)
+{
+    return (addr & htonl(0xff000000)) == htonl(0x7f000000);
+}
+
+static inline bool ipv4_is_zeronet(__be32 addr)
+{
+    return (addr & htonl(0xff000000)) == htonl(0x00000000);
+}
 
 #endif	/* _LINUX_IN_H_ */

@@ -91,6 +91,10 @@ struct dma_map_ops {
 static inline int
 dma_supported(struct device *dev, u64 mask)
 {
+	if (mask != DMA_64BIT_MASK) {
+		printk(KERN_WARNING "dma_supported() called with non 64-bit mask.\n");
+		return 0;
+	}
 
 	/* XXX busdma takes care of this elsewhere. */
 	return (1);
@@ -119,8 +123,9 @@ dma_set_coherent_mask(struct device *dev, u64 mask)
 
 static inline void *
 dma_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
-    gfp_t flag)
+		   gfp_t flag)
 {
+	/*
 	vm_paddr_t high;
 	size_t align;
 	void *mem;
@@ -137,28 +142,41 @@ dma_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
 	else
 		*dma_handle = 0;
 	return (mem);
+	*/
+
+	void *addr = (void *)get_zeroed_pages(flag, get_order(size));
+	if (!addr)
+		return NULL;
+	
+	*dma_handle = virt_to_bus(addr);
+	
+	return addr;
 }
                        
 static inline void
 dma_free_coherent(struct device *dev, size_t size, void *cpu_addr,
-    dma_addr_t dma_handle)
+		  dma_addr_t dma_handle)
 {
-
+	/*
 	kmem_free(kmem_arena, (vm_offset_t)cpu_addr, size);
+	*/
+
+	free_pages((unsigned long)cpu_addr, get_order(size));
+
 }
 
 /* XXX This only works with no iommu. */
 static inline dma_addr_t
 dma_map_single_attrs(struct device *dev, void *ptr, size_t size,
-    enum dma_data_direction dir, struct dma_attrs *attrs)
+		     enum dma_data_direction dir, struct dma_attrs *attrs)
 {
 
-	return vtophys(ptr);
+	return virt_to_bus(ptr);
 }
 
 static inline void
 dma_unmap_single_attrs(struct device *dev, dma_addr_t addr, size_t size,
-    enum dma_data_direction dir, struct dma_attrs *attrs)
+		       enum dma_data_direction dir, struct dma_attrs *attrs)
 {
 }
 
@@ -177,64 +195,65 @@ dma_map_sg_attrs(struct device *dev, struct scatterlist *sgl, int nents,
 
 static inline void
 dma_unmap_sg_attrs(struct device *dev, struct scatterlist *sg, int nents,
-    enum dma_data_direction dir, struct dma_attrs *attrs)
+		   enum dma_data_direction dir, struct dma_attrs *attrs)
 {
 }
  
 static inline dma_addr_t
 dma_map_page(struct device *dev, struct page *page,
-    unsigned long offset, size_t size, enum dma_data_direction direction)
+	     unsigned long offset, size_t size, enum dma_data_direction direction)
 {
 
-	return VM_PAGE_TO_PHYS(page) + offset;
+	return dma_map_single(dev, page->virtual + offset, size, direction);
 }
 
 static inline void
 dma_unmap_page(struct device *dev, dma_addr_t dma_address, size_t size,
-    enum dma_data_direction direction)
+	       enum dma_data_direction direction)
 {
+	dma_unmap_single(dev, dma_address, size, direction);
 }
 
 static inline void
 dma_sync_single_for_cpu(struct device *dev, dma_addr_t dma_handle, size_t size,
-    enum dma_data_direction direction)
+			enum dma_data_direction direction)
 {
 }
 
 static inline void
 dma_sync_single(struct device *dev, dma_addr_t addr, size_t size,
-    enum dma_data_direction dir)
+		enum dma_data_direction dir)
 {
 	dma_sync_single_for_cpu(dev, addr, size, dir);
 }
 
 static inline void
 dma_sync_single_for_device(struct device *dev, dma_addr_t dma_handle,
-    size_t size, enum dma_data_direction direction)
+			   size_t size, enum dma_data_direction direction)
 {
 }
 
 static inline void
 dma_sync_sg_for_cpu(struct device *dev, struct scatterlist *sg, int nelems,
-    enum dma_data_direction direction)
+		    enum dma_data_direction direction)
 {
 }
 
 static inline void
 dma_sync_sg_for_device(struct device *dev, struct scatterlist *sg, int nelems,
-    enum dma_data_direction direction)
+		       enum dma_data_direction direction)
 {
 }
 
 static inline void
 dma_sync_single_range_for_cpu(struct device *dev, dma_addr_t dma_handle,
-    unsigned long offset, size_t size, int direction)
+			      unsigned long offset, size_t size, int direction)
 {
 }
 
 static inline void
 dma_sync_single_range_for_device(struct device *dev, dma_addr_t dma_handle,
-    unsigned long offset, size_t size, int direction)
+				 unsigned long offset, size_t size, int direction)
 {
 }
 
@@ -264,7 +283,11 @@ static inline unsigned int dma_set_max_seg_size(struct device *dev,
 #define	dma_unmap_len(p, name)			((p)->name)
 #define	dma_unmap_len_set(p, name, v)		(((p)->name) = (v))
 
-extern int uma_align_cache;
-#define	dma_get_cache_alignment()	uma_align_cache
+int
+dma_get_cache_alignment(void)
+{
+	return boot_cpu_data.arch.x86_clflush_size;
+}
+
 
 #endif	/* _LINUX_DMA_MAPPING_H_ */

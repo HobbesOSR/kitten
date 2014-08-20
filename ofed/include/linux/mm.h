@@ -32,6 +32,10 @@
 #include <linux/gfp.h>
 #include <linux/kernel.h>
 
+#include <arch/page.h>
+#include <lwk/pfn.h>
+#include <lwk/aspace.h>
+
 #define	PAGE_ALIGN(x)	ALIGN(x, PAGE_SIZE)
 
 struct vm_area_struct {
@@ -42,23 +46,7 @@ struct vm_area_struct {
 	vm_memattr_t	vm_page_prot;
 };
 
-/*
- * Compute log2 of the power of two rounded up count of pages
- * needed for size bytes.
- */
-static inline int
-get_order(unsigned long size)
-{
-	int order;
 
-	size = (size - 1) >> PAGE_SHIFT;
-	order = 0;
-	while (size) {
-		order++;
-		size >>= 1;
-	}
-	return (order);
-}
 
 static inline void *
 lowmem_page_address(struct page *page)
@@ -75,10 +63,18 @@ io_remap_pfn_range(struct vm_area_struct *vma,
     unsigned long addr, unsigned long pfn, unsigned long size,
     vm_memattr_t prot)
 {
-	vma->vm_page_prot = prot;
-	vma->vm_pfn = pfn;
+    paddr_t phys_addr = PFN_PHYS(pfn);
+    vaddr_t virt_addr = addr;
+    int status;
 
-	return (0);
+    status = __aspace_map_pmem(current->aspace, phys_addr, virt_addr, size);
+    if (status)
+	panic("In remap_pfn_range(): __aspace_map_pmem() failed (status=%d).", status);
+
+    vma->vm_page_prot = prot;
+    vma->vm_pfn = pfn;    
+
+    return status;
 }
 
 #endif	/* _LINUX_MM_H_ */

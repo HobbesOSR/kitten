@@ -30,21 +30,23 @@
 
 #include <linux/types.h>
 
-#include <sys/param.h>
 
-#include <machine/atomic.h>
-#include <vm/vm.h>
-#include <vm/vm_page.h>
 
-#define page	vm_page
+#include <lwk/atomic.h>
+#include <arch/pgtable.h>
+
+
+
+struct page {
+    void * virtual;
+    int    order;
+    int    user;
+};
 
 #define	virt_to_page(x)	PHYS_TO_VM_PAGE(vtophys((x)))
 
 #define	clear_page(page)		memset((page), 0, PAGE_SIZE)
-#define	pgprot_noncached(prot)		VM_MEMATTR_UNCACHEABLE
-#define	pgprot_writecombine(prot)	VM_MEMATTR_WRITE_COMBINING
 
-#undef	PAGE_MASK
-#define	PAGE_MASK	(~(PAGE_SIZE-1))
+
 
 #endif	/* _LINUX_PAGE_H_ */

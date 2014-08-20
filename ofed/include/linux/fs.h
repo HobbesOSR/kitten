@@ -28,11 +28,9 @@
 #ifndef	_LINUX_FS_H_
 #define	_LINUX_FS_H_
 
-#include <sys/systm.h>
-#include <sys/conf.h>
-#include <sys/vnode.h>
-#include <sys/file.h>
-#include <sys/filedesc.h>
+#include <lwk/kfs.h>
+#include <lwk/stat.h>
+
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/semaphore.h>
@@ -48,55 +46,91 @@ struct vm_area_struct;
 struct poll_table_struct;
 struct files_struct;
 
-#define	inode	vnode
-#define	i_cdev	v_rdev
 
-#define	S_IRUGO	(S_IRUSR | S_IRGRP | S_IROTH)
-#define	S_IWUGO	(S_IWUSR | S_IWGRP | S_IWOTH)
+
 
 
 typedef struct files_struct *fl_owner_t;
+
 
 struct dentry {
 	struct inode	*d_inode;
 };
 
-struct file_operations;
+
+struct lnx_file_operations;
+
 
 struct linux_file {
 	struct file	*_file;
-	const struct file_operations	*f_op;
+	const struct lnx_file_operations	*f_op;
 	void 		*private_data;
 	int		f_flags;
 	int		f_mode;	/* Just starting mode. */
 	struct dentry	*f_dentry;
 	struct dentry	f_dentry_store;
 	struct selinfo	f_selinfo;
-	struct sigio	*f_sigio;
+	struct fasync_struct	*f_fasync;
 	struct vnode	*f_vnode;
+	id_t             aspace_id;
 };
 
+
+
+
+struct fasync_struct {
+	int     magic;
+	int     fa_fd;
+	struct  fasync_struct   *fa_next; /* singly linked list */
+	id_t    aspace_id;
+	id_t    task_id;
+};
+
+
 #define	file		linux_file
-#define	fasync_struct	sigio *
 
-#define	fasync_helper(fd, filp, on, queue)				\
-({									\
-	if ((on))							\
-		*(queue) = &(filp)->f_sigio;				\
-	else								\
-		*(queue) = NULL;					\
-	0;								\
-})
 
-#define	kill_fasync(queue, sig, pollstat)				\
-do {									\
-	if (*(queue) != NULL)						\
-		pgsigio(*(queue), (sig), 0);				\
-} while (0)
+
+/* JRL: This should really be a list of structs... 
+ *    For now we hope only one thread will every register for it
+ */
+static inline int
+fasync_helper(int fd, struct file *filp,
+	      int mode, struct fasync_struct **fa) 
+{
+	if ((on)) {
+		/* We don't handle multiple recipients */
+		BUG_ON(*(queue) != NULL);
+
+		*fa            = filp->f_fasync;
+		*fa->aspace_id = current->aspace->parend->id;
+		*fa->task_id   = current->id;
+	} else {		
+		*fa = NULL;
+	}
+	return 0;
+}
+
+static inline void 
+kill_fasync(struct fasync_struct **fa, int sig, int band)
+{
+	if (*fa != NULL) {
+		struct siginfo s;
+		memset(&s, 0, sizeof(struct siginfo));
+		
+		s.si_signo = SIGIO;
+		s.si_errno = 0;
+		s.si_code  = SI_KERNEL;
+		s.si_pid   = 0;
+		s.si_uid   = 0;
+		
+		sigsend(*fa->aspace_id, *fa->task_id, sig, &s);
+	}
+}
 
 typedef int (*filldir_t)(void *, const char *, int, loff_t, u64, unsigned);
 
-struct file_operations {
+struct lnx_file_operations {
 	struct module *owner;
 	ssize_t (*read)(struct file *, char __user *, size_t, loff_t *);
 	ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *);
@@ -134,11 +168,16 @@ struct file_operations {
 	int (*setlease)(struct file *, long, struct file_lock **);
 #endif
 };
+
+#define file_operations lnx_file_operations
 #define	fops_get(fops)	(fops)
 
-#define	FMODE_READ	FREAD
-#define	FMODE_WRITE	FWRITE
-#define	FMODE_EXEC	FEXEC
+/* file is open for reading */
+#define FMODE_READ              ((__force fmode_t)1)
+/* file is open for writing */
+#define FMODE_WRITE             ((__force fmode_t)2)
+/* File is opened for execution with sys_execve / sys_uselib */
+#define FMODE_EXEC              ((__force fmode_t)32)
 
 static inline int
 register_chrdev_region(dev_t dev, unsigned range, const char *name)
@@ -158,26 +197,30 @@ static inline dev_t
 iminor(struct inode *inode)
 {
 
-	return dev2unit(inode->v_rdev);
+	return MINOR(inode->i_rdev);
 }
 
 static inline struct inode *
 igrab(struct inode *inode)
 {
+    /*
 	int error;
 
 	error = vget(inode, 0, curthread);
 	if (error)
 		return (NULL);
-
+    */
 	return (inode);
 }
 
 static inline void
 iput(struct inode *inode)
 {
-
+    /*
 	vrele(inode);
+    */
 }
+
+
 
 #endif	/* _LINUX_FS_H_ */

@@ -29,7 +29,6 @@
 #ifndef	_LINUX_IF_VLAN_H_
 #define	_LINUX_IF_VLAN_H_
 
-#include <net/ethernet.h>
-#include <net/if_vlan_var.h>
+#include <linux/inetdevice.h>
 
 #endif	/* _LINUX_IF_VLAN_H_ */

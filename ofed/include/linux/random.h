@@ -29,12 +29,12 @@
 #ifndef	_LINUX_RANDOM_H_
 #define	_LINUX_RANDOM_H_
 
-#include <sys/random.h>
+#include <lwk/random.h>
 
 static inline void
-get_random_bytes(void *buf, int nbytes)
+get_random_bytes(void *buf, int num_bytes)
 {
-	read_random(buf, nbytes);
+    rand_get_bytes(buf, num_bytes);
 }
 
 #endif	/* _LINUX_RANDOM_H_ */

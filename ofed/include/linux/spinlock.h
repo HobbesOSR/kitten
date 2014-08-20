@@ -28,41 +28,17 @@
 #ifndef	_LINUX_SPINLOCK_H_
 #define	_LINUX_SPINLOCK_H_
 
-#include <sys/param.h>
-#include <sys/kernel.h>
-#include <sys/lock.h>
-#include <sys/mutex.h>
 
-#include <linux/compiler.h>
-#include <linux/kernel.h>
-#include <linux/lockdep.h>
-#include <linux/rwlock.h>
 
-typedef struct {
-	struct mtx m;
-} spinlock_t;
 
-#define	spin_lock(_l)		mtx_lock(&(_l)->m)
-#define	spin_unlock(_l)		mtx_unlock(&(_l)->m)
-#define	spin_trylock(_l)	mtx_trylock(&(_l)->m)
-#define	spin_lock_nested(_l, _n) mtx_lock_flags(&(_l)->m, MTX_DUPOK)
-#define	spin_lock_irq(lock)	spin_lock(lock)
-#define	spin_unlock_irq(lock)	spin_unlock(lock)
-#define	spin_lock_irqsave(lock, flags)   				\
-    do {(flags) = 0; spin_lock(lock); } while (0)
-#define	spin_unlock_irqrestore(lock, flags)				\
-    do { spin_unlock(lock); } while (0)
+#include <lwk/spinlock.h>
 
-static inline void
-spin_lock_init(spinlock_t *lock)
-{
 
-	memset(&lock->m, 0, sizeof(lock->m));
-	mtx_init(&lock->m, "lnxspin", NULL, MTX_DEF | MTX_NOWITNESS);
-}
 
-#define	DEFINE_SPINLOCK(lock)						\
-	spinlock_t lock;						\
-	MTX_SYSINIT(lock, &(lock).m, "lnxspin", MTX_DEF)
+
+//mtx_init(&idr->lock, "idr", NULL, MTX_DEF);
+
+
+
 
 #endif	/* _LINUX_SPINLOCK_H_ */

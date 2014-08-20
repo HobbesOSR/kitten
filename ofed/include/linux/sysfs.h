@@ -29,7 +29,7 @@
 #ifndef	_LINUX_SYSFS_H_
 #define	_LINUX_SYSFS_H_
 
-#include <sys/sysctl.h>
+#include <lwk/kfs.h>
 
 struct attribute {
 	const char 	*name;
@@ -62,73 +62,138 @@ struct attribute_group {
 
 #define	__ATTR_NULL	{ .attr = { .name = NULL } }
 
-/*
- * Handle our generic '\0' terminated 'C' string.
- * Two cases:
- *      a variable string:  point arg1 at it, arg2 is max length.
- *      a constant string:  point arg1 at it, arg2 is zero.
+
+
+
+
+extern struct inode *sysfs_root;
+
+
+
+
+/**
+ * sysfs_create_dir - create a directory for an object.
+ * @kobj:    object we're creating directory for.
  */
-
-static inline int
-sysctl_handle_attr(SYSCTL_HANDLER_ARGS)
+static int
+sysfs_create_dir(
+	struct kobject *		kobj
+)
 {
-	struct kobject *kobj;
-	struct attribute *attr;
-	const struct sysfs_ops *ops;
-	char *buf;
-	int error;
-	ssize_t len;
+	struct sysfs_dirent *parent;
 
-	kobj = arg1;
-	attr = (struct attribute *)arg2;
-	if (kobj->ktype == NULL || kobj->ktype->sysfs_ops == NULL)
-		return (ENODEV);
-	buf = (char *)get_zeroed_page(GFP_KERNEL);
-	if (buf == NULL)
-		return (ENOMEM);
-	ops = kobj->ktype->sysfs_ops;
-	if (ops->show) {
-		len = ops->show(kobj, attr, buf);
-		/*
-		 * It's valid to not have a 'show' so just return an
-		 * empty string.
-	 	 */
-		if (len < 0) {
-			error = -len;
-			if (error != EIO)
-				goto out;
-			buf[0] = '\0';
-		} else if (len) {
-			len--;
-			if (len >= PAGE_SIZE)
-				len = PAGE_SIZE - 1;
-			/* Trim trailing newline. */
-			buf[len] = '\0';
-		}
-	}
+	BUG_ON(!kobj);
 
-	/* Leave one trailing byte to append a newline. */
-	error = sysctl_handle_string(oidp, buf, PAGE_SIZE - 1, req);
-	if (error != 0 || req->newptr == NULL || ops->store == NULL)
-		goto out;
-	len = strlcat(buf, "\n", PAGE_SIZE);
-	KASSERT(len < PAGE_SIZE, ("new attribute truncated"));
-	len = ops->store(kobj, attr, buf, len);
-	if (len < 0)
-		error = -len;
-out:
-	free_page((unsigned long)buf);
+	if (kobj->parent)
+		parent = kobj->parent->sd;
+	else
+		parent = sysfs_root;
 
-	return (error);
+	//printk(KERN_WARNING "%s creating dir %s/%s\n", __FUNCTION__,parent->name,kobject_name(kobj));
+	kobj->sd = kfs_mkdirent(
+		parent,
+		kobject_name(kobj),
+		NULL,
+		&kfs_default_fops,
+		0777 | S_IFDIR,
+		NULL,
+		0
+	);
+
+	return (kobj->sd == NULL);
 }
+
+struct sysfs_buffer {
+	struct sysfs_ops        * ops;
+	struct kobject          * kobj;
+	struct attribute        * attr;
+};
+
+static  ssize_t
+sysfs_read_file(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char buffer[1024];
+	char *bufp = (char *) &buffer;
+	struct sysfs_buffer * sbuffer = file->inode->priv;
+	struct sysfs_ops * ops = sbuffer->ops;
+	struct kobject * kobj = sbuffer->kobj;
+	struct attribute * attr = sbuffer->attr;
+	loff_t pos = 0; // = *ppos;
+	size_t ret;
+
+	count = ops->show(kobj, attr, bufp);
+	if (pos < 0)
+		return -EINVAL;
+	if (!count)
+		return 0;
+	ret = copy_to_user(buf, bufp + pos, count);
+	if (ret == count)
+		return -EFAULT;
+	count -= ret;
+	//*ppos = pos + count;
+	return count;
+}
+
+static int sysfs_open_file(struct inode *inode, struct file *file)
+{
+	if (file->inode->priv != NULL)
+		return 0;
+	else
+		return -ENODEV;
+
+
+}
+
+
+const struct kfs_fops sysfs_file_operations = {
+	.read = sysfs_read_file,
+	.open = sysfs_open_file,
+	.readdir = kfs_readdir,
+};
 
 static inline int
 sysfs_create_file(struct kobject *kobj, const struct attribute *attr)
 {
+	BUG_ON(!kobj || !kobj->sd || !attr);
 
-	sysctl_add_oid(NULL, SYSCTL_CHILDREN(kobj->oidp), OID_AUTO,
-	    attr->name, CTLTYPE_STRING|CTLFLAG_RW|CTLFLAG_MPSAFE, kobj,
-	    (uintptr_t)attr, sysctl_handle_attr, "A", "");
+
+	struct sysfs_buffer *buffer;
+	struct inode *inode;
+
+	/* TODO: Actually implement this! */
+	//printk(KERN_WARNING "%s creating %s %s\n", __FUNCTION__,kobject_name(kobj), attr->name);
+
+	buffer = kzalloc(sizeof(struct sysfs_buffer), GFP_KERNEL);
+	if(NULL == buffer)
+	  return -1;
+	buffer->kobj = kobj;
+	if (buffer->kobj->ktype && buffer->kobj->ktype->sysfs_ops) {
+		buffer->ops = buffer->kobj->ktype->sysfs_ops;
+	} else {
+		WARN(1, KERN_ERR "missing sysfs attribute operations for "
+			"kobject: %s\n", kobject_name(kobj));
+	}
+
+	buffer->attr = (struct attribute *) attr;
+
+	inode = kfs_mkdirent(
+		kobj->sd,
+		attr->name,
+		NULL,
+		&sysfs_file_operations,
+		attr->mode & ~S_IFMT, // should be 0444 as we don't support writes..
+		buffer,
+		sizeof(struct sysfs_buffer)
+	);
+	if(NULL == inode) {
+	  kfree(buffer);
+	  return -1;
+	}
+	/* TODO: silently forgetting this inode is not cool; we will have
+	   to destroy it, eventually (or will we do this recursively by
+	   destroyxing the parent inode?) ... */
+
+	return 0;
 
 	return (0);
 }
@@ -136,54 +201,96 @@ sysfs_create_file(struct kobject *kobj, const struct attribute *attr)
 static inline void
 sysfs_remove_file(struct kobject *kobj, const struct attribute *attr)
 {
-
-	if (kobj->oidp)
-		sysctl_remove_name(kobj->oidp, attr->name, 1, 1);
+	printk( "***** %s: not implemented\n", __func__ );
+	return;
 }
 
 static inline void
 sysfs_remove_group(struct kobject *kobj, const struct attribute_group *grp)
 {
-
-	if (kobj->oidp)
-		sysctl_remove_name(kobj->oidp, grp->name, 1, 1);
-}
-
-static inline int
-sysfs_create_group(struct kobject *kobj, const struct attribute_group *grp)
-{
-	struct attribute **attr;
-	struct sysctl_oid *oidp;
-
-	oidp = SYSCTL_ADD_NODE(NULL, SYSCTL_CHILDREN(kobj->oidp),
-	    OID_AUTO, grp->name, CTLFLAG_RD|CTLFLAG_MPSAFE, NULL, grp->name);
-	for (attr = grp->attrs; *attr != NULL; attr++) {
-		sysctl_add_oid(NULL, SYSCTL_CHILDREN(oidp), OID_AUTO,
-		    (*attr)->name, CTLTYPE_STRING|CTLFLAG_RW|CTLFLAG_MPSAFE,
-		    kobj, (uintptr_t)*attr, sysctl_handle_attr, "A", "");
-	}
-
-	return (0);
-}
-
-static inline int
-sysfs_create_dir(struct kobject *kobj)
-{
-
-	kobj->oidp = SYSCTL_ADD_NODE(NULL, SYSCTL_CHILDREN(kobj->parent->oidp),
-	    OID_AUTO, kobj->name, CTLFLAG_RD|CTLFLAG_MPSAFE, NULL, kobj->name);
-
-        return (0);
+	printk( "***** %s: not implemented\n", __func__ );
+	return;
 }
 
 static inline void
 sysfs_remove_dir(struct kobject *kobj)
 {
-
-	if (kobj->oidp == NULL)
-		return;
-	sysctl_remove_oid(kobj->oidp, 1, 1);
+	printk( "***** %s: not implemented\n", __func__ );
+	return;
 }
+
+static inline int
+sysfs_create_group(struct kobject *kobj, const struct attribute_group *grp)
+{
+	BUG_ON(!kobj || !kobj->sd);
+
+	struct inode *dir_sd;
+	int error = 0, i;
+	struct attribute *const* attr;
+
+	struct sysfs_buffer *buffer;
+	struct inode *inode;
+
+	if (grp->name) {
+		dir_sd = kfs_mkdirent(
+			kobj->sd,
+			grp->name,
+			NULL,
+			&kfs_default_fops,
+			0777 | S_IFDIR,
+			NULL,
+			0
+			);
+		if (error)
+			return error;
+	} else
+		dir_sd = kobj->sd;
+
+	for (i = 0, attr = grp->attrs; *attr && !error; i++, attr++) {
+		mode_t mode = 0;
+		if (grp->is_visible) {
+			mode = grp->is_visible(kobj, *attr, i);
+			if (!mode)
+				continue;
+		}
+
+		buffer = kzalloc(sizeof(struct sysfs_buffer), GFP_KERNEL);
+		if(NULL == buffer) {
+			error = -1;
+			break;
+		}
+		buffer->kobj = kobj;
+		if (buffer->kobj->ktype && buffer->kobj->ktype->sysfs_ops) {
+			buffer->ops = buffer->kobj->ktype->sysfs_ops;
+		} else {
+			WARN(1,KERN_ERR "missing sysfs attribute operations for"
+				"kobject: %s\n", kobject_name(kobj));
+		}
+		buffer->attr = (struct attribute *) (*attr);
+
+		inode = kfs_mkdirent(
+			dir_sd,
+			(*attr)->name,
+			NULL,
+			&sysfs_file_operations,
+			((*attr)->mode | mode) & ~S_IFMT,
+			buffer,
+			sizeof(struct sysfs_buffer)
+			);
+		if(NULL == inode) {
+			kfree(buffer);
+			error =  -1;
+			break;
+		}
+		error = 0;
+	}
+
+	return error;
+}
+
+
+
+
 
 #define sysfs_attr_init(attr) do {} while(0)
 

@@ -28,6 +28,7 @@
 #ifndef _ASM_PGTABLE_H_
 #define	_ASM_PGTABLE_H_
 
-typedef int	pgprot_t;
+#include <arch/page.h>
+
 
 #endif	/* _ASM_PGTABLE_H_ */

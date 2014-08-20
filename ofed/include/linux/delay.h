@@ -34,7 +34,7 @@
 static inline void
 linux_msleep(int ms)
 {
-	pause("lnxsleep", msecs_to_jiffies(ms));
+    __udelay(msecs * 1000);
 }
 
 #undef msleep

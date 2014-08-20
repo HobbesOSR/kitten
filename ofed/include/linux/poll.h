@@ -29,16 +29,8 @@
 #ifndef	_LINUX_POLL_H_
 #define	_LINUX_POLL_H_
 
-#include <sys/poll.h>
-#include <sys/fcntl.h>
+#include <lwk/poll.h>
 
-typedef struct poll_table_struct {
-} poll_table;
 
-static inline void
-poll_wait(struct file *filp, wait_queue_head_t *wait_address, poll_table *p)
-{
-	selrecord(curthread, &filp->f_selinfo);
-}
 
 #endif	/* _LINUX_POLL_H_ */

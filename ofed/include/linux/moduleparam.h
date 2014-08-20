@@ -29,201 +29,22 @@
 #define	_LINUX_MODULEPARAM_H_
 
 #include <linux/types.h>
+#include <lwk/params.h>
 
-/*
- * These are presently not hooked up to anything.  In linux the parameters
- * can be set when modules are loaded.  On FreeBSD these could be mapped
- * to kenv in the future.
- */
-struct kernel_param;
 
-typedef int (*param_set_fn)(const char *val, struct kernel_param *kp);
-typedef int (*param_get_fn)(char *buffer, struct kernel_param *kp);
 
-struct kernel_param {
-	const char	*name;
-	u16		perm;
-	u16		flags;
-	param_set_fn	set;
-	param_get_fn	get;
-	union { 
-		void	*arg;
-		struct kparam_string	*str;
-		struct kparam_array	*arr;
-	} un;
-};
 
-#define	KPARAM_ISBOOL	2
+#define	module_param_call(name, set, get, arg, perm)	
 
-struct kparam_string {
-	unsigned int maxlen;
-	char *string;
-};
+#define	module_param_named(name, var, type, mode)                    	\
+	DRIVER_PARAM_NAMED(name,value,type)
+#define	module_param(var, type, mode)	                          	\
+	DRIVER_PARAM(name,type)
 
-struct kparam_array
-{
-	unsigned int	max;
-	unsigned int	*num;
-	param_set_fn	set;
-	param_get_fn	get;
-	unsigned int	elemsize;
-	void 		*elem;
-};
-
-static inline void
-param_sysinit(struct kernel_param *param)
-{
-}
-
-#define	module_param_call(name, set, get, arg, perm)			\
-	static struct kernel_param __param_##name =			\
-	    { #name, perm, 0, set, get, { arg } };			\
-	SYSINIT(name##_param_sysinit, SI_SUB_DRIVERS, SI_ORDER_FIRST,	\
-	    param_sysinit, &__param_##name);
-
-#define	module_param_named(name, var, type, mode)			\
-	module_param_call(name, param_set_##type, param_get_##type, &var, mode)
-
-#define	module_param(var, type, mode)					\
-	module_param_named(var, var, type, mode)
-
-#define module_param_array(var, type, addr_argc, mode)                  \
-        module_param_named(var, var, type, mode)
+#define module_param_array(var, type, addr_argc, mode)                	\
+        DRIVER_PARAM_ARRAY(name,type,nump)
 
 #define	MODULE_PARM_DESC(name, desc)
 
-static inline int
-param_set_byte(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int
-param_get_byte(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int
-param_set_short(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_short(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int 
-param_set_ushort(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_ushort(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int 
-param_set_int(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_int(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int 
-param_set_uint(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_uint(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int 
-param_set_long(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_long(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int 
-param_set_ulong(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_ulong(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int 
-param_set_charp(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_charp(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-
-static inline int 
-param_set_bool(const char *val, struct kernel_param *kp)
-{
-
-	return 0;
-}
-
-static inline int 
-param_get_bool(char *buffer, struct kernel_param *kp)
-{
-
-	return 0;
-}
 
 #endif	/* _LINUX_MODULEPARAM_H_ */

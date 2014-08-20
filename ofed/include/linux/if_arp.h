@@ -27,6 +27,6 @@
  */
 #ifndef	_LINUX_IF_ARP_H_
 #define	_LINUX_IF_ARP_H_
-#include <sys/socket.h>
-#include <net/if_arp.h>
+#include <lwk/socket.h>
+#include <lwk/if_arp.h>
 #endif	/* _LINUX_IF_ARP_H_ */

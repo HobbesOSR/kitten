@@ -28,82 +28,19 @@
 #ifndef	_LINUX_SCHED_H_
 #define	_LINUX_SCHED_H_
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/proc.h>
-#include <sys/sched.h>
-#include <sys/sleepqueue.h>
-
-#define	MAX_SCHEDULE_TIMEOUT	LONG_MAX
-
-#define	TASK_RUNNING		0
-#define	TASK_INTERRUPTIBLE	1
-#define	TASK_UNINTERRUPTIBLE	2
-#define	TASK_DEAD		64
-#define	TASK_WAKEKILL		128
-#define	TASK_WAKING		256
-
-#define	TASK_SHOULD_STOP	1
-#define	TASK_STOPPED		2
-
-/*
- * A task_struct is only provided for those tasks created with kthread.
- * Using these routines with threads not started via kthread will cause
- * panics because no task_struct is allocated and td_retval[1] is
- * overwritten by syscalls which kernel threads will not make use of.
- */
-struct task_struct {
-	struct	thread *task_thread;
-	int	(*task_fn)(void *data);
-	void	*task_data;
-	int	task_ret;
-	int	state;
-	int	should_stop;
-};
-
-#define	current			((struct task_struct *)curthread->td_retval[1])
-#define	task_struct_get(x)	(struct task_struct *)(x)->td_retval[1]
-#define	task_struct_set(x, y)	(x)->td_retval[1] = (register_t)(y)
-
-#define	set_current_state(x)						\
-	atomic_store_rel_int((volatile int *)&current->state, (x))
-#define	__set_current_state(x)	current->state = (x)
+#include <lwk/sched.h>
+#include <lwk/task.h>
 
 
-#define	schedule()							\
-do {									\
-	void *c;							\
-									\
-	if (cold)							\
-		break;							\
-	c = curthread;							\
-	sleepq_lock(c);							\
-	if (current->state == TASK_INTERRUPTIBLE ||			\
-	    current->state == TASK_UNINTERRUPTIBLE) {			\
-		sleepq_add(c, NULL, "task", SLEEPQ_SLEEP, 0);		\
-		sleepq_wait(c, 0);					\
-	} else {							\
-		sleepq_release(c);					\
-		sched_relinquish(curthread);				\
-	}								\
-} while (0)
 
-#define	wake_up_process(x)						\
-do {									\
-	int wakeup_swapper;						\
-	void *c;							\
-									\
-	c = (x)->task_thread;						\
-	sleepq_lock(c);							\
-	(x)->state = TASK_RUNNING;					\
-	wakeup_swapper = sleepq_signal(c, SLEEPQ_SLEEP, 0, 0);		\
-	sleepq_release(c);						\
-	if (wakeup_swapper)						\
-		kick_proc0();						\
-} while (0)
+#define	wake_up_process(x) sched_wakeup_task((x), TASK_ALL )
 
-#define	cond_resched()	if (!cold)	sched_relinquish(curthread)
+static inline
+cond_resched(void)
+{
+    return 0;
+}	
 
-#define	sched_yield()	sched_relinquish(curthread)
+#define	sched_yield() schedule()
 
 #endif	/* _LINUX_SCHED_H_ */

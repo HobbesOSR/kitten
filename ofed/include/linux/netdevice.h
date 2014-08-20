@@ -30,12 +30,17 @@
 
 #include <linux/types.h>
 
-#include <sys/socket.h>
 
+/*
 #include <net/if_types.h>
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_dl.h>
+*/
+
+#include <lwip/netif.h>
+#include <lwip/igmp.h>
+
 
 #include <linux/completion.h>
 #include <linux/device.h>
@@ -51,22 +56,44 @@ extern struct net init_net;
 
 #define	MAX_ADDR_LEN		20
 
-#define	net_device	ifnet
+#define	net_device	netif
 
-#define	dev_get_by_index(n, idx)	ifnet_byindex_ref((idx))
-#define	dev_hold(d)	if_ref((d))
-#define	dev_put(d)	if_rele((d))
 
-#define	netif_running(dev)	!!((dev)->if_drv_flags & IFF_DRV_RUNNING)
-#define	netif_oper_up(dev)	!!((dev)->if_flags & IFF_UP)
+#define	dev_hold(d)	
+#define	dev_put(d)	
+
+#define	netif_running(dev)	netif_is_up(dev)
+#define	netif_oper_up(dev)	netif_is_link_up(dev)
 #define	netif_carrier_ok(dev)	netif_running(dev)
+
+
+
+/* 
+ * Note that net_device is renamed to netif above 
+ */
+static inline struct net_device *
+dev_get_by_index(struct net *net, int ifindex)
+{
+    struct netif *netif;
+    
+    for(netif = netif_list; netif != NULL; netif = netif->next) {
+	if (ifindex == netif->num ) {
+	    LWIP_DEBUGF(NETIF_DEBUG, ("netif_find: found %c%c\n", netif->name[0], netif->name[1]));
+	    return netif;
+	}
+    }
+    
+    return NULL;
+}
+
 
 static inline void *
 netdev_priv(const struct net_device *dev)
 {
-	return (dev->if_softc);
+	return (dev->state);
 }
 
+/*
 static inline void
 _handle_ifnet_link_event(void *arg, struct ifnet *ifp, int linkstate)
 {
@@ -97,16 +124,24 @@ _handle_ifnet_departure_event(void *arg, struct ifnet *ifp)
 	nb->notifier_call(nb, NETDEV_UNREGISTER, ifp);
 }
 
+*/
 static inline int
 register_netdevice_notifier(struct notifier_block *nb)
 {
+    /* LWIP Correlaries
+      netif_set_link_callback();
+      netif_set_status_callback();
+      netif_set_remove_callback();
+    */
 
+    /*
 	nb->tags[NETDEV_UP] = EVENTHANDLER_REGISTER(
 	    ifnet_link_event, _handle_ifnet_link_event, nb, 0);
 	nb->tags[NETDEV_REGISTER] = EVENTHANDLER_REGISTER(
 	    ifnet_arrival_event, _handle_ifnet_arrival_event, nb, 0);
 	nb->tags[NETDEV_UNREGISTER] = EVENTHANDLER_REGISTER(
 	    ifnet_departure_event, _handle_ifnet_departure_event, nb, 0);
+    */
 	return (0);
 }
 
@@ -114,46 +149,67 @@ static inline int
 unregister_netdevice_notifier(struct notifier_block *nb)
 {
 
+    /*
         EVENTHANDLER_DEREGISTER(ifnet_link_event, nb->tags[NETDEV_UP]);
         EVENTHANDLER_DEREGISTER(ifnet_arrival_event, nb->tags[NETDEV_REGISTER]);
         EVENTHANDLER_DEREGISTER(ifnet_departure_event,
 	    nb->tags[NETDEV_UNREGISTER]);
+    */
 	return (0);
 }
 
 #define	rtnl_lock()
 #define	rtnl_unlock()
 
+
+/** JRL:
+ * Do we need to reverse the byte order for the addr's??
+ */
+
 static inline int
 dev_mc_delete(struct net_device *dev, void *addr, int alen, int all)
 {
-	struct sockaddr_dl sdl;
+	ip_addr_t mc_addr = {0};
+	err_t     err = 0;
 
-	if (alen > sizeof(sdl.sdl_data))
+	if (alen > sizeof(mc_addr)) {
+		printk("Invalid Address Size in %s()\n", __func__);
 		return (-EINVAL);
-	memset(&sdl, 0, sizeof(sdl));
-	sdl.sdl_len = sizeof(sdl);
-	sdl.sdl_family = AF_LINK;
-	sdl.sdl_alen = alen;
-	memcpy(&sdl.sdl_data, addr, alen);
+	}
 
-	return -if_delmulti(dev, (struct sockaddr *)&sdl);
+	memset(&mc_addr, 0,    sizeof(mc_addr));
+	memcpy(&mc_addr, addr, sizeof(mc_addr));
+
+	err = igmp_leavegroup(&(dev->ip_addr), &mc_addr);
+
+	if (err != ERR_OK) {
+		printk("Error leaving Multicast group in %s()\n", __func__);
+		return (-EINVAL);
+	}
+	return 0;
 }
 
 static inline int
 dev_mc_add(struct net_device *dev, void *addr, int alen, int newonly)
 {
-	struct sockaddr_dl sdl;
+	ip_addr_t mc_addr = {0};
+	err_t     err = 0;
 
-	if (alen > sizeof(sdl.sdl_data))
+	if (alen > sizeof(mc_addr)) {
+		printk("Invalid Address Size in %s()\n", __func__);
 		return (-EINVAL);
-	memset(&sdl, 0, sizeof(sdl));
-	sdl.sdl_len = sizeof(sdl);
-	sdl.sdl_family = AF_LINK;
-	sdl.sdl_alen = alen;
-	memcpy(&sdl.sdl_data, addr, alen);
+	}
 
-	return -if_addmulti(dev, (struct sockaddr *)&sdl, NULL);
+	memset(&mc_addr, 0,    sizeof(mc_addr));
+	memcpy(&mc_addr, addr, sizeof(mc_addr));
+
+	err = igmp_joingroup(&(dev->ip_addr), &mc_addr);
+
+	if (err != ERR_OK) {
+		printk("Error joining Multicast group in %s()\n", __func__);
+		return (-EINVAL);
+	}
+	return 0;
 }
 
 #endif	/* _LINUX_NETDEVICE_H_ */
