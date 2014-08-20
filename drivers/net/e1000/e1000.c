@@ -682,7 +682,7 @@ pci_driver_t e1000_driver = {
 int
 e1000_init(void)
 {
-	if (!pci_register_driver(&e1000_driver)) {
+	if (pci_register_driver(&e1000_driver) != 0) {
 		printk(KERN_WARNING "Failed to register e1000 PCI driver.\n");
 		return -1;
 	}
