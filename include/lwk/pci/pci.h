@@ -43,6 +43,35 @@ typedef struct pci_dev {
 } pci_dev_t;
 
 
+/**
+ * Describes a device that can be handled by a PCI driver.
+ *
+ * When a PCI driver registers with the LWK, it provides an array of
+ * pci_dev_id_t structures specifying which PCI devices it can handle.
+ */
+typedef struct pci_dev_id {
+	uint32_t		vendor_id;
+	uint32_t		device_id;
+	uint32_t		subvendor_id;
+	uint32_t		subdevice_id;
+	uint32_t		class_mask;
+	uintptr_t		driver_data;
+} pci_dev_id_t;
+
+
+/** Describes a PCI driver.
+ *
+ * One of these structures exist for each PCI device driver that has
+ * registered itself.
+ */
+typedef struct pci_driver {
+	struct list_head	next;		//!< linkage for the global list of PCI drivers
+	char *			name;		//!< human readable name of the device
+	const pci_dev_id_t *	id_table;	//!< array of PCI device IDs the driver can handle
+	int (*probe)(pci_dev_t *dev, const pci_dev_id_t *id);
+} pci_driver_t;
+
+
 struct msix_entry {
   u16 vector;
   u16 entry;
@@ -76,6 +105,13 @@ struct msi_msg {
 
 /** Initializes the PCI subsystem, called once at boot. */
 void init_pci(void);
+
+
+/** Registers a PCI driver with the LWK. */
+int pci_register_driver(pci_driver_t *driver);
+
+/** Finds a PCI driver suitable for the PCI device passed in. */
+pci_driver_t *pci_find_driver(const pci_dev_t *dev, const pci_dev_id_t **idp);
 
 
 /** Searches for a PCI device matching the input vendor ID and device ID. */

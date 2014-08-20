@@ -33,7 +33,12 @@
 #include <lwk/pci/msidef.h>
 #include <lwk/cpuinfo.h>
 #include <lwk/resource.h>
+#include <lwk/spinlock.h>
 #include <arch/io.h>
+
+
+/** Lock that protects the entire PCI subsystem. */
+static DEFINE_SPINLOCK(pci_lock);
 
 
 /** The root PCI bus.
@@ -55,6 +60,16 @@ pci_bus_t *pci_root;
  * video cards.
  */
 LIST_HEAD(pci_devices);
+
+
+/** A list of all PCI device drivers.
+ *
+ * This is a global list of all PCI device drivers that
+ * have registered with the LWK. When a new PCI device is
+ * discovered, this list is searched to see if there is
+ * a suitable driver available.
+ */
+static LIST_HEAD(pci_drivers);
 
 
 static pci_dev_t *
@@ -568,6 +583,60 @@ int pci_msix_setup(
 
     return 0;
 }
+
+
+/** Registers a PCI device driver with the LWK. */
+int
+pci_register_driver(pci_driver_t *driver)
+{
+	pci_dev_t *dev;
+	pci_dev_id_t const *id;
+
+	spin_lock(&pci_lock);
+
+	// Register the driver
+	list_add(&driver->next, &pci_drivers);
+
+	// Look for devices that the driver can handle
+	list_for_each_entry(dev, &pci_devices, next) {
+		if ((driver = pci_find_driver(dev, &id)) != NULL) {
+			// Found a match. Call the drivers probe() function.
+			spin_unlock(&pci_lock);	
+			printk(KERN_DEBUG "pci_register_driver found match, calling probe.\n");
+			driver->probe(dev, id);
+			return 0;
+		}
+	}
+	
+	spin_unlock(&pci_lock);	
+	return 0;
+}
+
+
+/** Finds a PCI driver suitable for the PCI device passed in. */
+pci_driver_t *
+pci_find_driver(const pci_dev_t *dev, const pci_dev_id_t **idp)
+{
+	pci_dev_id_t const * id;
+	pci_driver_t *driver;
+
+        uint16_t vendor_id = dev->cfg.vendor_id;
+        uint64_t device_id = dev->cfg.device_id;
+
+	spin_lock(&pci_lock);
+	list_for_each_entry(driver, &pci_drivers, next) {
+		for (id = driver->id_table; id->vendor_id != 0; id++) {
+			if (vendor_id == id->vendor_id && device_id == id->device_id) {
+				*idp = id;
+				spin_unlock(&pci_lock);
+				return driver;
+			}
+                }
+	}
+	spin_unlock(&pci_lock);
+	return NULL;
+}
+
 
 void
 init_pci(void)

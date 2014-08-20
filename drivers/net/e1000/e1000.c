@@ -621,15 +621,16 @@ e1000_hw_init(struct netif *netif)
 }
 
 
+// Initialize a new e1000 PCI device.
+// Currently this only supports being called once.
+// In other words, only one e1000 device is supported.
+// TODO: modify this to support multiple e1000 devices.
 int
-e1000_init(void)
+e1000_probe(pci_dev_t *pci_dev, const pci_dev_id_t *id)
 {
+	// TODO: change this to allocate a new e1000_state struct for each call.
 	e1000_device_t *dev = &e1000_state;
 	
-	// First thing, make sure there is an e1000 device present
-	pci_dev_t *pci_dev;
-	if ((pci_dev = pci_lookup_device(0x8086, 0x100f)) == NULL)
-		return -1;
 	//pcicfg_hdr_print(&pci_dev->cfg);
 
 	// Remember our PCI info
@@ -653,6 +654,38 @@ e1000_init(void)
 	// Tell Lightweight IP (lwip) about the new interface.
 	// The e1000_hw_init() function passed in is called immediately by netif_add().
 	netif_add(&e1000_netif, &dev->ip, &dev->nm, &dev->gw, dev, e1000_hw_init, tcpip_input);
+
+	return 0;
+}
+
+
+// Table of PCI device IDs supported by this driver.
+// Currently we only support one.
+// This list must be NULL terminated.
+static const pci_dev_id_t e1000_id_table[] = {
+        { 0x8086, 0x100f, 0, 0, 0, 0 },
+        { 0, }
+};
+
+
+// PCI driver structure representing us.
+// This gets registered with the LWK PCI subsystem.
+pci_driver_t e1000_driver = {
+	.name     = "e1000",
+	.id_table = e1000_id_table,
+	.probe    = e1000_probe,
+};
+
+
+// This is called when the driver is first loaded, i.e., at kernel boot.
+// This registers us to handle any e1000 devices that are found.
+int
+e1000_init(void)
+{
+	if (!pci_register_driver(&e1000_driver)) {
+		printk(KERN_WARNING "Failed to register e1000 PCI driver.\n");
+		return -1;
+	}
 
 	return 0;
 }
