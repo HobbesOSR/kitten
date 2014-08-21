@@ -469,9 +469,10 @@ palacios_mutex_unlock_irqrestore(
 }
 
 static void
-palacios_start_thread(struct task_struct * task){
+palacios_start_thread(void * tsk){
 
 	// Start the kernel thread executing on the target CPU's run queue
+	struct task_struct *task = (struct task_struct *)tsk;
 	sched_add_task(task);
 }
 
