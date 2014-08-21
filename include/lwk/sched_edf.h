@@ -70,12 +70,12 @@ struct edf_sched_config {
  */
 
 struct edf_rq {
-	int cpu_u;					// CPU utilization (<= cpu_percent)
-	struct rb_root tasks_tree;	                // Task ready to run Red-Black Tree
-	struct rb_root resched_tree;	                // Tasks to be rescheduled Red-Black Tree
-	struct edf_sched_config edf_config;	        // Scheduling config structure
-	struct task_struct *curr_task;			// Current running CPU
-	time_us start_time;				// Time at which first core started running in this runqueue
+	int cpu_u;				// CPU utilization (<= cpu_percent)
+	struct rb_root tasks_tree;		// Task ready to run Red-Black Tree
+	struct rb_root resched_tree;	        // Tasks to be rescheduled Red-Black Tree
+	struct edf_sched_config edf_config;	// Scheduling config structure
+	struct task_struct *curr_task;		// Current running CPU
+	time_us start_time;			// Time at which first core started running in this runqueue
 };
 
 /*

@@ -24,6 +24,7 @@
 #define task_container_of(rb_node, member) container_of(container_of(rb_node, struct task_edf, member), struct task_struct, edf)
 #define READY_QUEUE	0
 #define RESCHED_QUEUE	1
+#define MIN_EDF_QUANTUM 100000 // 100 usec
 
 /*
  * Interaction with the round-robin scheduler:
@@ -194,6 +195,7 @@ set_wakeup_task(struct edf_rq *runqueue, struct task_struct *task){
 
 	return 0;
 }
+
 
 
 
@@ -502,6 +504,50 @@ pick_next_task(struct edf_rq *runqueue){
 
 }
 
+static ktime_t
+get_quantum_period(struct edf_rq * runqueue){
+
+	/* set quantum timer for closest start period of tasks that have consumed their
+	 * slices (tasks in resched_tree rb_tree) and tasks which still have not consumed
+	 * their slices (tasks in tasks_tree rb_tree)
+	 * */
+
+	ktime_t inttime = 0;
+	struct rb_node *node_ready = rb_first(&runqueue->tasks_tree);
+	struct rb_node *node_resched = rb_first(&runqueue->resched_tree);
+	struct task_struct * task_ready = NULL;
+	struct task_struct * task_resched = NULL;
+
+	if(node_ready && node_resched){
+
+		task_ready = task_container_of(node_ready, node);
+		task_resched = task_container_of(node_resched, resched_node);
+
+		if(task_ready->edf.curr_deadline < task_resched->edf.curr_deadline)
+			inttime = task_ready->edf.curr_deadline;
+		else
+			inttime = task_resched->edf.curr_deadline;
+	}
+	else if (node_ready){
+
+		task_ready = task_container_of(node_ready, node);
+		inttime = task_ready->edf.curr_deadline;
+	}
+	else if (node_resched){
+
+		task_resched = task_container_of(node_resched, resched_node);
+		inttime = task_resched->edf.curr_deadline;
+	}
+
+	const ktime_t now_us = get_time()/1000ul;
+
+	/* Deadline already passed fire the timer soon*/
+	if( inttime && (inttime < now_us)){
+		inttime = now_us + MIN_EDF_QUANTUM;
+	}
+
+	return (inttime * 1000ul);
+}
 
 /*
  * edf_schedule: Pick next task to be scheduled and wake it up
@@ -515,14 +561,36 @@ edf_schedule(struct edf_rq *runq, struct list_head *migrate_list, ktime_t *intti
 
 	task = pick_next_task(runq); /* Pick next task to schedule */
 
-        /* Set the timer to finish this quantum; note that the EDF timer
+        const uint64_t now = get_time();
+
+	/* Set the timer to finish this quantum; note that the EDF timer
          * could be set and expire before this if there's an upcoming
          * EDF period, but no current EDF task with slice available. */
-	if (task && inttime) {
-                const uint64_t now = get_time();
-		*inttime = (now + task->edf.slice);
-	}
 
+	if(inttime){
+		if (task) {
+			uint64_t remaining = task->edf.slice - task->edf.used_time;
+			*inttime = (now + (remaining * 1000ul));
+		}
+
+		/* Calculate the quantum to fire the timer at the closest start of period*/
+		ktime_t inttime_period = get_quantum_period(runq);
+
+		if (inttime_period){ /*There is at least a task in one of the queues*/
+			if (!task){
+#ifdef CONFIG_SCHED_EDF_RR
+				/*If not task ready, tasks are RR scheduled, so we need small quantums*/
+				*inttime = (now + MIN_EDF_QUANTUM);
+#endif
+			}
+
+			if (*inttime){
+				if (inttime_period < *inttime)
+					*inttime = inttime_period;
+			}else
+				*inttime = inttime_period;
+		}
+	}
 	return task;
 }
 
@@ -534,6 +602,7 @@ static int adjust_slice(struct edf_rq * runq,struct task_struct *task){
 	uint64_t host_time = get_curr_host_time();
 	uint64_t used_time =  host_time - task->edf.last_wakeup;
 	int edf_scheduled = 1;
+	uint64_t old_used_t = task->edf.used_time;
 	task->edf.used_time += used_time;
 
 	/* If slice is consumed add the task to the rr_list */
@@ -546,8 +615,10 @@ static int adjust_slice(struct edf_rq * runq,struct task_struct *task){
 	deactivate_task(task,runq);
 	activate_task(task,runq);
 #else
-	delete_task_edf(task, runq, READY_QUEUE);
-	insert_task_edf(task, runq, RESCHED_QUEUE);
+	if (old_used_t < task->edf.slice){ // First time the slice is exceed
+		delete_task_edf(task, runq, READY_QUEUE);
+		insert_task_edf(task, runq, RESCHED_QUEUE);
+	}
 #endif
 	}
 	return edf_scheduled;
