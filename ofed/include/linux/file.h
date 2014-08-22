@@ -38,12 +38,16 @@
 
 
 #include <linux/fs.h>
+#include <lwk/kfs.h>
 
 struct linux_file;
 
-#undef file
 
-extern struct file_operations linuxfileops;
+
+extern struct kfs_fops linux_shim_fops;
+
+/* Blow away any abstracted redefines (fs.h) */
+#undef file
 
 
 static inline struct linux_file *
@@ -51,11 +55,9 @@ linux_fget(unsigned int fd)
 {
 	struct file *file;
 
-	file = fget(fd);
-
-	if (file == NULL) {
-		return (NULL);
-	}
+	file = fdTableFile( current->fdTable, fd );
+	int __attribute__((unused)) count;
+	count = atomic_add_return( 1, &file->f_count );
 
 	return (struct linux_file *)file->private_data;
 }
@@ -63,12 +65,20 @@ linux_fget(unsigned int fd)
 static inline void
 linux_fput(struct linux_file *filp)
 {
+	struct file *file;
+
 	if (filp->_file == NULL) {
 		kfree(filp);
 		return;
 	}
 
-	fput(filp->_file);
+	file = filp->_file;
+
+	if ( atomic_dec_and_test( &file->f_count ) ) {
+	    //kmem_free(file);
+	    // kfree(filp);
+	}    
+
 }
 
 
@@ -86,7 +96,7 @@ linux_fd_install(unsigned int fd, struct linux_file *filp)
 	    memset(file, 0, sizeof(*file));
 
 	    file->f_mode       = filp->f_mode;
-	    file->f_op         = linuxfileops;
+	    file->f_op         = &linux_shim_fops;
 	    file->private_data = filp;
 	    atomic_set(&file->f_count, 1);
 	}
@@ -98,7 +108,7 @@ linux_fd_install(unsigned int fd, struct linux_file *filp)
 
 
 static inline struct linux_file *
-_alloc_file(int mode, const struct file_operations *fops)
+_alloc_file(int mode, struct file_operations *fops)
 {
 	struct linux_file *filp;
 
@@ -108,14 +118,13 @@ _alloc_file(int mode, const struct file_operations *fops)
 		return (NULL);
 	}
 
-	filp->f_op   = fops;
+	filp->fops   = fops;
 	filp->f_mode = mode;
 
 	return filp;
 }
 
 #define	alloc_file(mnt, root, mode, fops)	_alloc_file((mode), (fops))
-
 
 #define	file	   linux_file
 #define	fget	   linux_fget

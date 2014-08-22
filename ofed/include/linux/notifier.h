@@ -39,7 +39,6 @@ struct notifier_block {
 	int (*notifier_call)(struct notifier_block *, unsigned long, void *);
 	struct notifier_block	*next;
 	int			priority;
-	eventhandler_tag	tags[_NOTIFY_COUNT];
 };
 
 /* Values must be less than NOTIFY_COUNT */

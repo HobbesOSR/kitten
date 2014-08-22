@@ -1,0 +1,14 @@
+
+menu "OFED"
+
+config OFED_COMPAT
+        bool "OFED Compatibility Layer"
+        ---help---
+          This compiles the compatibility layer files without the infiniband drivers
+
+
+#source "ofed/drivers/infiniband/Kconfig"
+
+endmenu
+
+

@@ -31,6 +31,7 @@
 
 #include <lwk/spinlock.h>
 
+#define NBBY            8               /* number of bits per byte */
 
 
 #define	IDR_BITS	5

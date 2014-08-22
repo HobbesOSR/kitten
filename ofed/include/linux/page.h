@@ -32,7 +32,7 @@
 
 
 
-#include <lwk/atomic.h>
+#include <arch/atomic.h>
 #include <arch/pgtable.h>
 
 
@@ -43,7 +43,6 @@ struct page {
     int    user;
 };
 
-#define	virt_to_page(x)	PHYS_TO_VM_PAGE(vtophys((x)))
 
 #define	clear_page(page)		memset((page), 0, PAGE_SIZE)
 

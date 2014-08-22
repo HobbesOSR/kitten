@@ -32,7 +32,7 @@
 #include <lwk/types.h>
 #include <arch/bitops.h>
 #include <lwk/bitops.h>
-#include <arch/bitops/find.h>
+#include <arch/bitops.h>
 
 #include <lwk/bitmap.h>
 

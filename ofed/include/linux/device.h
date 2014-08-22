@@ -46,6 +46,7 @@
 */
 
 
+struct device;
 
 struct class {
 	const char	*name;
@@ -340,7 +341,7 @@ class_create(struct module *owner, const char *name)
 	struct class *class;
 	int error;
 
-	class = kzalloc(sizeof(*class), M_WAITOK);
+	class = kzalloc(sizeof(*class), GFP_KERNEL);
 	class->owner = owner;
 	class->name= name;
 	class->class_release = class_kfree;

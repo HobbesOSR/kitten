@@ -35,7 +35,7 @@
 
 #define	wake_up_process(x) sched_wakeup_task((x), TASK_ALL )
 
-static inline
+static inline int
 cond_resched(void)
 {
     return 0;

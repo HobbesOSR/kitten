@@ -38,13 +38,7 @@
 
 #define	PAGE_ALIGN(x)	ALIGN(x, PAGE_SIZE)
 
-struct vm_area_struct {
-	vm_offset_t	vm_start;
-	vm_offset_t	vm_end;
-	vm_offset_t	vm_pgoff;
-	vm_paddr_t	vm_pfn;		/* PFN For mmap. */
-	vm_memattr_t	vm_page_prot;
-};
+
 
 
 
@@ -61,7 +55,7 @@ lowmem_page_address(struct page *page)
 static inline int
 io_remap_pfn_range(struct vm_area_struct *vma,
     unsigned long addr, unsigned long pfn, unsigned long size,
-    vm_memattr_t prot)
+    pgprot_t prot)
 {
     paddr_t phys_addr = PFN_PHYS(pfn);
     vaddr_t virt_addr = addr;
@@ -72,7 +66,6 @@ io_remap_pfn_range(struct vm_area_struct *vma,
 	panic("In remap_pfn_range(): __aspace_map_pmem() failed (status=%d).", status);
 
     vma->vm_page_prot = prot;
-    vma->vm_pfn = pfn;    
 
     return status;
 }

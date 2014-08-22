@@ -28,34 +28,16 @@
 #ifndef	_LINUX_TYPES_H_
 #define	_LINUX_TYPES_H_
 
-/*
-#include <sys/cdefs.h>
-#include <sys/types.h>
-*/
+
 #include <linux/compiler.h>
 #include <asm/types.h>
 
-typedef __u16 __le16;
-typedef __u16 __be16;
-typedef __u32 __le32;
-typedef __u32 __be32;
-typedef __u64 __le64;
-typedef __u64 __be64;
-#ifndef __bool_true_false_are_defined
-typedef _Bool bool;
-#define	true	TRUE
-#define	false	FALSE
-#endif
+#include <lwk/types.h>
+#include <lwk/linux_compat.h>
+
 
 typedef u64 phys_addr_t;
 
 typedef unsigned long kernel_ulong_t;
-typedef unsigned int    uint;
-typedef unsigned gfp_t;
-typedef uint64_t loff_t;
-typedef vm_paddr_t resource_size_t;
-
-#define	DECLARE_BITMAP(n, bits)						\
-	unsigned long n[howmany(bits, sizeof(long) * 8)]
 
 #endif	/* _LINUX_TYPES_H_ */

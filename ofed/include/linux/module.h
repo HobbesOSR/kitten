@@ -33,22 +33,19 @@
 
 #define MODULE_AUTHOR(name)
 #define MODULE_DESCRIPTION(name)
-#define MODULE_LICENSE(name)
+
 #define	MODULE_VERSION(name)
 
 #define	THIS_MODULE	((struct module *)0)
-
-#define	EXPORT_SYMBOL(name)
-#define	EXPORT_SYMBOL_GPL(name)
-
 
 
 #define module_init(init_func) DRIVER_INIT("linux", (init_func))
 #define module_exit(exit_func) DRIVER_EXIT((exit_func))
 
+struct module;
+static inline void module_put(struct module *module) { }
 
 #define	module_get(module)
-#define	module_put(module)
 #define	try_module_get(module)	1
 
 #endif	/* _LINUX_MODULE_H_ */

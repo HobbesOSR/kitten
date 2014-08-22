@@ -40,12 +40,12 @@
 
 #define	INIT_DEFERRABLE_WORK	INIT_DELAYED_WORK_DEFERRABLE
 
-
+extern struct workqueue_struct *keventd_wq;
 
 static inline bool schedule_delayed_work(struct delayed_work *dwork,
                                          unsigned long delay)
 {
-        return queue_delayed_work(&wq, dwork, delay);
+        return queue_delayed_work(keventd_wq, dwork, delay);
 }
 
 

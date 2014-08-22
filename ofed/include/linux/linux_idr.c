@@ -256,7 +256,7 @@ idr_get(struct idr *idr)
 		il->ary[0] = NULL;
 		return (il);
 	}
-	il = kmem_malloc(sizeof(*il));
+	il = kmem_alloc(sizeof(*il));
 	bitmap_fill(&il->bitmap, IDR_SIZE);
 	return (il);
 }
@@ -301,7 +301,7 @@ idr_get_new(struct idr *idr, void *ptr, int *idp)
 	 */
 	for (layer = idr->layers - 1;; layer--) {
 		stack[layer] = il;
-		idx = ffsl(il->bitmap);
+		idx = ffs64(il->bitmap);
 		if (idx == 0)
 			panic("idr_get_new: Invalid leaf state (%p, %p)\n",
 			    idr, il);

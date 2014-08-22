@@ -31,9 +31,6 @@
 #include <asm/types.h>
 
 
-#define	__LITTLE_ENDIAN
-
-
 #include <lwk/byteorder/generic.h>
 #include <lwk/byteorder/swab.h>
 

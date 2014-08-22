@@ -1,6 +1,5 @@
 config INFINIBAND_IPOIB
-	tristate "IP-over-InfiniBand"
-	select INET_LRO
+	bool "IP-over-InfiniBand"
 	---help---
 	  Support for the IP-over-InfiniBand protocol (IPoIB). This
 	  transports IP packets over InfiniBand so you can use your IB

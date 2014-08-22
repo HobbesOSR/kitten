@@ -32,6 +32,8 @@
 
 #include <linux/types.h>
 #include <linux/gfp.h>
+#include <lwk/kernel.h>
+#include <lwk/cpuinfo.h>
 
 #define ZERO_SIZE_PTR ((void *)16)
 
@@ -129,26 +131,13 @@ struct kmem_cache {
 	char name[16];          /* name of the cache, useful for debugging */
 };
 
-#define	SLAB_HWCACHE_ALIGN	0x0001
+#define SLAB_HWCACHE_ALIGN      0x00002000UL    /* Align objs on cache lines */
+#define SLAB_CACHE_DMA          0x00004000UL    /* Use GFP_DMA memory */
+#define SLAB_PANIC              0x00040000UL    /* Panic if kmem_cache_create() fails */
+	
 
 
-static inline struct kmem_cache *
-kmem_cache_create(char *name, size_t size, size_t align, u_long flags,
-		  void (*ctor)(void *))
-{
-	struct kmem_cache *c;
 
-	c = malloc(sizeof(*c), M_KMALLOC, M_WAITOK);
-	if (align)
-		align--;
-	if (flags & SLAB_HWCACHE_ALIGN)
-		align = UMA_ALIGN_CACHE;
-	c->cache_zone = uma_zcreate(name, size, ctor ? kmem_ctor : NULL,
-				    NULL, NULL, NULL, align, 0);
-	c->cache_ctor = ctor;
-
-	return c;
-}
 
 
 

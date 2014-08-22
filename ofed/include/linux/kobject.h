@@ -32,9 +32,9 @@
 #include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/slab.h>
+#include <linux/sysfs.h>
 
 struct kobject;
-struct sysctl_oid;
 
 struct kobj_type {
 	void (*release)(struct kobject *kobj);
@@ -50,7 +50,8 @@ struct kobject {
 	struct kref		kref;
 	struct kobj_type	*ktype;
 	struct list_head	entry;
-	struct sysctl_oid	*oidp;
+	struct sysfs_dirent     *sd;
+	//	struct sysctl_oid	*oidp;
 };
 
 static inline void
@@ -60,7 +61,7 @@ kobject_init(struct kobject *kobj, struct kobj_type *ktype)
 	kref_init(&kobj->kref);
 	INIT_LIST_HEAD(&kobj->entry);
 	kobj->ktype = ktype;
-	kobj->oidp = NULL;
+	kobj->sd = NULL;
 }
 
 static inline void kobject_put(struct kobject *kobj);
@@ -94,10 +95,12 @@ kobject_set_name_vargs(struct kobject *kobj, const char *fmt, va_list args)
 	if (old && !fmt)
 		return 0;
 
-	name = kzalloc(MAXPATHLEN, GFP_KERNEL);
-	if (!name)
+	name = kvasprintf(0, fmt, args);
+	if (!name) {
 		return -ENOMEM;
-	vsnprintf(name, MAXPATHLEN, fmt, args);
+	}
+
+
 	kobj->name = name;
 	kfree(old);
 	for (; *name != '\0'; name++)

@@ -31,6 +31,7 @@
 #include <linux/types.h>
 
 #include <lwk/timer.h>
+#include <lwk/smp.h>
 
 
 #define timer_list timer
@@ -64,6 +65,26 @@ static inline void setup_timer(struct timer_list * timer,
 	timer->data = data;
 	init_timer(timer);
 }
+
+
+static inline int
+del_timer( struct timer_list * timer )
+{
+	int ret = 0;
+	if ( timer_pending(timer) ) {
+		if ( ( ret = timer_del(timer) ) ) {
+			list_head_init(&timer->link);
+		}
+	}
+	return ret;
+}
+
+static inline int
+del_timer_sync( struct timer_list * timer )
+{
+	return del_timer(timer);
+}
+
 
 
 int
@@ -115,24 +136,6 @@ static inline void add_timer(struct timer_list *timer)
 {
 	BUG_ON(timer_pending(timer));
 	__mod_timer(timer, timer->expires);
-}
-
-static inline int
-del_timer( struct timer_list * timer )
-{
-	int ret = 0;
-	if ( timer_pending(timer) ) {
-		if ( ( ret = timer_del(timer) ) ) {
-			list_head_init(&timer->link);
-		}
-	}
-	return ret;
-}
-
-static inline int
-del_timer_sync( struct timer_list * timer )
-{
-	return del_timer(timer);
 }
 
 

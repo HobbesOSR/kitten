@@ -1,7 +1,5 @@
-menu "OFED"
-
 config INFINIBAND
-	tristate "InfiniBand support"
+	bool "InfiniBand support"
 	---help---
 	  Core support for InfiniBand (IB).  Make sure to also select
 	  any protocols you wish to use as well as drivers for your
@@ -9,7 +7,7 @@ config INFINIBAND
 
 
 config INFINIBAND_USER_MAD
-	tristate "InfiniBand userspace MAD support"
+	bool "InfiniBand userspace MAD support"
 	depends on INFINIBAND
 	---help---
 	  Userspace InfiniBand Management Datagram (MAD) support.  This
@@ -18,7 +16,7 @@ config INFINIBAND_USER_MAD
 	  need libibumad from <http://www.openib.org>.
 
 config INFINIBAND_USER_ACCESS
-	tristate "InfiniBand userspace access (verbs and CM)"
+	bool "InfiniBand userspace access (verbs and CM)"
 	---help---
 	  Userspace InfiniBand access support.  This enables the
 	  kernel side of userspace verbs and the userspace
@@ -30,12 +28,11 @@ config INFINIBAND_USER_ACCESS
 
 config INFINIBAND_USER_MEM
 	bool
-	depends on INFINIBAND_USER_ACCESS != n
+	depends on INFINIBAND_USER_ACCESS
 	default y
 
 config INFINIBAND_ADDR_TRANS
 	bool
-	depends on !(INFINIBAND = y && IPV6 = m)
 	default y
 
 source "ofed/drivers/infiniband/hw/mthca/Kconfig"
@@ -46,6 +43,4 @@ source "ofed/drivers/infiniband/ulp/ipoib/Kconfig"
 #source "ofed/drivers/infiniband/ulp/sdp/Kconfig"
 
 source "ofed/drivers/infiniband/util/Kconfig"
-
-endmenu
 

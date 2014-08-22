@@ -54,7 +54,7 @@ page_address(struct page *page)
     return (void *)page->virtual;
 }
 
-static inline unsigned long
+static inline struct page *
 alloc_pages(gfp_t gfp_mask, int order)
 {
     struct page * page = kmem_alloc(sizeof(struct page));
@@ -87,7 +87,7 @@ free_page(unsigned long addr)
 
 	if (addr == 0)
 		return;
-	kmem_free_pages((void *)addr, 0)
+	kmem_free_pages((void *)addr, 0);
 }
 
 

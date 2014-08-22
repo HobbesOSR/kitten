@@ -30,6 +30,8 @@
 
 #include <lwk/kfs.h>
 #include <lwk/stat.h>
+#include <lwk/dev.h>
+//#include <arch/current.h>
 
 #include <linux/types.h>
 #include <linux/wait.h>
@@ -57,21 +59,31 @@ struct dentry {
 	struct inode	*d_inode;
 };
 
+/* 
+ * FreeBSD calls to handle threads blocking on poll...
+ *  We're just going to no-op them for now
+ */ 
+struct selinfo {
+};
+#define selwakeup(selinfo) 
 
-struct lnx_file_operations;
 
+/* The definitions are identical */
+#define file_operations kfs_fops
 
 struct linux_file {
 	struct file	*_file;
-	const struct lnx_file_operations	*f_op;
+	struct file_operations * fops;
 	void 		*private_data;
 	int		f_flags;
 	int		f_mode;	/* Just starting mode. */
+
 	struct dentry	*f_dentry;
-	struct dentry	f_dentry_store;
+	//	struct dentry	f_dentry_store;
+
 	struct selinfo	f_selinfo;
+
 	struct fasync_struct	*f_fasync;
-	struct vnode	*f_vnode;
 	id_t             aspace_id;
 };
 
@@ -87,8 +99,8 @@ struct fasync_struct {
 };
 
 
-#define	file		linux_file
 
+#define	file		linux_file
 
 
 /* JRL: This should really be a list of structs... 
@@ -98,13 +110,13 @@ static inline int
 fasync_helper(int fd, struct file *filp,
 	      int mode, struct fasync_struct **fa) 
 {
-	if ((on)) {
+	if ((mode)) {
 		/* We don't handle multiple recipients */
-		BUG_ON(*(queue) != NULL);
+		BUG_ON((*fa) != NULL);
 
-		*fa            = filp->f_fasync;
-		*fa->aspace_id = current->aspace->parend->id;
-		*fa->task_id   = current->id;
+		*fa              = filp->f_fasync;
+		(*fa)->aspace_id = current->aspace->parent->id;
+		(*fa)->task_id   = current->id;
 	} else {		
 		*fa = NULL;
 	}
@@ -114,7 +126,7 @@ fasync_helper(int fd, struct file *filp,
 static inline void 
 kill_fasync(struct fasync_struct **fa, int sig, int band)
 {
-	if (*fa != NULL) {
+	if ((*fa) != NULL) {
 		struct siginfo s;
 		memset(&s, 0, sizeof(struct siginfo));
 		
@@ -124,52 +136,15 @@ kill_fasync(struct fasync_struct **fa, int sig, int band)
 		s.si_pid   = 0;
 		s.si_uid   = 0;
 		
-		sigsend(*fa->aspace_id, *fa->task_id, sig, &s);
+		sigsend((*fa)->aspace_id, (*fa)->task_id, sig, &s);
 	}
 }
 
 typedef int (*filldir_t)(void *, const char *, int, loff_t, u64, unsigned);
 
-struct lnx_file_operations {
-	struct module *owner;
-	ssize_t (*read)(struct file *, char __user *, size_t, loff_t *);
-	ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *);
-	unsigned int (*poll) (struct file *, struct poll_table_struct *);
-	long (*unlocked_ioctl)(struct file *, unsigned int, unsigned long);
-	int (*mmap)(struct file *, struct vm_area_struct *);
-	int (*open)(struct inode *, struct file *);
-	int (*release)(struct inode *, struct file *);
-	int (*fasync)(int, struct file *, int);
-#if 0
-	/* We do not support these methods.  Don't permit them to compile. */
-	loff_t (*llseek)(struct file *, loff_t, int);
-	ssize_t (*aio_read)(struct kiocb *, const struct iovec *,
-	    unsigned long, loff_t);
-	ssize_t (*aio_write)(struct kiocb *, const struct iovec *,
-	    unsigned long, loff_t);
-	int (*readdir)(struct file *, void *, filldir_t);
-	int (*ioctl)(struct inode *, struct file *, unsigned int,
-	    unsigned long);
-	long (*compat_ioctl)(struct file *, unsigned int, unsigned long);
-	int (*flush)(struct file *, fl_owner_t id);
-	int (*fsync)(struct file *, struct dentry *, int datasync);
-	int (*aio_fsync)(struct kiocb *, int datasync);
-	int (*lock)(struct file *, int, struct file_lock *);
-	ssize_t (*sendpage)(struct file *, struct page *, int, size_t,
-	    loff_t *, int);
-	unsigned long (*get_unmapped_area)(struct file *, unsigned long,
-	    unsigned long, unsigned long, unsigned long);
-	int (*check_flags)(int);
-	int (*flock)(struct file *, int, struct file_lock *);
-	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *,
-	    loff_t *, size_t, unsigned int);
-	ssize_t (*splice_read)(struct file *, loff_t *,
-	    struct pipe_inode_info *, size_t, unsigned int);
-	int (*setlease)(struct file *, long, struct file_lock **);
-#endif
-};
 
-#define file_operations lnx_file_operations
+
+
 #define	fops_get(fops)	(fops)
 
 /* file is open for reading */
@@ -222,5 +197,7 @@ iput(struct inode *inode)
 }
 
 
+
+#undef file
 
 #endif	/* _LINUX_FS_H_ */
