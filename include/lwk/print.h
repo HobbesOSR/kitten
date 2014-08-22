@@ -73,6 +73,10 @@ extern int vprintk(const char *fmt, va_list args)
         __attribute__ ((format (printf, 1, 0)));
 extern int printk(const char * fmt, ...)
         __attribute__ ((format (printf, 1, 2)));
+extern char * kasprintf( int, const char * fmt, ... )
+        __attribute__ ((format (printf, 2, 3)));
+extern char * kvasprintf( int, const char * fmt, va_list args )
+        __attribute__ ((format (printf, 2, 0)));
 
 #define pr_emerg(fmt, ...) \
     printk(KERN_EMERG fmt, ##__VA_ARGS__)

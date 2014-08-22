@@ -4,6 +4,7 @@
 
 lib-y := \
 	vsprintf.o \
+	kasprintf.o \
 	string.o \
 	cpumask.o \
 	hweight.o \
