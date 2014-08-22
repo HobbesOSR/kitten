@@ -602,6 +602,7 @@ pci_register_driver(pci_driver_t *driver)
 		if ((driver = pci_find_driver(dev, &id)) != NULL) {
 			// Found a match. Call the drivers probe() function.
 			printk(KERN_DEBUG "pci_register_driver found match, calling probe.\n");
+			dev->driver = driver;
 			driver->probe(dev, id);
 			return 0;
 		}
@@ -621,6 +622,7 @@ pci_find_driver(const pci_dev_t *dev, const pci_dev_id_t **idp)
         uint16_t vendor_id = dev->cfg.vendor_id;
         uint64_t device_id = dev->cfg.device_id;
 
+	spin_lock(&pci_lock);
 	list_for_each_entry(driver, &pci_drivers, next) {
 		for (id = driver->id_table; id->vendor_id != 0; id++) {
 			if (vendor_id == id->vendor_id && device_id == id->device_id) {
@@ -630,6 +632,8 @@ pci_find_driver(const pci_dev_t *dev, const pci_dev_id_t **idp)
 			}
                 }
 	}
+	spin_unlock(&pci_lock);	
+
 	return NULL;
 }
 
