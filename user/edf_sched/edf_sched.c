@@ -40,6 +40,8 @@ main(int argc, char *argv[], char *envp[])
 	 */
 
 	printf("End of EDF Test\n");
+
+	return 0;
 }
 
 static void
