@@ -513,7 +513,12 @@ static int
 palacios_run_guest(void *arg)
 {
 	unsigned int mask;
-	struct v3_vm_info * vm_info = v3_create_vm((void *) __va(guest_iso_start), NULL, NULL);
+
+	// set the mask to inclue all available CPUs
+	// we assume we will start on CPU 0
+	mask=~((((signed int)1<<(sizeof(unsigned int)*8-1))>>(sizeof(unsigned int)*8-1))<<cpus_weight(cpu_online_map));
+
+	struct v3_vm_info * vm_info = v3_create_vm((void *) __va(guest_iso_start), NULL, NULL, mask);
 	
 	if (!vm_info) {
 		printk(KERN_ERR "Could not create guest context\n");
@@ -523,10 +528,6 @@ palacios_run_guest(void *arg)
 	g_vm_guest = vm_info;
 
 	printk(KERN_INFO "Starting Guest OS...\n");
-
-	// set the mask to inclue all available CPUs
-	// we assume we will start on CPU 0
-	mask=~((((signed int)1<<(sizeof(unsigned int)*8-1))>>(sizeof(unsigned int)*8-1))<<cpus_weight(cpu_online_map));
 
 	return v3_start_vm(vm_info, mask);
 }
