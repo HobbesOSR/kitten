@@ -428,7 +428,7 @@ pisces_xbuf_client_init(uintptr_t xbuf_va,
 		return NULL;
 	}
 
-    	printk("LCALL IPI %d to cpu %d\n", xbuf->host_vector, xbuf->host_apic);
+    	printk("LCALL IPI %d to APIC %d\n", xbuf->host_vector, xbuf->host_apic);
 
 	memset(desc, 0, sizeof(struct pisces_xbuf_desc));
 
