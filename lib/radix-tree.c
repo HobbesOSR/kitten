@@ -18,19 +18,20 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <linux/errno.h>
-#include <linux/init.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/radix-tree.h>
+#include <lwk/errno.h>
+#include <lwk/init.h>
+#include <lwk/kernel.h>
+#include <lwk/radix-tree.h>
 //#include <linux/percpu.h>
-#include <linux/slab.h>
-#include <linux/notifier.h>
+//#include <linux/slab.h>
+//#include <linux/notifier.h>
 //#include <linux/cpu.h>
-#include <linux/gfp.h>
-#include <linux/string.h>
-#include <linux/bitops.h>
+//#include <linux/gfp.h>
+#include <lwk/string.h>
+#include <lwk/bitops.h>
 
+#define __GFP_BITS_SHIFT 21     /* Room for 21 __GFP_FOO bits */
+#define __GFP_BITS_MASK ((__force gfp_t)((1 << __GFP_BITS_SHIFT) - 1))
 
 #ifdef __KERNEL__
 #define RADIX_TREE_MAP_SHIFT	6
@@ -61,25 +62,6 @@ struct radix_tree_path {
 static unsigned long height_to_maxindex[RADIX_TREE_MAX_PATH] __read_mostly;
 
 /*
- * Radix tree node cache.
- */
-static struct kmem_cache *radix_tree_node_cachep;
-
-/*
- * Per-cpu pool of preloaded nodes
- */
-struct radix_tree_preload {
-	int nr;
-	struct radix_tree_node *nodes[RADIX_TREE_MAX_PATH];
-};
-DEFINE_PER_CPU(struct radix_tree_preload, radix_tree_preloads) = { 0, };
-
-static inline gfp_t root_gfp_mask(struct radix_tree_root *root)
-{
-	return root->gfp_mask & __GFP_BITS_MASK;
-}
-
-/*
  * This assumes that the caller has performed appropriate preallocation, and
  * that the caller has pinned this thread of control to the current CPU.
  */
@@ -87,60 +69,20 @@ static struct radix_tree_node *
 radix_tree_node_alloc(struct radix_tree_root *root)
 {
 	struct radix_tree_node *ret;
-	gfp_t gfp_mask = root_gfp_mask(root);
 
-	ret = kmem_cache_alloc(radix_tree_node_cachep, gfp_mask);
-	if (ret == NULL && !(gfp_mask & __GFP_WAIT)) {
-		struct radix_tree_preload *rtp;
 
-		rtp = &__get_cpu_var(radix_tree_preloads);
-		if (rtp->nr) {
-			ret = rtp->nodes[rtp->nr - 1];
-			rtp->nodes[rtp->nr - 1] = NULL;
-			rtp->nr--;
-		}
-	}
+	ret = kmem_alloc(sizeof(struct radix_tree_node));
+
 	return ret;
 }
 
 static inline void
 radix_tree_node_free(struct radix_tree_node *node)
 {
-	kmem_cache_free(radix_tree_node_cachep, node);
+	kmem_free(node);
 }
 
-#if 0
-/*
- * Load up this CPU's radix_tree_node buffer with sufficient objects to
- * ensure that the addition of a single element in the tree cannot fail.  On
- * success, return zero, with preemption disabled.  On error, return -ENOMEM
- * with preemption not disabled.
- */
-int radix_tree_preload(gfp_t gfp_mask)
-{
-	struct radix_tree_preload *rtp;
-	struct radix_tree_node *node;
-	int ret = -ENOMEM;
 
-	preempt_disable();
-	rtp = &__get_cpu_var(radix_tree_preloads);
-	while (rtp->nr < ARRAY_SIZE(rtp->nodes)) {
-		preempt_enable();
-		node = kmem_cache_alloc(radix_tree_node_cachep, gfp_mask);
-		if (node == NULL)
-			goto out;
-		preempt_disable();
-		rtp = &__get_cpu_var(radix_tree_preloads);
-		if (rtp->nr < ARRAY_SIZE(rtp->nodes))
-			rtp->nodes[rtp->nr++] = node;
-		else
-			kmem_cache_free(radix_tree_node_cachep, node);
-	}
-	ret = 0;
-out:
-	return ret;
-}
-#endif
 
 static inline void tag_set(struct radix_tree_node *node, unsigned int tag,
 		int offset)
@@ -308,7 +250,6 @@ int radix_tree_insert(struct radix_tree_root *root,
 
 	return 0;
 }
-EXPORT_SYMBOL(radix_tree_insert);
 
 static inline void **__lookup_slot(struct radix_tree_root *root,
 				   unsigned long index)
@@ -353,7 +294,6 @@ void **radix_tree_lookup_slot(struct radix_tree_root *root, unsigned long index)
 {
 	return __lookup_slot(root, index);
 }
-EXPORT_SYMBOL(radix_tree_lookup_slot);
 
 /**
  *	radix_tree_lookup    -    perform lookup operation on a radix tree
@@ -369,7 +309,6 @@ void *radix_tree_lookup(struct radix_tree_root *root, unsigned long index)
 	slot = __lookup_slot(root, index);
 	return slot != NULL ? *slot : NULL;
 }
-EXPORT_SYMBOL(radix_tree_lookup);
 
 /**
  *	radix_tree_tag_set - set a tag on a radix tree node
@@ -414,7 +353,6 @@ void *radix_tree_tag_set(struct radix_tree_root *root,
 
 	return slot;
 }
-EXPORT_SYMBOL(radix_tree_tag_set);
 
 /**
  *	radix_tree_tag_clear - clear a tag on a radix tree node
@@ -479,7 +417,6 @@ void *radix_tree_tag_clear(struct radix_tree_root *root,
 out:
 	return slot;
 }
-EXPORT_SYMBOL(radix_tree_tag_clear);
 
 #ifndef __KERNEL__	/* Only the test harness uses this at present */
 /**
@@ -539,7 +476,6 @@ int radix_tree_tag_get(struct radix_tree_root *root,
 		height--;
 	}
 }
-EXPORT_SYMBOL(radix_tree_tag_get);
 #endif
 
 static unsigned int
@@ -629,7 +565,6 @@ radix_tree_gang_lookup(struct radix_tree_root *root, void **results,
 	}
 	return ret;
 }
-EXPORT_SYMBOL(radix_tree_gang_lookup);
 
 /*
  * FIXME: the two tag_get()s here should use find_next_bit() instead of
@@ -731,7 +666,6 @@ radix_tree_gang_lookup_tag(struct radix_tree_root *root, void **results,
 	}
 	return ret;
 }
-EXPORT_SYMBOL(radix_tree_gang_lookup_tag);
 
 /**
  *	radix_tree_shrink    -    shrink height of a radix tree to minimal
@@ -834,7 +768,6 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 out:
 	return slot;
 }
-EXPORT_SYMBOL(radix_tree_delete);
 
 /**
  *	radix_tree_tagged - test whether any items in the tree are tagged
@@ -845,13 +778,7 @@ int radix_tree_tagged(struct radix_tree_root *root, unsigned int tag)
 {
 	return root_tag_get(root, tag);
 }
-EXPORT_SYMBOL(radix_tree_tagged);
 
-static void
-radix_tree_node_ctor(void *node)
-{
-	memset(node, 0, sizeof(struct radix_tree_node));
-}
 
 static __init unsigned long __maxindex(unsigned int height)
 {
@@ -873,8 +800,5 @@ static __init void radix_tree_init_maxindex(void)
 
 void __init radix_tree_init(void)
 {
-	radix_tree_node_cachep = kmem_cache_create("radix_tree_node",
-			sizeof(struct radix_tree_node), 0,
-			SLAB_PANIC, radix_tree_node_ctor);
 	radix_tree_init_maxindex();
 }

@@ -15,6 +15,7 @@ lib-y := \
 	idspace.o \
 	htable.o \
 	rbtree.o \
+	radix-tree.o \
 	mutex.o \
 	semaphore.o \
 	cmdline.o \

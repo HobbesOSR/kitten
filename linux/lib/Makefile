@@ -7,4 +7,3 @@ obj-y := \
 	sysfs-stubs.o \
 	scatterlist.o \
 	idr.o \
-	radix-tree.o \
