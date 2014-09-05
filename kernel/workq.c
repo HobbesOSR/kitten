@@ -336,7 +336,7 @@ static int create_workqueue_thread(struct cpu_workqueue_struct *cwq, int cpu)
     struct task_struct *p;
 
 	_KDBG("\n");
-    p = kthread_create(worker_thread, cwq, fmt, wq->name, cpu);
+    p = kthread_run(worker_thread, cwq, fmt, wq->name, cpu);
     /*
      * Nobody can add the work_struct to this cwq,
      *  if (caller is __create_workqueue)

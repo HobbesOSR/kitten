@@ -239,6 +239,17 @@ sched_wakeup_task(struct task_struct *task, taskstate_t valid_states)
 	int status;
 	unsigned long irqstate;
 
+	/* JRL: HACK!!
+	 * This overloads the TASK_STOPPED state to effectively mean "uninitialized"
+	 * This is OK for the moment, because there aren't any other users of TASK_STOPPED, 
+	 * except GDB which doesn't even work currently. This could break easily in the future. 
+	 * It would be preferable if we could just move a task to a scheduler whenever its parameters are set, 
+	 * and default all new threads to RR. 
+	 */
+	if (task->state == TASK_STOPPED) {
+		sched_add_task(task);
+	}
+
 	/* Protect against the task being migrated to a different CPU */
 repeat_lock_runq:
 	cpu  = task->cpu_id;

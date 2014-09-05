@@ -61,17 +61,13 @@ kthread_create(
 {
 	char name[32];
 	va_list ap;
-	struct task_struct * tsk = NULL;
 
 	va_start(ap, fmt);
 	vsnprintf(name, sizeof(name)-1, fmt, ap);
 	name[sizeof(name)-1] = '\0';
 	va_end(ap);
 
-	tsk = __kthread_create_on_cpu(this_cpu, entry_point, arg, name);
-	sched_add_task(tsk);
-
-	return tsk;
+	return __kthread_create_on_cpu(this_cpu, entry_point, arg, name);
 }
 
 
@@ -96,6 +92,7 @@ kthread_create_on_cpu(
 
 	return __kthread_create_on_cpu(cpu_id, entry_point, arg, name);
 }
+
 
 int kthread_bind( struct task_struct* tsk, int cpu_id )
 {

@@ -141,7 +141,7 @@ __task_create(
 #endif
 
 	// Fill in and initialize the rest of the task structure
-	tsk->state	=	TASK_RUNNING;
+	tsk->state	=	TASK_STOPPED;
 	tsk->uid	=	start_state->user_id;
 	tsk->gid	=	start_state->group_id;
 	tsk->aspace	=	aspace;
@@ -205,7 +205,7 @@ task_create(
 		return -EINVAL;
 
 	// Add the new task to the target CPU's run queue
-	sched_add_task(tsk);
+	sched_wakeup_task(tsk, TASK_STOPPED);
 
 	if (task_id)
 		*task_id = tsk->id;

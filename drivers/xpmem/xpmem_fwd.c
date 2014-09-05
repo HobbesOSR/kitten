@@ -620,7 +620,7 @@ xpmem_fwd_init(struct xpmem_partition_state * part_state)
     mb();
 
     /* Set up the ping thread */
-    fwd_state->ping_thread = kthread_create(
+    fwd_state->ping_thread = kthread_run(
 	    xpmem_ping_fn,
 	    part_state,
 	    "xpmem-ping"

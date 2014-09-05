@@ -20,6 +20,24 @@ kthread_create_on_cpu(
 	...
 );
 
+/**
+ * kthread_run - create and wake a thread.
+ * @threadfn: the function to run until signal_pending(current).
+ * @data: data ptr for @threadfn.
+ * @namefmt: printf-style name for the thread.
+ *
+ * Description: Convenient wrapper for kthread_create() followed by
+ * sched_wakeup_task().  Returns the kthread or ERR_PTR(-ENOMEM).
+ */
+#define kthread_run(threadfn, data, namefmt, ...)			\
+	({								\
+	        struct task_struct *__k					\
+	                = kthread_create(threadfn, data, namefmt, ## __VA_ARGS__); \
+	        if (__k != NULL)					\
+			sched_wakeup_task(__k, TASK_STOPPED);		\
+	        __k;							\
+	})
+
 int kthread_bind( struct task_struct* tsk, int cpu );
 int kthread_should_stop(void);
 

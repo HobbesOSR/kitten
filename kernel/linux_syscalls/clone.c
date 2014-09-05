@@ -85,7 +85,7 @@ sys_clone(
 		put_user(tid, child_tid_ptr);
 
 	/* Add the new task to the target CPU's run queue */
-	sched_add_task(tsk);
-		
+	sched_wakeup_task(tsk, TASK_ALL);
+
 	return tsk->id;
 }

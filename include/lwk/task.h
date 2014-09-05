@@ -88,7 +88,7 @@ typedef unsigned int taskstate_t;
 
 // Some commonly used combinations of task states:
 #define TASK_NORMAL		(TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)
-#define TASK_ALL		(TASK_NORMAL)
+#define TASK_ALL		(TASK_NORMAL | TASK_STOPPED)
 
 struct fdTable;
 

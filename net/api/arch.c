@@ -335,7 +335,7 @@ sys_thread_new(
 )
 {
 	struct task_struct *kthread =
-		kthread_create((int (*)(void *))entry_point, arg, "ip:%s", name);
+		kthread_run((int (*)(void *))entry_point, arg, "ip:%s", name);
 	return (kthread) ? kthread->id : ERROR_ID;
 }
 

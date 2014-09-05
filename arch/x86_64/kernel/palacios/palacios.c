@@ -390,7 +390,7 @@ palacios_start_kernel_thread(
 	void *			arg,
 	char *			thread_name)
 {
-    return kthread_create(fn, arg, thread_name);
+    return kthread_run(fn, arg, thread_name);
 }
 
 /**
@@ -473,7 +473,7 @@ palacios_start_thread(void * tsk){
 
 	// Start the kernel thread executing on the target CPU's run queue
 	struct task_struct *task = (struct task_struct *)tsk;
-	sched_add_task(task);
+	sched_wakeup_task(task, TASK_ALL);
 }
 
 /**

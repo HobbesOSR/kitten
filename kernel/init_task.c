@@ -100,7 +100,7 @@ create_init_task(void)
 
 	struct task_struct *new_task = __task_create(&start_state, NULL);
 
-	sched_add_task(new_task);
+	sched_wakeup_task(new_task, TASK_STOPPED);
 
 	return 0;
 }

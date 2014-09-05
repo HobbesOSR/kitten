@@ -1470,7 +1470,7 @@ int gdb_attach_process(id_t pid, char *gdb_cons){
 		return -1;
 	}
 
-	kthread_create(__gdb_attach, task, "GDB-STUB-THREAD");
+	kthread_run(__gdb_attach, task, "GDB-STUB-THREAD");
 	return 0;
 }
 /*
@@ -1488,7 +1488,7 @@ int gdb_attach_thread(id_t pid, id_t tid, char *gdb_cons){
 		return -1;
 	}
 
-	kthread_create(__gdb_attach, task, "GDB-STUB-THREAD");
+	kthread_run(__gdb_attach, task, "GDB-STUB-THREAD");
 	return 0;
 }
 
