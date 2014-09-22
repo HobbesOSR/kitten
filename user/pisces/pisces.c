@@ -64,7 +64,7 @@ issue_vm_cmd(int vm_id, u64 cmd, uintptr_t arg)
 	
 	palacios_fd = open(vm_fname,  O_RDWR);
 	
-	if (palacios_fd == -1) {
+	if (palacios_fd < 0) {
 		printf("Could not open palacios VM file (%s)\n", vm_fname);
 		return -1;
 	}
@@ -88,7 +88,7 @@ issue_v3_cmd(u64 cmd, uintptr_t arg)
 	
 	palacios_fd = open(V3_CMD_PATH, O_RDWR);
 	
-	if (palacios_fd == -1) {
+	if (palacios_fd < 0) {
 		printf("Could not open palacios CMD file (%s)\n", V3_CMD_PATH);
 		return -1;
 	}
@@ -242,6 +242,7 @@ main(int argc, char ** argv, char * envp[])
 
 			    if (ret != sizeof(struct cmd_create_vm)) {
 				    send_resp(pisces_fd, -1);
+				    printf("Error: CREATE_VM command could not be read\n");
 				    break;
 			    }
 
@@ -249,12 +250,14 @@ main(int argc, char ** argv, char * envp[])
 			    /* Issue VM Create command to Palacios */
 			    vm_id = issue_v3_cmd(V3_CREATE_GUEST, (uintptr_t)&(vm_cmd.path));
 
-			    if (vm_id == -1) {
-				    printf("Error: Could not create VM (%s) at (%s)\n", 
-					   vm_cmd.path.vm_name, vm_cmd.path.file_name);
-				    send_resp(pisces_fd, -1);
+			    if (vm_id < 0) {
+				    printf("Error: Could not create VM (%s) at (%s) (err=%d)\n", 
+					   vm_cmd.path.vm_name, vm_cmd.path.file_name, vm_id);
+				    send_resp(pisces_fd, vm_id);
 				    break;
 			    }
+
+			    printf("Created VM (%d)\n", vm_id);
 
 			    send_resp(pisces_fd, vm_id);
 			    break;
