@@ -11,7 +11,9 @@
 #include <arch/pisces/pisces_lcall.h>
 #include <arch/pisces/pisces_pagemap.h>
 
+#include <lwk/xpmem/xpmem.h>
 #include <lwk/xpmem/xpmem_iface.h>
+#include <lwk/xpmem/xpmem_extended.h>
 
 
 extern struct pisces_boot_params * pisces_boot_params;

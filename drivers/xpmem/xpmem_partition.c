@@ -73,6 +73,12 @@
  *
  */
 
+struct xpmem_link_connection {
+    xpmem_connection_t   conn_type;
+    void               * priv_data;
+    int (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data);
+};
+
 u32
 xpmem_hash_fn(uintptr_t key) 
 {
@@ -270,10 +276,6 @@ xpmem_send_cmd_link(struct xpmem_partition_state * state,
         printk("XPMEM: NULL connection for link %lli\n", link);
         return -1;
     }
-
-    printk("XPMEM: sending cmd %s on link %lli (src_dom = %lli, dst_dom = %lli)\n", 
-        cmd_to_string(cmd->type), link,
-        cmd->src_dom, cmd->dst_dom);
 
     return conn->in_cmd_fn(cmd, conn->priv_data);
 }

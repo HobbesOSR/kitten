@@ -33,35 +33,11 @@ struct xpmem_domain_state {
 };
 
 
-struct xpmem_hashtable * attach_htable = NULL;
-
-struct xpmem_remote_attach_struct {
-    vaddr_t          vaddr;
-    paddr_t          paddr;
-    unsigned long    size;
-    struct list_head node;
-};
-
-
-static u32 
-domain_hash_fn(uintptr_t key)
-{
-    return hash_long(key, 32);
-}
-
-static int
-domain_eq_fn(uintptr_t key1, 
-             uintptr_t key2)            
-{
-    return (key1 == key2);
-}
-
-
-
 static int
 xpmem_get_domain(struct xpmem_cmd_get_ex * get_ex)
 {
     get_ex->apid = get_ex->segid;
+    get_ex->size = (1LL << SMARTMAP_SHIFT);
     return 0;
 }
 
@@ -89,54 +65,8 @@ xpmem_attach_domain(struct xpmem_cmd_attach_ex * attach_ex)
     if (size & (PAGE_SIZE -1)) {
 	size += (PAGE_SIZE - (size & (PAGE_SIZE - 1)));
     }
-
-
-    {
-	xpmem_apid_t local_apid = 0;
-	vaddr_t      seg_vaddr  = 0;
-	u64          num_pfns   = 0;
-	u64        * pfns       = NULL;
-
-	/* Convert remote apid to local apid */
-	local_apid = xpmem_get_local_apid(apid);
-	if (local_apid <= 0) {
-	    printk(KERN_ERR "XPMEM: no mapping for remote apid %lli\n", apid);
-	}
-
-	seg_vaddr = (vaddr_t)(local_apid + offset);
-	/* TODO: this is a hack that has to be fixed */
-	seg_vaddr -= 0x8000000000;
-
-        num_pfns = size / PAGE_SIZE;
-
-	pfns = kmem_alloc(sizeof(u64) * num_pfns);
-	if (!pfns) {
-	    printk(KERN_ERR "XPMEM: out of memory\n");
-	    return -1;
-	}
-
-	{
-	    uint64_t i = 0;
-
-	    for (i = 0; i < num_pfns; i++) {
-		paddr_t paddr = 0;
-
-		if (aspace_virt_to_phys(current->aspace->id, seg_vaddr, &paddr)) {
-		    printk(KERN_ERR "XPMEM: cannot get PFN for vaddr %p\n", (void *)seg_vaddr);
-		    kmem_free(pfns);
-		    return -1;
-		}
-
-		pfns[i] = (paddr >> PAGE_SHIFT);
-	    }
-	}
-
-	/* Save in attachment struct */
-	attach_ex->num_pfns = num_pfns;
-	attach_ex->pfns     = pfns;
-    }
-
-    return 0;
+ 
+    return do_xpmem_attach_domain(apid, offset, size, &(attach_ex->pfns), &(attach_ex->num_pfns));
 }
 
 
@@ -148,122 +78,29 @@ xpmem_detach_domain(struct xpmem_cmd_detach_ex * detach_ex)
 
 
 unsigned long 
-xpmem_map_pfn_range(u64 * pfns, 
-                    u64 num_pfns)
+xpmem_map_pfn_range(u64   at_vaddr,
+                    u64 * pfns, 
+                    u64   num_pfns)
 {
-    unsigned long size        = 0;
-    vaddr_t       attach_addr = 0;
+    u64     i    = 0;
+    vaddr_t addr = 0;
 
-    size = num_pfns * PAGE_SIZE;
+    for (i = 0; i < num_pfns; i++) {
+	addr = at_vaddr + (i * PAGE_SIZE);
 
-    /* Search for free aspace */
-    if (aspace_find_hole(current->aspace->id, 0, size, PAGE_SIZE, &attach_addr)) {
-	printk(KERN_ERR "XPMEM: aspace_find_hole failed\n");
-	return -1;
-    }
+	if (aspace_map_pmem(current->aspace->id, (pfns[i] << PAGE_SHIFT), addr, PAGE_SIZE)) {
+	    XPMEM_ERR("aspace_map_pmem() failed");
 
-    /* Add region to aspace */
-    if (aspace_add_region(current->aspace->id, attach_addr, size, VM_READ | VM_WRITE | VM_USER,
-		PAGE_SIZE, "xpmem")) {
-	printk(KERN_ERR "XPMEM: aspace_add_region failed\n");
-	return -1;
-    }
-
-    /* Map PFNs into region */
-    {
-	u64 i = 0;
-
-	for (i = 0; i < num_pfns; i++) {
-	    vaddr_t addr =  attach_addr + (i * PAGE_SIZE);
-
-	    if (aspace_map_pmem(current->aspace->id, (pfns[i] << PAGE_SHIFT), addr, PAGE_SIZE)) {
-		printk(KERN_ERR "XPMEM: aspace_map_pmem failed\n");
-		aspace_del_region(current->aspace->id, attach_addr, size);
-		return -1;
+	    while (--i >= 0) {
+		addr = at_vaddr + (i * PAGE_SIZE);
+		aspace_unmap_pmem(current->aspace->id, addr, PAGE_SIZE);
 	    }
-	}
-    }
 
-    /* Add to htable */
-    {
-	struct xpmem_remote_attach_struct * remote = NULL;
-	struct list_head                  * head   = NULL;
-
-	if (!attach_htable) {
-	    attach_htable = create_htable(0, domain_hash_fn, domain_eq_fn);
-	    if (!attach_htable) {
-		printk(KERN_ERR "XPMEM: cannot create attachment htable\n");
-		aspace_del_region(current->aspace->id, attach_addr, size);
-		return -1;
-	    }
-	}
-
-	remote = kmem_alloc(sizeof(struct xpmem_remote_attach_struct));
-	if (!remote) {
-	    printk(KERN_ERR "XPMEM: out of memory\n");
-	    aspace_del_region(current->aspace->id, attach_addr, size);
 	    return -1;
 	}
-
-        /* Setup attach struct */
-	remote->vaddr = attach_addr;
-	remote->paddr = (pfns[0] << PAGE_SHIFT);
-	remote->size  = size;
-
-
-        head = (struct list_head *)htable_search(attach_htable, (uintptr_t)current->aspace->id);
-	if (!head) {
-	    head = kmem_alloc(sizeof(struct list_head));
-	    if (!head) {
-		printk(KERN_ERR "XPMEM: out of memory\n");
-		aspace_del_region(current->aspace->id, attach_addr, size);
-		return -1;
-	    }
-
-	    INIT_LIST_HEAD(head);
-	    if (!htable_insert(attach_htable, (uintptr_t)current->aspace->id, (uintptr_t)head)) {
-		printk(KERN_ERR "XPMEM: cannot add list head to htable\n");
-		aspace_del_region(current->aspace->id, attach_addr, size);
-		return -1;
-	    }
-	}
-
-	list_add_tail(&(remote->node), head);
     }
 
-    return attach_addr;
-}
-
-
-static void 
-xpmem_detach_vaddr(struct xpmem_partition_state * part_state,
-                   u64                            vaddr)
-{
-    struct list_head * head = NULL;
-
-    if (!attach_htable) {
-        return;
-    }
-
-    head = (struct list_head *)htable_search(attach_htable, (uintptr_t)current->aspace->id);
-    if (!head) {
-        printk(KERN_ERR "XPMEM_EXTENDED: LEAKING VIRTUAL ADDRESS SPACE\n");
-    } else {
-        struct xpmem_remote_attach_struct * remote = NULL, * next = NULL;
-        list_for_each_entry_safe(remote, next, head, node) {
-            if (remote->vaddr == vaddr) {
-		aspace_del_region(current->aspace->id, remote->vaddr, remote->size);
-                list_del(&(remote->node));
-                kmem_free(remote);
-                break;
-            }
-        }
-
-        if (list_empty(head)) {
-            htable_remove(attach_htable, (uintptr_t)current->aspace->id, 0);
-            kmem_free(head);
-        }
-    }
+    return 0;
 }
 
 
@@ -331,9 +168,6 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 
             break;
 
-
-            break;
-
         case XPMEM_MAKE_COMPLETE:
         case XPMEM_REMOVE_COMPLETE:
         case XPMEM_GET_COMPLETE:
@@ -342,7 +176,6 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
         case XPMEM_DETACH_COMPLETE: {
             state->cmd = kmem_alloc(sizeof(struct xpmem_cmd_ex));
             if (!state->cmd) {
-                printk(KERN_ERR "XPMEM: out of memory\n");
                 break;
             }
 
@@ -351,7 +184,6 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
             if (cmd->type == XPMEM_ATTACH_COMPLETE) {
                 state->cmd->attach.pfns = kmem_alloc(sizeof(u64) * cmd->attach.num_pfns);
                 if (!state->cmd->attach.pfns) {
-                    printk(KERN_ERR "XPMEM: out of memory\n");
 		    kmem_free(state->cmd);
                     break;
                 }
@@ -368,7 +200,7 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
         }
 
         default:
-            printk(KERN_ERR "XPMEM: domain given unknown XPMEM command %d\n", cmd->type);
+	    XPMEM_ERR("Domain given unknown XPMEM command %d", cmd->type);
             return -1;
 
     }
@@ -397,8 +229,7 @@ xpmem_domain_init(struct xpmem_partition_state * part)
             (void *)state);
 
     if (state->link <= 0) {
-        printk(KERN_ERR "XPMEM: failed to register local domain with"
-            " name/forwarding service\n");
+	XPMEM_ERR("Failed to register local domain with name/forwarding service");
         kmem_free(state);
         return -1;
     }
@@ -452,9 +283,6 @@ xpmem_make_remote(struct xpmem_partition_state * part,
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
 
     cmd.type       = XPMEM_MAKE;
-    cmd.src_dom    = state->part->domid;
-    cmd.dst_dom    = XPMEM_NS_DOMID;
-
     cmd.make.segid = *segid;
 
     while (mutex_lock_interruptible(&(state->mutex)));
@@ -471,6 +299,7 @@ xpmem_make_remote(struct xpmem_partition_state * part,
         
         /* Check command completion  */
         if (state->cmd_complete == 0) {
+	    mutex_unlock(&(state->mutex));
             return -1;
         }
 
@@ -499,9 +328,6 @@ xpmem_remove_remote(struct xpmem_partition_state * part,
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
 
     cmd.type         = XPMEM_REMOVE;
-    cmd.src_dom      = state->part->domid;
-    cmd.dst_dom      = XPMEM_NS_DOMID;
-
     cmd.remove.segid = segid;
 
     while (mutex_lock_interruptible(&(state->mutex)));
@@ -518,6 +344,7 @@ xpmem_remove_remote(struct xpmem_partition_state * part,
 
         /* Check command completion  */
         if (state->cmd_complete == 0) {
+	    mutex_unlock(&(state->mutex));
             return -1;
         }
     }
@@ -535,7 +362,8 @@ xpmem_get_remote(struct xpmem_partition_state * part,
                  int                            flags,
                  int                            permit_type,
                  u64                            permit_value,
-                 xpmem_apid_t                 * apid)
+                 xpmem_apid_t                 * apid,
+		 u64                          * size)
 {
     struct xpmem_domain_state * state = (struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex         cmd;
@@ -547,9 +375,6 @@ xpmem_get_remote(struct xpmem_partition_state * part,
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
 
     cmd.type             = XPMEM_GET;
-    cmd.src_dom          = state->part->domid;
-    cmd.dst_dom          = XPMEM_NS_DOMID;
-
     cmd.get.segid        = segid;
     cmd.get.flags        = flags;
     cmd.get.permit_type  = permit_type;
@@ -569,11 +394,13 @@ xpmem_get_remote(struct xpmem_partition_state * part,
 
         /* Check command completion  */
         if (state->cmd_complete == 0) {
+	    mutex_unlock(&(state->mutex));
             return -1;
         }
 
         /* Grab allocated apid */
         *apid = state->cmd->get.apid;
+	*size = state->cmd->get.size;
     }
 
     mutex_unlock(&(state->mutex));
@@ -585,6 +412,7 @@ xpmem_get_remote(struct xpmem_partition_state * part,
 
 int
 xpmem_release_remote(struct xpmem_partition_state * part,
+                     xpmem_segid_t                  segid,
                      xpmem_apid_t                   apid)
 {
     struct xpmem_domain_state * state = (struct xpmem_domain_state *)part->domain_priv;
@@ -596,11 +424,9 @@ xpmem_release_remote(struct xpmem_partition_state * part,
 
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
 
-    cmd.type         = XPMEM_RELEASE;
-    cmd.src_dom      = state->part->domid;
-    cmd.dst_dom      = XPMEM_NS_DOMID;
-
-    cmd.release.apid = apid;
+    cmd.type          = XPMEM_RELEASE;
+    cmd.release.segid = segid;
+    cmd.release.apid  = apid;
 
     while (mutex_lock_interruptible(&(state->mutex)));
 
@@ -616,6 +442,7 @@ xpmem_release_remote(struct xpmem_partition_state * part,
 
         /* Check command completion  */
         if (state->cmd_complete == 0) {
+	    mutex_unlock(&(state->mutex));
             return -1;
         }
     }
@@ -629,13 +456,15 @@ xpmem_release_remote(struct xpmem_partition_state * part,
 
 int
 xpmem_attach_remote(struct xpmem_partition_state * part,
+                    xpmem_segid_t                  segid,
                     xpmem_apid_t                   apid,
                     off_t                          offset,
                     size_t                         size,
-                    u64                          * vaddr)
+                    u64                            at_vaddr)
 {
     struct xpmem_domain_state * state   = (struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex         cmd;
+    int                         ret     = 0;
 
     if (!state->initialized) {
         return -1;
@@ -643,13 +472,11 @@ xpmem_attach_remote(struct xpmem_partition_state * part,
 
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
 
-    cmd.type        = XPMEM_ATTACH;
-    cmd.src_dom     = state->part->domid;
-    cmd.dst_dom     = XPMEM_NS_DOMID;
-
-    cmd.attach.apid = apid;
-    cmd.attach.off  = offset;
-    cmd.attach.size = size;
+    cmd.type         = XPMEM_ATTACH;
+    cmd.attach.segid = segid;
+    cmd.attach.apid  = apid;
+    cmd.attach.off   = offset;
+    cmd.attach.size  = size;
 
     while (mutex_lock_interruptible(&(state->mutex)));
 
@@ -665,17 +492,19 @@ xpmem_attach_remote(struct xpmem_partition_state * part,
 
         /* Check command completion  */
         if (state->cmd_complete == 0) {
+	    mutex_unlock(&(state->mutex));
             return -1;
         }
 
         /* Map pfn list */
         if (state->cmd->attach.num_pfns > 0) {
-            *vaddr = (u64)xpmem_map_pfn_range(
+            ret = (u64)xpmem_map_pfn_range(
+			at_vaddr,
                         state->cmd->attach.pfns,
                         state->cmd->attach.num_pfns
                     );
         } else {
-            *vaddr = 0;
+	    ret = -1;
         }
     }
 
@@ -683,13 +512,15 @@ xpmem_attach_remote(struct xpmem_partition_state * part,
 
     kmem_free(state->cmd);
 
-    return 0;
+    return ret;
 }
 
 
 
 int
 xpmem_detach_remote(struct xpmem_partition_state * part,
+                    xpmem_segid_t                  segid,
+                    xpmem_apid_t                   apid,
                     u64                            vaddr)
 {
     struct xpmem_domain_state * state = (struct xpmem_domain_state *)part->domain_priv;
@@ -702,9 +533,8 @@ xpmem_detach_remote(struct xpmem_partition_state * part,
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
 
     cmd.type         = XPMEM_DETACH;
-    cmd.src_dom      = state->part->domid;
-    cmd.dst_dom      = XPMEM_NS_DOMID;
-
+    cmd.detach.segid = segid;
+    cmd.detach.apid  = apid;
     cmd.detach.vaddr = vaddr;
 
     while (mutex_lock_interruptible(&(state->mutex)));
@@ -721,6 +551,7 @@ xpmem_detach_remote(struct xpmem_partition_state * part,
 
         /* Check command completion  */
         if (state->cmd_complete == 0) {
+	    mutex_unlock(&(state->mutex));
             return -1;
         }
     }
@@ -728,9 +559,6 @@ xpmem_detach_remote(struct xpmem_partition_state * part,
     mutex_unlock(&(state->mutex));
 
     kmem_free(state->cmd);
-
-    /* Free virtual address space */
-    xpmem_detach_vaddr(part, vaddr);
 
     return 0;
 }

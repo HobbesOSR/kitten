@@ -10,9 +10,21 @@
 #ifndef _XPMEM_IFACE_H
 #define _XPMEM_IFACE_H
 
-#include <lwk/xpmem/xpmem.h>
-//#include <lwk/xpmem/xpmem_partition.h>
-#include <lwk/xpmem/xpmem_extended.h>
+
+#ifdef __KERNEL__
+
+typedef int64_t xpmem_domid_t;
+typedef int64_t xpmem_link_t;
+
+typedef enum {
+    XPMEM_CONN_LOCAL,
+    XPMEM_CONN_REMOTE,
+} xpmem_connection_t;
+
+
+struct xpmem_partition_state;
+struct xpmem_cmd_ex;
+
 
 struct xpmem_partition_state *
 xpmem_get_partition(void);
@@ -33,5 +45,6 @@ xpmem_cmd_deliver(struct xpmem_partition_state * part,
                   xpmem_link_t                   link,
                   struct xpmem_cmd_ex          * cmd);
 
-
 #endif
+
+#endif /* _XPMEM_IFACE_H */

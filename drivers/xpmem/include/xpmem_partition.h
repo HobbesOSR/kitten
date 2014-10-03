@@ -51,6 +51,8 @@ struct xpmem_partition {
     struct xpmem_partition_state part_state;
 };
 
+struct xpmem_link_connection;
+
 
 u32
 xpmem_hash_fn(uintptr_t key);
@@ -120,7 +122,7 @@ int
 xpmem_partition_deinit(struct xpmem_partition_state * state);
 
 
-xpmem_apid_t xpmem_get_local_apid(xpmem_apid_t remote_apid);
+xpmem_apid_t xpmem_get_remote_apid(xpmem_apid_t local_apid);
 
 
 

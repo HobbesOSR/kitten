@@ -5,23 +5,7 @@
 #include <lwk/waitq.h>
 
 #include <lwk/xpmem/xpmem.h>
-
-typedef int64_t xpmem_domid_t;
-typedef int64_t xpmem_link_t;
-
-typedef enum {
-    XPMEM_CONN_LOCAL,
-    XPMEM_CONN_REMOTE,
-} xpmem_connection_t;
-
-
-struct xpmem_cmd_ex;
-
-struct xpmem_link_connection {
-    xpmem_connection_t   conn_type;
-    void               * priv_data;
-    int (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data);
-};
+#include <lwk/xpmem/xpmem_iface.h>
 
 
 struct xpmem_cmd_make_ex {
@@ -38,13 +22,16 @@ struct xpmem_cmd_get_ex {
     uint32_t permit_type;
     uint64_t permit_value;
     xpmem_apid_t apid;
+    uint64_t     size;
 };
 
 struct xpmem_cmd_release_ex {
+    xpmem_segid_t segid; /* needed for routing */
     xpmem_apid_t apid;
 };
 
 struct xpmem_cmd_attach_ex {
+    xpmem_segid_t segid; /* needed for routing */
     xpmem_apid_t apid;
     uint64_t off;
     uint64_t size;
@@ -53,6 +40,8 @@ struct xpmem_cmd_attach_ex {
 };
 
 struct xpmem_cmd_detach_ex {
+    xpmem_segid_t segid; /* needed for routing */
+    xpmem_apid_t  apid;
     uint64_t vaddr;
 };
 
@@ -78,16 +67,18 @@ typedef enum {
     XPMEM_PING_NS,
     XPMEM_PONG_NS,
 
-    /* Request a domid */
+    /* Request/Release a domid */
     XPMEM_DOMID_REQUEST,
     XPMEM_DOMID_RESPONSE,
+    XPMEM_DOMID_RELEASE,
 
 } xpmem_op_t;
 
 
 struct xpmem_cmd_ex {
-    xpmem_domid_t src_dom;
-    xpmem_domid_t dst_dom;
+    xpmem_domid_t req_dom; /* The domain invoking the original XPMEM operation */
+    xpmem_domid_t src_dom; /* The domain that created the most recent request / response */
+    xpmem_domid_t dst_dom; /* The domain targeted with the command / response */
     xpmem_op_t type;
 
     union {
@@ -122,21 +113,26 @@ xpmem_get_remote(struct xpmem_partition_state * part,
 		 int                            flags,
 		 int                            permit_type,
 		 u64                            permit_value,
-		 xpmem_apid_t                 * apid);
+		 xpmem_apid_t                 * apid,
+		 u64                          * size);
 
 int
 xpmem_release_remote(struct xpmem_partition_state * part,
+                     xpmem_segid_t                  segid,
                      xpmem_apid_t                   apid);
 
 int
 xpmem_attach_remote(struct xpmem_partition_state * part,
+                    xpmem_segid_t                  segid,
                     xpmem_apid_t                   apid,
 		    off_t                          offset,
 		    size_t                         size,
-		    u64                          * vaddr);
+		    u64                            at_vaddr);
 
 int
 xpmem_detach_remote(struct xpmem_partition_state * part,
+                    xpmem_segid_t                  segid,
+                    xpmem_apid_t                   apid,
                     u64                            vaddr);
 
 #endif /* _XPMEM_EXTENDED_H */

@@ -5,13 +5,6 @@
  * registrations (invocations of xpmem_make()) must be sent to the name service,
  * as do gets/attachments of remote exported regions.
  *
- * Local makes/gets/attaches proceed as normal via SMARTMAP. However, in order
- * to determine that a region has been exported by a local and not a remote
- * process, the segid uniq field must only be allocated from a range guaranteed
- * to only be allocated from by local processes. This range can be queried from
- * the name service by attempting the registration of a segid with uniq value -1.
- *
- *
  * Author: Brian Kocoloski <briankoco@cs.pitt.edu>
  */
  
@@ -33,8 +26,31 @@
 
 
 static struct xpmem_partition * xpmem_my_part = NULL;
-static struct xpmem_hashtable * segid_map = NULL;
-DEFINE_SPINLOCK(map_lock);
+
+
+/* Segids are creates in a fashion that conflicts with Kitten's SMARTMAP-based approach.
+ * So, we keep a hashtable where the segid maps to the source process' SMARTMAP rank and
+ * address info so that we can convert segids to SMARTMAP-able apids during XPMEM attach
+ * operations
+ */
+static struct xpmem_hashtable * segid_map     = NULL;
+DEFINE_SPINLOCK(segid_map_lock);
+
+
+/* We also need to maintain an apid map for apids created remotely and assigned to Kitten.
+ * The reason for this is that remote releases and attachments require both a segid and an
+ * apid, but users are not required to pass the segid for these operations. So, we map
+ * apids to remote segids here
+ */
+static struct xpmem_hashtable * apid_map      = NULL;
+DEFINE_SPINLOCK(apid_map_lock);
+
+
+struct xpmem_smartmap_info {
+    pid_t  pid;
+    size_t size;
+    u64    vaddr;
+};
 
 
 static u32 
@@ -50,13 +66,62 @@ segid_eq_fn(uintptr_t key1,
     return (key1 == key2);
 }
 
+
+/* Hashtable helpers */
 static int
-xpmem_open_op(struct inode * inodep, 
-              struct file  * filp)
+xpmem_ht_add(struct xpmem_hashtable * ht,
+             spinlock_t             * lock,
+             uintptr_t                key,
+	     uintptr_t                val)
 {
-    filp->private_data = inodep->priv;
-    return 0;
+    int ret = 0;
+
+    spin_lock(lock);
+    {
+	ret = htable_insert(ht, key, val);
+    }
+    spin_unlock(lock);
+
+    return ret;
 }
+
+static uintptr_t
+xpmem_ht_search_or_remove(struct xpmem_hashtable * ht,
+                          spinlock_t             * lock,
+			  uintptr_t                key,
+			  int                      remove)
+{
+    uintptr_t ret = 0;
+
+    spin_lock(lock);
+    {
+	if (remove) {
+	    ret = htable_remove(ht, key, 0);
+	} else {
+	    ret = htable_search(ht, key);
+	}
+    }
+    spin_unlock(lock);
+
+    return ret;
+}
+
+static uintptr_t
+xpmem_ht_search(struct xpmem_hashtable * ht,
+                spinlock_t             * lock,
+		uintptr_t                key)
+{
+    return xpmem_ht_search_or_remove(ht, lock, key, 0);
+}
+
+static uintptr_t
+xpmem_ht_remove(struct xpmem_hashtable * ht,
+                spinlock_t             * lock,
+		uintptr_t                key)
+{
+    return xpmem_ht_search_or_remove(ht, lock, key, 1);
+}
+
 
 static unsigned long
 make_xpmem_addr(pid_t  src, 
@@ -79,33 +144,46 @@ xpmem_make(void          * vaddr,
 	   void          * permit_value, 
 	   xpmem_segid_t * segid_p)
 {
-    int ret = 0;
+    xpmem_segid_t segid = 0;
+    int           ret   = 0;
 
     if ((u64)vaddr & (PAGE_SIZE - 1)) {
-	printk(KERN_ERR "XPMEM: Cannot export non page-aligned virtual address %p\n", vaddr);
+	XPMEM_ERR("Cannot export non page-aligned virtual address %p", vaddr);
 	return -1;
     }
 
     if (size & (PAGE_SIZE - 1)) {
-	printk(KERN_ERR "XPMEM: Cannot export region with non page-aligned size %llu\n", (unsigned long long)size);
+	XPMEM_ERR("Cannot export region with non page-aligned size %llu", (unsigned long long)size);
 	return -1;
     }
 
-    *segid_p = make_xpmem_addr(current->aspace->id, vaddr);
+    /* Request a segid from the nameserver */
+    ret = xpmem_make_remote(&(xpmem_my_part->part_state), &segid);
 
-    {
-	xpmem_segid_t ext_segid;
-	struct xpmem_id * id = (struct xpmem_id *)&ext_segid;
-	id->tgid = current->aspace->id;
-	id->uniq = 0;
+    if (ret == 0) {
+	/* Store the SMARTMAP info in the hashtable */
+	struct xpmem_smartmap_info * info = kmem_alloc(sizeof(struct xpmem_smartmap_info));
 
-        ret = xpmem_make_remote(&(xpmem_my_part->part_state), &ext_segid);
-	if (ret) {
-	    *segid_p = -1;
-	} else {
-	    htable_insert(segid_map, (uintptr_t)ext_segid, (uintptr_t)*segid_p);
-	    *segid_p = ext_segid;
+	if (info == NULL) {
+	    xpmem_remove_remote(&(xpmem_my_part->part_state), segid);
+	    return -1;
 	}
+
+	info->pid   = current->aspace->id;
+	info->size  = size;
+	info->vaddr = (u64)vaddr;
+
+	ret = xpmem_ht_add(segid_map, &segid_map_lock, (uintptr_t)segid, (uintptr_t)info);
+	if (ret == 0) {
+	    XPMEM_ERR("Cannot insert segid %lli into hashtable", segid);
+	    xpmem_remove_remote(&(xpmem_my_part->part_state), segid);
+	    return -1;
+	}
+
+	/* Success */
+	*segid_p = segid;
+
+	return 0;
     }
 
     return ret;
@@ -114,8 +192,22 @@ xpmem_make(void          * vaddr,
 static int
 xpmem_remove(xpmem_segid_t segid)
 {
-    htable_remove(segid_map, (uintptr_t)segid, 0);
-    return xpmem_remove_remote(&(xpmem_my_part->part_state), segid);
+    struct xpmem_smartmap_info * info = NULL;
+
+    /* Remove from hashtable */
+    info = (struct xpmem_smartmap_info *)xpmem_ht_remove(segid_map, &segid_map_lock, (uintptr_t)segid);
+
+    if (info == NULL) {
+	XPMEM_ERR("Cannot find segid %lli in hashtable", segid);
+	return -1;
+    }
+
+    kmem_free(info);
+
+    /* Tell nameserver */
+    xpmem_remove_remote(&(xpmem_my_part->part_state), segid);
+
+    return 0;
 }
 
 static int
@@ -125,25 +217,111 @@ xpmem_get(xpmem_segid_t  segid,
 	  void         * permit_value, 
 	  xpmem_apid_t * apid_p)
 {
-    int ret = 0;
+    struct xpmem_smartmap_info * info = NULL;
+    xpmem_apid_t                 apid = 0;
+    int                          ret  = 0;
+    u64	                         size = 0;
 
+    /* Lookup segid in hashtable */
+    info = (struct xpmem_smartmap_info *)xpmem_ht_search(segid_map, &segid_map_lock, (uintptr_t)segid);
+
+    if (info == NULL) {
+
+	/* Can't find the segid locally - need to check remotely */
+	ret = xpmem_get_remote(&(xpmem_my_part->part_state), segid, flags, permit_type, (u64)permit_value, &apid, &size);
+
+	if (ret != 0) {
+	    return -1;
+	}
+
+	if (apid <= 0) {
+	    return -1;
+	}
+
+	/* We need a way to associate this apid as a remote one - map it to the remote
+	 * segid */
+	ret = xpmem_ht_add(apid_map, &apid_map_lock, (uintptr_t)apid, (uintptr_t)segid);
+	if (ret == 0) {
+	    XPMEM_ERR("Cannot insert apid %lli into hashtable", apid); 
+	    xpmem_release_remote(&(xpmem_my_part->part_state), segid, apid);
+	    return -1;
+	}
+
+	/* Success */
+	*apid_p = apid;
+
+	return 0;
+    }
+
+    /* Otherwise, the segid is a local segid - set to the segid and return */
     *apid_p = segid;
 
-    {
-	xpmem_segid_t search = (xpmem_segid_t)htable_search(segid_map, segid);
-	if (search == 0) {
-	    /* Miss means the segid is registered remotely */
-	    ret = xpmem_get_remote(&(xpmem_my_part->part_state), segid, flags, permit_type, (u64)permit_value, apid_p);
-	}
-    }
-    
-    return ret;
+    return 0;
 }
 
 static int
 xpmem_release(xpmem_apid_t apid)
 {
-    return xpmem_release_remote(&(xpmem_my_part->part_state), apid);
+    xpmem_segid_t segid = 0;
+    int           ret   = 0;
+
+    /* Lookup remote segid in hashtable */
+    segid = (xpmem_segid_t)xpmem_ht_search(apid_map, &apid_map_lock, (uintptr_t)apid);
+
+    if (segid > 0) {
+	/* This is a remotely created apid - release it */
+	ret = xpmem_release_remote(&(xpmem_my_part->part_state), segid, apid);
+
+	if (ret != 0) {
+	    return -1;
+	}
+
+	/* Remove from apid hashtable */
+	xpmem_ht_remove(apid_map, &apid_map_lock, (uintptr_t)apid);
+
+	/* Success */
+	return 0;
+    }
+    
+    /* Else, this is a locally created apid - nothing to do */
+    return 0;
+}
+
+
+static int 
+xpmem_try_attach_remote(xpmem_segid_t   segid,
+                        xpmem_apid_t    apid,
+	 	        off_t           off,
+	 	        size_t          size,
+	 	        u64           * vaddr)
+{
+    int      ret     = 0;
+    vaddr_t at_vaddr = 0;
+
+    /* Find free address space */
+    if (aspace_find_hole(current->aspace->id, 0, size, PAGE_SIZE, &at_vaddr)) {
+	XPMEM_ERR("aspace_find_hole() failed");
+	return -1;
+    }
+
+    /* Add region to aspace */
+    if (aspace_add_region(current->aspace->id, at_vaddr, size, VM_READ | VM_WRITE | VM_USER,
+		PAGE_SIZE, "xpmem")) {
+	XPMEM_ERR("aspace_add_region() failed");
+	return -1;
+    }
+
+    /* Attach to remote memory */
+    ret = xpmem_attach_remote(&(xpmem_my_part->part_state), segid, apid, off, size, (u64)at_vaddr);
+
+    if (ret != 0) {
+	aspace_del_region(current->aspace->id, at_vaddr, size);
+	return -1;
+    }
+
+    /* Success */
+    *vaddr = (u64)at_vaddr;
+    return 0;
 }
 
 static int
@@ -152,15 +330,17 @@ xpmem_attach(xpmem_apid_t apid,
 	     size_t       size, 
 	     u64        * vaddr)
 {
-    int ret = 0;
+    struct xpmem_smartmap_info * info  = NULL;
+    xpmem_segid_t                segid = 0;
+    int                          ret   = 0;
 
     if (*vaddr) {
-	printk(KERN_ERR "XPMEM: Kitten does not support user-specified target vaddr\n");
+	XPMEM_ERR("Kitten does not support user-specified target vaddr");
 	return -1;
     }
 
     if (off & (PAGE_SIZE - 1)) {
-	printk(KERN_ERR "XPMEM: Cannot attach region with non page-aligned offset %llu\n", (unsigned long long)off);
+	XPMEM_ERR("Cannot attach region with non page-aligned offset %llu", (unsigned long long)off);
 	return -1;
     }
 
@@ -169,24 +349,41 @@ xpmem_attach(xpmem_apid_t apid,
 	size += PAGE_SIZE - (size & (PAGE_SIZE - 1));
     }
 
-    {
-	xpmem_segid_t search = (xpmem_segid_t)htable_search(segid_map, apid);
-	if (search == 0) {
-	    /* Miss means the apid is registered remotely */
-	    ret = xpmem_attach_remote(&(xpmem_my_part->part_state), apid, off, size, vaddr);
-	} else {
-	    /* Hit means the apid is registered locally and is the smartmap'd virtual adddress */
-	    *vaddr = (u64)((void *)search + off);
+    /* Lookup remote segid in hashtable */
+    segid = (xpmem_segid_t)xpmem_ht_search(apid_map, &apid_map_lock, (uintptr_t)apid);
+
+    if (segid > 0) {
+	/* This is a remotely created apid - attach it */
+	ret = xpmem_try_attach_remote(segid, apid, off, size, vaddr);
+
+	if (ret != 0) {
+	    return -1;
 	}
+
+	/* Success */
+	return 0;
     }
-    
-    return ret;
+
+    /* The apid maps to a locally created segment. Search the segid map for the source
+     * smartmap parameters
+     */
+    info = (struct xpmem_smartmap_info *)xpmem_ht_search(segid_map, &segid_map_lock, (uintptr_t)apid);
+
+    if (info == NULL) {
+	/* Invalid apid: no local or remote creation */
+	return -1;
+    }
+
+    /* Success */
+    *vaddr = make_xpmem_addr(info->pid, (void *)info->vaddr) + off;
+    return 0;
 }
 
 static int
 xpmem_detach(u64 vaddr)
 {
-    return xpmem_detach_remote(&(xpmem_my_part->part_state), vaddr);
+    /* No way to do these right now. NBD */
+    return 0;
 }
 
 
@@ -199,7 +396,7 @@ xpmem_ioctl_op(struct file * filp,
 
     switch (cmd) {
 	case XPMEM_CMD_VERSION: {
-	    return 0x00022000;
+	    return 0x00030000;
 	}
 
 	case XPMEM_CMD_MAKE: {
@@ -291,6 +488,14 @@ xpmem_ioctl_op(struct file * filp,
     return ret;
 }
 
+static int
+xpmem_open_op(struct inode * inodep, 
+              struct file  * filp)
+{
+    filp->private_data = inodep->priv;
+    return 0;
+}
+
 static struct kfs_fops
 xpmem_fops = 
 {
@@ -307,6 +512,19 @@ xpmem_init(void)
     if (!xpmem_my_part) {
 	return -ENOMEM;
     }
+
+    segid_map = create_htable(0, segid_hash_fn, segid_eq_fn);
+    if (!segid_map) {
+	kmem_free(xpmem_my_part);
+	return -ENOMEM;
+    }
+
+    apid_map  = create_htable(0, segid_hash_fn, segid_eq_fn);
+    if (!apid_map) {
+	free_htable(segid_map, 0, 0);
+	kmem_free(xpmem_my_part);
+	return -ENOMEM;
+    }
     
     kfs_create("/xpmem",
 	NULL,
@@ -314,7 +532,6 @@ xpmem_init(void)
 	0777,
 	NULL,
 	0);
-
 
 #ifdef CONFIG_XPMEM_NS
     xpmem_partition_init(&(xpmem_my_part->part_state), 1);
@@ -325,12 +542,6 @@ xpmem_init(void)
 #ifdef CONFIG_PISCES
     pisces_xpmem_init();
 #endif
-
-    segid_map = create_htable(0, segid_hash_fn, segid_eq_fn);
-    if (!segid_map) {
-	printk(KERN_ERR "XPMEM: Could not create segid map\n");
-	return -ENOMEM;
-    }
 
     return 0;
 }
@@ -344,15 +555,63 @@ get_local_partition(void)
 }
 
 
-xpmem_apid_t 
-xpmem_get_local_apid(xpmem_apid_t remote_apid)
+int
+do_xpmem_attach_domain(xpmem_apid_t    apid,
+                       off_t           offset,
+                       size_t          size,
+		       u64          ** p_pfns,
+		       u64           * p_num_pfns)
 {
-    if (!segid_map) {
+    struct xpmem_smartmap_info * info       = NULL;
+    u64                        * pfns       = NULL;
+    u64                          num_pfns   = 0;
+    u64                          i          = 0;
+
+    vaddr_t                      seg_vaddr  = 0;
+    pid_t                        seg_pid    = 0;
+
+
+    *p_pfns     = NULL;
+    *p_num_pfns = 0;
+
+    /* Search the segid map for SMARTMAP info */
+    info = (struct xpmem_smartmap_info *)xpmem_ht_search(segid_map, &segid_map_lock, (uintptr_t)apid);
+    if (info == NULL) {
+        return -1;
+    }
+
+    /* Grab the SMARTMAP'd virtual address */
+    //seg_vaddr = make_xpmem_addr(info->pid, (void *)info->vaddr + offset);
+    //seg_vaddr -= 0x8000000000;
+    seg_vaddr = info->vaddr;
+    seg_pid   = info->pid;
+
+    num_pfns  = size / PAGE_SIZE;
+    pfns      = kmem_alloc(sizeof(u64) * num_pfns);
+    if (!pfns) {
 	return -1;
     }
 
-    return (xpmem_apid_t)htable_search(segid_map, remote_apid);
-}
+    for (i = 0; i < num_pfns; i++) {
+	paddr_t vaddr = 0;
+	paddr_t paddr = 0;
 
+	vaddr = seg_vaddr + (i * PAGE_SIZE);
+
+	if (aspace_virt_to_phys(seg_pid, vaddr, &paddr)) {
+	    XPMEM_ERR("Cannot get PFN for process %d vaddr %p", seg_pid, (void *)vaddr);
+	    kmem_free(pfns);
+	    return -1;
+	}
+
+	pfns[i] = (paddr >> PAGE_SHIFT);
+    }
+
+    /* Success */
+    *p_pfns     = pfns;
+    *p_num_pfns = num_pfns;
+
+    return 0;
+}
 
 DRIVER_INIT("kfs", xpmem_init);

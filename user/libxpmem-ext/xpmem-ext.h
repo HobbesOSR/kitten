@@ -14,6 +14,7 @@
 #define _XPMEM_H
 
 #include <asm/ioctl.h>
+#include <stdint.h>
 #ifndef __KERNEL__
 #include <sys/types.h>
 #endif

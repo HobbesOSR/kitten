@@ -124,10 +124,42 @@ struct xpmem_id {
 };
 
 #define XPMEM_MAX_UNIQ_ID   ((1 << (sizeof(short) * 8)) - 1)
-#define XPMEM_MAX_UNIQ_APID 256
-#define XPMEM_MAX_UNIQ_SEGID XPMEM_MAX_UNIQ_ID - XPMEM_MAX_UNIQ_APID
+
+static inline pid_t
+xpmem_segid_to_tgid(xpmem_segid_t segid)
+{
+    return ((struct xpmem_id *)&segid)->tgid;
+}
+
+static inline unsigned short
+xpmem_segid_to_uniq(xpmem_segid_t segid)
+{
+    return ((struct xpmem_id *)&segid)->uniq;
+}
+
+static inline pid_t
+xpmem_apid_to_tgid(xpmem_apid_t apid)
+{
+    return ((struct xpmem_id *)&apid)->tgid;
+}
+
+static inline unsigned short
+xpmem_apid_to_uniq(xpmem_segid_t apid)
+{
+    return ((struct xpmem_id *)&apid)->uniq;
+}
+
+
+#define XPMEM_ERR(format, args...) \
+    printk(KERN_ERR "XPMEM_ERR: "format" [%s:%d]\n", ##args, __FILE__, __LINE__);
 
 struct xpmem_partition * get_local_partition(void);
+
+int do_xpmem_attach_domain(xpmem_apid_t    apid, 
+                           off_t           offset,
+			   size_t          size,
+			   u64          ** pfns,
+			   u64           * num_pfns);
 
 
 #endif /* __KERNEL__ */
