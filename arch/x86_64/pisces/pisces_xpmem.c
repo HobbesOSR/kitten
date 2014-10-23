@@ -177,7 +177,7 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
     int				    status  = 0;
 
     if (!state->connected) {
-	printk(KERN_ERR "Pisces XPMEM: cannot handle command: enclave channel not connected\n");
+	XPMEM_ERR("Cannot handle command: enclave channel not connected\n");
 	return -1;
     }
 
@@ -189,7 +189,7 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
     /* Allocate memory for xpmem lcall structure */
     lcall = kmem_alloc(sizeof(struct pisces_xpmem_cmd_lcall) + pfn_len);
     if (!lcall) {
-	printk(KERN_ERR "Pisces XPMEM: out of memory\n");
+	XPMEM_ERR("Out of memory\n");
 	return -1;
     }
 
@@ -204,12 +204,8 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 	);
     }
 
-    printk("Sending command %d\n", cmd->type);
-
     /* Perform xbuf send */
     status = pisces_xpmem_lcall_send(lcall, sizeof(struct pisces_xpmem_cmd_lcall) + pfn_len);
-
-    printk("Command %d sent\n", cmd->type);
 
     /* Free lcall structure */
     kmem_free(lcall);

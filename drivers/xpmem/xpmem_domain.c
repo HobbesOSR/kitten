@@ -251,8 +251,6 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
         return -1;
     }
 
-    printk("Received command %d\n", cmd->type);
-
     /* Process commands destined for this domain */
     switch (cmd->type) {
         case XPMEM_GET:
