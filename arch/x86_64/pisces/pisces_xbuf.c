@@ -366,8 +366,6 @@ pisces_xbuf_server_init(uintptr_t   xbuf_va,
 	struct pisces_xbuf_desc * desc = NULL;
 	struct pisces_xbuf      * xbuf = (struct pisces_xbuf *)xbuf_va;
 	
-
-	
 	desc = kmem_alloc(sizeof(struct pisces_xbuf_desc));
 
 	if (desc == NULL) {
@@ -410,6 +408,16 @@ pisces_xbuf_server_init(uintptr_t   xbuf_va,
 	set_flags(xbuf, XBUF_READY);
 	
 	return desc;
+}
+
+int
+pisces_xbuf_server_deinit(struct pisces_xbuf_desc * xbuf_desc)
+{
+    irq_free(xbuf_desc->xbuf->enclave_vector, xbuf_desc);
+
+    kmem_free(xbuf_desc);
+
+    return 0;
 }
 
 

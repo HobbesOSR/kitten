@@ -22,7 +22,7 @@ struct xpmem_cmd_get_ex {
     uint32_t permit_type;
     uint64_t permit_value;
     xpmem_apid_t apid;
-    uint64_t     size;
+    uint64_t size;
 };
 
 struct xpmem_cmd_release_ex {
@@ -76,6 +76,7 @@ typedef enum {
 
 
 struct xpmem_cmd_ex {
+    uint32_t      reqid;   /* The local enclave identifier for the command */
     xpmem_domid_t req_dom; /* The domain invoking the original XPMEM operation */
     xpmem_domid_t src_dom; /* The domain that created the most recent request / response */
     xpmem_domid_t dst_dom; /* The domain targeted with the command / response */

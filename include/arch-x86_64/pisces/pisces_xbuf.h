@@ -25,6 +25,9 @@ pisces_xbuf_server_init(uintptr_t   xbuf_va,
 			u32         ipi_vector,
 			u32         target_cpu);
 
+int
+pisces_xbuf_server_deinit(struct pisces_xbuf_desc * xbuf_desc);
+
 
 struct pisces_xbuf_desc *  
 pisces_xbuf_client_init(uintptr_t xbuf_va, 
