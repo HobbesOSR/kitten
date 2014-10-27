@@ -21,7 +21,7 @@
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-  A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+  A PARTICULAR PURPOSE ARE DISCLAIMED.	IN NO EVENT SHALL THE COPYRIGHT OWNER OR
   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -85,7 +85,7 @@ u32 hash_long(u64 val, u32 bits) {
     u64 hash = val;
 
 
-    /*  Sigh, gcc can't optimise this alone like it does for 32 bits. */
+    /*	Sigh, gcc can't optimise this alone like it does for 32 bits. */
     u64 n = hash;
     n <<= 18;
     hash -= n;
@@ -184,7 +184,7 @@ struct xpmem_hashtable * create_htable(u32 min_size,
 
     /* Enforce size as prime */
     for (prime_index = 0; prime_index < prime_table_len; prime_index++) {
-        if (primes[prime_index] > min_size) { 
+	if (primes[prime_index] > min_size) { 
 	    size = primes[prime_index]; 
 	    break; 
 	}
@@ -208,9 +208,9 @@ struct xpmem_hashtable * create_htable(u32 min_size,
     htable->table_length  = size;
     htable->prime_index   = prime_index;
     htable->entry_count   = 0;
-    htable->hash_fn       = hash_fn;
-    htable->eq_fn         = eq_fn;
-    htable->load_limit    = load_factors[prime_index];
+    htable->hash_fn	  = hash_fn;
+    htable->eq_fn	  = eq_fn;
+    htable->load_limit	  = load_factors[prime_index];
 
     return htable;
 }
@@ -235,11 +235,11 @@ static int xpmem_hashtable_expand(struct xpmem_hashtable * htable) {
     new_table = (struct hash_entry **)kmem_alloc(sizeof(struct hash_entry*) * new_size);
 
     if (new_table != NULL) {
-        memset(new_table, 0, new_size * sizeof(struct hash_entry *));
-        /* This algorithm is not 'stable'. ie. it reverses the list
-         * when it transfers entries between the tables */
+	memset(new_table, 0, new_size * sizeof(struct hash_entry *));
+	/* This algorithm is not 'stable'. ie. it reverses the list
+	 * when it transfers entries between the tables */
 
-        for (i = 0; i < htable->table_length; i++) {
+	for (i = 0; i < htable->table_length; i++) {
 
 	    while ((tmp_entry = htable->table[i]) != NULL) {
 		htable->table[i] = tmp_entry->next;
@@ -250,11 +250,11 @@ static int xpmem_hashtable_expand(struct xpmem_hashtable * htable) {
 	    
 		new_table[index] = tmp_entry;
 	    }
-        }
+	}
 
-        kmem_free(htable->table);
+	kmem_free(htable->table);
 
-        htable->table = new_table;
+	htable->table = new_table;
     } else {
 	/* Plan B: realloc instead */
 
@@ -292,7 +292,7 @@ static int xpmem_hashtable_expand(struct xpmem_hashtable * htable) {
 
     htable->table_length = new_size;
 
-    htable->load_limit   = load_factors[htable->prime_index];
+    htable->load_limit	 = load_factors[htable->prime_index];
 
     return -1;
 }
@@ -348,8 +348,8 @@ int htable_change(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t valu
     tmp_entry = htable->table[index];
 
     while (tmp_entry != NULL) {
-        /* Check hash value to short circuit heavier comparison */
-        if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
+	/* Check hash value to short circuit heavier comparison */
+	if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
 
 	    if (free_value) {
 		kmem_free((void *)(tmp_entry->value));
@@ -357,8 +357,8 @@ int htable_change(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t valu
 
 	    tmp_entry->value = value;
 	    return -1;
-        }
-        tmp_entry = tmp_entry->next;
+	}
+	tmp_entry = tmp_entry->next;
     }
     return 0;
 }
@@ -377,13 +377,13 @@ int htable_inc(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) 
     tmp_entry = htable->table[index];
 
     while (tmp_entry != NULL) {
-        /* Check hash value to short circuit heavier comparison */
-        if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
+	/* Check hash value to short circuit heavier comparison */
+	if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
 
 	    tmp_entry->value += value;
 	    return -1;
-        }
-        tmp_entry = tmp_entry->next;
+	}
+	tmp_entry = tmp_entry->next;
     }
     return 0;
 }
@@ -401,13 +401,13 @@ int htable_dec(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) 
     tmp_entry = htable->table[index];
 
     while (tmp_entry != NULL) {
-        /* Check hash value to short circuit heavier comparison */
-        if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
+	/* Check hash value to short circuit heavier comparison */
+	if ((hash_value == tmp_entry->hash) && (htable->eq_fn(key, tmp_entry->key))) {
 
 	    tmp_entry->value -= value;
 	    return -1;
-        }
-        tmp_entry = tmp_entry->next;
+	}
+	tmp_entry = tmp_entry->next;
     }
     return 0;
 }
@@ -442,7 +442,7 @@ uintptr_t htable_search(struct xpmem_hashtable * htable, uintptr_t key) {
 /* returns value associated with key */
 uintptr_t htable_remove(struct xpmem_hashtable * htable, uintptr_t key, int free_key) {
     /* TODO: consider compacting the table when the load factor drops enough,
-     *       or provide a 'compact' method. */
+     *	     or provide a 'compact' method. */
   
     struct hash_entry * cursor;
     struct hash_entry ** entry_ptr;

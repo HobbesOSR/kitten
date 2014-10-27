@@ -27,30 +27,30 @@
 
 struct xpmem_request_struct {
     /* Has it been allocated */
-    int                   allocated;
+    int			  allocated;
 
     /* Has command been serviced? */
-    int                   serviced;
+    int			  serviced;
 
     /* Completed command struct */
     struct xpmem_cmd_ex * cmd;
 
     /* Waitq for process */
-    waitq_t               waitq;
+    waitq_t		  waitq;
 };
 
 struct xpmem_domain_state {
     /* Lock for domain state */
-    spinlock_t                     lock;
+    spinlock_t			   lock;
 
     /* Has domain been successfully initialized? */
-    int                            initialized;
+    int				   initialized;
 
     /* Array of request structs indexed by reqid */
     struct xpmem_request_struct    requests[MAX_UNIQ_REQ];
 
     /* XPMEM connection link */
-    xpmem_link_t                   link;
+    xpmem_link_t		   link;
 
     /* Pointer to XPMEM partition */
     struct xpmem_partition_state * part;
@@ -60,7 +60,7 @@ struct xpmem_domain_state {
 static int32_t
 alloc_request_id(struct xpmem_domain_state * state)
 {
-    int32_t       id    = -1;
+    int32_t	  id	= -1;
     unsigned long flags = 0;
 
     spin_lock_irqsave(&(state->lock), flags);
@@ -86,14 +86,14 @@ alloc_request_id(struct xpmem_domain_state * state)
 
 static void
 free_request_id(struct xpmem_domain_state * state,
-                uint32_t                    reqid)
+		uint32_t		    reqid)
 {
     unsigned long flags = 0;
 
     spin_lock_irqsave(&(state->lock), flags);
     {
 	state->requests[reqid].allocated = 0;
-	state->requests[reqid].cmd       = NULL;
+	state->requests[reqid].cmd	 = NULL;
     }
     spin_unlock_irqrestore(&(state->lock), flags);
 }
@@ -130,9 +130,9 @@ xpmem_release_domain(struct xpmem_cmd_release_ex * release_ex)
 static int
 xpmem_attach_domain(struct xpmem_cmd_attach_ex * attach_ex)
 {
-    xpmem_apid_t apid   = attach_ex->apid;
-    off_t        offset = attach_ex->off;
-    size_t       size   = attach_ex->size;
+    xpmem_apid_t apid	= attach_ex->apid;
+    off_t	 offset = attach_ex->off;
+    size_t	 size	= attach_ex->size;
 
     if (apid <= 0) {
 	return -1;
@@ -159,10 +159,10 @@ xpmem_detach_domain(struct xpmem_cmd_detach_ex * detach_ex)
 
 unsigned long 
 xpmem_map_pfn_range(u64   at_vaddr,
-                    u64 * pfns, 
-                    u64   num_pfns)
+		    u64 * pfns, 
+		    u64   num_pfns)
 {
-    u64     i    = 0;
+    u64     i	 = 0;
     vaddr_t addr = 0;
 
     for (i = 0; i < num_pfns; i++) {
@@ -187,8 +187,8 @@ xpmem_map_pfn_range(u64   at_vaddr,
 
 static int
 xpmem_cmd_wait(struct xpmem_domain_state  * state,
-               uint32_t                     reqid,
-	       struct xpmem_cmd_ex       ** resp)
+	       uint32_t			    reqid,
+	       struct xpmem_cmd_ex	 ** resp)
 {
     struct xpmem_request_struct * req = &(state->requests[reqid]);
 
@@ -207,7 +207,7 @@ xpmem_cmd_wait(struct xpmem_domain_state  * state,
 
 static void
 xpmem_cmd_wakeup(struct xpmem_domain_state * state,
-                 struct xpmem_cmd_ex       * cmd)
+		 struct xpmem_cmd_ex	   * cmd)
 {
     struct xpmem_request_struct * req = &(state->requests[cmd->reqid]);
 
@@ -219,7 +219,7 @@ xpmem_cmd_wakeup(struct xpmem_domain_state * state,
 
     *(req->cmd) = *cmd;
 
-    if ((cmd->type            == XPMEM_ATTACH_COMPLETE) &&
+    if ((cmd->type	      == XPMEM_ATTACH_COMPLETE) &&
 	(cmd->attach.num_pfns >  0))
     {
 	req->cmd->attach.pfns = kmem_alloc(sizeof(u64) * cmd->attach.num_pfns);
@@ -242,81 +242,79 @@ wakeup:
 /* Callback for command being issued by the XPMEM name/forwarding service */
 static int
 xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
-             void                * priv_data)
+	     void		 * priv_data)
 {
     struct xpmem_domain_state * state = (struct xpmem_domain_state *)priv_data;
-    int                         ret   = 0;
+    int				ret   = 0;
 
     if (!state->initialized) {
-        return -1;
+	return -1;
     }
 
     /* Process commands destined for this domain */
     switch (cmd->type) {
-        case XPMEM_GET:
+	case XPMEM_GET:
+	    ret = xpmem_get_domain(&(cmd->get));
 
-            ret = xpmem_get_domain(&(cmd->get));
+	    if (ret != 0) {
+		cmd->get.apid = -1;
+	    }
 
-            if (ret != 0) {
-                cmd->get.apid = -1;
-            }
+	    cmd->type	 = XPMEM_GET_COMPLETE;
+	    cmd->dst_dom = XPMEM_NS_DOMID;
 
-            cmd->type    = XPMEM_GET_COMPLETE;
-            cmd->dst_dom = XPMEM_NS_DOMID;
+	    xpmem_cmd_deliver(state->part, state->link, cmd);
 
-            xpmem_cmd_deliver(state->part, state->link, cmd);
+	    break;
 
-            break;
+	case XPMEM_RELEASE:
+	    ret = xpmem_release_domain(&(cmd->release));
 
-        case XPMEM_RELEASE:
-            ret = xpmem_release_domain(&(cmd->release));
+	    cmd->type	 = XPMEM_RELEASE_COMPLETE;
+	    cmd->dst_dom = XPMEM_NS_DOMID;
 
-            cmd->type    = XPMEM_RELEASE_COMPLETE;
-            cmd->dst_dom = XPMEM_NS_DOMID;
+	    xpmem_cmd_deliver(state->part, state->link, cmd);
 
-            xpmem_cmd_deliver(state->part, state->link, cmd);
+	    break;
 
-            break;
+	case XPMEM_ATTACH:
+	    ret = xpmem_attach_domain(&(cmd->attach));
 
-        case XPMEM_ATTACH:
-            ret = xpmem_attach_domain(&(cmd->attach));
+	    if (ret != 0) {
+		cmd->attach.pfns = NULL;
+		cmd->attach.num_pfns = 0;
+	    }
 
-            if (ret != 0) {
-                cmd->attach.pfns = NULL;
-                cmd->attach.num_pfns = 0;
-            }
+	    cmd->type	 = XPMEM_ATTACH_COMPLETE;
+	    cmd->dst_dom = XPMEM_NS_DOMID;
 
-            cmd->type    = XPMEM_ATTACH_COMPLETE;
-            cmd->dst_dom = XPMEM_NS_DOMID;
+	    xpmem_cmd_deliver(state->part, state->link, cmd);
 
-            xpmem_cmd_deliver(state->part, state->link, cmd);
+	    break;
 
-            break;
+	case XPMEM_DETACH:
+	    ret = xpmem_detach_domain(&(cmd->detach));
 
-        case XPMEM_DETACH:
-            ret = xpmem_detach_domain(&(cmd->detach));
+	    cmd->type	 = XPMEM_DETACH_COMPLETE;
+	    cmd->dst_dom = XPMEM_NS_DOMID;
 
-            cmd->type    = XPMEM_DETACH_COMPLETE;
-            cmd->dst_dom = XPMEM_NS_DOMID;
+	    xpmem_cmd_deliver(state->part, state->link, cmd);
 
-            xpmem_cmd_deliver(state->part, state->link, cmd);
+	    break;
 
-            break;
-
-        case XPMEM_MAKE_COMPLETE:
-        case XPMEM_REMOVE_COMPLETE:
-        case XPMEM_GET_COMPLETE:
-        case XPMEM_RELEASE_COMPLETE:
-        case XPMEM_ATTACH_COMPLETE: 
-        case XPMEM_DETACH_COMPLETE:
-
+	case XPMEM_MAKE_COMPLETE:
+	case XPMEM_SEARCH_COMPLETE:
+	case XPMEM_REMOVE_COMPLETE:
+	case XPMEM_GET_COMPLETE:
+	case XPMEM_RELEASE_COMPLETE:
+	case XPMEM_ATTACH_COMPLETE: 
+	case XPMEM_DETACH_COMPLETE:
 	    xpmem_cmd_wakeup(state, cmd);
+	    break;
 
-            break;
-
-        default:
+	default:
 	    XPMEM_ERR("Domain given unknown XPMEM command %d", cmd->type);
-            return -1;
+	    return -1;
 
     }
 
@@ -329,7 +327,7 @@ xpmem_domain_init(struct xpmem_partition_state * part)
 {
     struct xpmem_domain_state * state = kmem_alloc(sizeof(struct xpmem_domain_state));
     if (!state) {
-        return -1;
+	return -1;
     }
 
     /* Initialize stuff */
@@ -337,20 +335,20 @@ xpmem_domain_init(struct xpmem_partition_state * part)
     init_request_map(state);
 
     state->link = xpmem_add_connection(
-            part,
-            XPMEM_CONN_LOCAL,
-            xpmem_cmd_fn,
-            (void *)state);
+	    part,
+	    XPMEM_CONN_LOCAL,
+	    xpmem_cmd_fn,
+	    (void *)state);
 
     if (state->link <= 0) {
 	XPMEM_ERR("Failed to register local domain with name/forwarding service");
-        kmem_free(state);
-        return -1;
+	kmem_free(state);
+	return -1;
     }
 
-    state->initialized  = 1;
-    state->part         = part;
-    part->domain_priv   = state;
+    state->initialized	= 1;
+    state->part		= part;
+    part->domain_priv	= state;
 
     printk("XPMEM local domain initialized\n");
 
@@ -363,7 +361,7 @@ xpmem_domain_deinit(struct xpmem_partition_state * part)
     struct xpmem_domain_state * state = (struct xpmem_domain_state *)part->domain_priv;
 
     if (!state) {
-        return 0;
+	return 0;
     }
     
     /* Remove domain connection */
@@ -384,16 +382,17 @@ xpmem_domain_deinit(struct xpmem_partition_state * part)
  */
 int
 xpmem_make_remote(struct xpmem_partition_state * part,
-                  xpmem_segid_t                * segid)
+		  char			       * name,
+		  xpmem_segid_t		       * segid)
 {
     struct xpmem_domain_state * state  = (struct xpmem_domain_state *)(struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex       * resp   = NULL;
-    struct xpmem_cmd_ex         cmd;
-    uint32_t                    reqid  = 0;
-    int                         status = 0;
+    struct xpmem_cmd_ex		cmd;
+    uint32_t			reqid  = 0;
+    int				status = 0;
 
     if (!state->initialized) {
-        return -1;
+	return -1;
     }
 
     /* Allocate a request id */
@@ -404,8 +403,13 @@ xpmem_make_remote(struct xpmem_partition_state * part,
 
     /* Setup command */
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type       = XPMEM_MAKE;
-    cmd.reqid      = reqid;
+    cmd.type	   = XPMEM_MAKE;
+    cmd.reqid	   = reqid;
+
+    if (name != NULL) {
+	strncpy(cmd.make.name, name, XPMEM_MAXNAME_SIZE);
+    }
+
     cmd.make.segid = *segid;
 
     /* Deliver command */
@@ -434,36 +438,96 @@ out:
 }
 
 int
-xpmem_remove_remote(struct xpmem_partition_state * part,
-                    xpmem_segid_t                  segid)
+xpmem_search_remote(struct xpmem_partition_state * part,
+		    char			 * name,
+		    xpmem_segid_t		 * segid)
 {
     struct xpmem_domain_state * state  = (struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex       * resp   = NULL;
-    struct xpmem_cmd_ex         cmd;
-    uint32_t                    reqid = 0;
-    int                         status = 0;
+    struct xpmem_cmd_ex		cmd;
+    uint32_t			reqid  = 0;
+    int				status = 0;
 
     if (!state->initialized) {
-        return -1;
+	return -1;
+    }
+
+    /* Allocate a request id */
+    reqid = alloc_request_id(state);
+    if (reqid < 0) {
+	return -EBUSY;
+    }
+
+    /* Setup command */
+    memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
+    cmd.type  = XPMEM_SEARCH;
+    cmd.reqid = reqid;
+
+    if (name != NULL) {
+	strncpy(cmd.search.name, name, XPMEM_MAXNAME_SIZE);
+    }
+
+    printk("Sending SEARCH for name '%s'\n", cmd.search.name);
+
+    /* Deliver command */
+    status = xpmem_cmd_deliver(state->part, state->link, &cmd);
+
+    if (status != 0) {
+	printk("Send failed\n");
+	goto out;
+    }
+
+    /* Wait for completion */
+    status = xpmem_cmd_wait(state, reqid, &resp);
+
+    if (status != 0) {
+	printk("Wait failed\n");
+	goto out;
+    }
+
+    /* Grab segid */
+    *segid = resp->search.segid;
+
+    printk("Got segid %lli\n", *segid);
+
+    kmem_free(resp);
+
+out:
+    free_request_id(state, reqid);
+    return status;
+}
+
+int
+xpmem_remove_remote(struct xpmem_partition_state * part,
+		    xpmem_segid_t		   segid)
+{
+    struct xpmem_domain_state * state  = (struct xpmem_domain_state *)part->domain_priv;
+    struct xpmem_cmd_ex       * resp   = NULL;
+    struct xpmem_cmd_ex		cmd;
+    uint32_t			reqid  = 0;
+    int				status = 0;
+
+    if (!state->initialized) {
+	return -1;
     }
     
     /* Allocate a request id */
     reqid = alloc_request_id(state);
     if (reqid < 0) {
-        return -EBUSY;
+	return -EBUSY;
     }
 
     /* Setup command */
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type         = XPMEM_REMOVE;
-    cmd.reqid        = reqid;
+    cmd.type	     = XPMEM_REMOVE;
+    cmd.reqid	     = reqid;
     cmd.remove.segid = segid;
 
     /* Deliver command */
     status = xpmem_cmd_deliver(state->part, state->link, &cmd);
 
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     /* Wait for completion */
@@ -471,7 +535,7 @@ xpmem_remove_remote(struct xpmem_partition_state * part,
 
     /* Check command completion  */
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     kmem_free(resp);
@@ -483,35 +547,35 @@ out:
 
 int
 xpmem_get_remote(struct xpmem_partition_state * part,
-                 xpmem_segid_t                  segid,
-                 int                            flags,
-                 int                            permit_type,
-                 u64                            permit_value,
-                 xpmem_apid_t                 * apid,
-		 u64                          * size)
+		 xpmem_segid_t			segid,
+		 int				flags,
+		 int				permit_type,
+		 u64				permit_value,
+		 xpmem_apid_t		      * apid,
+		 u64			      * size)
 {
     struct xpmem_domain_state * state  = (struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex       * resp   = NULL;
-    struct xpmem_cmd_ex         cmd;
-    uint32_t                    reqid = 0;
-    int                         status = 0;
+    struct xpmem_cmd_ex		cmd;
+    uint32_t			reqid = 0;
+    int				status = 0;
 
     if (!state->initialized) {
-        return -1;
+	return -1;
     }
     
     /* Allocate a request id */
     reqid = alloc_request_id(state);
     if (reqid < 0) {
-        return -EBUSY;
+	return -EBUSY;
     }
 
     /* Setup command */
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type             = XPMEM_GET;
-    cmd.reqid            = reqid;
-    cmd.get.segid        = segid;
-    cmd.get.flags        = flags;
+    cmd.type		 = XPMEM_GET;
+    cmd.reqid		 = reqid;
+    cmd.get.segid	 = segid;
+    cmd.get.flags	 = flags;
     cmd.get.permit_type  = permit_type;
     cmd.get.permit_value = permit_value;
 
@@ -519,7 +583,7 @@ xpmem_get_remote(struct xpmem_partition_state * part,
     status = xpmem_cmd_deliver(state->part, state->link, &cmd);
 
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     /* Wait for completion */
@@ -527,7 +591,7 @@ xpmem_get_remote(struct xpmem_partition_state * part,
 
     /* Check command completion  */
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     /* Grab allocated apid and size */
@@ -543,29 +607,29 @@ out:
 
 int
 xpmem_release_remote(struct xpmem_partition_state * part,
-                     xpmem_segid_t                  segid,
-                     xpmem_apid_t                   apid)
+		     xpmem_segid_t		    segid,
+		     xpmem_apid_t		    apid)
 {
     struct xpmem_domain_state * state  = (struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex       * resp   = NULL;
-    struct xpmem_cmd_ex         cmd;
-    uint32_t                    reqid = 0;
-    int                         status = 0;
+    struct xpmem_cmd_ex		cmd;
+    uint32_t			reqid = 0;
+    int				status = 0;
 
     if (!state->initialized) {
-        return -1;
+	return -1;
     }
     
     /* Allocate a request id */
     reqid = alloc_request_id(state);
     if (reqid < 0) {
-        return -EBUSY;
+	return -EBUSY;
     }
 
     /* Setup command */
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type          = XPMEM_RELEASE;
-    cmd.reqid         = reqid;
+    cmd.type	      = XPMEM_RELEASE;
+    cmd.reqid	      = reqid;
     cmd.release.segid = segid;
     cmd.release.apid  = apid;
 
@@ -573,7 +637,7 @@ xpmem_release_remote(struct xpmem_partition_state * part,
     status = xpmem_cmd_deliver(state->part, state->link, &cmd);
 
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     /* Wait for completion */
@@ -581,7 +645,7 @@ xpmem_release_remote(struct xpmem_partition_state * part,
 
     /* Check command completion  */
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     kmem_free(resp);
@@ -594,32 +658,32 @@ out:
 
 int
 xpmem_attach_remote(struct xpmem_partition_state * part,
-                    xpmem_segid_t                  segid,
-                    xpmem_apid_t                   apid,
-                    off_t                          offset,
-                    size_t                         size,
-                    u64                            at_vaddr)
+		    xpmem_segid_t		   segid,
+		    xpmem_apid_t		   apid,
+		    off_t			   offset,
+		    size_t			   size,
+		    u64				   at_vaddr)
 {
     struct xpmem_domain_state * state  = (struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex       * resp   = NULL;
-    struct xpmem_cmd_ex         cmd;
-    uint32_t                    reqid = 0;
-    int                         status = 0;
+    struct xpmem_cmd_ex		cmd;
+    uint32_t			reqid = 0;
+    int				status = 0;
 
     if (!state->initialized) {
-        return -1;
+	return -1;
     }
     
     /* Allocate a request id */
     reqid = alloc_request_id(state);
     if (reqid < 0) {
-        return -EBUSY;
+	return -EBUSY;
     }
 
     /* Setup command */
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type         = XPMEM_ATTACH;
-    cmd.reqid        = reqid;
+    cmd.type	     = XPMEM_ATTACH;
+    cmd.reqid	     = reqid;
     cmd.attach.segid = segid;
     cmd.attach.apid  = apid;
     cmd.attach.off   = offset;
@@ -629,7 +693,7 @@ xpmem_attach_remote(struct xpmem_partition_state * part,
     status = xpmem_cmd_deliver(state->part, state->link, &cmd);
 
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     /* Wait for completion */
@@ -637,19 +701,19 @@ xpmem_attach_remote(struct xpmem_partition_state * part,
 
     /* Check command completion  */
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     /* Map pfn list */
     if (resp->attach.num_pfns > 0) {
-        status = xpmem_map_pfn_range(
-            at_vaddr,
-            resp->attach.pfns,
-            resp->attach.num_pfns);
+	status = xpmem_map_pfn_range(
+	    at_vaddr,
+	    resp->attach.pfns,
+	    resp->attach.num_pfns);
 
-        kmem_free(resp->attach.pfns);
+	kmem_free(resp->attach.pfns);
     } else {
-        status = -1;
+	status = -1;
     }
 
     kmem_free(resp);
@@ -664,30 +728,30 @@ out:
 
 int
 xpmem_detach_remote(struct xpmem_partition_state * part,
-                    xpmem_segid_t                  segid,
-                    xpmem_apid_t                   apid,
-                    u64                            vaddr)
+		    xpmem_segid_t		   segid,
+		    xpmem_apid_t		   apid,
+		    u64				   vaddr)
 {
     struct xpmem_domain_state * state  = (struct xpmem_domain_state *)part->domain_priv;
     struct xpmem_cmd_ex       * resp   = NULL;
-    struct xpmem_cmd_ex         cmd;
-    uint32_t                    reqid = 0;
-    int                         status = 0;
+    struct xpmem_cmd_ex		cmd;
+    uint32_t			reqid = 0;
+    int				status = 0;
 
     if (!state->initialized) {
-        return -1;
+	return -1;
     }
     
     /* Allocate a request id */
     reqid = alloc_request_id(state);
     if (reqid < 0) {
-        return -EBUSY;
+	return -EBUSY;
     }
 
     /* Setup command */
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type         = XPMEM_DETACH;
-    cmd.reqid        = reqid;
+    cmd.type	     = XPMEM_DETACH;
+    cmd.reqid	     = reqid;
     cmd.detach.segid = segid;
     cmd.detach.apid  = apid;
     cmd.detach.vaddr = vaddr;
@@ -696,7 +760,7 @@ xpmem_detach_remote(struct xpmem_partition_state * part,
     status = xpmem_cmd_deliver(state->part, state->link, &cmd);
 
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     /* Wait for completion */
@@ -704,7 +768,7 @@ xpmem_detach_remote(struct xpmem_partition_state * part,
 
     /* Check command completion  */
     if (status != 0) {
-        goto out;
+	goto out;
     }
 
     kmem_free(resp);

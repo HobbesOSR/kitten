@@ -7,6 +7,8 @@
 #include <xpmem-ext.h>
 #include <lwk/liblwk.h>
 
+#include <xpmem-ext.h>
+
 static int xpmem_fd = -1;
 
 
@@ -32,7 +34,8 @@ int xpmem_ioctl(int cmd, void * arg)
 }
 
 
-xpmem_segid_t xpmem_make(void *vaddr, size_t size, int permit_type, void *permit_value)
+
+xpmem_segid_t xpmem_make_name(void *vaddr, size_t size, int permit_type, void *permit_value, char *name, size_t name_size)
 {
     struct xpmem_cmd_make make_info;
 
@@ -40,10 +43,29 @@ xpmem_segid_t xpmem_make(void *vaddr, size_t size, int permit_type, void *permit
     make_info.size = size;
     make_info.permit_type = permit_type;
     make_info.permit_value = (__u64)permit_value;
+    make_info.name = name;
+    make_info.name_size = name_size;
     if (xpmem_ioctl(XPMEM_CMD_MAKE, &make_info) == -1 || !make_info.segid)
 	return -1;
 
     return make_info.segid;
+}
+
+xpmem_segid_t xpmem_make(void *vaddr, size_t size, int permit_type, void *permit_value)
+{
+    return xpmem_make_name(vaddr, size, permit_type, permit_value, NULL, 0);
+}
+
+xpmem_segid_t xpmem_search(char *name, size_t name_size)
+{
+    struct xpmem_cmd_search search_info;
+
+    search_info.name = name;
+    search_info.name_size = name_size;
+    if (xpmem_ioctl(XPMEM_CMD_SEARCH, &search_info) == -1 || !search_info.segid)
+	return -1;
+
+    return search_info.segid;
 }
 
 

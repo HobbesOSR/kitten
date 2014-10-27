@@ -61,7 +61,7 @@ segid_hash_fn(uintptr_t key)
 
 static int 
 segid_eq_fn(uintptr_t key1, 
-            uintptr_t key2)
+	    uintptr_t key2)
 {
     return (key1 == key2);
 }
@@ -70,9 +70,9 @@ segid_eq_fn(uintptr_t key1,
 /* Hashtable helpers */
 static int
 xpmem_ht_add(struct xpmem_hashtable * ht,
-             spinlock_t             * lock,
-             uintptr_t                key,
-	     uintptr_t                val)
+	     spinlock_t		    * lock,
+	     uintptr_t		      key,
+	     uintptr_t		      val)
 {
     int ret = 0;
 
@@ -87,9 +87,9 @@ xpmem_ht_add(struct xpmem_hashtable * ht,
 
 static uintptr_t
 xpmem_ht_search_or_remove(struct xpmem_hashtable * ht,
-                          spinlock_t             * lock,
-			  uintptr_t                key,
-			  int                      remove)
+			  spinlock_t		 * lock,
+			  uintptr_t		   key,
+			  int			   remove)
 {
     uintptr_t ret = 0;
 
@@ -108,16 +108,16 @@ xpmem_ht_search_or_remove(struct xpmem_hashtable * ht,
 
 static uintptr_t
 xpmem_ht_search(struct xpmem_hashtable * ht,
-                spinlock_t             * lock,
-		uintptr_t                key)
+		spinlock_t	       * lock,
+		uintptr_t		 key)
 {
     return xpmem_ht_search_or_remove(ht, lock, key, 0);
 }
 
 static uintptr_t
 xpmem_ht_remove(struct xpmem_hashtable * ht,
-                spinlock_t             * lock,
-		uintptr_t                key)
+		spinlock_t	       * lock,
+		uintptr_t		 key)
 {
     return xpmem_ht_search_or_remove(ht, lock, key, 1);
 }
@@ -125,7 +125,7 @@ xpmem_ht_remove(struct xpmem_hashtable * ht,
 
 static unsigned long
 make_xpmem_addr(pid_t  src, 
-                void * vaddr) 
+		void * vaddr) 
 {
     unsigned long slot;
 
@@ -138,14 +138,15 @@ make_xpmem_addr(pid_t  src,
 }
 
 static int
-xpmem_make(void          * vaddr, 
-           size_t          size, 
-	   int             permit_type, 
-	   void          * permit_value, 
+xpmem_make(void		 * vaddr, 
+	   size_t	   size, 
+	   int		   permit_type, 
+	   void		 * permit_value, 
+	   char		 * name,
 	   xpmem_segid_t * segid_p)
 {
     xpmem_segid_t segid = 0;
-    int           ret   = 0;
+    int		  ret	= 0;
 
     if ((u64)vaddr & (PAGE_SIZE - 1)) {
 	XPMEM_ERR("Cannot export non page-aligned virtual address %p", vaddr);
@@ -158,7 +159,7 @@ xpmem_make(void          * vaddr,
     }
 
     /* Request a segid from the nameserver */
-    ret = xpmem_make_remote(&(xpmem_my_part->part_state), &segid);
+    ret = xpmem_make_remote(&(xpmem_my_part->part_state), name, &segid);
 
     if (ret == 0) {
 	/* Store the SMARTMAP info in the hashtable */
@@ -190,6 +191,13 @@ xpmem_make(void          * vaddr,
 }
 
 static int
+xpmem_search(char	   * name,
+	     xpmem_segid_t * segid)
+{
+    return xpmem_search_remote(&(xpmem_my_part->part_state), name, segid);
+}
+
+static int
 xpmem_remove(xpmem_segid_t segid)
 {
     struct xpmem_smartmap_info * info = NULL;
@@ -212,15 +220,15 @@ xpmem_remove(xpmem_segid_t segid)
 
 static int
 xpmem_get(xpmem_segid_t  segid, 
-          int            flags, 
-	  int            permit_type, 
-	  void         * permit_value, 
+	  int		 flags, 
+	  int		 permit_type, 
+	  void	       * permit_value, 
 	  xpmem_apid_t * apid_p)
 {
     struct xpmem_smartmap_info * info = NULL;
-    xpmem_apid_t                 apid = 0;
-    int                          ret  = 0;
-    u64	                         size = 0;
+    xpmem_apid_t		 apid = 0;
+    int				 ret  = 0;
+    u64				 size = 0;
 
     /* Lookup segid in hashtable */
     info = (struct xpmem_smartmap_info *)xpmem_ht_search(segid_map, &segid_map_lock, (uintptr_t)segid);
@@ -263,7 +271,7 @@ static int
 xpmem_release(xpmem_apid_t apid)
 {
     xpmem_segid_t segid = 0;
-    int           ret   = 0;
+    int		  ret	= 0;
 
     /* Lookup remote segid in hashtable */
     segid = (xpmem_segid_t)xpmem_ht_search(apid_map, &apid_map_lock, (uintptr_t)apid);
@@ -289,11 +297,11 @@ xpmem_release(xpmem_apid_t apid)
 
 
 static int 
-xpmem_try_attach_remote(xpmem_segid_t   segid,
-                        xpmem_apid_t    apid,
-	 	        off_t           off,
-	 	        size_t          size,
-	 	        u64           * vaddr)
+xpmem_try_attach_remote(xpmem_segid_t	segid,
+			xpmem_apid_t	apid,
+			off_t		off,
+			size_t		size,
+			u64	      * vaddr)
 {
     int      ret     = 0;
     vaddr_t at_vaddr = 0;
@@ -326,13 +334,13 @@ xpmem_try_attach_remote(xpmem_segid_t   segid,
 
 static int
 xpmem_attach(xpmem_apid_t apid, 
-             off_t        off, 
-	     size_t       size, 
-	     u64        * vaddr)
+	     off_t	  off, 
+	     size_t	  size, 
+	     u64	* vaddr)
 {
     struct xpmem_smartmap_info * info  = NULL;
-    xpmem_segid_t                segid = 0;
-    int                          ret   = 0;
+    xpmem_segid_t		 segid = 0;
+    int				 ret   = 0;
 
     if (*vaddr) {
 	XPMEM_ERR("Kitten does not support user-specified target vaddr");
@@ -389,7 +397,7 @@ xpmem_detach(u64 vaddr)
 
 static long
 xpmem_ioctl_op(struct file * filp, 
-               unsigned int  cmd, 
+	       unsigned int  cmd, 
 	       unsigned long arg)
 {
     long ret = 0;
@@ -401,19 +409,76 @@ xpmem_ioctl_op(struct file * filp,
 
 	case XPMEM_CMD_MAKE: {
 	    struct xpmem_cmd_make make_info;
+	    xpmem_segid_t	  segid = -1;
 
-	    if (copy_from_user(&make_info, (void *)arg, sizeof(struct xpmem_cmd_make)))
+	    if (copy_from_user(&make_info, (void *)arg, 
+			sizeof(struct xpmem_cmd_make)))
 		return -EFAULT;
 
-	    ret = xpmem_make((void *)make_info.vaddr, make_info.size, make_info.permit_type,
-		(void *)make_info.permit_value, &make_info.segid);
+	    if (make_info.name_size > XPMEM_MAXNAME_SIZE)
+		return -EINVAL;
+
+
+	    if (make_info.name_size > 0) {
+		if (strncpy_from_user(make_info.name,
+			((struct xpmem_cmd_make *)arg)->name,
+			make_info.name_size) < 0)
+		    return -EFAULT;
+
+		/* Ensure name is truncated */
+		make_info.name[XPMEM_MAXNAME_SIZE - 1] = 0;
+	    } else {
+		make_info.name = NULL;
+	    }
+
+	    ret = xpmem_make((void *)make_info.vaddr, 
+		    make_info.size, 
+		    make_info.permit_type,
+		    (void *)make_info.permit_value, 
+		    make_info.name,
+		    &segid);
 
 	    if (ret != 0)
 		return ret;
 
-            if (copy_to_user((void *)arg, &make_info, sizeof(struct xpmem_cmd_make))) {
+	    if (put_user(segid,
+		    &((struct xpmem_cmd_make __user *)arg)->segid)) {
+		xpmem_remove(segid);
 		return -EFAULT;
 	    }
+
+	    return 0;
+	}
+
+	case XPMEM_CMD_SEARCH: {
+	    struct xpmem_cmd_search search_info;
+	    xpmem_segid_t segid = 0;
+
+	    if (copy_from_user(&search_info, (void __user *)arg,
+		       sizeof(struct xpmem_cmd_search)))
+		return -EFAULT;
+
+	    if (search_info.name_size > XPMEM_MAXNAME_SIZE)
+		return -EINVAL;
+
+	    if (search_info.name_size <= 0) 
+		return -EINVAL;
+
+	    if (strncpy_from_user(search_info.name,
+		    ((struct xpmem_cmd_search *)arg)->name,
+		    search_info.name_size) < 0)
+		return -EFAULT;
+
+	    /* Ensure name is truncated */
+	    search_info.name[XPMEM_MAXNAME_SIZE - 1] = 0;
+
+	    ret = xpmem_search(search_info.name, &segid);
+	    if (ret != 0)
+		return ret;
+
+	    if (put_user(segid,
+		    &((struct xpmem_cmd_search __user *)arg)->segid))
+		return -EFAULT;
 
 	    return 0;
 	}
@@ -429,18 +494,22 @@ xpmem_ioctl_op(struct file * filp,
 
 	case XPMEM_CMD_GET: {
 	    struct xpmem_cmd_get get_info;
+	    xpmem_apid_t apid = 0;
 
 	    if (copy_from_user(&get_info, (void *)arg, sizeof(struct xpmem_cmd_get)))
 		return -EFAULT;
 
 	    ret = xpmem_get(get_info.segid, get_info.flags, get_info.permit_type,
-		(void *)get_info.permit_value, &get_info.apid);
+		(void *)get_info.permit_value, &apid);
 
 	    if (ret != 0)
 		return ret;
 
-	    if (copy_to_user((void *)arg, &get_info, sizeof(struct xpmem_cmd_get)))
+	    if (put_user(apid,
+		    &((struct xpmem_cmd_get __user *)arg)->apid)) {
+		(void)xpmem_release(apid);
 		return -EFAULT;
+	    }
 
 	    return 0;
 	}
@@ -456,17 +525,21 @@ xpmem_ioctl_op(struct file * filp,
 
 	case XPMEM_CMD_ATTACH: {
 	    struct xpmem_cmd_attach attach_info;
+	    u64 at_vaddr = 0;
 
 	    if (copy_from_user(&attach_info, (void *)arg, sizeof(struct xpmem_cmd_attach)))
 		return -EFAULT;
 
-	    ret = xpmem_attach(attach_info.apid, attach_info.offset, attach_info.size, &attach_info.vaddr);
+	    ret = xpmem_attach(attach_info.apid, attach_info.offset, attach_info.size, &at_vaddr);
 
 	    if (ret != 0)
 		return ret;
 
-	    if (copy_to_user((void *)arg, &attach_info, sizeof(struct xpmem_cmd_attach)))
+	    if (put_user(at_vaddr,
+		    &((struct xpmem_cmd_attach __user *)arg)->vaddr)) {
+		(void)xpmem_detach(at_vaddr);
 		return -EFAULT;
+	    }
 
 	    return 0;
 	}
@@ -490,7 +563,7 @@ xpmem_ioctl_op(struct file * filp,
 
 static int
 xpmem_open_op(struct inode * inodep, 
-              struct file  * filp)
+	      struct file  * filp)
 {
     filp->private_data = inodep->priv;
     return 0;
@@ -499,7 +572,7 @@ xpmem_open_op(struct inode * inodep,
 static struct kfs_fops
 xpmem_fops = 
 {
-    .open               = xpmem_open_op,
+    .open		= xpmem_open_op,
     .unlocked_ioctl	= xpmem_ioctl_op,
     .compat_ioctl	= xpmem_ioctl_op,
 };
@@ -526,7 +599,7 @@ xpmem_init(void)
 	return -ENOMEM;
     }
     
-    kfs_create("/xpmem",
+    kfs_create(XPMEM_DEV_PATH,
 	NULL,
 	&xpmem_fops,
 	0777,
@@ -557,27 +630,27 @@ get_local_partition(void)
 
 int
 do_xpmem_attach_domain(xpmem_apid_t    apid,
-                       off_t           offset,
-                       size_t          size,
-		       u64          ** p_pfns,
-		       u64           * p_num_pfns)
+		       off_t	       offset,
+		       size_t	       size,
+		       u64	    ** p_pfns,
+		       u64	     * p_num_pfns)
 {
-    struct xpmem_smartmap_info * info       = NULL;
-    u64                        * pfns       = NULL;
-    u64                          num_pfns   = 0;
-    u64                          i          = 0;
+    struct xpmem_smartmap_info * info	    = NULL;
+    u64			       * pfns	    = NULL;
+    u64				 num_pfns   = 0;
+    u64				 i	    = 0;
 
-    vaddr_t                      seg_vaddr  = 0;
-    pid_t                        seg_pid    = 0;
+    vaddr_t			 seg_vaddr  = 0;
+    pid_t			 seg_pid    = 0;
 
 
-    *p_pfns     = NULL;
+    *p_pfns	= NULL;
     *p_num_pfns = 0;
 
     /* Search the segid map for SMARTMAP info */
     info = (struct xpmem_smartmap_info *)xpmem_ht_search(segid_map, &segid_map_lock, (uintptr_t)apid);
     if (info == NULL) {
-        return -1;
+	return -1;
     }
 
     /* Grab the SMARTMAP'd virtual address */
@@ -608,7 +681,7 @@ do_xpmem_attach_domain(xpmem_apid_t    apid,
     }
 
     /* Success */
-    *p_pfns     = pfns;
+    *p_pfns	= pfns;
     *p_num_pfns = num_pfns;
 
     return 0;
