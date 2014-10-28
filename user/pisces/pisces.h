@@ -28,10 +28,53 @@
 
 #define ENCLAVE_CMD_FREE_V3_PCI        190
 
+#define ENCLAVE_CMD_LAUNCH_JOB         200
 
 #define ENCLAVE_CMD_XPMEM_CMD_EX       300
 
 #define ENCLAVE_CMD_SHUTDOWN           900
+
+
+
+struct pisces_pci_spec {
+    u8 name[128];
+    u32 bus;
+    u32 dev;
+    u32 func;
+} __attribute__((packed));
+
+
+struct pisces_job_spec {
+    char name[64];
+    char exe_path[256];
+    char argv[256];
+    char envp[256];
+
+    union {
+	u64 flags;
+	struct {
+	    u64   use_large_pages : 1;
+	    u64   use_smartmap    : 1;
+	    u64   rsvd            : 62;
+	} __attribute__((packed));
+    } __attribute__((packed));
+
+    u8   num_ranks;
+    u64  cpu_mask;
+    u64  heap_size;
+    u64  stack_size;
+} __attribute__((packed));
+
+
+
+struct pisces_dbg_spec {
+    u32 vm_id;
+    u32 core;
+    u32 cmd;
+} __attribute__((packed));
+
+
+
 
 
 struct pisces_cmd {
@@ -93,19 +136,10 @@ struct cmd_vm_cons_keycode {
 
 struct cmd_vm_debug {
     struct pisces_cmd hdr;
-
-    u32          vm_id;
-    unsigned int core; 
-    unsigned int cmd;
+    struct pisces_dbg_spec spec;
 } __attribute__((packed));
 
 
-struct pisces_pci_spec {
-    u8 name[128];
-    u32 bus;
-    u32 dev;
-    u32 func;
-} __attribute__((packed));
 
 
 struct cmd_add_pci_dev {
@@ -122,3 +156,28 @@ struct cmd_free_pci_dev {
     struct pisces_pci_spec spec;
 } __attribute__((packed));
 
+
+
+
+struct cmd_launch_job {
+    struct pisces_cmd      hdr;
+    struct pisces_job_spec spec;
+} __attribute__((packed));
+
+
+
+
+
+
+/*** Local Kitten Requests for Pisces ***/
+
+#define PISCES_STAT_FILE   500
+#define PISCES_LOAD_FILE   501
+#define PISCES_WRITE_FILE  502
+
+
+struct pisces_user_file_info {
+    unsigned long long user_addr;
+    unsigned int       path_len;
+    char               path[0];
+} __attribute__((packed)); 

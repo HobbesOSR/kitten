@@ -12,10 +12,12 @@
 #include <lwk/driver.h>
 #include <lwk/kthread.h>
 #include <lwk/print.h>
+#include <lwk/aspace.h>
 
 #include <arch/pisces/pisces.h>
 #include <arch/pisces/pisces_boot_params.h>
 #include <arch/pisces/pisces_xbuf.h>
+#include <arch/pisces/pisces_file.h>
 
 extern struct pisces_boot_params * pisces_boot_params;
 static struct pisces_xbuf_desc   * xbuf_desc = NULL;
@@ -23,6 +25,26 @@ static struct pisces_xbuf_desc   * xbuf_desc = NULL;
 static waitq_t   user_waitq;
 static u8      * cmd_data   = NULL;
 static u32       cmd_len    = 0;
+
+
+
+/*** Local Kitten Requests for Pisces ***/
+
+#define PISCES_STAT_FILE   500
+#define PISCES_LOAD_FILE   501
+#define PISCES_WRITE_FILE  502
+
+
+struct pisces_user_file_info {
+    unsigned long long user_addr;
+    unsigned int       path_len;
+    char               path[0];
+} __attribute__((packed)); 
+
+
+
+
+
 
 // This has to be done in a single operation
 static ssize_t 
@@ -146,7 +168,97 @@ cmd_ioctl(struct file  * filp,
 	  unsigned int   ioctl, 
 	  unsigned long  arg)
 {
-	return 0;
+    char __user * uptr = (char __user *)arg;
+    int ret = 0;
+
+    switch (ioctl) {
+	case PISCES_STAT_FILE: {
+	    struct pisces_user_file_info file_info;
+	    loff_t file_size   = 0;
+	    u64    file_handle = 0;
+	    
+	    memset(&file_info, 0, sizeof(struct pisces_user_file_info));
+	    
+	    if (copy_from_user(&file_info, uptr, sizeof(struct pisces_user_file_info))) {
+		printk(KERN_ERR "Unable to copy to file info from user space\n");
+		return -1;
+	    }
+	    
+	    if (copy_from_user(file_info.path, uptr + sizeof(struct pisces_user_file_info), file_info.path_len)) {
+		printk(KERN_ERR "Unable to copy file path from user space\n");
+		return -1;
+	    }
+	    
+	    file_handle = pisces_file_open(file_info.path, O_RDONLY);
+    
+	    if (file_handle == 0) {
+		printk(KERN_ERR "Could not find file (%s)\n", file_info.path);
+		return -1;
+	    }
+
+	    file_size =  pisces_file_size(file_handle);
+
+	    pisces_file_close(file_handle);
+	    
+	    return file_size;
+
+	    break;
+	}
+	case PISCES_LOAD_FILE: {
+
+	    struct pisces_user_file_info file_info;
+	    loff_t  file_size   = 0;
+	    u64     file_handle = 0;
+	    paddr_t addr_pa     = 0;
+	    ssize_t bytes_read  = 0;
+	    
+	    memset(&file_info, 0, sizeof(struct pisces_user_file_info));
+	    
+	    if (copy_from_user(&file_info, uptr, sizeof(struct pisces_user_file_info))) {
+		printk(KERN_ERR "Unable to copy to file info from user space\n");
+		return -1;
+	    }
+	    
+	    if (copy_from_user(file_info.path, uptr + sizeof(struct pisces_user_file_info), file_info.path_len)) {
+		printk(KERN_ERR "Unable to copy file path from user space\n");
+		return -1;
+	    }
+
+	    if (aspace_virt_to_phys(current->aspace->id, file_info.user_addr, &addr_pa) < 0) {
+		printk(KERN_ERR "Invalid user address used for loading file\n");
+		return -1;
+	    }
+	    
+	    file_handle = pisces_file_open(file_info.path, O_RDONLY);
+    
+	    if (file_handle == 0) {
+		printk(KERN_ERR "Could not find file (%s)\n", file_info.path);
+		return -1;
+	    }
+	    	    
+	    file_size =  pisces_file_size(file_handle);
+	    bytes_read = pisces_file_read(file_handle, __va(addr_pa), file_size, 0);
+
+	    pisces_file_close(file_handle);
+
+	    if (bytes_read != file_size) {
+		printk(KERN_ERR "Could not load file (%s) [only read %ld bytes]\n", 
+		       file_info.path, bytes_read);
+		return -1;
+	    }
+	    
+	    return 0;
+
+	    break;
+	}
+	case PISCES_WRITE_FILE:
+
+	default:
+	    printk(KERN_ERR "Invalid Pisces IOCTL (%d)\n", ioctl);
+	    return -1;
+    }
+
+    return ret;
 }
 
 static struct kfs_fops pisces_ctrl_fops = {

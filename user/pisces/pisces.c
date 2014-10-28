@@ -101,6 +101,166 @@ issue_v3_cmd(u64 cmd, uintptr_t arg)
 	return ret;
 }
 
+
+static int 
+launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
+{
+    size_t file_size = 0;
+    int path_len = strlen(job_spec->exe_path) + 1;
+    struct pisces_user_file_info * file_info = NULL;
+    id_t my_aspace_id;
+    vaddr_t file_addr = 0;
+    int status;
+    start_state_t * start_state = NULL;
+    cpu_set_t avail_cpus;
+    cpu_set_t spec_cpus;
+    cpu_set_t job_cpus;
+    u32 page_size =  (job_spec->use_large_pages ? VM_PAGE_2MB : VM_PAGE_4KB);
+    
+
+
+    // Figure out how many CPUs are available
+    {
+	pthread_getaffinity_np(pthread_self(), sizeof(avail_cpus), &avail_cpus);
+    }
+
+
+    /* Figure out which CPUs are being requested */
+    {
+	int i = 0;
+
+	CPU_ZERO(&spec_cpus);
+
+	for (i = 0; i < 64; i++) {
+	    if ((job_spec->cpu_mask & (0x1ULL << i)) != 0) {
+		CPU_SET(i, &spec_cpus);
+	    }
+	}
+    }
+
+
+    /* Check if we can host the job on the current CPUs */
+    CPU_AND(&job_cpus, &spec_cpus, &avail_cpus);
+
+    if (CPU_COUNT(&job_cpus) < job_spec->num_ranks) {
+	printf("Error: Could not find enough CPUs for job\n");
+	return -1;
+    }
+    
+
+
+    /* Load exe file info memory */
+    {
+
+	file_info = malloc(sizeof(struct pisces_user_file_info) + path_len);
+	memset(&file_info, 0, sizeof(struct pisces_user_file_info) + path_len);
+    
+	file_info->path_len = path_len;;
+	strncpy(file_info->path, job_spec->exe_path, path_len - 1);
+    
+	file_size = ioctl(pisces_fd, PISCES_STAT_FILE, file_info);
+    
+	status = aspace_get_myid(&my_aspace_id);
+	if (status != 0) 
+	    return status;
+
+
+	{
+	
+	    paddr_t pmem = elf_dflt_alloc_pmem(file_size, page_size, 0);
+
+	    printf("PMEM Allocated at %p (page_size=0x%x)\n", (void *)pmem, page_size);
+	    /* Map the segment into this address space */
+	    status =
+		aspace_map_region_anywhere(
+					   my_aspace_id,
+					   &file_addr,
+					   round_up(file_size, page_size),
+					   (VM_USER|VM_READ|VM_WRITE),
+					   page_size,
+					   "File",
+					   pmem
+					   );
+	    if (status)
+		return status;
+	
+
+	    file_info->user_addr = file_addr;
+	}
+    
+    
+	ioctl(pisces_fd, PISCES_LOAD_FILE, file_info);
+    }
+
+
+    printf("Job Launch Request (%s) [%s %s]\n", job_spec->name, job_spec->exe_path, job_spec->argv);
+
+
+    /* Allocate start state for each rank */
+    start_state = malloc(job_spec->num_ranks * sizeof(start_state_t));
+    if (!start_state) {
+	printf("malloc of start_state[] failed\n");
+	return -1;
+    }
+
+
+    
+    /* Initialize start state for each rank */
+    {
+	int rank     = 0; 
+
+	for (rank = 0; rank < job_spec->num_ranks; rank++) {
+	    int cpu = 0;
+	    int i = 0;
+	    
+	    for (i = 0; i < CPU_SETSIZE; i++) {
+		if (CPU_ISSET(i, &job_cpus)) {
+
+		    CPU_CLR(i, &job_cpus);
+		    cpu = i;
+		}
+	    }
+
+	    
+	    start_state[rank].task_id  = 0x1000 + rank;
+	    start_state[rank].cpu_id   = cpu;
+	    start_state[rank].user_id  = 1;
+	    start_state[rank].group_id = 1;
+	    
+	    sprintf(start_state[rank].task_name, job_spec->name);
+
+
+	    status = elf_load((void *)file_addr,
+			      job_spec->name,
+			      0x1000 + rank,
+			      page_size, 
+			      job_spec->heap_size,             // heap_size  = 16 MB
+			      job_spec->stack_size,            // stack_size = 256 KB
+			      job_spec->argv,                  // argv_str
+			      job_spec->envp,                  // envp_str
+			      &start_state[rank],
+			      0,
+			      &elf_dflt_alloc_pmem
+			      );
+	    
+
+	    if (status) {
+		printf("elf_load failed, status=%d\n", status);
+	    }
+	    
+	    
+	    printf("Creating Task\n");
+	    
+	    status = task_create(&start_state[rank], NULL);
+	}
+    }
+    
+    free(file_info);
+    
+    return 0;
+}
+    
+	
 int
 main(int argc, char ** argv, char * envp[]) 
 {
@@ -234,6 +394,29 @@ main(int argc, char ** argv, char * envp[])
 			    break;
 		    }
 
+		    case ENCLAVE_CMD_LAUNCH_JOB: {
+			struct cmd_launch_job * job_cmd = malloc(sizeof(struct cmd_launch_job));
+
+			memset(job_cmd, 0, sizeof(struct cmd_launch_job));
+
+			ret = read(pisces_fd, job_cmd, sizeof(struct cmd_launch_job));
+
+			if (ret != sizeof(struct cmd_launch_job)) {
+			    printf("Error reading Job Launch CMD (ret = %d)\n", ret);
+
+			    free(job_cmd);
+			    
+			    send_resp(pisces_fd, -1);
+			    break;
+			}
+			
+			launch_job(pisces_fd, &(job_cmd->spec));
+
+			free(job_cmd);
+			
+			send_resp(pisces_fd, 0);
+			break;
+		    }
 		    case ENCLAVE_CMD_CREATE_VM: {
 			    struct cmd_create_vm vm_cmd;
 			    int vm_id = -1;
@@ -512,10 +695,10 @@ main(int argc, char ** argv, char * envp[])
 				    break;
 			    }
 			    
-			    v3_cmd.core = pisces_cmd.core;
-			    v3_cmd.cmd  = pisces_cmd.cmd;
+			    v3_cmd.core = pisces_cmd.spec.core;
+			    v3_cmd.cmd  = pisces_cmd.spec.cmd;
 			    
-			    if (issue_vm_cmd(pisces_cmd.vm_id, V3_VM_DEBUG, (uintptr_t)&v3_cmd) == -1) {
+			    if (issue_vm_cmd(pisces_cmd.spec.vm_id, V3_VM_DEBUG, (uintptr_t)&v3_cmd) == -1) {
 				    send_resp(pisces_fd, -1);
 				    break;
 			    }
