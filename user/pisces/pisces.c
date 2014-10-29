@@ -15,16 +15,16 @@
 #include <pthread.h>
 #include <poll.h>
 
-typedef signed char s8;
+typedef signed   char s8;
 typedef unsigned char u8;
 
-typedef signed short s16;
+typedef signed   short s16;
 typedef unsigned short u16;
 
-typedef signed int s32;
+typedef signed   int s32;
 typedef unsigned int u32;
 
-typedef signed long long s64;
+typedef signed   long long s64;
 typedef unsigned long long u64;
 
 
@@ -37,6 +37,8 @@ typedef unsigned long long u64;
 char test_buf[4096]  __attribute__ ((aligned (512)));
 char hello_buf[512]  __attribute__ ((aligned (512)));
 char resp_buf[4066]  __attribute__ ((aligned (512)));
+
+cpu_set_t   enclave_cpus;
 
 
 
@@ -105,24 +107,14 @@ issue_v3_cmd(u64 cmd, uintptr_t arg)
 static int 
 launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 {
-    size_t file_size = 0;
-    int path_len = strlen(job_spec->exe_path) + 1;
-    struct pisces_user_file_info * file_info = NULL;
-    id_t my_aspace_id;
-    vaddr_t file_addr = 0;
-    int status;
-    start_state_t * start_state = NULL;
-    cpu_set_t avail_cpus;
+
+    u32 page_size = (job_spec->use_large_pages ? VM_PAGE_2MB : VM_PAGE_4KB);
+
+    vaddr_t   file_addr = 0;
     cpu_set_t spec_cpus;
     cpu_set_t job_cpus;
-    u32 page_size =  (job_spec->use_large_pages ? VM_PAGE_2MB : VM_PAGE_4KB);
-    
 
-
-    // Figure out how many CPUs are available
-    {
-	pthread_getaffinity_np(pthread_self(), sizeof(avail_cpus), &avail_cpus);
-    }
+    int status = 0;
 
 
     /* Figure out which CPUs are being requested */
@@ -130,7 +122,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	int i = 0;
 
 	CPU_ZERO(&spec_cpus);
-
+	
 	for (i = 0; i < 64; i++) {
 	    if ((job_spec->cpu_mask & (0x1ULL << i)) != 0) {
 		CPU_SET(i, &spec_cpus);
@@ -140,17 +132,22 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 
 
     /* Check if we can host the job on the current CPUs */
-    CPU_AND(&job_cpus, &spec_cpus, &avail_cpus);
+    {
+	CPU_AND(&job_cpus, &spec_cpus, &enclave_cpus);
 
-    if (CPU_COUNT(&job_cpus) < job_spec->num_ranks) {
-	printf("Error: Could not find enough CPUs for job\n");
-	return -1;
+	if (CPU_COUNT(&job_cpus) < job_spec->num_ranks) {
+	    printf("Error: Could not find enough CPUs for job\n");
+	    return -1;
+	}
     }
-    
 
 
     /* Load exe file info memory */
     {
+	struct pisces_user_file_info * file_info = NULL;
+	int    path_len  = strlen(job_spec->exe_path) + 1;
+	size_t file_size = 0;
+	id_t   my_aspace_id;
 
 	file_info = malloc(sizeof(struct pisces_user_file_info) + path_len);
 	memset(&file_info, 0, sizeof(struct pisces_user_file_info) + path_len);
@@ -169,7 +166,11 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	
 	    paddr_t pmem = elf_dflt_alloc_pmem(file_size, page_size, 0);
 
-	    printf("PMEM Allocated at %p (page_size=0x%x)\n", (void *)pmem, page_size);
+	    printf("PMEM Allocated at %p (page_size=0x%x) (pmem_size=%p)\n", 
+		   (void *)pmem, 
+		   page_size, 
+		   (void *)round_up(file_size, page_size));
+
 	    /* Map the segment into this address space */
 	    status =
 		aspace_map_region_anywhere(
@@ -188,30 +189,34 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	    file_info->user_addr = file_addr;
 	}
     
-    
+	printf("Loading EXE into memory\n");
+
 	ioctl(pisces_fd, PISCES_LOAD_FILE, file_info);
+
+
+	free(file_info);
     }
 
 
     printf("Job Launch Request (%s) [%s %s]\n", job_spec->name, job_spec->exe_path, job_spec->argv);
 
 
-    /* Allocate start state for each rank */
-    start_state = malloc(job_spec->num_ranks * sizeof(start_state_t));
-    if (!start_state) {
-	printf("malloc of start_state[] failed\n");
-	return -1;
-    }
-
-
-    
     /* Initialize start state for each rank */
     {
-	int rank     = 0; 
+	start_state_t * start_state = NULL;
+	int rank = 0; 
+
+	/* Allocate start state for each rank */
+	start_state = malloc(job_spec->num_ranks * sizeof(start_state_t));
+	if (!start_state) {
+	    printf("malloc of start_state[] failed\n");
+	    return -1;
+	}
+
 
 	for (rank = 0; rank < job_spec->num_ranks; rank++) {
 	    int cpu = 0;
-	    int i = 0;
+	    int i   = 0;
 	    
 	    for (i = 0; i < CPU_SETSIZE; i++) {
 		if (CPU_ISSET(i, &job_cpus)) {
@@ -222,7 +227,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	    }
 
 	    
-	    start_state[rank].task_id  = 0x1000 + rank;
+	    start_state[rank].task_id  = ANY_ID;
 	    start_state[rank].cpu_id   = cpu;
 	    start_state[rank].user_id  = 1;
 	    start_state[rank].group_id = 1;
@@ -232,12 +237,12 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 
 	    status = elf_load((void *)file_addr,
 			      job_spec->name,
-			      0x1000 + rank,
+			      ANY_ID,
 			      page_size, 
-			      job_spec->heap_size,             // heap_size  = 16 MB
-			      job_spec->stack_size,            // stack_size = 256 KB
-			      job_spec->argv,                  // argv_str
-			      job_spec->envp,                  // envp_str
+			      job_spec->heap_size,   // heap_size 
+			      job_spec->stack_size,  // stack_size 
+			      job_spec->argv,        // argv_str
+			      job_spec->envp,        // envp_str
 			      &start_state[rank],
 			      0,
 			      &elf_dflt_alloc_pmem
@@ -248,6 +253,32 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 		printf("elf_load failed, status=%d\n", status);
 	    }
 	    
+
+	    /* Setup Smartmap regions if enabled */
+	    if (job_spec->use_smartmap) {
+		int src = 0;
+		int dst = 0;
+
+		printf("Creating SMARTMAP mappings...\n");
+		for (dst = 0; dst < job_spec->num_ranks; dst++) {
+		    for (src = 0; src < job_spec->num_ranks; src++) {
+			status =
+			    aspace_smartmap(
+					    start_state[src].aspace_id,
+					    start_state[dst].aspace_id,
+					    SMARTMAP_ALIGN + (SMARTMAP_ALIGN * src),
+					    SMARTMAP_ALIGN
+					    );
+			
+			if (status) {
+			    printf("smartmap failed, status=%d\n", status);
+			    return -1;
+			}
+		    }
+		}
+		printf("    OK\n");
+	    }
+
 	    
 	    printf("Creating Task\n");
 	    
@@ -255,7 +286,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	}
     }
     
-    free(file_info);
+
     
     return 0;
 }
@@ -271,6 +302,10 @@ main(int argc, char ** argv, char * envp[])
 	memset(&cmd,  0, sizeof(struct pisces_cmd));
 
 	printf("Pisces Control Daemon\n");
+
+
+	CPU_ZERO(&enclave_cpus);	/* Initialize CPU mask */
+	CPU_SET(0, &enclave_cpus);      /* We always boot on CPU 0 */
 
 
 	pisces_fd = open(PISCES_CMD_PATH, O_RDWR);
@@ -355,11 +390,14 @@ main(int argc, char ** argv, char * envp[])
 
 				    break;
 			    }
+			   
 
 			    /* Notify Palacios of New CPU */
 			    if (issue_v3_cmd(V3_ADD_CPU, (uintptr_t)logical_cpu) == -1) {
 				    printf("Error: Could not add CPU to Palacios\n");
 			    }
+			    
+			    CPU_SET(logical_cpu, &enclave_cpus);
 
 			    send_resp(pisces_fd, 0);
 			    break;
@@ -389,6 +427,8 @@ main(int argc, char ** argv, char * envp[])
 				    send_resp(pisces_fd, -1);
 				    break;
 			    }
+
+			    CPU_CLR(logical_cpu, &enclave_cpus);
 
 			    send_resp(pisces_fd, 0);
 			    break;
