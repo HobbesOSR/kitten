@@ -150,7 +150,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	id_t   my_aspace_id;
 
 	file_info = malloc(sizeof(struct pisces_user_file_info) + path_len);
-	memset(&file_info, 0, sizeof(struct pisces_user_file_info) + path_len);
+	memset(file_info, 0, sizeof(struct pisces_user_file_info) + path_len);
     
 	file_info->path_len = path_len;;
 	strncpy(file_info->path, job_spec->exe_path, path_len - 1);
