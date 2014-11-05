@@ -113,6 +113,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
     vaddr_t   file_addr = 0;
     cpu_set_t spec_cpus;
     cpu_set_t job_cpus;
+    user_cpumask_t lwk_cpumask;
 
     int status = 0;
 
@@ -131,14 +132,31 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
     }
 
 
+
+
     /* Check if we can host the job on the current CPUs */
+    /* Create a kitten compatible cpumask */
     {
+	int i = 0;
+
 	CPU_AND(&job_cpus, &spec_cpus, &enclave_cpus);
 
 	if (CPU_COUNT(&job_cpus) < job_spec->num_ranks) {
 	    printf("Error: Could not find enough CPUs for job\n");
 	    return -1;
 	}
+	
+
+	cpus_clear(lwk_cpumask);
+	
+	for (i = 0; (i < CPU_MAX_ID) && (i < CPU_SETSIZE); i++) {
+	    if (CPU_ISSET(i, &job_cpus)) {
+		cpu_set(i, lwk_cpumask);
+	    }
+	}
+
+
+
     }
 
 
@@ -152,7 +170,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	file_info = malloc(sizeof(struct pisces_user_file_info) + path_len);
 	memset(file_info, 0, sizeof(struct pisces_user_file_info) + path_len);
     
-	file_info->path_len = path_len;;
+	file_info->path_len = path_len;
 	strncpy(file_info->path, job_spec->exe_path, path_len - 1);
     
 	file_size = ioctl(pisces_fd, PISCES_STAT_FILE, file_info);
@@ -166,10 +184,16 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	
 	    paddr_t pmem = elf_dflt_alloc_pmem(file_size, page_size, 0);
 
-	    printf("PMEM Allocated at %p (page_size=0x%x) (pmem_size=%p)\n", 
+	    printf("PMEM Allocated at %p (file_size=%lu) (page_size=0x%x) (pmem_size=%p)\n", 
 		   (void *)pmem, 
+		   file_size,
 		   page_size, 
 		   (void *)round_up(file_size, page_size));
+
+	    if (pmem == 0) {
+		printf("Could not allocate space for exe file\n");
+		return -1;
+	    }
 
 	    /* Map the segment into this address space */
 	    status =
@@ -220,15 +244,17 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	    
 	    for (i = 0; i < CPU_SETSIZE; i++) {
 		if (CPU_ISSET(i, &job_cpus)) {
-
 		    CPU_CLR(i, &job_cpus);
 		    cpu = i;
+		    break;
 		}
 	    }
 
+
+	    printf("Loading Rank %d on CPU %d\n", rank, cpu);
 	    
 	    start_state[rank].task_id  = ANY_ID;
-	    start_state[rank].cpu_id   = cpu;
+	    start_state[rank].cpu_id   = ANY_ID;
 	    start_state[rank].user_id  = 1;
 	    start_state[rank].group_id = 1;
 	    
@@ -253,6 +279,12 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 		printf("elf_load failed, status=%d\n", status);
 	    }
 	    
+
+	    if ( aspace_update_user_cpumask(start_state[rank].aspace_id, &lwk_cpumask) != 0) {
+		printf("Error updating CPU mask\n");
+		return -1;
+	    }
+		 
 
 	    /* Setup Smartmap regions if enabled */
 	    if (job_spec->use_smartmap) {
