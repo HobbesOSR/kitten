@@ -711,7 +711,7 @@ __SYSCALL(__NR_phys_cpu_remove, sys_phys_cpu_remove)
 __SYSCALL(__NR_task_meas, sys_task_meas)
 #endif
 
-#define __NR_aspace_update_user_cpumask     527
+#define __NR_aspace_update_user_cpumask     528
 __SYSCALL(__NR_aspace_update_user_cpumask, sys_aspace_update_user_cpumask)
 
 #endif
