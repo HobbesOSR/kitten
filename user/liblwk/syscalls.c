@@ -190,6 +190,7 @@ SYSCALL4(aspace_smartmap, id_t, id_t, vaddr_t, size_t);
 SYSCALL2(aspace_unsmartmap, id_t, id_t);
 SYSCALL3(aspace_virt_to_phys, id_t, vaddr_t, paddr_t *);
 SYSCALL1(aspace_dump2console, id_t);
+SYSCALL2(aspace_update_user_cpumask, id_t, user_cpumask_t *);
 
 /**
  * Task management.

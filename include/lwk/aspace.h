@@ -6,6 +6,7 @@
 #include <lwk/types.h>
 #include <lwk/idspace.h>
 #include <lwk/futex.h>
+#include <lwk/cpumask.h>
 #include <arch/aspace.h>
 
 
@@ -69,6 +70,12 @@ aspace_create(
 extern int
 aspace_destroy(
 	id_t			id
+);
+
+extern int
+aspace_update_user_cpumask(
+        id_t                    id,
+	user_cpumask_t *        cpu_mask
 );
 
 extern int
@@ -283,11 +290,6 @@ __aspace_del_region(
 	size_t			extent
 );
 
-extern int
-__aspace_update_cpumask(
-        id_t                    id,
-	cpumask_t *             cpu_mask
-);
 
 extern int
 __aspace_map_pmem(
@@ -334,6 +336,15 @@ extern int
 __init aspace_subsys_init(
 	void
 );
+
+extern int
+aspace_update_cpumask(
+        id_t               id,
+	cpumask_t *        cpu_mask
+);
+
+
+
 
 extern struct aspace *
 aspace_acquire(
@@ -439,6 +450,13 @@ extern int
 sys_aspace_destroy(
 	id_t			id
 );
+
+extern int
+sys_aspace_update_user_cpumask(
+        id_t                      id,
+	user_cpumask_t __user *   cpu_mask
+);
+
 
 extern int
 sys_aspace_find_hole(

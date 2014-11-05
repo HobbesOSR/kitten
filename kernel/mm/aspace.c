@@ -419,19 +419,23 @@ aspace_acquire(id_t id)
 
 
 int 
-__aspace_update_cpumask(id_t id, cpumask_t * cpu_mask) 
+aspace_update_cpumask(id_t id, cpumask_t * cpu_mask) 
 {
 	struct aspace *aspace;
 	unsigned long irqstate;
+	int ret = 0;
 
 	local_irq_save(irqstate);
 	if ((aspace = lookup_and_lock(id)) != NULL) {
 		aspace->cpu_mask = *cpu_mask;
+		aspace->next_cpu_id = first_cpu(aspace->cpu_mask);
 		spin_unlock(&aspace->lock);
+	} else {
+	    ret = -1;
 	}
 	local_irq_restore(irqstate);
 
-	return 0;
+	return ret;
 }
 
 

@@ -336,7 +336,7 @@ phys_cpu_add(unsigned int phys_cpu_id, unsigned int apic_id)
 	   accessible on this CPU unless they are explicitly updated. 
 	   BUT: the feature to do that does not exist yet!!!! 
 	*/
-	__aspace_update_cpumask(KERNEL_ASPACE_ID, &cpu_present_map); 
+	aspace_update_cpumask(KERNEL_ASPACE_ID, &cpu_present_map); 
 
 	/* Store ID information. */
 	cpu_info[logical_cpu].logical_id   = logical_cpu;
@@ -438,7 +438,7 @@ phys_cpu_remove(unsigned int phys_cpu_id,
 		cpu_clear(target_cpu, cpu_present_map);
 		cpu_clear(target_cpu, cpu_initialized_map);
 		physid_clear(phys_cpu_id, phys_cpu_present_map);
-		__aspace_update_cpumask(KERNEL_ASPACE_ID, &cpu_present_map);
+		aspace_update_cpumask(KERNEL_ASPACE_ID, &cpu_present_map);
 
 		kmem_free_pages((void *)cpu_gdt_descr[target_cpu].address, 0);
 		free_per_cpu_area(target_cpu);
