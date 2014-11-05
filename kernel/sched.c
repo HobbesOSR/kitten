@@ -279,6 +279,10 @@ repeat_lock_runq:
 struct task_struct *
 context_switch(struct task_struct *prev, struct task_struct *next)
 {
+#ifdef CONFIG_TASK_MEAS
+	arch_task_meas();
+#endif
+
 	/* Switch to the next task's address space */
 	if (prev->aspace != next->aspace)
 		arch_aspace_activate(next->aspace);
@@ -295,6 +299,10 @@ context_switch(struct task_struct *prev, struct task_struct *next)
 	 * about (it may have moved CPUs, been destroyed, etc.).
 	 */
 	prev = arch_context_switch(prev, next);
+
+#ifdef CONFIG_TASK_MEAS
+	arch_task_meas_start();
+#endif
 
 	/* Prevent compiler from optimizing beyond this point */
 	barrier();

@@ -706,5 +706,9 @@ __SYSCALL(__NR_phys_cpu_add, sys_phys_cpu_add)
 #define __NR_phys_cpu_remove	526
 __SYSCALL(__NR_phys_cpu_remove, sys_phys_cpu_remove)
 
+#define __NR_task_meas		527
+#ifdef CONFIG_TASK_MEAS
+__SYSCALL(__NR_task_meas, sys_task_meas)
+#endif
 
 #endif

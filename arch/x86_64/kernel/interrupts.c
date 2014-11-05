@@ -249,6 +249,10 @@ do_apic_timer(struct pt_regs *regs, unsigned int vector)
 {
 	expire_timers();
 
+#ifdef CONFIG_TASK_MEAS
+	arch_task_meas();
+#endif
+
 	// This causes schedule() to be called right before
 	// the next return to user-space
 	set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);

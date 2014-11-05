@@ -50,6 +50,15 @@ task_switch_cpus(
 	id_t			cpu_id
 );
 
+extern int
+task_meas(
+	id_t aspace_id,
+	id_t task_id,
+	uint64_t *time,
+	uint64_t *energy,
+	uint64_t *unit_energy
+);
+
 // End core task management API
 
 
@@ -147,6 +156,24 @@ struct task_struct {
 		int		extra_time;
 	} edf;       	// EDF Scheduler task structure
 #endif
+
+#ifdef CONFIG_TASK_MEAS
+	struct task_meas {
+		struct raplunits
+		{
+			uint64_t	time;
+			uint64_t	energy;
+			uint64_t	power;
+			u8 set;
+		} units;
+
+		uint64_t	start_time;
+		uint64_t	start_energy;
+		uint64_t	time;
+		uint64_t	energy;
+	} meas;		// measurement task structure
+#endif
+
 	bool			sched_irqs_on;	// IRQs on at schedule() entry?
 	// Stuff needed for the Linux compatibility layer
 	char *			comm;		// The task's name
@@ -181,7 +208,14 @@ arch_task_create(
 // Syscall wrappers for task creation
 extern int sys_task_create(const start_state_t __user *start_state,
                            id_t __user *task_id);
+#ifdef CONFIG_TASK_MEAS
+extern void arch_task_meas_start(void);
+extern void arch_task_meas(void);
 
+// Syscall wrappers for task meas
+extern int sys_task_meas(id_t aspace_id, id_t task_id, uint64_t __user *time,
+                         uint64_t __user *energy, uint64_t __user *unit_energy);
+#endif
 
 extern int sys_task_switch_cpus(id_t cpu_id);
 

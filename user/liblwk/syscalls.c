@@ -195,6 +195,7 @@ SYSCALL1(aspace_dump2console, id_t);
  * Task management.
  */
 SYSCALL2(task_create, const start_state_t *, id_t *);
+SYSCALL5(task_meas, id_t, id_t, uint64_t *, uint64_t *, uint64_t *);
 SYSCALL1(task_switch_cpus, id_t);
 
 /**

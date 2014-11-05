@@ -140,6 +140,13 @@ __task_create(
     tsk->edf.extra_time = false;
 #endif
 
+#ifdef CONFIG_TASK_MEAS
+	tsk->meas.start_time = 0;
+	tsk->meas.start_energy = 0;
+	tsk->meas.time = 0;
+	tsk->meas.energy = 0;
+#endif
+
 	// Fill in and initialize the rest of the task structure
 	tsk->state	=	TASK_STOPPED;
 	tsk->uid	=	start_state->user_id;

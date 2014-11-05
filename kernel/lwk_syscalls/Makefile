@@ -21,3 +21,5 @@ obj-y := \
 	elf_hwcap.o \
 	phys_cpu_add.o \
 	phys_cpu_remove.o
+
+obj-$(CONFIG_TASK_MEAS) += task_meas.o

@@ -19,8 +19,10 @@
 #include <utmpx.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <math.h>
 
 #define TEST_BLOCK_LAYER 1
+//#define TEST_TASK_MEAS 1
 
 static int pmem_api_test(void);
 static int aspace_api_test(void);
@@ -31,6 +33,9 @@ static int socket_api_test(void);
 static int hypervisor_api_test(void);
 #ifdef TEST_BLOCK_LAYER
 static int block_layer_test(void);
+#endif
+#ifdef TEST_TASK_MEAS
+static int task_meas_api_test(void);
 #endif
 
 int
@@ -65,7 +70,15 @@ main(int argc, char *argv[], char *envp[])
 	printf("\n");
 	printf("Spinning forever...\n");
 	for (i = 0; i < 10; i++) {
+#ifdef TEST_TASK_MEAS
+		{
+			volatile unsigned long long j;
+			for( j=0; j < (long long)1<<24; j++ );
+			task_meas_api_test();
+		}
+#else
 		sleep(5);
+#endif
 		printf("%s: Meow %d!\n", __func__, i );
 	}
 	printf("   That's all, folks!\n");
@@ -73,6 +86,14 @@ main(int argc, char *argv[], char *envp[])
 	while(1)
 		sleep(100000);
 }
+
+// Glibc doesn't provide a wrapper the Linux-specific gettid() call.
+static pid_t
+gettid(void)
+{
+	return syscall(__NR_gettid);
+}
+
 
 static int
 pmem_api_test(void)
@@ -188,14 +209,6 @@ aspace_api_test(void)
 
 	printf("TEST END:   Address Space Management\n");
 	return 0;
-}
-
-
-// Glibc doesn't provide a wrapper the Linux-specific gettid() call.
-static pid_t
-gettid(void)
-{
-	return syscall(__NR_gettid);
 }
 
 
@@ -327,7 +340,6 @@ task_api_test(void)
 	printf("TEST END:   Task Management\n");
 	return 0;
 }
-
 
 /* writen() is from "UNIX Network Programming" by W. Richard Stevents */
 static ssize_t
@@ -682,3 +694,24 @@ hypervisor_api_test(void)
 	printf("TEST END:   Hypervisor API\n");
 	return 0;
 }
+
+#ifdef TEST_TASK_MEAS
+static int
+task_meas_api_test(void)
+{
+	printf("TEST BEGIN: Task Measurement\n");
+
+	id_t aspace_id, task_id = gettid();
+	uint64_t time = 0, energy = 0, unit_energy = 0;
+
+	aspace_get_myid(&aspace_id);
+
+	task_meas(aspace_id, task_id, &time, &energy, &unit_energy);
+
+	printf("    aspace %d task %d ran for %g Seconds with total energy %g Joules and average power of %g Watts\n",
+		aspace_id, task_id, time / 10e9, energy * pow(0.5, unit_energy), energy * pow(0.5, unit_energy) / (time/10e9));
+
+	printf("TEST END:   Task Measurement\n");
+	return 0;
+}
+#endif

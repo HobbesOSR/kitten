@@ -109,6 +109,28 @@ config TIMER_ONESHOT
 
 endchoice
 
+config TASK_MEAS
+	bool "Kitten Task Based Power Measurements"
+	help
+	  Periodic updates of task power and energy used
+choice
+	prompt "Task Based Power Measurement Method"
+	default TASK_MEAS_INTEL_IVY_MSR
+
+config TASK_MEAS_INTEL_SANDY_MSR
+	bool "Timer Based Intel Sandy MSR Support"
+	depends on TASK_MEAS
+	help
+	Timer based Intel Sandy MSR task updates
+
+config TASK_MEAS_INTEL_IVY_MSR
+	bool "Timer Based Intel Ivy MSR Support"
+	depends on TASK_MEAS
+	help
+	Timer based Intel Ivy MSR task updates
+
+endchoice
+
 config SCHED_EDF
 	bool "Kitten Earliest Deadline First (EDF)"
 	help
