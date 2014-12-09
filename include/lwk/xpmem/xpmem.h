@@ -17,6 +17,9 @@
 #include <arch/ioctl.h>
 
 
+/* Well-known XPMEM segids */
+#define XPMEM_GIT_ROOT_SEGIDS 25
+
 /*
  * basic argument type definitions
  */
@@ -48,9 +51,10 @@ struct xpmem_addr {
 #define XPMEM_RDWR	0x2
 
 /*
- * Valid permit_type values for xpmem_make().
+ * Valid permit_type values for xpmem_make()/xpmem_get().
  */
 #define XPMEM_PERMIT_MODE	0x1
+#define XPMEM_REQUEST_MODE	0x2
 
 /*
  * ioctl() commands used to interface to the kernel module.
@@ -74,16 +78,8 @@ struct xpmem_cmd_make {
 	uint64_t vaddr;
 	size_t size;
 	int permit_type;
-	uint64_t permit_value;
-	char *name;
-	size_t name_size;
+	int64_t permit_value;
 	xpmem_segid_t segid;	/* returned on success */
-};
-
-struct xpmem_cmd_search {
-        char *name;
-	size_t name_size;
-	xpmem_segid_t segid;    /* returned on success */
 };
 
 struct xpmem_cmd_remove {
@@ -94,7 +90,7 @@ struct xpmem_cmd_get {
 	xpmem_segid_t segid;
 	int flags;
 	int permit_type;
-	uint64_t permit_value;
+	int64_t permit_value;
 	xpmem_apid_t apid;	/* returned on success */
 };
 
@@ -128,28 +124,16 @@ struct xpmem_cmd_detach {
  * An ID is never less than or equal to zero.
  */
 struct xpmem_id {
-    pid_t tgid;             /* thread group that owns ID */
     unsigned short uniq;  /* this value makes the ID unique */
+    pid_t tgid;           /* thread group that owns ID */
 };
 
 #define XPMEM_MAX_UNIQ_ID   ((1 << (sizeof(short) * 8)) - 1)
-
-static inline pid_t
-xpmem_segid_to_tgid(xpmem_segid_t segid)
-{
-    return ((struct xpmem_id *)&segid)->tgid;
-}
 
 static inline unsigned short
 xpmem_segid_to_uniq(xpmem_segid_t segid)
 {
     return ((struct xpmem_id *)&segid)->uniq;
-}
-
-static inline pid_t
-xpmem_apid_to_tgid(xpmem_apid_t apid)
-{
-    return ((struct xpmem_id *)&apid)->tgid;
 }
 
 static inline unsigned short

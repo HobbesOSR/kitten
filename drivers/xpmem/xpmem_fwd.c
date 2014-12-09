@@ -463,14 +463,12 @@ xpmem_fwd_process_xpmem_cmd(struct xpmem_partition_state * part_state,
     
     switch (cmd->type) {
 	case XPMEM_MAKE:
-	case XPMEM_SEARCH:
 	case XPMEM_REMOVE:
 	case XPMEM_GET:
 	case XPMEM_RELEASE:
 	case XPMEM_ATTACH:
 	case XPMEM_DETACH:
 	case XPMEM_MAKE_COMPLETE:
-	case XPMEM_SEARCH_COMPLETE:
 	case XPMEM_REMOVE_COMPLETE:
 	case XPMEM_GET_COMPLETE:
 	case XPMEM_RELEASE_COMPLETE:

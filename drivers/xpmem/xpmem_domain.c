@@ -303,7 +303,6 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 	    break;
 
 	case XPMEM_MAKE_COMPLETE:
-	case XPMEM_SEARCH_COMPLETE:
 	case XPMEM_REMOVE_COMPLETE:
 	case XPMEM_GET_COMPLETE:
 	case XPMEM_RELEASE_COMPLETE:
@@ -382,7 +381,7 @@ xpmem_domain_deinit(struct xpmem_partition_state * part)
  */
 int
 xpmem_make_remote(struct xpmem_partition_state * part,
-		  char			       * name,
+		  xpmem_segid_t                  request,
 		  xpmem_segid_t		       * segid)
 {
     struct xpmem_domain_state * state  = (struct xpmem_domain_state *)(struct xpmem_domain_state *)part->domain_priv;
@@ -403,14 +402,11 @@ xpmem_make_remote(struct xpmem_partition_state * part,
 
     /* Setup command */
     memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type	   = XPMEM_MAKE;
-    cmd.reqid	   = reqid;
+    cmd.type	     = XPMEM_MAKE;
+    cmd.reqid	     = reqid;
 
-    if (name != NULL) {
-	strncpy(cmd.make.name, name, XPMEM_MAXNAME_SIZE);
-    }
-
-    cmd.make.segid = *segid;
+    cmd.make.request = request;
+    cmd.make.segid   = *segid;
 
     /* Deliver command */
     status = xpmem_cmd_deliver(state->part, state->link, &cmd);
@@ -437,65 +433,6 @@ out:
     return status;
 }
 
-int
-xpmem_search_remote(struct xpmem_partition_state * part,
-		    char			 * name,
-		    xpmem_segid_t		 * segid)
-{
-    struct xpmem_domain_state * state  = (struct xpmem_domain_state *)part->domain_priv;
-    struct xpmem_cmd_ex       * resp   = NULL;
-    struct xpmem_cmd_ex		cmd;
-    uint32_t			reqid  = 0;
-    int				status = 0;
-
-    if (!state->initialized) {
-	return -1;
-    }
-
-    /* Allocate a request id */
-    reqid = alloc_request_id(state);
-    if (reqid < 0) {
-	return -EBUSY;
-    }
-
-    /* Setup command */
-    memset(&cmd, 0, sizeof(struct xpmem_cmd_ex));
-    cmd.type  = XPMEM_SEARCH;
-    cmd.reqid = reqid;
-
-    if (name != NULL) {
-	strncpy(cmd.search.name, name, XPMEM_MAXNAME_SIZE);
-    }
-
-    printk("Sending SEARCH for name '%s'\n", cmd.search.name);
-
-    /* Deliver command */
-    status = xpmem_cmd_deliver(state->part, state->link, &cmd);
-
-    if (status != 0) {
-	printk("Send failed\n");
-	goto out;
-    }
-
-    /* Wait for completion */
-    status = xpmem_cmd_wait(state, reqid, &resp);
-
-    if (status != 0) {
-	printk("Wait failed\n");
-	goto out;
-    }
-
-    /* Grab segid */
-    *segid = resp->search.segid;
-
-    printk("Got segid %lli\n", *segid);
-
-    kmem_free(resp);
-
-out:
-    free_request_id(state, reqid);
-    return status;
-}
 
 int
 xpmem_remove_remote(struct xpmem_partition_state * part,
@@ -550,7 +487,7 @@ xpmem_get_remote(struct xpmem_partition_state * part,
 		 xpmem_segid_t			segid,
 		 int				flags,
 		 int				permit_type,
-		 u64				permit_value,
+		 s64				permit_value,
 		 xpmem_apid_t		      * apid,
 		 u64			      * size)
 {

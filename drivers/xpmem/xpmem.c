@@ -36,7 +36,6 @@ static struct xpmem_partition * xpmem_my_part = NULL;
 static struct xpmem_hashtable * segid_map     = NULL;
 DEFINE_SPINLOCK(segid_map_lock);
 
-
 /* We also need to maintain an apid map for apids created remotely and assigned to Kitten.
  * The reason for this is that remote releases and attachments require both a segid and an
  * apid, but users are not required to pass the segid for these operations. So, we map
@@ -142,11 +141,11 @@ xpmem_make(void		 * vaddr,
 	   size_t	   size, 
 	   int		   permit_type, 
 	   void		 * permit_value, 
-	   char		 * name,
 	   xpmem_segid_t * segid_p)
 {
-    xpmem_segid_t segid = 0;
-    int		  ret	= 0;
+    xpmem_segid_t segid   = 0;
+    xpmem_segid_t request = 0;
+    int           ret     = 0;
 
     if ((u64)vaddr & (PAGE_SIZE - 1)) {
 	XPMEM_ERR("Cannot export non page-aligned virtual address %p", vaddr);
@@ -158,8 +157,12 @@ xpmem_make(void		 * vaddr,
 	return -1;
     }
 
+    if (permit_type == XPMEM_REQUEST_MODE)  {
+	request = (xpmem_segid_t)permit_value;
+    }
+
     /* Request a segid from the nameserver */
-    ret = xpmem_make_remote(&(xpmem_my_part->part_state), name, &segid);
+    ret = xpmem_make_remote(&(xpmem_my_part->part_state), request, &segid);
 
     if (ret == 0) {
 	/* Store the SMARTMAP info in the hashtable */
@@ -188,13 +191,6 @@ xpmem_make(void		 * vaddr,
     }
 
     return ret;
-}
-
-static int
-xpmem_search(char	   * name,
-	     xpmem_segid_t * segid)
-{
-    return xpmem_search_remote(&(xpmem_my_part->part_state), name, segid);
 }
 
 static int
@@ -415,27 +411,10 @@ xpmem_ioctl_op(struct file * filp,
 			sizeof(struct xpmem_cmd_make)))
 		return -EFAULT;
 
-	    if (make_info.name_size > XPMEM_MAXNAME_SIZE)
-		return -EINVAL;
-
-
-	    if (make_info.name_size > 0) {
-		if (strncpy_from_user(make_info.name,
-			((struct xpmem_cmd_make *)arg)->name,
-			make_info.name_size) < 0)
-		    return -EFAULT;
-
-		/* Ensure name is truncated */
-		make_info.name[XPMEM_MAXNAME_SIZE - 1] = 0;
-	    } else {
-		make_info.name = NULL;
-	    }
-
 	    ret = xpmem_make((void *)make_info.vaddr, 
 		    make_info.size, 
 		    make_info.permit_type,
 		    (void *)make_info.permit_value, 
-		    make_info.name,
 		    &segid);
 
 	    if (ret != 0)
@@ -446,39 +425,6 @@ xpmem_ioctl_op(struct file * filp,
 		xpmem_remove(segid);
 		return -EFAULT;
 	    }
-
-	    return 0;
-	}
-
-	case XPMEM_CMD_SEARCH: {
-	    struct xpmem_cmd_search search_info;
-	    xpmem_segid_t segid = 0;
-
-	    if (copy_from_user(&search_info, (void __user *)arg,
-		       sizeof(struct xpmem_cmd_search)))
-		return -EFAULT;
-
-	    if (search_info.name_size > XPMEM_MAXNAME_SIZE)
-		return -EINVAL;
-
-	    if (search_info.name_size <= 0) 
-		return -EINVAL;
-
-	    if (strncpy_from_user(search_info.name,
-		    ((struct xpmem_cmd_search *)arg)->name,
-		    search_info.name_size) < 0)
-		return -EFAULT;
-
-	    /* Ensure name is truncated */
-	    search_info.name[XPMEM_MAXNAME_SIZE - 1] = 0;
-
-	    ret = xpmem_search(search_info.name, &segid);
-	    if (ret != 0)
-		return ret;
-
-	    if (put_user(segid,
-		    &((struct xpmem_cmd_search __user *)arg)->segid))
-		return -EFAULT;
 
 	    return 0;
 	}

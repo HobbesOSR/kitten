@@ -17,8 +17,6 @@
 
 int xpmem_version(void);
 xpmem_segid_t xpmem_make(void *, size_t, int, void *);
-xpmem_segid_t xpmem_make_name(void *, size_t, int, void *, char *, size_t);
-xpmem_segid_t xpmem_search(char *, size_t);
 int xpmem_remove(xpmem_segid_t);
 xpmem_apid_t xpmem_get(xpmem_segid_t, int, int, void *);
 int xpmem_release(xpmem_apid_t);

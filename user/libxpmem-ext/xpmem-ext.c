@@ -35,37 +35,18 @@ int xpmem_ioctl(int cmd, void * arg)
 
 
 
-xpmem_segid_t xpmem_make_name(void *vaddr, size_t size, int permit_type, void *permit_value, char *name, size_t name_size)
+xpmem_segid_t xpmem_make(void *vaddr, size_t size, int permit_type, void *permit_value)
 {
     struct xpmem_cmd_make make_info;
 
     make_info.vaddr = (__u64)vaddr;
     make_info.size = size;
     make_info.permit_type = permit_type;
-    make_info.permit_value = (__u64)permit_value;
-    make_info.name = name;
-    make_info.name_size = name_size;
+    make_info.permit_value = (__s64)permit_value;
     if (xpmem_ioctl(XPMEM_CMD_MAKE, &make_info) == -1 || !make_info.segid)
 	return -1;
 
     return make_info.segid;
-}
-
-xpmem_segid_t xpmem_make(void *vaddr, size_t size, int permit_type, void *permit_value)
-{
-    return xpmem_make_name(vaddr, size, permit_type, permit_value, NULL, 0);
-}
-
-xpmem_segid_t xpmem_search(char *name, size_t name_size)
-{
-    struct xpmem_cmd_search search_info;
-
-    search_info.name = name;
-    search_info.name_size = name_size;
-    if (xpmem_ioctl(XPMEM_CMD_SEARCH, &search_info) == -1 || !search_info.segid)
-	return -1;
-
-    return search_info.segid;
 }
 
 
@@ -87,7 +68,7 @@ xpmem_apid_t xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *pe
     get_info.segid = segid;
     get_info.flags = flags;
     get_info.permit_type = permit_type;
-    get_info.permit_value = (__u64)NULL;
+    get_info.permit_value = (__s64)NULL;
     if (xpmem_ioctl(XPMEM_CMD_GET, &get_info) == -1 || !get_info.apid)
 	return -1;
     return get_info.apid;
