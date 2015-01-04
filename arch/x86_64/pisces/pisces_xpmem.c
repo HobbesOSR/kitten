@@ -189,7 +189,7 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
     /* Allocate memory for xpmem lcall structure */
     lcall = kmem_alloc(sizeof(struct pisces_xpmem_cmd_lcall) + pfn_len);
     if (!lcall) {
-	XPMEM_ERR("Out of memory\n");
+	XPMEM_ERR("Out of memory");
 	return -1;
     }
 

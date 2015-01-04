@@ -429,14 +429,14 @@ pisces_xbuf_client_init(uintptr_t xbuf_va,
 	struct pisces_xbuf      * xbuf = (struct pisces_xbuf *)xbuf_va;
 	struct pisces_xbuf_desc * desc = kmem_alloc(sizeof(struct pisces_xbuf_desc));
 
-	printk("XBUF client init At VA=%p\n", (void *)xbuf_va);
+	//printk("XBUF client init At VA=%p\n", (void *)xbuf_va);
 
 	if ((desc == NULL) || (xbuf == NULL)) {
 		printk("Error initializing xbuf\n");
 		return NULL;
 	}
 
-    	printk("LCALL IPI %d to APIC %d\n", xbuf->host_vector, xbuf->host_apic);
+    	//printk("LCALL IPI %d to APIC %d\n", xbuf->host_vector, xbuf->host_apic);
 
 	memset(desc, 0, sizeof(struct pisces_xbuf_desc));
 

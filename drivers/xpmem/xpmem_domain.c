@@ -52,6 +52,9 @@ struct xpmem_domain_state {
     /* XPMEM connection link */
     xpmem_link_t		   link;
 
+    /* Guarantee uniqueness of remote segid/apid pairs */
+    atomic_t                       uniq_apid;
+
     /* Pointer to XPMEM partition */
     struct xpmem_partition_state * part;
 };
@@ -114,10 +117,20 @@ init_request_map(struct xpmem_domain_state * state)
 
 
 static int
-xpmem_get_domain(struct xpmem_cmd_get_ex * get_ex)
+xpmem_get_domain(struct xpmem_domain_state * state,
+                 struct xpmem_cmd_get_ex   * get_ex)
 {
-    get_ex->apid = get_ex->segid;
+    int apid = 0;
+    
+    apid = atomic_inc_return(&(state->uniq_apid));
+    if (apid > XPMEM_MAX_UNIQ_ID) {
+	atomic_set(&(state->uniq_apid), 0);
+	return -1;
+    }
+
+    get_ex->apid = apid;
     get_ex->size = (1LL << SMARTMAP_SHIFT);
+
     return 0;
 }
 
@@ -130,7 +143,8 @@ xpmem_release_domain(struct xpmem_cmd_release_ex * release_ex)
 static int
 xpmem_attach_domain(struct xpmem_cmd_attach_ex * attach_ex)
 {
-    xpmem_apid_t apid	= attach_ex->apid;
+    //xpmem_apid_t apid	= attach_ex->apid;
+    xpmem_apid_t apid	= attach_ex->segid;
     off_t	 offset = attach_ex->off;
     size_t	 size	= attach_ex->size;
 
@@ -254,7 +268,7 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
     /* Process commands destined for this domain */
     switch (cmd->type) {
 	case XPMEM_GET:
-	    ret = xpmem_get_domain(&(cmd->get));
+	    ret = xpmem_get_domain(state, &(cmd->get));
 
 	    if (ret != 0) {
 		cmd->get.apid = -1;
@@ -289,6 +303,10 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 	    cmd->dst_dom = XPMEM_NS_DOMID;
 
 	    xpmem_cmd_deliver(state->part, state->link, cmd);
+
+	    if (cmd->attach.num_pfns > 0) {
+		kmem_free(cmd->attach.pfns);
+	    }
 
 	    break;
 
@@ -345,6 +363,7 @@ xpmem_domain_init(struct xpmem_partition_state * part)
 	return -1;
     }
 
+    atomic_set(&(state->uniq_apid), 0);
     state->initialized	= 1;
     state->part		= part;
     part->domain_priv	= state;
