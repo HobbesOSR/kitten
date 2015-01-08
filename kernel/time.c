@@ -13,11 +13,21 @@ void
 init_cycles2ns(uint32_t khz)
 {
 	/*
-	 * Shift is used to obtain greater precision.
-	 * Linux uses 22 for the x86 time stamp counter.
-	 * For now we assume this will work for most cases.
+	 * Shift is used to ensure that the 'mult' value calculated below is
+	 * much larger than khz, thus obtaining greater precision. This was
+	 * originally set to 22 to match Linux, however this caused time to
+	 * roll over every 2^(64-22) = 2^42 ns = 73.3 minutes when using
+	 * 64-bit unsigned integer math.  This was found to be too short.
+	 * Recent Linux kernels changed to use a shift of 10 and we do the
+	 * same. This will rollover every 2^54 ns or 208.5 days when using
+	 * 64-bit unsigned integer math.
+	 *
+	 * If cycles2ns() calculation below can use 128 bit unsigned integer
+	 * math instead of 64-bit, the rollover period becomes long enough
+	 * to not care even with a shift of 22. If higher timing precision
+	 * is needed, changing shift back to 22 may help.
 	 */
-	shift = 22;
+	shift = 10;
 
 	/*  
  	 *  khz = cyc/(Million ns)
@@ -39,7 +49,10 @@ init_cycles2ns(uint32_t khz)
 ktime_t
 cycles2ns(uint64_t cycles)
 {
-	return (cycles * mult) >> shift;
+	/* Use 128 bit math. This is a gcc extention. It appears to work
+	 * fine on x86_64 and arm64. It may not compile on other archs...
+	 * we will figure that out when it happens :) */
+	return ((unsigned __int128)cycles * mult) >> shift;
 }
 
 /**
