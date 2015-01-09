@@ -273,7 +273,7 @@ xpmem_send_cmd_link(struct xpmem_partition_state * state,
     struct xpmem_link_connection * conn = xpmem_search_link(state, link);
 
     if (conn == NULL) {
-	printk("XPMEM: NULL connection for link %lli\n", link);
+	XPMEM_ERR(" NULL connection for link %lli", link);
 	return -1;
     }
 
@@ -318,7 +318,7 @@ xpmem_add_connection(struct xpmem_partition_state * part_state,
 	    /* Associate the link with our domid, if we have one */
 	    if (part_state->domid > 0) {
 		if (xpmem_add_domid(part_state, part_state->domid, part_state->local_link) == 0) {
-		    printk(KERN_ERR "XPMEM: cannot insert into domid hashtable\n");
+		    XPMEM_ERR("cannot insert into domid hashtable");
 		    return -1;
 		}
 	    }
@@ -326,7 +326,6 @@ xpmem_add_connection(struct xpmem_partition_state * part_state,
 
 	conn = kmem_alloc(sizeof(struct xpmem_link_connection));
 	if (!conn) {
-	    printk(KERN_ERR "XPMEM: out of memory\n");
 	    return -1;
 	}
 
@@ -336,7 +335,7 @@ xpmem_add_connection(struct xpmem_partition_state * part_state,
 
 	/* Update the link map */
 	if (xpmem_add_link(part_state, link, conn) == 0) {
-	    printk(KERN_ERR "XPMEM: cannot insert into link hashtable\n");
+	    XPMEM_ERR("cannot insert into link hashtable");
 	    kmem_free(conn);
 	    return -1;
 	}
@@ -431,13 +430,13 @@ xpmem_partition_init(struct xpmem_partition_state * state, int is_ns)
     if (is_ns) {
 	status = xpmem_ns_init(state);
 	if (status != 0) {
-	    printk(KERN_ERR "XPMEM: Could not initialize name service\n");
+	    XPMEM_ERR("could not initialize name service");
 	    goto err_ns;
 	}
     } else {
 	status = xpmem_fwd_init(state);
 	if (status != 0) {
-	    printk(KERN_ERR "XPMEM: Could not initialize forwarding service\n");
+	    XPMEM_ERR("could not initialize forwarding service");
 	    goto err_fwd;
 	}
     }
@@ -445,7 +444,7 @@ xpmem_partition_init(struct xpmem_partition_state * state, int is_ns)
     /* Register a local domain */
     status = xpmem_domain_init(state);
     if (status != 0) {
-	printk(KERN_ERR "XPMEM: Could not initialize local domain XPMEM state\n");
+	XPMEM_ERR("could not initialize local domain XPMEM state");
 	goto err_domain;
     }
 

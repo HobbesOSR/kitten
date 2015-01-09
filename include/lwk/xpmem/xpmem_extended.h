@@ -1,6 +1,8 @@
 #ifndef _XPMEM_EXTENDED_H
 #define _XPMEM_EXTENDED_H
 
+#ifdef __KERNEL__ 
+
 #include <lwk/types.h>
 #include <lwk/waitq.h>
 
@@ -37,7 +39,7 @@ struct xpmem_cmd_attach_ex {
     uint64_t      off;
     uint64_t      size;
     uint64_t      num_pfns;
-    uint64_t    * pfns;
+    uint64_t      pfn_pa;
 };
 
 struct xpmem_cmd_detach_ex {
@@ -137,5 +139,7 @@ xpmem_detach_remote(struct xpmem_partition_state * part,
                     xpmem_segid_t                  segid,
                     xpmem_apid_t                   apid,
                     u64                            vaddr);
+
+#endif /* __KERNEL__ */
 
 #endif /* _XPMEM_EXTENDED_H */

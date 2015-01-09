@@ -389,8 +389,8 @@ xpmem_set_failure(struct xpmem_cmd_ex * cmd)
 	    break;
 
 	case XPMEM_ATTACH:
-	    cmd->attach.pfns = NULL;
 	    cmd->attach.num_pfns = 0;
+	    cmd->attach.pfn_pa   = 0;
 	    break;
 
 	case XPMEM_DETACH:
@@ -460,7 +460,7 @@ xpmem_fwd_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 
 	return -EFAULT;
     }
-    
+
     switch (cmd->type) {
 	case XPMEM_MAKE:
 	case XPMEM_REMOVE:

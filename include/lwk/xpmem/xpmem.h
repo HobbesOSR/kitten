@@ -152,8 +152,8 @@ struct xpmem_partition * get_local_partition(void);
 int do_xpmem_attach_domain(xpmem_apid_t    apid, 
                            off_t           offset,
 			   size_t          size,
-			   u64          ** pfns,
-			   u64           * num_pfns);
+			   u64             num_pfns,
+			   u64             pfn_pa);
 
 
 #endif /* __KERNEL__ */

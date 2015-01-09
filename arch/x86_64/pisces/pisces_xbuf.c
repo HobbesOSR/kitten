@@ -166,9 +166,10 @@ pisces_xbuf_sync_send(struct pisces_xbuf_desc * desc,
 		      u8                     ** resp_data, 
 		      u32                     * resp_len) 
 {
-	struct pisces_xbuf * xbuf  = desc->xbuf;
-	unsigned int         flags = 0;
-	int acquired = 0;
+	struct pisces_xbuf * xbuf     = desc->xbuf;
+	unsigned int         flags    = 0;
+	unsigned long        irqflags = 0;
+	int                  acquired = 0;
 
 	if (xbuf->ready == 0) {
 		printk(KERN_ERR "Attempted longcall to unready host OS\n");
@@ -210,7 +211,11 @@ pisces_xbuf_sync_send(struct pisces_xbuf_desc * desc,
 
 
 	//printk("Sending IPI %d to cpu %d\n", xbuf->host_vector, xbuf->host_apic);
-	lapic_send_ipi_to_apic(xbuf->host_apic, xbuf->host_vector);
+        local_irq_save(irqflags);
+	{
+	    lapic_send_ipi_to_apic(xbuf->host_apic, xbuf->host_vector);
+	}
+	local_irq_restore(irqflags);
 	//printk("IPI completed\n");
 
 	send_data(xbuf, data, data_len);

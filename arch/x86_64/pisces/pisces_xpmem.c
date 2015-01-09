@@ -6,6 +6,7 @@
 #include <lwk/kthread.h>
 #include <lwk/list.h>
 #include <arch/uaccess.h>
+#include <arch/pgtable.h>
 
 #include <arch/pisces/pisces.h>
 #include <arch/pisces/pisces_boot_params.h>
@@ -20,7 +21,7 @@
 
 extern struct pisces_boot_params * pisces_boot_params;
 
-/* Longcall structures */
+/* Longcall structure */
 struct pisces_xpmem_cmd_lcall {
     union {
 	struct pisces_lcall lcall;
@@ -28,20 +29,7 @@ struct pisces_xpmem_cmd_lcall {
     } __attribute__((packed));
 
     struct xpmem_cmd_ex xpmem_cmd;
-    u8		    pfn_list[0];
 } __attribute__ ((packed));
-
-/* Ctrl command structures */
-struct pisces_xpmem_cmd_ctrl {
-    struct xpmem_cmd_ex xpmem_cmd;
-    u8		    pfn_list[0];
-} __attribute__ ((packed));
-
-
-struct xpmem_queue_entry {
-    struct xpmem_cmd_ex * cmd;
-    struct list_head      node;
-};
 
 struct pisces_xpmem_state {
     /* state lock */
@@ -55,8 +43,8 @@ struct pisces_xpmem_state {
     /* waitq for kern thread */
     waitq_t                         waitq;
 
-    /* Command queue */
-    struct list_head                cmd_queue;
+    /* active xbuf data */
+    u8                            * data;
 
     /* xbuf for IPI-based communication */
     struct pisces_xbuf_desc       * xbuf_desc;
@@ -68,79 +56,19 @@ struct pisces_xpmem_state {
 };
 
 
-
-/* Incoming XPMEM command from enclave - copy it out and enqueue it */
+/* Incoming XPMEM command from enclave - wake up kthread */
 static void
 xpmem_ctrl_handler(u8	* data, 
 		   u32	  data_len, 
 		   void * priv_data)
 {
-    struct pisces_xpmem_state    * state      = (struct pisces_xpmem_state *)priv_data;
-    struct pisces_xpmem_cmd_ctrl * xpmem_ctrl = (struct pisces_xpmem_cmd_ctrl *)data;
-    struct xpmem_queue_entry     * entry      = NULL;
-    struct xpmem_cmd_ex	         * cmd        = NULL;
-    u64			           pfn_len    = 0;
+    struct pisces_xpmem_state * state = (struct pisces_xpmem_state *)priv_data;
 
-
-    /* This appears to not sleep */
-    cmd = kmem_alloc(sizeof(struct xpmem_cmd_ex));
-    if (!cmd) {
-	XPMEM_ERR("Pisces: out of memory\n");
-	goto out;
-    }
-
-    /* Copy commands */
-    *cmd = xpmem_ctrl->xpmem_cmd;
-
-    /* Copy and pfn lists, if present */
-    if (cmd->type == XPMEM_ATTACH_COMPLETE) {
-	pfn_len = cmd->attach.num_pfns * sizeof(u64);
-    }
-
-    if (pfn_len > 0) {
-	cmd->attach.pfns = kmem_alloc(pfn_len);
-	if (!cmd->attach.pfns) {
-	    XPMEM_ERR("Pisces: out of memory\n");
-	    kmem_free(cmd);
-	    goto out;
-	}
-
-	memcpy(cmd->attach.pfns, 
-	       xpmem_ctrl->pfn_list, 
-	       cmd->attach.num_pfns * sizeof(u64)
-	);
-    }
-
-    /* Create queue entry */
-    entry = kmem_alloc(sizeof(struct xpmem_queue_entry));
-    if (entry == NULL) {
-
-	if (pfn_len > 0) {
-	    kmem_free(cmd->attach.pfns);
-	}
-	kmem_free(cmd);
-
-	goto out;
-    }
-
-    entry->cmd = cmd;
-
-    spin_lock(&(state->lock));
-    {
-	list_add_tail(&(entry->node), &(state->cmd_queue));
-	state->thread_active = 1;
-    }
-    spin_unlock(&(state->lock));
+    state->thread_active = 1;
+    state->data          = data;
 
     mb();
     waitq_wakeup(&(state->waitq));
-
-out:
-    /* Xbuf complete */
-    pisces_xbuf_complete(state->xbuf_desc, NULL, 0);
-
-    /* Free ctrl structure */
-    kmem_free(data);
 }
 
 
@@ -150,7 +78,7 @@ pisces_xpmem_lcall_send(struct pisces_xpmem_cmd_lcall * xpmem_lcall,
 			u64				size)
 {
     struct pisces_xpmem_cmd_lcall * xpmem_lcall_resp = NULL;
-    int				status		 = 0;
+    int	   		     status           = 0;
 
     xpmem_lcall->lcall.lcall    = PISCES_LCALL_XPMEM_CMD_EX;
     xpmem_lcall->lcall.data_len = size - sizeof(struct pisces_lcall);
@@ -172,45 +100,38 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 	     void		 * priv_data)
 {
     struct pisces_xpmem_state	  * state   = (struct pisces_xpmem_state *)priv_data;
-    struct pisces_xpmem_cmd_lcall * lcall   = NULL;
-    u64				    pfn_len = 0;  
-    int				    status  = 0;
+    struct pisces_xpmem_cmd_lcall   lcall;
 
     if (!state->connected) {
 	XPMEM_ERR("Cannot handle command: enclave channel not connected\n");
 	return -1;
     }
 
-
-    if (cmd->type == XPMEM_ATTACH_COMPLETE) {
-	pfn_len = cmd->attach.num_pfns * sizeof(u64);
-    }
-
-    /* Allocate memory for xpmem lcall structure */
-    lcall = kmem_alloc(sizeof(struct pisces_xpmem_cmd_lcall) + pfn_len);
-    if (!lcall) {
-	XPMEM_ERR("Out of memory");
-	return -1;
-    }
-
     /* Copy command */
-    lcall->xpmem_cmd = *cmd;
-
-    /* Copy pfn list */
-    if (pfn_len > 0) {
-	memcpy(lcall->pfn_list,
-	       cmd->attach.pfns,
-	       cmd->attach.num_pfns * sizeof(u64)
-	);
-    }
+    memcpy(&(lcall.xpmem_cmd), cmd, sizeof(struct xpmem_cmd_ex));
 
     /* Perform xbuf send */
-    status = pisces_xpmem_lcall_send(lcall, sizeof(struct pisces_xpmem_cmd_lcall) + pfn_len);
+    return pisces_xpmem_lcall_send(&lcall, sizeof(struct pisces_xpmem_cmd_lcall));
+}
 
-    /* Free lcall structure */
-    kmem_free(lcall);
+static int
+map_domain_region(u64 pfn_pa,
+                  u64 size)
+{
+    paddr_t paddr_start;
+    paddr_t paddr_end;
 
-    return status;
+    /* Align regions on 2MB boundaries */
+    paddr_start = round_down(pfn_pa, LARGE_PAGE_SIZE);
+    paddr_end   = round_up(pfn_pa + size, LARGE_PAGE_SIZE);
+
+    if (arch_aspace_map_pmem_into_kernel(paddr_start, paddr_end) != 0) {
+        XPMEM_ERR("Cannot map domain pfn list into kernel");
+        return -1;
+    }   
+
+    /* Now we can __va() it */
+    return 0;
 }
 
 
@@ -218,24 +139,9 @@ static int
 xpmem_thread_fn(void * private)
 {
     struct pisces_xpmem_state * state  = (struct pisces_xpmem_state *)private;
-    struct xpmem_queue_entry  * entry  = NULL;
-    struct xpmem_cmd_ex       * cmd    = NULL;
-    unsigned long               flags  = 0;
-    int                         type   = 0;
-    int                         status = 0;
+    struct xpmem_cmd_ex         cmd;
 
     while (1) {
-	mb();
-
-	spin_lock_irqsave(&(state->lock), flags);
-	{
-	    if (list_empty(&(state->cmd_queue))) {
-		state->thread_active = 0;
-		mb();
-	    }
-	}
-	spin_unlock_irqrestore(&(state->lock), flags);
-
 	/* Wait on waitq */
 	wait_event_interruptible(
 	        state->waitq,
@@ -249,46 +155,27 @@ xpmem_thread_fn(void * private)
 	    break;
 	}
 
-	/* Dequeue command */
-	spin_lock_irqsave(&(state->lock), flags);
-	{
-	    if (list_empty(&(state->cmd_queue))) {
-		cmd   = NULL;
-	    } else {
+	state->thread_active = 0;
+	mb();
 
-		entry = list_first_entry(&(state->cmd_queue),
-			    struct xpmem_queue_entry,
-			    node);
-		cmd   = entry->cmd;
+        /* Copy the xbuf data out and free */
+	memcpy(&cmd, (struct xpmem_cmd_ex *)state->data, sizeof(struct xpmem_cmd_ex));
+	kmem_free(state->data);
 
-		list_del(&(entry->node));
-		kmem_free(entry);
+	/* Xbuf now complete */
+	pisces_xbuf_complete(state->xbuf_desc, NULL, 0);
+
+	if (cmd.type == XPMEM_ATTACH) {
+	    if (map_domain_region(cmd.attach.pfn_pa, (cmd.attach.num_pfns * sizeof(u32))) != 0) {
+		XPMEM_ERR("Failed to map pfn list into kernel memory\n");
+		continue;
 	    }
 	}
-	spin_unlock_irqrestore(&(state->lock), flags);
-
-	if (cmd == NULL) {
-	    XPMEM_ERR("Empty command queue...\n");
-	    continue;
-	}
-	
-	/* Save cmd type */
-	type = cmd->type;
 
 	/* Process command */
-	status = xpmem_cmd_deliver(state->part, state->link, cmd);
-
-	if (status != 0) {
+	if (xpmem_cmd_deliver(state->part, state->link, &cmd) != 0) {
 	    XPMEM_ERR("Failed to deliver command\n");
 	}
-
-	if ((type                 == XPMEM_ATTACH_COMPLETE) &&
-	    (cmd->attach.num_pfns  > 0))
-	{
-	    kmem_free(cmd->attach.pfns);
-	}
-
-	kmem_free(cmd);
     }
 
     return 0;
@@ -302,7 +189,7 @@ pisces_xpmem_init(void)
     struct pisces_xpmem_state * state  = NULL;
     int                         status = 0;
 
-    state  = kmem_alloc(sizeof(struct pisces_xpmem_state));
+    state = kmem_alloc(sizeof(struct pisces_xpmem_state));
     if (state == NULL) {
 	return -ENOMEM;
     }
@@ -311,9 +198,9 @@ pisces_xpmem_init(void)
 
     /* Init state */
     spin_lock_init(&(state->lock));
-    INIT_LIST_HEAD(&(state->cmd_queue));
     waitq_init(&(state->waitq));
 
+    state->data               = 0;
     state->thread_active      = 0;
     state->thread_should_exit = 0;
 

@@ -578,20 +578,16 @@ int
 do_xpmem_attach_domain(xpmem_apid_t    apid,
 		       off_t	       offset,
 		       size_t	       size,
-		       u64	    ** p_pfns,
-		       u64	     * p_num_pfns)
+		       u64             num_pfns,
+		       u64             pfn_pa)
 {
-    struct xpmem_smartmap_info * info	    = NULL;
-    u64			       * pfns	    = NULL;
-    u64				 num_pfns   = 0;
-    u64				 i	    = 0;
+    struct xpmem_smartmap_info * info = NULL;
 
-    vaddr_t			 seg_vaddr  = 0;
-    pid_t			 seg_pid    = 0;
+    u64   i    = 0;
+    u32 * pfns = NULL;
 
-
-    *p_pfns	= NULL;
-    *p_num_pfns = 0;
+    vaddr_t seg_vaddr = 0;
+    pid_t   seg_pid   = 0;
 
     /* Search the segid map for SMARTMAP info */
     info = (struct xpmem_smartmap_info *)xpmem_ht_search(segid_map, &segid_map_lock, (uintptr_t)apid);
@@ -600,16 +596,11 @@ do_xpmem_attach_domain(xpmem_apid_t    apid,
     }
 
     /* Grab the SMARTMAP'd virtual address */
-    //seg_vaddr = make_xpmem_addr(info->pid, (void *)info->vaddr + offset);
-    //seg_vaddr -= 0x8000000000;
     seg_vaddr = info->vaddr;
     seg_pid   = info->pid;
-
-    num_pfns  = size / PAGE_SIZE;
-    pfns      = kmem_alloc(sizeof(u64) * num_pfns);
-    if (!pfns) {
-	return -1;
-    }
+    
+    /* pfn list is preallocated */
+    pfns = __va(pfn_pa);
 
     for (i = 0; i < num_pfns; i++) {
 	paddr_t vaddr = 0;
@@ -623,13 +614,11 @@ do_xpmem_attach_domain(xpmem_apid_t    apid,
 	    return -1;
 	}
 
+	/* Save pfn in the remote domain list */
 	pfns[i] = (paddr >> PAGE_SHIFT);
     }
 
     /* Success */
-    *p_pfns	= pfns;
-    *p_num_pfns = num_pfns;
-
     return 0;
 }
 
