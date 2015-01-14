@@ -390,7 +390,6 @@ xpmem_set_failure(struct xpmem_cmd_ex * cmd)
 
 	case XPMEM_ATTACH:
 	    cmd->attach.num_pfns = 0;
-	    cmd->attach.pfn_pa   = 0;
 	    break;
 
 	case XPMEM_DETACH:

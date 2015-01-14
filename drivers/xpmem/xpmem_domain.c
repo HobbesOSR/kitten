@@ -272,7 +272,6 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 
 	    if (ret != 0) {
 		cmd->attach.num_pfns = 0;
-		cmd->attach.pfn_pa   = 0;
 	    }
 
 	    cmd->type	 = XPMEM_ATTACH_COMPLETE;
