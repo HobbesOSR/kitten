@@ -13,6 +13,11 @@ config SERIAL_CONSOLE
 	depends on PC || CRAY_GEMINI
 	default y
 
+config SERIAL_MM_CONSOLE
+	bool "Memory mapped Serial console support"
+	depends on ARCH_STORM_SIM || ARCH_XGENE
+	default y
+
 config OF
 		bool
 		depends on ARCH_STORM_SIM || ARCH_XGENE

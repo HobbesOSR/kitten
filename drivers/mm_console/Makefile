@@ -1,0 +1,1 @@
+obj-$(CONFIG_SERIAL_MM_CONSOLE)	+= serial.o
