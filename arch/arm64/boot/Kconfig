@@ -1,0 +1,55 @@
+menu "ISOIMAGE Configuration"
+depends on PC
+
+config KERNEL_ARGS
+	string "Kernel Command Line Arguments"
+	default "console=vga,serial" if !PALACIOS
+	default "console=serial" if PALACIOS
+	help
+	  Arguments to be passed to the kernel.
+	  If you are booting a guest OS that may use the VGA
+	  console, "console=serial" is suggested.
+
+config INIT_TASK_IMAGE
+	string "Initial Task Image"
+	default "init_task"
+	help
+	  Path to the ELF executable or guest OS image to use for the
+	  initial task.  Kitten loads this as the first user-level task.
+	  It executes with root privilege.
+
+config INIT_TASK_ARGS
+	string "Initial Task Arguments"
+	default "one two three"
+	help
+	  Arguments to be passed to the initial task.
+
+config INIT_TASK_ENVS
+	string "Initial Task Environment Variables"
+	default "one=1 two=2 three=3"
+	help
+	  Environment to be passed to the initial task.
+
+choice
+	prompt "Bootloader"
+	default SYSLINUX
+
+config SYSLINUX_BOOTLOADER
+	bool "Syslinux"
+	help
+	  When building the isoimage, use Syslinux as the bootloader.
+
+config GRUB_BOOTLOADER
+	bool "GRUB"
+	help
+	  When building the isoimage, use GRUB or GRUB2 as the bootloader.
+
+endchoice
+
+config GRUB2_MODS
+	string "GRUB2 modules to be included"
+	depends on GRUB_BOOTLOADER
+	default ""
+
+endmenu
+

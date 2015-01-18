@@ -1,0 +1,158 @@
+mainmenu "Kitten Kernel Configuration"
+
+config ARM64
+	bool
+	default y
+	help
+	  Support for the ARM64 architecture.
+
+config ARM
+	bool
+	default y
+
+config OUTPUT_FORMAT
+        string
+        default "elf64-littleaarch64" if ARM64
+
+config BFDARCH
+        string
+        default "aarch64" if ARM64
+
+source "kernel/Kconfig"
+
+menu "Target Configuration"
+
+choice
+	prompt "System Architecture"
+	default STORM_SIM
+
+config ARCH_STORM_SIM
+        bool "Simulator target"
+        help
+	  Support for STORM simulator.
+
+config ARCH_XGENE
+        bool "APM X-GENE"
+         help
+	  Support for APM X-GENE Systems.
+
+endchoice
+
+
+choice
+	prompt "Processor Family"
+	default MK8
+
+config MK8
+	bool "AMD-Opteron/Athlon64"
+	help
+	  Optimize for AMD Opteron/Athlon64/Hammer/K8 CPUs.
+
+endchoice
+
+
+#
+# Define implied options from the CPU selection
+#
+
+config SERIAL_PHYS
+		hex
+		default "0x1C021000" if ARCH_XGENE
+		default "0x1C020000" if ARCH_STORM_SIM
+
+config X86_L1_CACHE_BYTES
+        int
+        default "128" if GENERIC_CPU || MPSC
+        default "64" if MK8
+
+config X86_L1_CACHE_SHIFT
+        int
+        default "7" if GENERIC_CPU || MPSC
+        default "6" if MK8
+
+config X86_INTERNODE_CACHE_BYTES
+	int
+	default X86_L1_CACHE_BYTES
+
+config X86_INTERNODE_CACHE_SHIFT
+	int
+	default X86_L1_CACHE_SHIFT
+
+config NR_CPUS
+        int "Maximum number of CPUs (2-256)"
+        range 1 255
+        default "64"
+        help
+          This allows you to specify the maximum number of CPUs which this
+          kernel will support. Current maximum is 256. Less depending on 
+          the hardware.
+
+          This is purely to save memory - each supported CPU requires
+          memory in the static kernel configuration.
+
+#
+# Physical address where the kernel is loaded
+#
+config PHYSICAL_START
+	hex
+	default "0x200000"
+
+endmenu
+
+menu "Virtualization"
+
+config PALACIOS
+	bool "Include Palacios virtual machine monitor"
+	default "n"
+	help
+	  Include the Palacios virtual machine monitor. This enables Kitten
+	  to run guest operating systems alongside native applications.
+
+config PALACIOS_PATH
+	string "Path to pre-built Palacios tree"
+	depends on PALACIOS
+	default "../palacios"
+	help
+	  Path to a built Palacios source tree. This path is used to
+	  find Palacios include files and libraries that need to be
+	  linked with the Kitten kernel image.
+
+config GUEST_OS_ISOIMAGE_PATH
+	string "Path to guest OS image"
+	depends on PALACIOS
+	default "/opt/vmm-tools/isos/puppy.img"
+	help
+	  Path to a guest image to link with the example user/hello_world
+	  init task.  The hello_world init task will use this image
+	  to spawn a guest OS virtual machine via Palacios.  The guest
+          image must be built with the build_vm tool included with
+          the Palacios source code (in palacios/utils/guest_creator).
+
+endmenu
+
+# source user/iofwd/Kconfig
+
+config HAS_IOMEM
+	bool
+	default "y"
+
+config HAS_IOPORT
+	bool
+	default "y"
+
+config SMP
+	bool
+	default "y"
+
+config ACPI
+	bool
+	default "y"
+
+source "arch/arm64/boot/Kconfig"
+source "arch/arm64/Kconfig.debug"
+
+
+source "drivers/Kconfig"
+
+# TODO This might be painful later
+#source "linux/arch/arm64/Kconfig"
