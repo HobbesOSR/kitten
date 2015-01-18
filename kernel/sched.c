@@ -89,7 +89,6 @@ sched_init_runqueue(int cpu_id)
 	runq->num_tasks = 0;
 	runq->online    = 1;
 	list_head_init(&runq->migrate_list);
-
         runq->next_int.expires = 0;
         runq->next_int.function = interrupt_task;
         runq->next_int.data = 0;
@@ -268,7 +267,9 @@ repeat_lock_runq:
 		status = -EINVAL;
 	}
 	spin_unlock_irqrestore(&runq->lock, irqstate);
-
+#ifdef CONFIG_SCHED_EDF
+	edf_adjust_reservation(&runq->edf, task);
+#endif
 	if (!status && (cpu != this_cpu))
 		xcall_reschedule(cpu);
 
@@ -386,6 +387,12 @@ schedule(void)
 	if (next == NULL) {
 		next = runq->idle_task;
 	}
+
+        /*Just in case a tight inttime has been set*/
+        const ktime_t now = get_time();
+        if(inttime && inttime < now){
+                inttime = now + 1000000ul;
+        }
 
 	set_quantum_timer(runq, inttime);
 

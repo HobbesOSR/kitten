@@ -24,7 +24,7 @@
 #define task_container_of(rb_node, member) container_of(container_of(rb_node, struct task_edf, member), struct task_struct, edf)
 #define READY_QUEUE	0
 #define RESCHED_QUEUE	1
-#define MIN_EDF_QUANTUM 100000 // 100 usec
+#define MIN_EDF_QUANTUM_US 10000 // 10 msec
 
 /*
  * Interaction with the round-robin scheduler:
@@ -52,10 +52,10 @@ init_edf_config(struct edf_sched_config *edf_config){
 	edf_config->cpu_percent = CPU_PERCENT;
 }
 
-static uint64_t
+static ktime_t
 get_curr_host_time(void)
 {
-	uint64_t curr_time_us = get_time()/1000ul; // Time is returned by get_time() in ns and converted to us
+	ktime_t curr_time_us = get_time()/1000ul; // Time is returned by get_time() in ns and converted to us
 	return curr_time_us;
 }
 
@@ -136,10 +136,10 @@ insert_task_edf(struct task_struct *task, struct edf_rq *runqueue, int queue){
  *
  */
 
-static uint64_t
-next_start_period(uint64_t curr_time_us, struct task_struct *task){
+static ktime_t
+next_start_period(ktime_t curr_time_us, struct task_struct *task){
 
-	uint64_t next_start_us = 0;
+	ktime_t next_start_us = 0;
 
 	if(!task->edf.curr_deadline)
 		next_start_us = curr_time_us + task->edf.period;
@@ -189,7 +189,7 @@ void edf_sched_cpu_remove(struct edf_rq *runqueue, void * arg)
 int
 set_wakeup_task(struct edf_rq *runqueue, struct task_struct *task){
 
-	time_us host_time = get_curr_host_time();
+	ktime_t host_time = get_curr_host_time();
 	task->edf.last_wakeup = host_time;
 	runqueue->curr_task = task;
 
@@ -209,8 +209,8 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 {
 	if (is_admissible_task(task, runqueue)){
 
-		uint64_t curr_time_us = get_curr_host_time();
-		uint64_t curr_deadline = next_start_period(curr_time_us, task);
+		ktime_t curr_time_us = get_curr_host_time();
+		ktime_t curr_deadline = next_start_period(curr_time_us, task);
 
 		task->edf.curr_deadline = curr_deadline;
 		task->edf.used_time=0;
@@ -232,11 +232,6 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 		} else {
 			task->edf.cpu_reservation = 0;
 		}
-
-		if(!runqueue->curr_task){
-			runqueue->start_time =  get_curr_host_time();
-		}
-
 	}
 	else
 		printk(KERN_INFO "EDF_SCHED. activate_task. could not activate task %s. Not admissible (U = %d)\n",
@@ -268,7 +263,7 @@ edf_sched_add_task(struct edf_rq *runqueue, struct task_struct * task){
  * search_task_edf: Searches a task in the red-black tree by using its curr_deadline
  */
 static struct task_struct *
-search_task_edf(time_us curr_deadline, struct edf_rq *runqueue, int queue){
+search_task_edf(ktime_t curr_deadline, struct edf_rq *runqueue, int queue){
 
 	struct rb_root * tree = NULL;
 
@@ -282,7 +277,6 @@ search_task_edf(time_us curr_deadline, struct edf_rq *runqueue, int queue){
 	struct rb_node *node = tree->rb_node;
 
 	while (node) {
-
 		struct task_struct *task = NULL;
 
 		if ( queue == READY_QUEUE)
@@ -333,53 +327,56 @@ delete_task_edf( struct task_struct *task, struct edf_rq *runqueue, int queue){
 	}
 }
 
-#if 0
 static void
 check_statistics(struct task_struct * task, struct  edf_rq *runqueue){
+#if 0
 
-	time_us host_time = get_curr_host_time();
-	time_us time_prints=0;
-	int deadlines_percentage=0;
+        ktime_t host_time = get_curr_host_time();
+        ktime_t time_prints=0;
+        int deadlines_percentage=0;
 
 
-	/*Task Statistics*/
+        /*Task Statistics*/
 
-	if(task->edf.print_miss_deadlines == 0){
-		task->edf.print_miss_deadlines = host_time;
-		task->edf.deadlines = 0;
-		task->edf.miss_deadlines = 0;
-	}
+        if(task->edf.print_miss_deadlines == 0){
+                task->edf.print_miss_deadlines = host_time;
+                task->edf.deadlines = 0;
+                task->edf.miss_deadlines = 0;
+        }
 
-	time_prints = host_time - task->edf.print_miss_deadlines;
-	if(time_prints >= DEADLINE_INTERVAL && task->state == TASK_RUNNING){
-		if (task->edf.deadlines)
-			deadlines_percentage = 100 * task->edf.miss_deadlines / task->edf.deadlines;
-		printk(KERN_INFO
-		"EDF_SCHED. rq_U %d, Tsk: id %d, name %s, state %d, used_t %llu, sl %llu, T %llu, host_t %llu,  dl %llu, nr_dl %llu, miss_dl %llu miss_dl_per %d\n",
-			runqueue->cpu_u,
-			task->id,
-			task->name,
-			task->state,
-			task->edf.used_time,
-			task->edf.slice,
-			task->edf.period,
-			host_time,
-			task->edf.curr_deadline,
-			task->edf.deadlines,
-			task->edf.miss_deadlines,
-			deadlines_percentage);
+        time_prints = host_time - task->edf.print_miss_deadlines;
 
-		task->edf.deadlines=0;
-		task->edf.miss_deadlines=0;
-		deadlines_percentage = 0;
-		task->edf.print_miss_deadlines=host_time;
+        if(time_prints >= DEADLINE_INTERVAL){
+                if(task->state == TASK_RUNNING){
+                        if (task->edf.deadlines)
+                                deadlines_percentage =
+                                        100 * task->edf.miss_deadlines / task->edf.deadlines;
+		      printk(KERN_INFO
+                        "CPU=%d) EDF_SCHED. rq_U %d, Tsk: id %d, name %s, state %d, used_t %llu, sl %llu, T %llu, host_t %llu,  dl %llu, nr_dl %llu, miss_dl %llu miss_dl_per %d\n",
+                                this_cpu,
+                                runqueue->cpu_u,
+                                task->id,
+                                task->name,
+                                task->state,
+                                task->edf.used_time,
+                                task->edf.slice,
+                                task->edf.period,
+                                host_time,
+                                task->edf.curr_deadline,
+                                task->edf.deadlines,
+                                task->edf.miss_deadlines,
+                                deadlines_percentage);
 
-	}
-	if (task->state != TASK_RUNNING){
-		task->edf.print_miss_deadlines=0;
-	}
-}
+                        task->edf.deadlines = 0;
+                        task->edf.miss_deadlines = 0;
+                        deadlines_percentage = 0;
+                        task->edf.print_miss_deadlines = host_time;
+                }
+        }
 #endif
+}
+
+
 
 /*
  * deactivate_task - Removes a task from the red-black tree.
@@ -388,9 +385,8 @@ check_statistics(struct task_struct * task, struct  edf_rq *runqueue){
 static void
 deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
 
-#if 0
 	check_statistics(task,runqueue);
-#endif
+
 	delete_task_edf(task, runqueue, READY_QUEUE);
 	runqueue->cpu_u -= task->edf.cpu_reservation;
 
@@ -400,14 +396,13 @@ deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
  * Check_deadlines - Check tasks and re-insert in the runqueue the ones which deadline is over
  */
 
-
 static void check_deadlines(struct edf_rq *runqueue)
 {
 	struct list_head resched_list;
 
 	struct rb_node *node = rb_first(&runqueue->tasks_tree);
 	struct task_struct *next_task;
-	time_us host_time = get_curr_host_time();
+	ktime_t host_time = get_curr_host_time();
 
 	list_head_init(&resched_list);
 
@@ -472,7 +467,7 @@ static void check_deadlines(struct edf_rq *runqueue)
 
 /*
  * pick_next_task: Returns the next task to be scheduled from the red black tree
- * if all tasks have consumed their slices, it returns NULL
+ * if all tasks have consumed their slices and NWC-EDF is set, it returns NULL
  */
 static struct task_struct *
 pick_next_task(struct edf_rq *runqueue){
@@ -488,7 +483,7 @@ pick_next_task(struct edf_rq *runqueue){
 
 	node = rb_first(&runqueue->tasks_tree);
 
-	/* Pick the next task that has not used its whole slice */
+	/* Pick the next task in the ready queue */
 	while(node){
 
 		next_task = task_container_of(node, node);
@@ -504,49 +499,70 @@ pick_next_task(struct edf_rq *runqueue){
 
 }
 
+/* Calculate quantum for closest start period of tasks that have consumed their
+ * slices (tasks in resched_tree rb_tree) and tasks which still have not consumed
+ * their slices (tasks in tasks_tree rb_tree)
+ */
+
 static ktime_t
-get_quantum_period(struct edf_rq * runqueue){
+get_quantum_period(ktime_t now_us, struct edf_rq * runqueue){
 
-	/* set quantum timer for closest start period of tasks that have consumed their
-	 * slices (tasks in resched_tree rb_tree) and tasks which still have not consumed
-	 * their slices (tasks in tasks_tree rb_tree)
-	 * */
+        ktime_t inttime = 0;
+        ktime_t inttime_ready = 0;
+        ktime_t inttime_resched = 0;
+        ktime_t quantum = 0;
 
-	ktime_t inttime = 0;
-	struct rb_node *node_ready = rb_first(&runqueue->tasks_tree);
-	struct rb_node *node_resched = rb_first(&runqueue->resched_tree);
-	struct task_struct * task_ready = NULL;
-	struct task_struct * task_resched = NULL;
+        struct rb_node *node_ready = rb_first(&runqueue->tasks_tree);
+        struct rb_node *node_resched = rb_first(&runqueue->resched_tree);
 
-	if(node_ready && node_resched){
+        struct task_struct * task = NULL;
 
-		task_ready = task_container_of(node_ready, node);
-		task_resched = task_container_of(node_resched, resched_node);
+        if(node_ready){
+                task = task_container_of(node_ready, node);
+                inttime_ready = task->edf.curr_deadline;
+        }
 
-		if(task_ready->edf.curr_deadline < task_resched->edf.curr_deadline)
-			inttime = task_ready->edf.curr_deadline;
-		else
-			inttime = task_resched->edf.curr_deadline;
+        if(node_resched){
+                task = task_container_of(node_resched, resched_node);
+                inttime_resched = task->edf.curr_deadline;
+        }
+
+        if(inttime_ready && inttime_resched){
+                if(inttime_ready < inttime_resched)
+                        inttime = inttime_ready;
+                else
+                        inttime = inttime_resched;
+        }
+        if(inttime_ready && !inttime_resched)
+                inttime = inttime_ready;
+
+        if(!inttime_ready && inttime_resched)
+                inttime = inttime_resched;
+
+        if(inttime > now_us)
+                quantum = inttime - now_us;
+
+        return quantum; // return quantum in usecs.
+}
+
+static ktime_t
+get_quantum_slice(ktime_t now_us, struct task_struct * task, struct edf_rq * runqueue){
+
+        ktime_t quantum = 0;
+
+        if (task) {
+                  if(task->edf.used_time < task->edf.slice){
+                        ktime_t remaining = task->edf.slice - task->edf.used_time;
+                        quantum = remaining;
+                        }
+        }else{
+
+#ifdef CONFIG_SCHED_EDF_RR
+		quantum =  MIN_EDF_QUANTUM_US;
+#endif
 	}
-	else if (node_ready){
 
-		task_ready = task_container_of(node_ready, node);
-		inttime = task_ready->edf.curr_deadline;
-	}
-	else if (node_resched){
-
-		task_resched = task_container_of(node_resched, resched_node);
-		inttime = task_resched->edf.curr_deadline;
-	}
-
-	const ktime_t now_us = get_time()/1000ul;
-
-	/* Deadline already passed fire the timer soon*/
-	if( inttime && (inttime < now_us)){
-		inttime = now_us + MIN_EDF_QUANTUM;
-	}
-
-	return (inttime * 1000ul);
+	return quantum;
 }
 
 /*
@@ -556,42 +572,43 @@ get_quantum_period(struct edf_rq * runqueue){
 struct task_struct *
 edf_schedule(struct edf_rq *runq, struct list_head *migrate_list, ktime_t *inttime)
 {
+        struct task_struct *task;
+        task = pick_next_task(runq); /* Pick next task to schedule */
 
-	struct task_struct *task;
+#ifdef CONFIG_TIMER_ONESHOT
 
-	task = pick_next_task(runq); /* Pick next task to schedule */
-
-        const uint64_t now = get_time();
+        ktime_t now_us = get_time()/1000ul;
+        ktime_t quantum = 0;
 
 	/* Set the timer to finish this quantum; note that the EDF timer
-         * could be set and expire before this if there's an upcoming
-         * EDF period, but no current EDF task with slice available. */
+	 * could be set and expire before this if there's an upcoming
+	 * period, but no current EDF task with slice available.
+	 */
 
-	if(inttime){
-		if (task) {
-			uint64_t remaining = task->edf.slice - task->edf.used_time;
-			*inttime = (now + (remaining * 1000ul));
-		}
+        if(inttime){
 
-		/* Calculate the quantum to fire the timer at the closest start of period*/
-		ktime_t inttime_period = get_quantum_period(runq);
+                ktime_t quantum_slice = get_quantum_slice(now_us, task, runq);
+                ktime_t quantum_period = get_quantum_period(now_us, runq);
 
-		if (inttime_period){ /*There is at least a task in one of the queues*/
-			if (!task){
-#ifdef CONFIG_SCHED_EDF_RR
-				/*If not task ready, tasks are RR scheduled, so we need small quantums*/
-				*inttime = (now + MIN_EDF_QUANTUM);
+                if(quantum_slice && quantum_period){
+                        if(quantum_slice < quantum_period)
+                                quantum = quantum_slice;
+                        else
+                                quantum = quantum_period;
+                }
+
+                if(!quantum_slice && quantum_period)
+                        quantum = quantum_period;
+
+                if(quantum_slice && !quantum_period)
+                        quantum = quantum_slice;
+
+                if(quantum)
+                        *inttime = get_time() + (quantum * 1000ul);
+        }
+
 #endif
-			}
-
-			if (*inttime){
-				if (inttime_period < *inttime)
-					*inttime = inttime_period;
-			}else
-				*inttime = inttime_period;
-		}
-	}
-	return task;
+        return task;
 }
 
 /*
@@ -599,10 +616,10 @@ edf_schedule(struct edf_rq *runq, struct list_head *migrate_list, ktime_t *intti
  */
 static int adjust_slice(struct edf_rq * runq,struct task_struct *task){
 
-	uint64_t host_time = get_curr_host_time();
-	uint64_t used_time =  host_time - task->edf.last_wakeup;
+	ktime_t host_time = get_curr_host_time();
+	ktime_t used_time =  host_time - task->edf.last_wakeup;
 	int edf_scheduled = 1;
-	uint64_t old_used_t = task->edf.used_time;
+	ktime_t old_used_t = task->edf.used_time;
 	task->edf.used_time += used_time;
 
 	/* If slice is consumed add the task to the rr_list */
@@ -622,6 +639,19 @@ static int adjust_slice(struct edf_rq * runq,struct task_struct *task){
 #endif
 	}
 	return edf_scheduled;
+}
+
+int
+edf_adjust_reservation(struct edf_rq * runq, struct task_struct *task){
+
+	if(search_task_edf(task->edf.curr_deadline, runq, READY_QUEUE)){
+
+		if (task->state == TASK_RUNNING && task->edf.cpu_reservation == 0) {
+			task->edf.cpu_reservation = 100 * task->edf.slice / task->edf.period;
+			runq->cpu_u += task->edf.cpu_reservation;
+		}
+	}
+	return 0;
 }
 
 int
@@ -648,7 +678,6 @@ edf_sched_init_runqueue(struct edf_rq *runq, int cpuid)
 	runq->resched_tree = RB_ROOT;
 	runq->cpu_u=0;
 	runq->curr_task=NULL;
-	runq->start_time = 0;
 	init_edf_config(&runq->edf_config);
 
 	return 0;

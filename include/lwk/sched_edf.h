@@ -50,17 +50,15 @@
 
 #define DEADLINE_INTERVAL 10000000 // Period in which the missed deadline ratio is checked
 
-typedef uint64_t time_us;
-
 /*
  * Scheduler configuration
  */
 
 struct edf_sched_config {
-	time_us min_slice;       // Minimum allowed slice
-	time_us max_slice;       // Maximum allowed slice
-	time_us min_period;      // Minimum allowed period
-	time_us max_period;      // Maximum allowed period
+	ktime_t min_slice;       // Minimum allowed slice
+	ktime_t max_slice;       // Maximum allowed slice
+	ktime_t min_period;      // Minimum allowed period
+	ktime_t max_period;      // Maximum allowed period
 	int cpu_percent;         // Percentange of CPU utilization for the scheduler in each physical CPU (100 or less)
 };
 
@@ -75,7 +73,6 @@ struct edf_rq {
 	struct rb_root resched_tree;	        // Tasks to be rescheduled Red-Black Tree
 	struct edf_sched_config edf_config;	// Scheduling config structure
 	struct task_struct *curr_task;		// Current running CPU
-	time_us start_time;			// Time at which first core started running in this runqueue
 };
 
 /*
@@ -87,6 +84,7 @@ int edf_sched_deinit(void);
 int edf_sched_add_task(struct edf_rq *, struct task_struct *info);
 int edf_sched_del_task(struct edf_rq *, struct task_struct *info);
 int edf_adjust_schedule(struct edf_rq *, struct task_struct *info);
+int edf_adjust_reservation(struct edf_rq *, struct task_struct *info);
 struct task_struct * edf_schedule(struct edf_rq *, struct list_head *, ktime_t *t);
 extern void edf_sched_cpu_remove(struct edf_rq *, void *);
 ktime_t edf_schedule_timeout(ktime_t nsec);
