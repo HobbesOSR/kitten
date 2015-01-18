@@ -40,6 +40,7 @@ extern const char lwk_banner[];
 #define ULONG_MAX       (~0UL)
 #define INT64_MAX       ((long long)(~0ULL>>1))
 #define UINT64_MAX      (~0ULL)
+#define ULLONG_MAX      (~0ULL)
 
 #define STACK_MAGIC     0xdeadbeef
 

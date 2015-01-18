@@ -194,6 +194,9 @@ static inline void ptep_set_wrprotect(struct mm_struct *mm, unsigned long addres
  * and any p?d_bad entries - reporting the error before resetting to none.
  * Do the tests inline, but report and clear the bad entry in mm/memory.c.
  */
+
+#include <lwk/compiler.h>
+
 void pgd_clear_bad(pgd_t *);
 void pud_clear_bad(pud_t *);
 void pmd_clear_bad(pmd_t *);

@@ -19,6 +19,7 @@
 #include <lwk/bitops.h>
 #include <lwk/acpi.h>
 #include <arch/io.h>
+#include <arch/memory.h>
 
 /**
  * Set to true once bootmem allocator has been destroyed.
@@ -454,7 +455,9 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	 * Figure out which NUMA node each memory region belongs to.
 	 * TODO: move this to arch-dependent code
 	 */
+#ifdef CONFIG_ACPI
 	acpi_set_pmem_numa_info();
+#endif
 
 	printk(KERN_DEBUG
 	       "The boot-strap bootmem allocator has been destroyed:\n");
