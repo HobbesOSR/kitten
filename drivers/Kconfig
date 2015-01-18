@@ -13,6 +13,16 @@ config SERIAL_CONSOLE
 	depends on PC || CRAY_GEMINI
 	default y
 
+config OF
+		bool
+		depends on ARCH_STORM_SIM || ARCH_XGENE
+		default y
+
+config OF_EARLY_FLATTREE
+		bool
+		depends on ARCH_STORM_SIM || ARCH_XGENE
+		default y
+
 config VM_CONSOLE
 	bool "VM console"
 	depends on PC
