@@ -155,6 +155,13 @@ timer_sleep_until(uint64_t when)
 
 	timer_add(&timer);
 
+	/* Set task to TASK_INTERRUPTIBLE state so it goes
+	 * to sleep and other task can be scheduled
+	 */
+
+	set_task_state(current, TASK_INTERRUPTIBLE);
+
+
 	/* Go to sleep */
 	schedule();
 
