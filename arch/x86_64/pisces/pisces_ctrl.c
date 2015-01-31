@@ -314,7 +314,7 @@ pisces_ctrl_init(void)
 
 	waitq_init(&(user_waitq));
 
-	kfs_create("/pisces-cmd",
+	kfs_create("/dev/pisces",
 		   NULL,
 		   &pisces_ctrl_fops, 
 		   0777, 

@@ -28,7 +28,7 @@ typedef signed   long long s64;
 typedef unsigned long long u64;
 
 
-#define PISCES_CMD_PATH "/pisces-cmd"
+#define PISCES_CMD_PATH "/dev/pisces"
 
 
 #include "palacios.h"
