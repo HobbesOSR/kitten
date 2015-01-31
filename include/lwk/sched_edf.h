@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2013, Oscar Mondragon <omondrag@cs.unm.edu>
- * Copyright (c) 2013, Patrick G. Bridges <bridges@cs.unm.edu>
- * Copyright (c) 2013, Kitten Lightweight Kernel <https://software.sandia.gov/trac/kitten>
+ * Copyright (c) 2014, Oscar Mondragon <omondrag@cs.unm.edu>
+ * Copyright (c) 2014, Patrick G. Bridges <bridges@cs.unm.edu>
+ * Copyright (c) 2014, Kitten Lightweight Kernel <https://software.sandia.gov/trac/kitten>
  * All rights reserved.
  *
  * Author: Oscar Mondragon <omondrag@cs.unm.edu>
@@ -39,16 +39,16 @@
  */
 
 // Default configuration values for the EDF Scheduler
-// time parameters in microseconds
+// time parameters in nanoseconds
 
-#define MAX_PERIOD 1000000000
-#define MIN_PERIOD 500000
-#define MAX_SLICE 1000000000
-#define MIN_SLICE 200000
-#define MIN_SPEED_KHZ  500000
+#define MAX_PERIOD 10000000000   // 10 seconds
+#define MIN_PERIOD 10000000      // 10 msecs
+#define MAX_SLICE  10000000000   // 10 seconds
+#define MIN_SLICE  10000000      // 10 msecs
 #define CPU_PERCENT 100
 
-#define DEADLINE_INTERVAL 10000000 // Period in which the missed deadline ratio is checked
+// For statistical proposes -Period in which the missed deadline ratio is checked (10 secs)
+#define DEADLINE_INTERVAL 10000000000
 
 /*
  * Scheduler configuration
@@ -72,7 +72,6 @@ struct edf_rq {
 	struct rb_root tasks_tree;		// Task ready to run Red-Black Tree
 	struct rb_root resched_tree;	        // Tasks to be rescheduled Red-Black Tree
 	struct edf_sched_config edf_config;	// Scheduling config structure
-	struct task_struct *curr_task;		// Current running CPU
 };
 
 /*

@@ -7,9 +7,9 @@
 #include <pthread.h>
 #include <lwk/liblwk.h>
 
-#define SLICE 200000
-#define PERIOD 440000
-#define TEST_TIME 100
+#define SLICE		200000000   //ns
+#define PERIOD		440000000   //ns
+#define TEST_TIME	100
 
 #define THREAD_STACK_SIZE 4096
 
