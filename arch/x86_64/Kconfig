@@ -236,6 +236,7 @@ config PALACIOS_INTERNAL
 
 config PALACIOS_EXTERNAL
 	bool "Link in Palacios as a self contained module"
+	select BLOCK_DEVICE
 	help 
 		New linking style that modularizes Palacios and requires
 		no Palacios interfaces to be included inside Kitten
