@@ -18,6 +18,7 @@
 
 
 /* Well-known XPMEM segids */
+#define XPMEM_MAX_WK_SEGID    31
 #define XPMEM_GIT_ROOT_SEGIDS 25
 
 /*
@@ -37,7 +38,7 @@ struct xpmem_addr {
 /*
  * path to XPMEM device
  */
-#define XPMEM_DEV_PATH  "/xpmem"
+#define XPMEM_DEV_PATH  "/dev/xpmem"
 
 /*
  * The following are the possible XPMEM related errors.
