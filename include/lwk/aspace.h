@@ -178,6 +178,13 @@ aspace_map_region_anywhere(
 	paddr_t			pmem
 );
 
+extern int
+aspace_unmap_region(
+	id_t                    id,
+	vaddr_t                 start,
+	size_t                  extent
+);
+
 // End convenience functions defined in liblwk
 
 
