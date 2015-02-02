@@ -40,7 +40,11 @@ char resp_buf[4066]  __attribute__ ((aligned (512)));
 
 cpu_set_t   enclave_cpus;
 
-
+struct v3_guest_img {
+    unsigned long long   size;
+    void               * guest_data;
+    char                 name[128];
+} __attribute__((packed));
 
 static int 
 send_resp(int fd, u64 err_code) 
@@ -490,9 +494,23 @@ main(int argc, char ** argv, char * envp[])
 			break;
 		    }
 		    case ENCLAVE_CMD_CREATE_VM: {
+			    struct pisces_user_file_info * file_info = NULL;
 			    struct cmd_create_vm vm_cmd;
-			    int vm_id = -1;
+			    struct pmem_region rgn;
+			    struct v3_guest_img guest_img;
 
+			    id_t    my_aspace_id;
+			    vaddr_t file_addr;
+			    size_t  file_size =  0;
+			    int     path_len  =  0;
+			    int     vm_id     = -1;
+			    int     status    =  0;
+
+
+			    memset(&vm_cmd,    0, sizeof(struct cmd_create_vm));
+			    memset(&rgn,       0, sizeof(struct pmem_region));
+			    memset(&guest_img, 0, sizeof(struct v3_guest_img));
+			    
 			    ret = read(pisces_fd, &vm_cmd, sizeof(struct cmd_create_vm));
 
 			    if (ret != sizeof(struct cmd_create_vm)) {
@@ -501,15 +519,62 @@ main(int argc, char ** argv, char * envp[])
 				    break;
 			    }
 
+
+			    path_len = strlen((char *)vm_cmd.path.file_name) + 1;
+
+			    file_info = malloc(sizeof(struct pisces_user_file_info) + path_len);
+			    memset(file_info, 0, sizeof(struct pisces_user_file_info) + path_len);
+
+			    file_info->path_len = path_len;
+			    strncpy(file_info->path, (char *)vm_cmd.path.file_name, path_len - 1);
 			    
+			    file_size = ioctl(pisces_fd, PISCES_STAT_FILE, file_info);
+
+		
+			    status = aspace_get_myid(&my_aspace_id);
+			    if (status != 0) 
+				return status;
+
+			    if (pmem_alloc_umem(file_size, PAGE_SIZE, &rgn)) {
+				printf("Error: Could not allocate umem for guest image (size=%lu)\n", file_size);
+				break;
+			    }
+			    pmem_zero(&rgn);
+				
+			    status =
+				aspace_map_region_anywhere(
+							   my_aspace_id,
+							   &file_addr,
+							   round_up(file_size, PAGE_SIZE),
+							   (VM_USER|VM_READ|VM_WRITE),
+							   PAGE_SIZE,
+							   "VM Image",
+							   rgn.start
+							   );
+
+
+			    file_info->user_addr = file_addr;
+		
+			    ioctl(pisces_fd, PISCES_LOAD_FILE, file_info);
+				
+			    guest_img.size       = file_size;
+			    guest_img.guest_data = (void *)file_info->user_addr;
+			    strncpy(guest_img.name, (char *)vm_cmd.path.vm_name, 127);
+				
+				
 			    /* Issue VM Create command to Palacios */
-			    vm_id = issue_v3_cmd(V3_CREATE_GUEST, (uintptr_t)&(vm_cmd.path));
+			    vm_id = issue_v3_cmd(V3_CREATE_GUEST, (uintptr_t)&guest_img);
+				
+				
+			    aspace_unmap_region(my_aspace_id, file_addr, round_up(file_size, PAGE_SIZE));
+			    pmem_free_umem(&rgn);
+		
 
 			    if (vm_id < 0) {
-				    printf("Error: Could not create VM (%s) at (%s) (err=%d)\n", 
-					   vm_cmd.path.vm_name, vm_cmd.path.file_name, vm_id);
-				    send_resp(pisces_fd, vm_id);
-				    break;
+				printf("Error: Could not create VM (%s) at (%s) (err=%d)\n", 
+				       vm_cmd.path.vm_name, vm_cmd.path.file_name, vm_id);
+				send_resp(pisces_fd, vm_id);
+				break;
 			    }
 
 			    printf("Created VM (%d)\n", vm_id);
