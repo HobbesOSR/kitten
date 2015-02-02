@@ -44,6 +44,23 @@ pmem_alloc_umem(size_t size, size_t alignment, struct pmem_region *rgn)
 	return 0;
 }
 
+void
+pmem_free_umem(struct pmem_region * rgn)
+{
+	if (!(rgn)                        || 
+	    !(rgn->type_is_set)           || 
+	    (rgn->type != PMEM_TYPE_UMEM) ||
+	    !(rgn->allocated_is_set)) {
+		return;
+	}
+	
+	rgn->allocated        = false;
+	
+	pmem_update(rgn);
+	
+	return;
+}
+
 bool
 pmem_is_type(pmem_type_t type, paddr_t start, size_t extent)
 {

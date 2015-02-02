@@ -55,6 +55,7 @@ int pmem_zero(const struct pmem_region *rgn);
 void pmem_region_unset_all(struct pmem_region *rgn);
 const char *pmem_type_to_string(pmem_type_t type);
 int pmem_alloc_umem(size_t size, size_t alignment, struct pmem_region *rgn);
+void pmem_free_umem(struct pmem_region *rgn);
 bool pmem_is_type(pmem_type_t type, paddr_t start, size_t extent);
 void pmem_dump2console(void);
 

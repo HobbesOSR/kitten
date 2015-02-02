@@ -56,3 +56,21 @@ retry:
 
 	return 0;
 }
+
+int 
+aspace_unmap_region(
+	id_t     id,
+	vaddr_t  start,
+	size_t   extent
+)
+{
+	int status;
+	
+	if ((status = aspace_unmap_pmem(id, start, extent)))
+		return status;
+	
+	if ((status = aspace_del_region(id, start, extent)))
+		return status;
+	
+	return 0;
+}
