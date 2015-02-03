@@ -6,6 +6,10 @@
  * Author: Brian Kocoloski <briankoco@cs.pitt.edu>
  */
 
+#include <lwk/interrupt.h>
+#include <lwk/xpmem/xpmem_iface.h>
+
+#include <xpmem_private.h>
 #include <xpmem_partition.h>
 #include <xpmem_hashtable.h>
 
@@ -74,21 +78,94 @@
  */
 
 struct xpmem_link_connection {
-    xpmem_connection_t	 conn_type;
-    void	       * priv_data;
-    int (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data);
+    struct xpmem_partition_state * state;
+    xpmem_link_t                   link;
+    xpmem_connection_t	           conn_type;
+    atomic_t                       refcnt;   
+    int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data);
+    int  (*in_irq_fn)(int                   irq, void * priv_data);
+    void (*kill)     (void * priv_data);
+    void	                 * priv_data;
 };
 
-u32
-xpmem_hash_fn(uintptr_t key) 
+static void
+get_conn(struct xpmem_link_connection * conn)
 {
-    return hash_long(key, 32);
+    atomic_inc(&(conn->refcnt));
 }
 
-int
-xpmem_eq_fn(uintptr_t key1, uintptr_t key2)
+/* NOTE: the partition spinlock is already held */
+static void
+put_conn_last(struct xpmem_link_connection * conn)
 {
-    return (key1 == key2);
+    struct xpmem_partition_state * state = conn->state;
+    int i;
+
+    /* Need to do four things:
+     * (1) Set the conn to NULL in the conn map
+     * (2) Remove all domains using this connection link in the map
+     * (3) Invoke the private kill function for the conn
+     * (4) Free the conn
+     */
+
+    state->conn_map[conn->link] = NULL;
+
+    for (i = 0; i < XPMEM_MAX_DOMID; i++) {
+	xpmem_link_t link = state->link_map[i];
+	if (link == conn->link) {
+	    if (state->is_nameserver) {
+		/* Update name server map */
+		spin_unlock(&(state->lock));
+		xpmem_ns_kill_domain(state, i);
+		spin_lock(&(state->lock));
+	    }
+
+	    state->link_map[i] = 0;
+	}
+    }
+
+    if (conn->kill)
+	conn->kill(conn->priv_data);
+
+    kmem_free(conn);
+}
+
+static void 
+put_conn(struct xpmem_link_connection * conn)
+{
+    struct xpmem_partition_state * state = conn->state;
+
+    /* See lock reasoning below */
+    spin_lock(&(state->lock));
+    {
+	if (atomic_dec_return(&(conn->refcnt)) == 0)
+	    put_conn_last(conn);
+    }
+    spin_unlock(&(state->lock));
+}
+
+static struct xpmem_link_connection *
+xpmem_get_link_conn(struct xpmem_partition_state * state,
+		    xpmem_link_t                   link)
+{
+    struct xpmem_link_connection * conn = NULL;
+    xpmem_link_t                   idx  = link % XPMEM_MAX_LINK;
+    
+    /* We need to synchronize with the last put of the conn, which otherwise could free
+     * the conn in between us grabbing it from the conn_map and incrementing the refcnt */
+    spin_lock(&(state->lock));
+    {
+	conn = state->conn_map[idx];
+
+	if ((conn != NULL) &&
+	    (conn->link == link))
+	{
+	    get_conn(conn);
+	}
+    }
+    spin_unlock(&(state->lock));
+
+    return conn;
 }
 
 char *
@@ -127,275 +204,310 @@ cmd_to_string(xpmem_op_t op)
 	    return "XPMEM_DOMID_REQUEST";
 	case XPMEM_DOMID_RESPONSE:
 	    return "XPMEM_DOMID_RESPONSE";
+	case XPMEM_DOMID_RELEASE:
+	    return "XPMEM_DOMID_RELEASE";
 	default:
 	    return "UNKNOWN OPERATION";
     }
 }
 
-
-xpmem_link_t
-alloc_xpmem_link(struct xpmem_partition_state * state)
-{
-    xpmem_link_t id = (xpmem_link_t)atomic_inc_return(&(state->uniq_link));
-
-    if (id > XPMEM_MAX_LINK_ID) {
-	return -1;
-    }
-
-    return id;
-}
-
-
-int
-xpmem_add_domid(struct xpmem_partition_state * state,
-		xpmem_domid_t		       domid,
-		xpmem_link_t		       link)
-{
-    unsigned long flags  = 0;
-    int		  status = 0;
-
-    spin_lock_irqsave(&(state->lock), flags);
-    {
-	status = htable_insert(state->domid_map,
-		    (uintptr_t)domid,
-		    (uintptr_t)link);
-    }
-    spin_unlock_irqrestore(&(state->lock), flags);
-
-    return status;
-}
-
-static xpmem_link_t
-xpmem_search_or_remove_domid(struct xpmem_partition_state * state,
-			     xpmem_domid_t		    domid,
-			     int			    remove)
-{
-    unsigned long flags  = 0;
-    xpmem_link_t  result = 0;
-
-    spin_lock_irqsave(&(state->lock), flags);
-    {
-	if (remove) {
-	    result = (xpmem_link_t)htable_remove(state->domid_map,
-			(uintptr_t)domid,
-			0);
-	} else {
-	    result = (xpmem_link_t)htable_search(state->domid_map,
-			(uintptr_t)domid);
-	}
-    }
-    spin_unlock_irqrestore(&(state->lock), flags);
-
-    return result;
-}
-
-xpmem_link_t
-xpmem_search_domid(struct xpmem_partition_state * state,
-		  xpmem_domid_t			  domid)
-{
-    return xpmem_search_or_remove_domid(state, domid, 0);
-}
-
-xpmem_link_t
-xpmem_remove_domid(struct xpmem_partition_state * state,
-		   xpmem_domid_t		  domid)
-{
-    return xpmem_search_or_remove_domid(state, domid, 1);
-}
-
-
-
-int
-xpmem_add_link(struct xpmem_partition_state * state,
-	       xpmem_link_t		      link,
-	       struct xpmem_link_connection * conn)
-{
-    unsigned long flags  = 0;
-    int		  status = 0;
-
-    spin_lock_irqsave(&(state->lock), flags);
-    {
-	status = htable_insert(state->link_map,
-		    (uintptr_t)link,
-		    (uintptr_t)conn);
-    }
-    spin_unlock_irqrestore(&(state->lock), flags);
-
-    return status;
-}
-
-static struct xpmem_link_connection *
-xpmem_search_or_remove_link(struct xpmem_partition_state * state,
-			    xpmem_link_t		   link,
-			    int				   remove)
-{
-    unsigned long		   flags  = 0;
-    struct xpmem_link_connection * result = NULL;
-
-    spin_lock_irqsave(&(state->lock), flags);
-    {
-	if (remove) {
-	    result = (struct xpmem_link_connection *)htable_remove(state->link_map,
-			(uintptr_t)link,
-			1);
-	} else {
-	    result = (struct xpmem_link_connection *)htable_search(state->link_map,
-			(uintptr_t)link);
-	}
-    }
-    spin_unlock_irqrestore(&(state->lock), flags);
-
-    return result;
-}
-
-struct xpmem_link_connection *
-xpmem_search_link(struct xpmem_partition_state * state,
-		  xpmem_link_t			 link)
-{
-    return xpmem_search_or_remove_link(state, link, 0);
-}
-
-struct xpmem_link_connection *
-xpmem_remove_link(struct xpmem_partition_state * state,
-		  xpmem_link_t			 link)
-{
-    return xpmem_search_or_remove_link(state, link, 1);
-}
-
-
-
-/* Send a command along a connection link */
+/* Send a command through a connection link */
 int
 xpmem_send_cmd_link(struct xpmem_partition_state * state,
 		    xpmem_link_t		   link,
 		    struct xpmem_cmd_ex		 * cmd)
 {
-    struct xpmem_link_connection * conn = xpmem_search_link(state, link);
+    struct xpmem_link_connection * conn = NULL;
+    int				   ret  = 0;
 
-    if (conn == NULL) {
-	XPMEM_ERR(" NULL connection for link %lli", link);
+    conn = xpmem_get_link_conn(state, link);
+    if (conn == NULL)
 	return -1;
-    }
 
-    return conn->in_cmd_fn(cmd, conn->priv_data);
+    ret = conn->in_cmd_fn(cmd, conn->priv_data);
+    
+    put_conn(conn);
+
+    return ret;
 }
 
-
-
-
-struct xpmem_partition_state *
-xpmem_get_partition(void)
+void
+xpmem_add_domid_link(struct xpmem_partition_state * state,
+		     xpmem_domid_t		    domid,
+		     xpmem_link_t		    link)
 {
-    struct xpmem_partition * part = get_local_partition();
-    if (!part) {
-	return NULL;
+    spin_lock(&(state->lock));
+    {
+	state->link_map[domid] = link;
     }
-
-    return &(part->part_state);
+    spin_unlock(&(state->lock));
 }
-
 
 xpmem_link_t
-xpmem_add_connection(struct xpmem_partition_state * part_state,
-		     xpmem_connection_t		    type,
-		     int (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data),
-		     void			  * priv_data)
+xpmem_get_domid_link(struct xpmem_partition_state * state,
+		     xpmem_domid_t		    domid)
 {
     xpmem_link_t link = 0;
 
-    if (!part_state || !part_state->initialized) {
-	return -1;
+    spin_lock(&(state->lock));
+    {
+	link = state->link_map[domid];
     }
-
-    link = alloc_xpmem_link(part_state);
-
-    if (link > 0) {
-	struct xpmem_link_connection * conn  = NULL;
-
-	if (type == XPMEM_CONN_LOCAL) {
-	    part_state->local_link = link;
-
-	    /* Associate the link with our domid, if we have one */
-	    if (part_state->domid > 0) {
-		if (xpmem_add_domid(part_state, part_state->domid, part_state->local_link) == 0) {
-		    XPMEM_ERR("cannot insert into domid hashtable");
-		    return -1;
-		}
-	    }
-	}
-
-	conn = kmem_alloc(sizeof(struct xpmem_link_connection));
-	if (!conn) {
-	    return -1;
-	}
-
-	conn->conn_type = type;
-	conn->in_cmd_fn = in_cmd_fn;
-	conn->priv_data = priv_data;
-
-	/* Update the link map */
-	if (xpmem_add_link(part_state, link, conn) == 0) {
-	    XPMEM_ERR("cannot insert into link hashtable");
-	    kmem_free(conn);
-	    return -1;
-	}
-    }
+    spin_unlock(&(state->lock));
 
     return link;
 }
 
-
-int
-xpmem_remove_connection(struct xpmem_partition_state * part_state,
-			xpmem_link_t		       link)
+void
+xpmem_remove_domid_link(struct xpmem_partition_state * state,
+			xpmem_domid_t		       domid)
 {
-    struct xpmem_link_connection * conn  = NULL;
+    spin_lock(&(state->lock));
+    {
+	state->link_map[domid] = 0;
+    }
+    spin_unlock(&(state->lock));
+}
 
-    conn = xpmem_remove_link(part_state, link);
+/* Link ids are always unique, but are hashed into a table with a simple modular 
+ * function. Links may be skipped if their hash entry is already in use
+ */
+static xpmem_link_t
+xpmem_get_free_link(struct xpmem_partition_state * state,
+                    struct xpmem_link_connection * conn)
+{
+    xpmem_link_t idx  = 0;
+    xpmem_link_t ret  = -1;
+    xpmem_link_t link = 0;
+    xpmem_link_t end  = 0;
 
-    if (!conn) {
-	return -1; 
-    }	
+    spin_lock(&(state->lock));
+    {
+	end = state->uniq_link;
+	do {
+	    link = ++(state->uniq_link);
+	    idx  = link % XPMEM_MAX_LINK;
+	    if (state->conn_map[idx] == NULL) {
+		state->conn_map[idx] = conn;
+		ret = link;
+		break;
+	    }
+	} while (idx != end);
+    }
+    spin_unlock(&(state->lock));
 
-    if (conn->conn_type == XPMEM_CONN_LOCAL) {
-	part_state->local_link = -1; 
-    }	
-
-    kmem_free(conn);
-
-    return 0;
+    return ret;
 }
 
 
+static struct xpmem_partition_state *
+xpmem_get_partition(void)
+{
+    extern struct xpmem_partition * xpmem_my_part;
+    struct xpmem_partition_state  * part_state = &(xpmem_my_part->part_state);
+
+    return part_state;
+}
+
+xpmem_link_t
+xpmem_add_connection(xpmem_connection_t type,
+		     void	      * priv_data,
+		     int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data),
+		     int  (*in_irq_fn)(int                   irq, void * priv_data),
+		     void (*kill)     (void *))
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    struct xpmem_link_connection * conn = NULL;
+
+    if ((type != XPMEM_CONN_LOCAL) &&
+	(type != XPMEM_CONN_REMOTE))
+    {
+	return -EINVAL;
+    }
+
+    /* Allocate new connection */
+    conn = kmem_alloc(sizeof(struct xpmem_link_connection));
+    if (conn == NULL) {
+	return -ENOMEM;
+    }
+
+    /* Set conn fields */
+    conn->state     = part;
+    conn->conn_type = type;
+    conn->in_cmd_fn = in_cmd_fn;
+    conn->in_irq_fn = in_irq_fn;
+    conn->kill      = kill;
+    conn->priv_data = priv_data;
+    atomic_set(&(conn->refcnt), 1);
+
+    conn->link = xpmem_get_free_link(part, conn);
+    if (conn->link < 0) {
+	kmem_free(conn);
+	return -EBUSY;
+    }
+
+    if (type == XPMEM_CONN_LOCAL) {
+	part->local_link = conn->link;
+
+	/* Associate the link with our domid, if we have one */
+	if (part->domid > 0) {
+	    xpmem_add_domid_link(part, part->domid, conn->link);
+	}
+    }
+
+    return conn->link;
+}
+
+void *
+xpmem_get_link_data(xpmem_link_t link)
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    struct xpmem_link_connection * conn = xpmem_get_link_conn(part, link);
+
+    if (conn == NULL)
+	return NULL;
+
+    return conn->priv_data;
+}
+
+void
+xpmem_put_link_data(xpmem_link_t link)
+{
+    xpmem_link_t                   idx  = link % XPMEM_MAX_LINK;
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    struct xpmem_link_connection * conn = part->conn_map[idx];
+
+    put_conn(conn);
+}
+
+void
+xpmem_remove_connection(xpmem_link_t link)
+{
+    xpmem_put_link_data(link);
+}
 
 
 int
-xpmem_cmd_deliver(struct xpmem_partition_state * part_state,
-		  xpmem_link_t			 link,
-		  struct xpmem_cmd_ex	       * cmd)
+xpmem_cmd_deliver(xpmem_link_t		link,
+		  struct xpmem_cmd_ex * cmd)
 {
-    if (!part_state || !part_state->initialized) {
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    int ret = 0;
+
+    if (part->is_nameserver) {
+	ret = xpmem_ns_deliver_cmd(part, link, cmd);
+    } else {
+	ret = xpmem_fwd_deliver_cmd(part, link, cmd);
+    }
+
+    return ret;
+}
+
+irqreturn_t
+xpmem_irq_callback(int    irq,
+		   void	* priv_data)
+{
+    struct xpmem_link_connection * conn = (struct xpmem_link_connection *)priv_data;
+
+    if (conn->in_irq_fn == NULL)
+	return IRQ_NONE;
+
+    conn->in_irq_fn(irq, conn->priv_data);
+
+    return IRQ_HANDLED;
+}
+
+
+int 
+xpmem_request_irq_link(xpmem_link_t link)
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    struct xpmem_link_connection * conn = NULL;
+    int                            irq  = 0;
+
+    conn = xpmem_get_link_conn(part, link);
+    if (conn == NULL)
+        return -1; 
+
+    if (conn->in_irq_fn == NULL) {
+	XPMEM_ERR("Requesting irq on invalid link %d", link);
+	put_conn(conn);
 	return -1;
     }
 
-    if (part_state->is_nameserver) {
-	return xpmem_ns_deliver_cmd(part_state, link, cmd);
-    } else {
-	return xpmem_fwd_deliver_cmd(part_state, link, cmd);
-    }
+    irq = xpmem_request_irq(xpmem_irq_callback, conn);
+
+    /* If we got an irq, we don't put the conn until the irq is free'd */
+    if (irq <= 0) {
+        put_conn(conn);
+    }   
+
+    return irq;
 }
 
+int
+xpmem_release_irq_link(xpmem_link_t link,
+                       int          irq)
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    struct xpmem_link_connection * conn = NULL;
+    int                            ret  = 0;
 
+    conn = xpmem_get_link_conn(part, link);
+    if (conn == NULL)
+        return -1;
 
+    if (conn->in_irq_fn == NULL) {
+	XPMEM_ERR("Releasing irq on invalid link %d", link);
+	put_conn(conn);
+	return -1;
+    }
 
-extern int xpmem_domain_init(struct xpmem_partition_state *);
-extern int xpmem_domain_deinit(struct xpmem_partition_state *);
+    ret = xpmem_release_irq(irq, conn);
+    if (ret == 0) {
+        /* put the reference in the irq handler that we just free'd */
+        put_conn(conn);
+    }
 
-extern int xpmem_ns_init(struct xpmem_partition_state *);
-extern int xpmem_ns_deinit(struct xpmem_partition_state *);
+    /* put this function's ref */
+    put_conn(conn);
 
-extern int xpmem_fwd_init(struct xpmem_partition_state *);
-extern int xpmem_fwd_deinit(struct xpmem_partition_state *);
+    return ret;
+}
+
+int
+xpmem_irq_deliver(xpmem_link_t  src_link,
+                  xpmem_domid_t domid,
+                  xpmem_sigid_t sigid)
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    struct xpmem_link_connection * conn = NULL;
+    struct xpmem_signal          * sig  = (struct xpmem_signal *)&sigid;
+    xpmem_link_t                   link = xpmem_get_domid_link(part, domid);
+    int                            ret  = 0;
+
+    /* If we do not have a local link for this domid, send an IPI */
+    if (link == 0) {
+        xpmem_send_ipi_to_apic(sig->apic_id, sig->vector);
+        return 0;
+    }
+
+    conn = xpmem_get_link_conn(part, link);
+    if (conn == NULL)
+        return -1;
+
+    if (conn->in_irq_fn == NULL) {
+	XPMEM_ERR("Sending irq on invalid link %d", link);
+	put_conn(conn);
+	return -1;
+    }
+
+    ret = conn->in_irq_fn(sig->irq, conn->priv_data);
+
+    put_conn(conn);
+
+    return ret;
+}
 
 
 int
@@ -403,98 +515,43 @@ xpmem_partition_init(struct xpmem_partition_state * state, int is_ns)
 {
     int status = 0;
 
-    memset(state, 0, sizeof(struct xpmem_partition_state));
-
-    /* Create partition state */
-    spin_lock_init(&(state->lock));
-    atomic_set(&(state->uniq_link), 0); 
-
     state->local_link	 = -1; 
     state->domid	 = -1; 
     state->is_nameserver = is_ns;
-    state->initialized	 = 1;
+    state->uniq_link     = 0;
 
-    /* Create hashtables */
-    state->domid_map = create_htable(0, xpmem_hash_fn, xpmem_eq_fn);
-    if (!state->domid_map) {
-	goto err_htable;
-    }	
+    memset(state->link_map, 0, sizeof(xpmem_link_t) * XPMEM_MAX_LINK);
+    memset(state->conn_map, 0, sizeof(struct xpmem_link_connection *) * XPMEM_MAX_DOMID);
 
-    state->link_map = create_htable(0, xpmem_hash_fn, xpmem_eq_fn);
-    if (!state->link_map) {
-	goto err_htable_2;
-    }	
-
+    spin_lock_init(&(state->lock));
 
     /* Create ns/fwd state */
     if (is_ns) {
 	status = xpmem_ns_init(state);
 	if (status != 0) {
-	    XPMEM_ERR("could not initialize name service");
-	    goto err_ns;
+	    XPMEM_ERR("Could not initialize name service");
+	    return status;
 	}
     } else {
 	status = xpmem_fwd_init(state);
 	if (status != 0) {
-	    XPMEM_ERR("could not initialize forwarding service");
-	    goto err_fwd;
+	    XPMEM_ERR("Could not initialize forwarding service");
+	    return status;
 	}
     }
 
-    /* Register a local domain */
-    status = xpmem_domain_init(state);
-    if (status != 0) {
-	XPMEM_ERR("could not initialize local domain XPMEM state");
-	goto err_domain;
-    }
-
     return 0;
-
-err_domain:
-    if (is_ns) {
-	xpmem_ns_deinit(state);
-    } else {
-	xpmem_fwd_deinit(state);
-    }
-
-err_ns:
-err_fwd:
-    free_htable(state->link_map, 1, 0);
-    state->link_map = NULL;
-
-err_htable_2:
-    free_htable(state->domid_map, 0, 0);
-    state->domid_map = NULL;
-
-err_htable:
-    state->initialized = 0;
-    return -1;
 }
 
 
 int
 xpmem_partition_deinit(struct xpmem_partition_state * state)
 {
-
-    xpmem_domain_deinit(state);
-
     if (state->is_nameserver) {
 	xpmem_ns_deinit(state);
     } else {
 	xpmem_fwd_deinit(state);
     }
-    
-    /* Free hashtables */
-    if (state->domid_map) {
-	free_htable(state->domid_map, 0, 0);
-	state->domid_map = NULL;
-    }
 
-    if (state->link_map) {
-	free_htable(state->link_map, 1, 0);
-	state->link_map = NULL;
-    }
-
-    state->initialized = 0;
     return 0;
 }

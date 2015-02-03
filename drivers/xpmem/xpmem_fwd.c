@@ -16,6 +16,7 @@
 #include <lwk/xpmem/xpmem_extended.h>
 #include <lwk/xpmem/xpmem_iface.h>
 
+#include <xpmem_private.h>
 #include <xpmem_partition.h>
 #include <xpmem_hashtable.h>
 
@@ -63,7 +64,7 @@ static void
 xpmem_ping_ns(struct xpmem_partition_state * part_state, 
 	      xpmem_link_t		     skip)
 {
-    struct xpmem_cmd_ex      ping_cmd;
+    struct xpmem_cmd_ex ping_cmd;
 
     memset(&(ping_cmd), 0, sizeof(struct xpmem_cmd_ex));
 
@@ -74,7 +75,7 @@ xpmem_ping_ns(struct xpmem_partition_state * part_state,
 
     {
 	int i = 0;
-	for (i = 0; i <= XPMEM_MAX_LINK_ID; i++) {
+	for (i = 0; i < XPMEM_MAX_LINK; i++) {
 	    xpmem_link_t search_id = (xpmem_link_t)i;
 
 	    if (search_id == skip) {
@@ -86,12 +87,7 @@ xpmem_ping_ns(struct xpmem_partition_state * part_state,
 		continue;
 	    }
 
-	    if (xpmem_search_link(part_state, search_id)) {
-		if (xpmem_send_cmd_link(part_state, search_id, &ping_cmd)) {
-		    XPMEM_ERR("Cannot send PING on link %lli", search_id);
-		}
-	    }
-
+	    xpmem_send_cmd_link(part_state, search_id, &ping_cmd);
 	}
     }
 }
@@ -114,7 +110,7 @@ xpmem_pong_ns(struct xpmem_partition_state * part_state,
 
     {
 	int i = 0;
-	for (i = 0; i <= XPMEM_MAX_LINK_ID; i++) {
+	for (i = 0; i < XPMEM_MAX_LINK; i++) {
 	    xpmem_link_t search_id = (xpmem_link_t)i;
 
 	    if (search_id == skip) {
@@ -126,11 +122,7 @@ xpmem_pong_ns(struct xpmem_partition_state * part_state,
 		continue;
 	    }
 
-	    if (xpmem_search_link(part_state, search_id)) {
-		if (xpmem_send_cmd_link(part_state, search_id, &pong_cmd)) {
-		    XPMEM_ERR("Cannot send PONG on link %lli", search_id);
-		}
-	    }
+	    xpmem_send_cmd_link(part_state, search_id, &pong_cmd);
 	}
     }
 }
@@ -173,7 +165,7 @@ xpmem_fwd_process_ping_cmd(struct xpmem_partition_state * part_state,
 		cmd->type = XPMEM_PONG_NS;
 
 		if (xpmem_send_cmd_link(part_state, link, cmd)) {
-		    printk(KERN_ERR "XPMEM: cannot send command on link %lli", link);
+		    printk(KERN_ERR "XPMEM: cannot send command on link %d", link);
 		    return -EFAULT;
 		}
 	    }
@@ -182,16 +174,12 @@ xpmem_fwd_process_ping_cmd(struct xpmem_partition_state * part_state,
 	}
 
 	case XPMEM_PONG_NS: {
-	    unsigned long flags = 0;
-	    int		  ret	= 0;
-	    int		  req	= 0;
+	    int req = 0;
 
-	    /* We received a PONG. So, the nameserver can be found through this
-	     * link
-	     */
+	    /* We received a PONG. So, the nameserver can be found through this link */
 
 	    /* Remember the link */
-	    spin_lock_irqsave(&(fwd_state->lock), flags);
+	    spin_lock(&(fwd_state->lock));
 	    {
 		fwd_state->ns_link = link;
 
@@ -200,15 +188,10 @@ xpmem_fwd_process_ping_cmd(struct xpmem_partition_state * part_state,
 		    fwd_state->domid_requested = 1;
 		}
 	    }
-	    spin_unlock_irqrestore(&(fwd_state->lock), flags);
+	    spin_unlock(&(fwd_state->lock));
 
 	    /* Update the domid map to remember this link */
-	    ret = xpmem_add_domid(part_state, XPMEM_NS_DOMID, link);
-
-	    if (ret == 0) {
-		XPMEM_ERR("Cannot insert domid %lli into hashtable", (xpmem_domid_t)XPMEM_NS_DOMID);
-		return -EFAULT;
-	    }
+	    xpmem_add_domid_link(part_state, XPMEM_NS_DOMID, link);
 
 	    /* Broadcast the PONG to all our neighbors, except the source */
 	    xpmem_pong_ns(part_state, link);
@@ -224,7 +207,7 @@ xpmem_fwd_process_ping_cmd(struct xpmem_partition_state * part_state,
 		domid_req.dst_dom = XPMEM_NS_DOMID;
 
 		if (xpmem_send_cmd_link(part_state, fwd_state->ns_link, &domid_req)) {
-		    XPMEM_ERR("Cannot send command on link %lli", fwd_state->ns_link);
+		    XPMEM_ERR("Cannot send command on link %d", fwd_state->ns_link);
 		    return -EFAULT;
 		}
 	    }
@@ -267,7 +250,6 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part_state,
 	    /* Buffer the request */
 	    {
 		struct xpmem_domid_req_iter * iter = NULL;
-		unsigned long		      flags = 0;
 
 		iter = kmem_alloc(sizeof(struct xpmem_domid_req_iter));
 		if (!iter) {
@@ -276,11 +258,11 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part_state,
 
 		iter->link = link;
 
-		spin_lock_irqsave(&(fwd_state->lock), flags);
+		spin_lock(&(fwd_state->lock));
 		{
 		    list_add_tail(&(iter->node), &(fwd_state->domid_req_list));
 		}
-		spin_unlock_irqrestore(&(fwd_state->lock), flags);
+		spin_unlock(&(fwd_state->lock));
 
 		/* Forward request up to the nameserver */
 		out_link = fwd_state->ns_link;
@@ -290,7 +272,6 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part_state,
 	}
 
 	case XPMEM_DOMID_RESPONSE: {
-	    int ret = 0;
 	    /* We've been allocated a domid.
 	     *
 	     * If our domain has no domid, take it for ourselves it.
@@ -301,43 +282,32 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part_state,
 		part_state->domid = cmd->domid_req.domid;
 
 		/* Update the domid map to remember our own domid */
-		ret = xpmem_add_domid(part_state, part_state->domid, part_state->local_link);
-
-		if (ret == 0) {
-		    XPMEM_ERR("Cannot insert domid %lli into hashtable", part_state->domid);
-		    return -EFAULT;
-		}
+		xpmem_add_domid_link(part_state, part_state->domid, part_state->local_link);
 
 		return 0;
 	    } else {
 		struct xpmem_domid_req_iter * iter = NULL;
-		unsigned long		      flags = 0;
 
 		if (list_empty(&(fwd_state->domid_req_list))) {
 		    XPMEM_ERR("We currently do not support the buffering of XPMEM domids");
 		    return -1;
 		}
 
-		spin_lock_irqsave(&(fwd_state->lock), flags);
+		spin_lock(&(fwd_state->lock));
 		{
 		    iter = list_first_entry(&(fwd_state->domid_req_list),
 				struct xpmem_domid_req_iter,
 				node);
 		    list_del(&(iter->node));
 		}
-		spin_unlock_irqrestore(&(fwd_state->lock), flags);
+		spin_unlock(&(fwd_state->lock));
 
 		/* Forward the domid to this link */
 		out_link = iter->link;
 		kmem_free(iter);
 
 		/* Update the domid map to remember who has this */
-		ret = xpmem_add_domid(part_state, cmd->domid_req.domid, out_link);
-
-		if (ret == 0) {
-		    XPMEM_ERR("Cannot insert domid %lli into hashtable", cmd->domid_req.domid);
-		    return -EFAULT;
-		}
+		xpmem_add_domid_link(part_state, cmd->domid_req.domid, out_link);
 	    }
 
 	    break;
@@ -346,7 +316,7 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part_state,
 	case XPMEM_DOMID_RELEASE:
 	    /* Someone downstream is releasing their domid: simply forward to the
 	     * namserver */
-	    out_link = xpmem_search_domid(part_state, out_cmd->dst_dom);
+	    out_link = xpmem_get_domid_link(part_state, out_cmd->dst_dom);
 
 	    if (out_link == 0) {
 		XPMEM_ERR("Cannot find domid %lli in hashtable", out_cmd->dst_dom);
@@ -363,7 +333,7 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part_state,
 
     /* Send the response */
     if (xpmem_send_cmd_link(part_state, out_link, out_cmd)) {
-	XPMEM_ERR("Cannot send command on link %lli", out_link);
+	XPMEM_ERR("Cannot send command on link %d", out_link);
 	return -EFAULT;
     }
 
@@ -454,7 +424,7 @@ xpmem_fwd_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	xpmem_set_complete(out_cmd);
 
 	if (xpmem_send_cmd_link(part_state, out_link, out_cmd)) {
-	    XPMEM_ERR("Cannot send command on link %lli", out_link);
+	    XPMEM_ERR("Cannot send command on link %d", out_link);
 	}
 
 	return -EFAULT;
@@ -474,7 +444,7 @@ xpmem_fwd_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	case XPMEM_ATTACH_COMPLETE:
 	case XPMEM_DETACH_COMPLETE: {
 
-	    out_link = xpmem_search_domid(part_state, out_cmd->dst_dom);
+	    out_link = xpmem_get_domid_link(part_state, out_cmd->dst_dom);
 
 	    if (out_link == 0) {
 		XPMEM_ERR("Cannot find domid %lli in hashtable", out_cmd->dst_dom);
@@ -492,7 +462,7 @@ xpmem_fwd_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 
     /* Write the response */
     if (xpmem_send_cmd_link(part_state, out_link, out_cmd)) {
-	XPMEM_ERR("Cannot send command on link %lli", out_link);
+	XPMEM_ERR("Cannot send command on link %d", out_link);
 	return -EFAULT;
     }
 
@@ -610,17 +580,7 @@ static void
 xpmem_ping_timer_fn(unsigned long data)
 {
     struct xpmem_partition_state * part_state = (struct xpmem_partition_state *)data;
-    struct xpmem_fwd_state	 * fwd_state  = NULL;
-
-    if (!part_state || !part_state->initialized) {
-	return;
-    }
-
-    fwd_state = part_state->fwd_state;
-
-    if (!fwd_state) {
-	return;
-    }
+    struct xpmem_fwd_state	 * fwd_state  = part_state->fwd_state;
 
     /* Wakeup waitq */
     fwd_state->ping_condition = 1;
@@ -708,7 +668,7 @@ xpmem_fwd_deinit(struct xpmem_partition_state * part_state)
 	dom_cmd.domid_req.domid = part_state->domid;
 
 	if (xpmem_send_cmd_link(part_state, fwd_state->ns_link, &dom_cmd)) {
-	    XPMEM_ERR("Cannot send DOMID_RELEASE on link %lli", fwd_state->ns_link);
+	    XPMEM_ERR("Cannot send DOMID_RELEASE on link %d", fwd_state->ns_link);
 	}
     }
 
