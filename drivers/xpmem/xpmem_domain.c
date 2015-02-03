@@ -168,15 +168,15 @@ xpmem_map_pfn_range(u64   at_vaddr,
 		    u64   num_pfns,
 		    u32 * pfns) 
 {
-    int     i	 = 0;
-    vaddr_t addr = 0;
+    int i = 0;
 
     for (i = 0; i < num_pfns; i++) {
-	addr = at_vaddr + (i * PAGE_SIZE);
+	vaddr_t addr  = at_vaddr + (i * PAGE_SIZE);
+	paddr_t paddr = (addr_t)pfns[i] << PAGE_SHIFT;
 
-//	printk("map pmem from %p to %p\n", (void *)addr, (void *)(pfns[i] << PAGE_SHIFT));
+	//printk("map pmem from va %p to pa %p\n", (void *)addr, (void *)paddr);
 
-	if (aspace_map_pmem(current->aspace->id, (pfns[i] << PAGE_SHIFT), addr, PAGE_SIZE)) {
+	if (aspace_map_pmem(current->aspace->id, paddr, addr, PAGE_SIZE)) {
 	    XPMEM_ERR("aspace_map_pmem() failed");
 
 	    while (--i >= 0) {
