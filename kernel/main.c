@@ -168,9 +168,13 @@ start_kernel()
 
 #ifdef CONFIG_NETWORK
 	/*
-	* Bring up any network devices.
-	*/
+	 * Bring up any network devices.
+	 */
 	netdev_init();
+#endif
+
+#ifdef CONFIG_CRAY_GEMINI
+	driver_init_list("net", "gemini");
 #endif
 
 #ifdef CONFIG_BLOCK_DEVICE

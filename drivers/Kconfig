@@ -55,6 +55,11 @@ config VMNET
           virtual machines.
           If the kernel will be run under Palacios, say yes.
 
+config CRAY_GEMINI_NET
+	bool "Cray Gemini Network (gemini)"
+	depends on CRAY_GEMINI
+	default y
+
 config SATA
 	bool "SATA block driver"
 	depends on BLOCK_DEVICE
