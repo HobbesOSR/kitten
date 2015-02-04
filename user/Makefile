@@ -4,9 +4,9 @@ CFLAGS=-O2 -Wall
 # overridden by the calling Makefile or on the command line.
 O=$(shell pwd)
 
-all: liblwk libxpmem libxpmem-ext hello_world powerinsight smartmap test_app pisces edf_sched multi_loader
+all: liblwk libxpmem hello_world powerinsight smartmap test_app pisces edf_sched multi_loader
 
-liblwk libxpmem libxpmem-ext hello_world powerinsight smartmap test_app pisces edf_sched multi_loader: FORCE
+liblwk libxpmem hello_world powerinsight smartmap test_app pisces edf_sched multi_loader: FORCE
 	@if [ ! -d $O/$@ ]; then mkdir $O/$@; fi
 	make O=$O/$@ -C $@
 	make O=$O/$@ -C $@ install
@@ -14,7 +14,6 @@ liblwk libxpmem libxpmem-ext hello_world powerinsight smartmap test_app pisces e
 clean:
 	make O=$O/liblwk -C liblwk clean
 	make O=$O/libxpmem -C libxpmem clean
-	make O=$O/libxpmem-ext -C libxpmem-ext clean
 	make O=$O/hello_world -C hello_world clean
 	make O=$O/powerinsight -C powerinsight clean
 	make O=$O/test_app -C test_app clean
