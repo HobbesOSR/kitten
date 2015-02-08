@@ -13,22 +13,15 @@
 
 #ifdef __KERNEL__
 
-typedef int64_t xpmem_domid_t;
+#include <lwk/xpmem/xpmem.h>
+
 typedef int16_t xpmem_link_t;
 typedef int64_t xpmem_sigid_t;
-
-typedef enum {
-    XPMEM_CONN_NONE = 0,
-    XPMEM_CONN_LOCAL,
-    XPMEM_CONN_REMOTE,
-} xpmem_connection_t;
-
 
 struct xpmem_cmd_ex;
 
 xpmem_link_t
-xpmem_add_connection(xpmem_connection_t type,
-		     void	      * priv_data,
+xpmem_add_connection(void	    * priv_data,
 		     int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data),
 		     int  (*in_irq_fn)(int		     irq, void * priv_data),
 		     void (*kill)     (void * priv_data));

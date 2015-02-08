@@ -19,8 +19,6 @@
 #include <lwk/xpmem/xpmem_iface.h>
 
 #include <xpmem_private.h>
-#include <xpmem_partition.h>
-#include <xpmem_hashtable.h>
 
 
 #define MAX_UNIQ_REQ 64
@@ -697,8 +695,7 @@ xpmem_domain_init(void)
     init_request_map(state);
     atomic_set(&(state->uniq_apid), 0);
 
-    state->link = xpmem_add_connection(
-	    XPMEM_CONN_LOCAL,
+    state->link = xpmem_add_local_connection(
 	    (void *)state,
 	    xpmem_cmd_fn,
 	    NULL,

@@ -198,7 +198,6 @@ pisces_xpmem_init(void)
 
     /* Add connection link for enclave */
     state->link = xpmem_add_connection(
-	    XPMEM_CONN_REMOTE,
 	    state,
 	    xpmem_cmd_fn,
 	    NULL,

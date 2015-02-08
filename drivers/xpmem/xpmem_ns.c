@@ -13,7 +13,6 @@
 #include <lwk/xpmem/xpmem_iface.h>
 
 #include <xpmem_private.h>
-#include <xpmem_partition.h>
 #include <xpmem_hashtable.h>
 
 #define XPMEM_MIN_DOMID    32
@@ -579,6 +578,7 @@ xpmem_ns_process_ping_cmd(struct xpmem_partition_state * part_state,
     /* There's no reason not to reuse the input command struct for responses */
     struct xpmem_cmd_ex   * out_cmd  = cmd;
     xpmem_link_t	    out_link = link;
+    int ret = 0;
 
     switch (cmd->type) {
 	case XPMEM_PING_NS: {
@@ -594,18 +594,17 @@ xpmem_ns_process_ping_cmd(struct xpmem_partition_state * part_state,
 	}
 
 	default: {
-	    XPMEM_ERR("Unknown PING operation: %s", cmd_to_string(cmd->type));
+	    XPMEM_ERR("Unknown PING operation: %s", xpmem_cmd_to_string(cmd->type));
 	    return -EINVAL;
 	}
     }
 
     /* Write the response */
-    if (xpmem_send_cmd_link(part_state, out_link, out_cmd)) {
+    ret = xpmem_send_cmd_link(part_state, out_link, out_cmd);
+    if (ret != 0)
 	XPMEM_ERR("Cannot send command on link %d", link);
-	return -EFAULT;
-    }
 
-    return 0;
+    return ret;
 }
 
 
@@ -622,6 +621,7 @@ xpmem_ns_process_domid_cmd(struct xpmem_partition_state * part_state,
     /* There's no reason not to reuse the input command struct for responses */
     struct xpmem_cmd_ex   * out_cmd  = cmd;
     xpmem_link_t	    out_link = link;
+    int ret = 0;
 
     switch (cmd->type) {
 	case XPMEM_DOMID_REQUEST: {
@@ -644,7 +644,7 @@ xpmem_ns_process_domid_cmd(struct xpmem_partition_state * part_state,
 	    out_domid_req:
 	    {
 		out_cmd->type	 = XPMEM_DOMID_RESPONSE;
-		out_cmd->src_dom = part_state->domid;
+		out_cmd->src_dom = XPMEM_NS_DOMID;
 	    }
 
 	    break;
@@ -658,13 +658,11 @@ xpmem_ns_process_domid_cmd(struct xpmem_partition_state * part_state,
 
 	case XPMEM_DOMID_RELEASE: {
 	    /* A domain has gone away - free it and release its domid */
-	    int ret = 0;
-
 	    ret = free_xpmem_domain(ns_state, req_domain);
 
 	    if (ret != 0) {
 		XPMEM_ERR("Cannot free domain");
-		return -EFAULT;
+		return ret;
 	    }
 
 	    /* Update domid map */
@@ -675,18 +673,17 @@ xpmem_ns_process_domid_cmd(struct xpmem_partition_state * part_state,
 	}
 
 	default: {
-	    XPMEM_ERR("Unknown domid operation: %s", cmd_to_string(cmd->type));
+	    XPMEM_ERR("Unknown domid operation: %s", xpmem_cmd_to_string(cmd->type));
 	    return -EINVAL;
 	}
     }
 
     /* Write the response */
-    if (xpmem_send_cmd_link(part_state, out_link, out_cmd)) {
+    ret = xpmem_send_cmd_link(part_state, out_link, out_cmd);
+    if (ret != 0)
 	XPMEM_ERR("Cannot send command on link %d", link);
-	return -EFAULT;
-    }
 
-    return 0;
+    return ret;
 }
 
 
@@ -706,6 +703,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
     /* There's no reason not to reuse the input command struct for responses */
     struct xpmem_cmd_ex   * out_cmd  = cmd;
     xpmem_link_t	    out_link = link;
+    int ret;
 
     switch (cmd->type) {
 	case XPMEM_MAKE: {
@@ -717,7 +715,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 
 	    out_cmd->type    = XPMEM_MAKE_COMPLETE;
 	    out_cmd->dst_dom = cmd->src_dom;
-	    out_cmd->src_dom = part_state->domid;
+	    out_cmd->src_dom = XPMEM_NS_DOMID;
 
 	    break;
 	}
@@ -730,7 +728,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 
 	    out_cmd->type    = XPMEM_REMOVE_COMPLETE;
 	    out_cmd->dst_dom = cmd->src_dom;
-	    out_cmd->src_dom = part_state->domid;
+	    out_cmd->src_dom = XPMEM_NS_DOMID;
 
 	    break;
 	}
@@ -766,7 +764,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 		out_cmd->get.apid = -1;
 		out_cmd->type	  = XPMEM_GET_COMPLETE;
 		out_cmd->dst_dom  = cmd->src_dom;
-		out_cmd->src_dom  = part_state->domid;
+		out_cmd->src_dom  = XPMEM_NS_DOMID;
 		out_link	  = link;
 	    }
 
@@ -821,7 +819,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	    {
 		out_cmd->type	 = XPMEM_RELEASE_COMPLETE;
 		out_cmd->dst_dom = cmd->src_dom;
-		out_cmd->src_dom = part_state->domid;
+		out_cmd->src_dom = XPMEM_NS_DOMID;
 		out_link	 = link;
 	    }
 
@@ -866,7 +864,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	    {
 		out_cmd->type	 = XPMEM_ATTACH_COMPLETE;
 		out_cmd->dst_dom = cmd->src_dom;
-		out_cmd->src_dom = part_state->domid;
+		out_cmd->src_dom = XPMEM_NS_DOMID;
 		out_link	 = link;
 	    }
 
@@ -878,7 +876,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	    {
 		out_cmd->type	 = XPMEM_DETACH_COMPLETE;
 		out_cmd->dst_dom = cmd->src_dom;
-		out_cmd->src_dom = part_state->domid;
+		out_cmd->src_dom = XPMEM_NS_DOMID;
 		out_link	 = link;
 	    }
 
@@ -916,7 +914,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	}
 
 	default: {
-	    XPMEM_ERR("Unknown operation: %s", cmd_to_string(cmd->type));
+	    XPMEM_ERR("Unknown operation: %s", xpmem_cmd_to_string(cmd->type));
 	    return -EINVAL;
 	}
     }
@@ -925,12 +923,11 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
     cmd->src_dom = XPMEM_NS_DOMID;
 
     /* Write the response */
-    if (xpmem_send_cmd_link(part_state, out_link, out_cmd)) {
+    ret = xpmem_send_cmd_link(part_state, out_link, out_cmd);
+    if (ret != 0)
 	XPMEM_ERR("Cannot send command on link %d", link);
-	return -EFAULT;
-    }
 
-    return 0;
+    return ret;
 }
 
 
@@ -943,11 +940,11 @@ prepare_domids(struct xpmem_partition_state * part_state,
     if (link == part_state->local_link) {
 	if (cmd->req_dom == 0) {
 	    /* The request is being generated here: set the req domid */
-	    cmd->req_dom = part_state->domid;
+	    cmd->req_dom = XPMEM_NS_DOMID;
 	}
 
 	/* Route to the NS - trivially */
-	cmd->src_dom = part_state->domid;
+	cmd->src_dom = XPMEM_NS_DOMID;
 	cmd->dst_dom = XPMEM_NS_DOMID;
     }
 }
@@ -1086,8 +1083,6 @@ xpmem_ns_init(struct xpmem_partition_state * part_state)
     spin_lock_init(&(ns_state->lock));
     INIT_LIST_HEAD(&(ns_state->segid_free_list));
 
-    /* Name server partition has a well-known domid */
-    part_state->domid	 = XPMEM_NS_DOMID;
     part_state->ns_state = ns_state;
 
     /* Populate segid list */

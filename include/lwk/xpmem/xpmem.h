@@ -26,6 +26,7 @@
  */
 typedef int64_t xpmem_segid_t;	/* segid returned from xpmem_make() */
 typedef int64_t xpmem_apid_t;	/* apid returned from xpmem_get() */
+typedef int64_t xpmem_domid_t;
 
 struct xpmem_addr {
 	xpmem_apid_t apid;	/* apid that represents memory */
@@ -71,6 +72,7 @@ struct xpmem_addr {
 #define XPMEM_CMD_DETACH	_IO(XPMEM_IOC_MAGIC, 7)
 #define XPMEM_CMD_FORK_BEGIN	_IO(XPMEM_IOC_MAGIC, 8)
 #define XPMEM_CMD_FORK_END	_IO(XPMEM_IOC_MAGIC, 9)
+#define XPMEM_CMD_GET_DOMID	_IO(XPMEM_IOC_MAGIC, 10)
 
 /*
  * Structures used with the preceding ioctl() commands to pass data.
@@ -111,6 +113,10 @@ struct xpmem_cmd_attach {
 
 struct xpmem_cmd_detach {
 	uint64_t vaddr;
+};
+
+struct xpmem_cmd_domid {
+	xpmem_domid_t domid;
 };
 
 

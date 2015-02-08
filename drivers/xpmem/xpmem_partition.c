@@ -10,8 +10,6 @@
 #include <lwk/xpmem/xpmem_iface.h>
 
 #include <xpmem_private.h>
-#include <xpmem_partition.h>
-#include <xpmem_hashtable.h>
 
 
 /* The XPMEM link map is used to connect the forwarding service to all locally
@@ -77,10 +75,10 @@
  *
  */
 
+
 struct xpmem_link_connection {
     struct xpmem_partition_state * state;
     xpmem_link_t                   link;
-    xpmem_connection_t	           conn_type;
     atomic_t                       refcnt;   
     int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data);
     int  (*in_irq_fn)(int                   irq, void * priv_data);
@@ -312,20 +310,13 @@ xpmem_get_partition(void)
 }
 
 xpmem_link_t
-xpmem_add_connection(xpmem_connection_t type,
-		     void	      * priv_data,
+xpmem_add_connection(void		  * priv_data,
 		     int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data),
 		     int  (*in_irq_fn)(int                   irq, void * priv_data),
 		     void (*kill)     (void *))
 {
     struct xpmem_partition_state * part = xpmem_get_partition();
     struct xpmem_link_connection * conn = NULL;
-
-    if ((type != XPMEM_CONN_LOCAL) &&
-	(type != XPMEM_CONN_REMOTE))
-    {
-	return -EINVAL;
-    }
 
     /* Allocate new connection */
     conn = kmem_alloc(sizeof(struct xpmem_link_connection));
@@ -335,7 +326,6 @@ xpmem_add_connection(xpmem_connection_t type,
 
     /* Set conn fields */
     conn->state     = part;
-    conn->conn_type = type;
     conn->in_cmd_fn = in_cmd_fn;
     conn->in_irq_fn = in_irq_fn;
     conn->kill      = kill;
@@ -348,17 +338,30 @@ xpmem_add_connection(xpmem_connection_t type,
 	return -EBUSY;
     }
 
-    if (type == XPMEM_CONN_LOCAL) {
-	part->local_link = conn->link;
-
-	/* Associate the link with our domid, if we have one */
-	if (part->domid > 0) {
-	    xpmem_add_domid_link(part, part->domid, conn->link);
-	}
-    }
-
     return conn->link;
 }
+
+xpmem_link_t
+xpmem_add_local_connection(void		  * priv_data,
+			   int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data),
+			   int  (*in_irq_fn)(int                   irq, void * priv_data),
+			   void (*kill)     (void *))
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+    xpmem_link_t link = xpmem_add_connection(priv_data, in_cmd_fn, in_irq_fn, kill);
+
+    if (link >= 0) {
+	/* Remember the local link */
+	part->local_link = link;
+
+	/* Associate the link as the NS link if we are the NS */
+	if (part->is_nameserver)
+	    xpmem_add_domid_link(part, XPMEM_NS_DOMID, link);
+    }
+
+    return link; 
+}
+
 
 void *
 xpmem_get_link_data(xpmem_link_t link)
@@ -513,29 +516,27 @@ xpmem_irq_deliver(xpmem_link_t  src_link,
 
 
 int
-xpmem_partition_init(struct xpmem_partition_state * state, int is_ns)
+xpmem_partition_init(int is_ns)
 {
+    struct xpmem_partition_state * part = xpmem_get_partition();
     int status = 0;
 
-    state->local_link	 = -1; 
-    state->domid	 = -1; 
-    state->is_nameserver = is_ns;
-    state->uniq_link     = 0;
+    memset(part, 0, sizeof(struct xpmem_partition_state));
 
-    memset(state->link_map, 0, sizeof(xpmem_link_t) * XPMEM_MAX_LINK);
-    memset(state->conn_map, 0, sizeof(struct xpmem_link_connection *) * XPMEM_MAX_DOMID);
+    part->local_link	 = -1; 
+    part->is_nameserver = is_ns;
 
-    spin_lock_init(&(state->lock));
+    spin_lock_init(&(part->lock));
 
     /* Create ns/fwd state */
     if (is_ns) {
-	status = xpmem_ns_init(state);
+	status = xpmem_ns_init(part);
 	if (status != 0) {
 	    XPMEM_ERR("Could not initialize name service");
 	    return status;
 	}
     } else {
-	status = xpmem_fwd_init(state);
+	status = xpmem_fwd_init(part);
 	if (status != 0) {
 	    XPMEM_ERR("Could not initialize forwarding service");
 	    return status;
@@ -547,13 +548,26 @@ xpmem_partition_init(struct xpmem_partition_state * state, int is_ns)
 
 
 int
-xpmem_partition_deinit(struct xpmem_partition_state * state)
+xpmem_partition_deinit(void)
 {
-    if (state->is_nameserver) {
-	xpmem_ns_deinit(state);
+    struct xpmem_partition_state * part = xpmem_get_partition();
+
+    if (part->is_nameserver) {
+	xpmem_ns_deinit(part);
     } else {
-	xpmem_fwd_deinit(state);
+	xpmem_fwd_deinit(part);
     }
 
     return 0;
+}
+
+xpmem_domid_t
+xpmem_get_domid(void)
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+
+    if (part->is_nameserver)
+	return XPMEM_NS_DOMID;
+    else
+	return xpmem_fwd_get_domid(part);
 }

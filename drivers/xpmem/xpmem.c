@@ -22,7 +22,6 @@
 #include <arch/pisces/pisces_xpmem.h>
 
 #include <xpmem_private.h>
-#include <xpmem_partition.h>
 #include <xpmem_hashtable.h>
 
 
@@ -83,11 +82,15 @@ xpmem_make(void		 * vaddr,
 	   size_t	   size, 
 	   int		   permit_type, 
 	   void		 * permit_value, 
-	   xpmem_segid_t * segid_p)
+	   int             flags,
+	   xpmem_segid_t   request,
+	   xpmem_segid_t * segid_p,
+	   int           * fd)
 {
     xpmem_segid_t segid   = 0;
-    xpmem_segid_t request = 0;
     int           ret     = 0;
+
+    printk("xpmem_make\n");
 
     if ((u64)vaddr & (PAGE_SIZE - 1)) {
 	XPMEM_ERR("Cannot export non page-aligned virtual address %p", vaddr);
@@ -99,12 +102,12 @@ xpmem_make(void		 * vaddr,
 	return -EINVAL;
     }
 
-    if (permit_type == XPMEM_REQUEST_MODE)  {
-	request = (xpmem_segid_t)permit_value;
-
+    if (flags & XPMEM_REQUEST_MODE)  {
 	if (request <= 0 || request > XPMEM_MAX_WK_SEGID) {
 	    return -EINVAL;
 	}
+    } else {
+	request = 0;
     }
 
     /* Request a segid from the nameserver */
@@ -352,6 +355,7 @@ xpmem_ioctl_op(struct file * filp,
 	case XPMEM_CMD_MAKE: {
 	    struct xpmem_cmd_make make_info;
 	    xpmem_segid_t	  segid = -1;
+	    int fd;
 
 	    if (copy_from_user(&make_info, (void *)arg, 
 			sizeof(struct xpmem_cmd_make)))
@@ -361,7 +365,8 @@ xpmem_ioctl_op(struct file * filp,
 		    make_info.size, 
 		    make_info.permit_type,
 		    (void *)make_info.permit_value, 
-		    &segid);
+		    make_info.flags,
+		    make_info.segid, &segid, &fd);
 
 	    if (ret != 0)
 		return ret;
@@ -445,6 +450,16 @@ xpmem_ioctl_op(struct file * filp,
 	    return xpmem_detach(detach_info.vaddr);
 	}
 
+	case XPMEM_CMD_GET_DOMID: {
+	    xpmem_domid_t domid = xpmem_get_domid();
+
+	    if (put_user(domid,
+		&((struct xpmem_cmd_domid __user *)arg)->domid))
+		return -EFAULT;
+
+	    return 0;
+	}
+
 	default: {
 	    ret = -1;
 	}
@@ -473,41 +488,44 @@ xpmem_fops =
 static int
 xpmem_init(void)
 {
+    int ret, is_ns;
+
     xpmem_my_part = kmem_alloc(sizeof(struct xpmem_partition));
-    if (!xpmem_my_part) {
+    if (xpmem_my_part == NULL)
 	return -ENOMEM;
-    }
 
     segid_map = create_htable(0, segid_hash_fn, segid_eq_fn);
-    if (!segid_map) {
-	kmem_free(xpmem_my_part);
-	return -ENOMEM;
+    if (segid_map == NULL) {
+	ret = -ENOMEM;
+	goto out_1;
     }
 
-    apid_map  = create_htable(0, segid_hash_fn, segid_eq_fn);
-    if (!apid_map) {
-	free_htable(segid_map, 1, 0);
-	kmem_free(xpmem_my_part);
-	return -ENOMEM;
+    apid_map = create_htable(0, segid_hash_fn, segid_eq_fn);
+    if (apid_map == NULL) {
+	ret = -ENOMEM;
+	goto out_2;
     }
     
 #ifdef CONFIG_XPMEM_NS
-    xpmem_partition_init(&(xpmem_my_part->part_state), 1);
+    is_ns = 1;
 #else
-    xpmem_partition_init(&(xpmem_my_part->part_state), 0);
+    is_ns = 0;
 #endif
+
+    ret = xpmem_partition_init(is_ns);
+    if (ret != 0)
+	goto out_3;
 
     xpmem_my_part->domain_link = xpmem_domain_init();
     if (xpmem_my_part->domain_link < 0) {
-	xpmem_partition_deinit(&(xpmem_my_part->part_state));
-	free_htable(apid_map, 0, 0);
-	free_htable(segid_map, 1, 0);
-	kmem_free(xpmem_my_part);
-	return -1;
+	ret = xpmem_my_part->domain_link;
+	goto out_4;
     }
 
 #ifdef CONFIG_PISCES
-    pisces_xpmem_init();
+    ret = pisces_xpmem_init();
+    if (ret != 0)
+	goto out_5;
 #endif
 
     kfs_create(XPMEM_DEV_PATH,
@@ -518,6 +536,18 @@ xpmem_init(void)
 	0);
 
     return 0;
+
+out_5:
+    xpmem_domain_deinit(xpmem_my_part->domain_link);
+out_4:
+    xpmem_partition_deinit();
+out_3:
+    free_htable(segid_map, 1, 0);
+out_2:
+    free_htable(segid_map, 1, 0);
+out_1:
+    kmem_free(xpmem_my_part);
+    return ret;
 }
 
 
