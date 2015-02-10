@@ -63,11 +63,16 @@ idle_task_loop(void)
                         local_irq_disable();
                         kmem_free_pages(runq->idle_task, TASK_ORDER);
                         cpu_clear(this_cpu, cpu_online_map);
-                        arch_idle_task_loop_body();
+                        arch_idle_task_loop_body(0);
 
                         panic("CPU offline should not return!\n");
                 } else {
-                        arch_idle_task_loop_body();
+			local_irq_disable();
+			if (!test_bit(TF_NEED_RESCHED_BIT, &current->arch.flags)) {
+                        	arch_idle_task_loop_body(1);
+			} else {
+				local_irq_enable();
+			}
 			schedule();
 		}
         }

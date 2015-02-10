@@ -51,7 +51,7 @@ arch_context_switch(
 /** Each architecture must provide its own idle task body
  * \ingroup arch
  */
-extern void arch_idle_task_loop_body(void);
+extern void arch_idle_task_loop_body(int irqenable);
 
 /**
  * set_current_state() includes a barrier so that the write of current->state
