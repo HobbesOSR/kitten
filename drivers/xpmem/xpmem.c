@@ -537,8 +537,10 @@ xpmem_init(void)
 
     return 0;
 
+#ifdef CONFIG_PISCES
 out_5:
     xpmem_domain_deinit(xpmem_my_part->domain_link);
+#endif
 out_4:
     xpmem_partition_deinit();
 out_3:
