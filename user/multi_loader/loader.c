@@ -21,7 +21,7 @@ create_file(const char *filename, const void *contents, size_t nbytes)
 	int fd;
 	ssize_t rc;
 
-	if ((fd = open(filename, (O_RDWR | O_CREAT))) == -1) {
+	if ((fd = open(filename, (O_RDWR | O_CREAT), (S_IRUSR|S_IWUSR))) == -1) {
 		printf("create_file: open failed\n");
 		return -1;
 	}
