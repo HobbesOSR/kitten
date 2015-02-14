@@ -569,5 +569,5 @@ xpmem_get_domid(void)
     if (part->is_nameserver)
 	return XPMEM_NS_DOMID;
     else
-	return xpmem_fwd_get_domid(part);
+	return xpmem_fwd_get_domid(part, part->local_link);
 }

@@ -132,7 +132,7 @@ extern void xpmem_ns_kill_domain(struct xpmem_partition_state *, xpmem_domid_t);
 extern int xpmem_fwd_init(struct xpmem_partition_state *);
 extern int xpmem_fwd_deinit(struct xpmem_partition_state *);
 extern int xpmem_fwd_deliver_cmd(struct xpmem_partition_state *, xpmem_link_t, struct xpmem_cmd_ex *);
-extern xpmem_domid_t xpmem_fwd_get_domid(struct xpmem_partition_state *);
+extern xpmem_domid_t xpmem_fwd_get_domid(struct xpmem_partition_state *, xpmem_link_t);
 
 /* found in xpmem_irq.c */
 extern int xpmem_request_irq(irqreturn_t (*)(int, void *), void *);

@@ -38,6 +38,9 @@ struct xpmem_fwd_state {
 };
 
 
+/* TODO: add field indicating whether we've actually sent a request or just
+ * put this on a list 
+ */
 struct xpmem_domid_req_iter {
     xpmem_link_t     link;
     struct list_head node;
@@ -49,7 +52,7 @@ struct xpmem_domid_req_iter {
  */
 static int
 xpmem_request_domid(struct xpmem_partition_state * part,
-                    xpmem_link_t                   skip) 
+                    xpmem_link_t                   request_link) 
 {
     struct xpmem_fwd_state * state = part->fwd_state;
     xpmem_link_t             link  = 0;
@@ -81,7 +84,8 @@ xpmem_request_domid(struct xpmem_partition_state * part,
 		continue;
 	    }
 
-	    if (link == skip) {
+	    /* Dont PING the requesting link */
+	    if (link == request_link) {
 		continue;
 	    }
 
@@ -160,10 +164,19 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part,
 	    }
 	    spin_unlock(&(state->lock));
 
-	    /* Forward request up to the nameserver */
-	    ret = xpmem_request_domid(part, link);
+	    /* If we do not have a domid, we send two requests here: one for the
+	     * requesting domain and one for us.
+	     */
 
-	    break;
+	    /* Request a domid for ourselves */
+	    ret = xpmem_fwd_get_domid(part, link);
+	    if (ret > 0) {
+		/* Request a domid for the remote domain */
+		ret = xpmem_request_domid(part, link);
+	    }
+
+	    /* No command to forward */
+	    return ret;
 	}
 
 	case XPMEM_DOMID_RESPONSE: {
@@ -521,7 +534,8 @@ xpmem_fwd_deinit(struct xpmem_partition_state * part)
 }
 
 xpmem_domid_t
-xpmem_fwd_get_domid(struct xpmem_partition_state * part)
+xpmem_fwd_get_domid(struct xpmem_partition_state * part,
+                    xpmem_link_t                   request_link)
 {
     struct xpmem_fwd_state * state = part->fwd_state;
     xpmem_domid_t            domid = 0;
@@ -547,12 +561,10 @@ xpmem_fwd_get_domid(struct xpmem_partition_state * part)
     spin_unlock(&(state->lock));
 
     if (request)
-	ret = xpmem_request_domid(part, -1);
+	ret = xpmem_request_domid(part, request_link);
 
     if ((ret == 0) && wait)
 	domid = xpmem_wait_domid(part);
-
-	printk("got domid %lli\n", domid);
 
     return domid;
 }
