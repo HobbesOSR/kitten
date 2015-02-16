@@ -121,7 +121,7 @@ timer_del(struct timer *timer)
 
 	/* Remove the timer, if it hasn't already expired */
 	if (!list_empty(&timer->link)) {
-		list_del(&timer->link);
+		list_del_init(&timer->link);
 		not_expired = 1;
 		set_timer_interrupt();
 	}
