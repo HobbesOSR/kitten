@@ -90,8 +90,6 @@ xpmem_make(void		 * vaddr,
     xpmem_segid_t segid   = 0;
     int           ret     = 0;
 
-    printk("xpmem_make\n");
-
     if ((u64)vaddr & (PAGE_SIZE - 1)) {
 	XPMEM_ERR("Cannot export non page-aligned virtual address %p", vaddr);
 	return -EINVAL;

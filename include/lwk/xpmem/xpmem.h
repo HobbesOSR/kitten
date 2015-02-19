@@ -56,7 +56,11 @@ struct xpmem_addr {
  * Valid permit_type values for xpmem_make()/xpmem_get().
  */
 #define XPMEM_PERMIT_MODE	0x1
-#define XPMEM_REQUEST_MODE	0x2
+
+/* Valid flags for xpmem_make_hobbes() */
+#define XPMEM_MEM_MODE          0x1
+#define XPMEM_SIG_MODE          0x2
+#define XPMEM_REQUEST_MODE	0x4
 
 /*
  * ioctl() commands used to interface to the kernel module.
