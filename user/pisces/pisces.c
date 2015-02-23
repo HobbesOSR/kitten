@@ -108,6 +108,49 @@ issue_v3_cmd(u64 cmd, uintptr_t arg)
 }
 
 
+static int
+load_file(int pisces_fd, 
+	  char * lnx_file, 
+	  char * lwk_file)
+{
+	struct pisces_user_file_info * file_info = NULL;
+	int    path_len  = strlen(lnx_file) + 1;
+	size_t file_size = 0;
+	char * file_buf  = NULL;
+
+	file_info = malloc(sizeof(struct pisces_user_file_info) + path_len);
+	memset(file_info, 0, sizeof(struct pisces_user_file_info) + path_len);
+    
+	file_info->path_len = path_len;
+	strncpy(file_info->path, lnx_file, path_len - 1);
+    
+	file_size = ioctl(pisces_fd, PISCES_STAT_FILE, file_info);
+    
+
+	file_buf = (char *)malloc(file_size);
+
+	if (!file_buf) {
+	    printf("Error: Could not allocate space for file (%s)\n", lnx_file);
+	    return -1;
+	}
+
+	file_info->user_addr = (uintptr_t)file_buf;
+	ioctl(pisces_fd, PISCES_LOAD_FILE, file_info);
+
+	{
+	    FILE * new_file = fopen(lwk_file, "w+");
+	    
+	    fwrite(file_buf, file_size, 1, new_file);
+
+	    fclose(new_file);
+	}
+
+	free(file_buf);
+
+	return 0;
+}
+
+
 static int 
 launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 {
@@ -472,6 +515,7 @@ main(int argc, char ** argv, char * envp[])
 
 		    case ENCLAVE_CMD_LAUNCH_JOB: {
 			struct cmd_launch_job * job_cmd = malloc(sizeof(struct cmd_launch_job));
+			int ret = 0;
 
 			memset(job_cmd, 0, sizeof(struct cmd_launch_job));
 
@@ -486,13 +530,45 @@ main(int argc, char ** argv, char * envp[])
 			    break;
 			}
 			
-			launch_job(pisces_fd, &(job_cmd->spec));
+			ret = launch_job(pisces_fd, &(job_cmd->spec));
 
 			free(job_cmd);
 			
-			send_resp(pisces_fd, 0);
+			send_resp(pisces_fd, ret);
 			break;
 		    }
+		    case ENCLAVE_CMD_LOAD_FILE: {
+			struct cmd_load_file * load_cmd = malloc(sizeof(struct cmd_load_file));
+			int ret = 0;
+
+			memset(load_cmd, 0, sizeof(struct cmd_load_file));
+
+			ret = read(pisces_fd, load_cmd, sizeof(struct cmd_load_file));
+
+			if (ret != sizeof(struct cmd_load_file)) {
+			    printf("Error reading LOAD FILE CMD (ret = %d)\n", ret);
+
+			    free(load_cmd);
+			    
+			    send_resp(pisces_fd, -1);
+			    break;
+			}
+			
+			ret = load_file(pisces_fd, load_cmd->file_pair.lnx_file, load_cmd->file_pair.lwk_file);
+
+			free(load_cmd);
+
+			send_resp(pisces_fd, ret);
+
+			break;
+		    } 
+		    case ENCLAVE_CMD_STORE_FILE: {
+			
+			
+			break;
+		    } 
+
+			
 		    case ENCLAVE_CMD_CREATE_VM: {
 			    struct pisces_user_file_info * file_info = NULL;
 			    struct cmd_create_vm vm_cmd;
