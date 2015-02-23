@@ -84,7 +84,9 @@ kfs_stat(struct inode *inode, uaddr_t buf)
 	memset(&rv, 0x00, sizeof(struct stat));
 	rv.st_mode = inode->mode;
 	rv.st_rdev = inode->i_rdev;
-	rv.st_ino = (ino_t)inode;
+	rv.st_ino  = (ino_t)inode;
+	rv.st_size = inode->size;
+
 	/* TODO: plenty of stuff to report back via stat, but we just
 	   don't need it atm ... */
 
