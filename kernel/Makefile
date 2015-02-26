@@ -18,6 +18,7 @@ obj-y := \
 	elf_liblwk.o \
 	sched.o \
 	sched_rr.o \
+	sched_control.o \
 	completion.o \
 	waitq.o \
 	timer.o \

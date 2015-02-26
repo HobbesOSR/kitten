@@ -715,3 +715,6 @@ __SYSCALL(__NR_task_meas, sys_task_meas)
 __SYSCALL(__NR_aspace_update_user_cpumask, sys_aspace_update_user_cpumask)
 
 #endif
+
+#define __NR_sched_yield_task_to        529
+__SYSCALL(__NR_sched_yield_task_to, sys_sched_yield_task_to)

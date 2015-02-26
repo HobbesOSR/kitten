@@ -525,3 +525,37 @@ schedule_new_task_tail(struct task_struct *prev, struct task_struct *next)
         BUG_ON(irqs_enabled());
         /* arch code will re-enable IRQs as part of starting the new task */
 }
+
+void
+sched_yield(void)
+{
+#ifdef CONFIG_SCHED_EDF
+	if(current->edf.period){
+		edf_sched_yield();
+	}
+	else
+#endif
+	{
+	rr_sched_yield();
+	}
+}
+
+void
+sched_yield_to(struct task_struct * task)
+{
+	/*If current task is trying to yield to a task in other core return*/
+	if(current->cpu_id != task->cpu_id)
+		return;
+
+	struct run_queue *runq = &per_cpu(run_queue, this_cpu);
+
+#ifdef CONFIG_SCHED_EDF
+	if(current->edf.period){
+		edf_sched_yield_to(&runq->edf, task);
+	}
+	else
+#endif
+	{
+		rr_sched_yield_to(&runq->rr, task);
+	}
+}

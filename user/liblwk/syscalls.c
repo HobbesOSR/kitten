@@ -221,3 +221,8 @@ SYSCALL2(phys_cpu_remove, id_t, id_t);
  * Palacios hypervisor control system calls.
  */
 SYSCALL2(v3_start_guest, vaddr_t, size_t);
+
+/**
+ * Scheduling control system calls.
+ */
+SYSCALL2(sched_yield_task_to, int, int);

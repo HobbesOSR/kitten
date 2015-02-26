@@ -32,6 +32,9 @@ context_switch(struct task_struct *prev, struct task_struct *next);
 #define MAX_SCHEDULE_TIMEOUT TIME_T_MAX
 extern ktime_t schedule_timeout(ktime_t timeout);
 
+extern void sched_yield(void);
+extern void sched_yield_to(struct task_struct * task);
+
 extern void
 fire_sched_out_preempt_notifiers(struct task_struct * curr,
 				 struct task_struct * next);

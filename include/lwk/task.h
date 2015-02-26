@@ -144,8 +144,10 @@ struct task_struct {
 		struct rb_node 	node;
 		struct rb_node	resched_node;
 		struct list_head sched_link;
-		uint64_t	period;
-		uint64_t	slice;
+		uint64_t        release_period; // Period set during task creation
+		uint64_t        release_slice;  // Slice set during task creation
+		uint64_t        period;         // relase_slice and release_period are that same than slice and
+		uint64_t        slice;          // period except when this task inherit those values from other task
 		int 		cpu_reservation;
 		uint64_t	curr_deadline;
 		uint64_t	last_wakeup;

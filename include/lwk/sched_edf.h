@@ -85,6 +85,8 @@ int edf_sched_del_task(struct edf_rq *, struct task_struct *info);
 int edf_adjust_schedule(struct edf_rq *, struct task_struct *info);
 int edf_adjust_reservation(struct edf_rq *, struct task_struct *info);
 struct task_struct * edf_schedule(struct edf_rq *, struct list_head *, ktime_t *t);
+int edf_sched_yield(void);
+int edf_sched_yield_to(struct edf_rq *, struct task_struct *);
 extern void edf_sched_cpu_remove(struct edf_rq *, void *);
 ktime_t edf_schedule_timeout(ktime_t nsec);
 int set_wakeup_task(struct edf_rq *, struct task_struct *task);

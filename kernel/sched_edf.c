@@ -194,6 +194,24 @@ set_wakeup_task(struct edf_rq *runqueue, struct task_struct *task){
 static int
 activate_task(struct task_struct * task, struct edf_rq *runqueue)
 {
+
+	/*Copy original slice and period before checking admission control*/
+
+	task->edf.slice = task->edf.release_slice;
+	task->edf.period = task->edf.release_period;
+
+	/*
+	 * If this is not an EDF task, add it to the RR queue and return.
+	 * This is needed when a RR tasks has inhireted time from an EDF
+	 * task and the scheduler is trying to activate it
+	 * when its deadline is over.
+	 */
+
+	if(!task->edf.period){
+		sched_add_task(task);
+		return 0;
+	}
+
 	if (is_admissible_task(task, runqueue)){
 
 		ktime_t curr_time = get_time();
@@ -651,6 +669,85 @@ edf_sched_del_task(struct edf_rq *runq, struct task_struct *task){
 	deactivate_task(task,runq);
 	return 0;
 }
+
+/*
+ * Current task yields the CPU.
+ */
+
+int
+edf_sched_yield(void){
+
+	/*
+	 * used time is updated so that adjust_slice (called by schedule())
+	 * places the task in the correct queue accordingly with the type of
+	 * EDF running.
+	 */
+	uint64_t host_time = get_time();
+	uint64_t used_time =  host_time - current->edf.last_wakeup;
+	current->edf.used_time = current->edf.slice - used_time;
+
+	schedule();
+	return 0;
+}
+
+/*
+ * Current task yield CPU to a specific task. sched parameter values are
+ * inherited to the target task.
+ */
+
+int
+edf_sched_yield_to(struct edf_rq *runq, struct task_struct * task){
+
+	/*
+	 * If target task is an EDF task, remove it from the
+	 * EDF runqueue before changing its scheduling parameters
+	 */
+
+	if(task->edf.release_period){
+		deactivate_task(task, runq);
+	}
+
+	/*
+	 * If this task is in the RR queue remove it
+	 * before inserting it on the EDF runqueue
+	 */
+
+	if (!list_empty(&task->rr.sched_link)) {
+		list_del(&task->rr.sched_link);
+		list_head_init(&task->rr.sched_link);
+	}
+
+	/* In the case that the target task is in the RESCHED QUEUE remove it*/
+	delete_task_edf(task, runq, RESCHED_QUEUE);
+
+	/*
+	 * Current task inherit sched parameters to target task
+	 */
+
+	task->edf.slice = current->edf.slice;
+	task->edf.period = current->edf.period;
+	task->edf.used_time = current->edf.used_time;
+
+	/*
+	 * dl is set to the curren task dl - 1
+	 * we cannot set to exactly the same deadline because
+	 * the rb_tree does not accept repeated deadlines
+	 */
+	task->edf.curr_deadline = current->edf.curr_deadline - 1;
+
+	/* Insert task in the EDF runqueue, not admission control is needed
+	 * since task inherits the sched parameters from current task
+	 */
+
+	while(!insert_task_edf(task, runq, READY_QUEUE)){
+		task->edf.curr_deadline --;
+	}
+
+	edf_sched_yield();
+	return 0;
+}
+
+
 
 /*
  * edf_sched_init: Scheduler initialization function

@@ -69,6 +69,21 @@ rr_sched_del_task(struct rr_rq *runq, struct task_struct *task)
 	list_del(&task->rr.sched_link);
 }
 
+void
+rr_sched_yield(void){
+	schedule();
+}
+
+void
+rr_sched_yield_to(struct rr_rq * rr, struct task_struct * task){
+
+	/*Move task to the front of the list*/
+	list_del(&task->rr.sched_link);
+	list_add(&task->rr.sched_link, &rr->taskq);
+
+       schedule();
+}
+
 struct task_struct *
 rr_schedule(struct rr_rq *runq, struct list_head *migrate_list)
 {

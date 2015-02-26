@@ -28,5 +28,7 @@ extern struct task_struct *rr_schedule(struct rr_rq *, struct list_head *);
 
 extern ktime_t rr_schedule_timeout(ktime_t timeout);
 extern void rr_adjust_schedule(struct rr_rq *, struct task_struct *task);
+extern void rr_sched_yield(void);
+extern void rr_sched_yield_to(struct rr_rq *, struct task_struct *);
 
 #endif

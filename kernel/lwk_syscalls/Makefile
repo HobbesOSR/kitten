@@ -21,6 +21,7 @@ obj-y := \
 	task_switch_cpus.o \
 	elf_hwcap.o \
 	phys_cpu_add.o \
-	phys_cpu_remove.o
+	phys_cpu_remove.o \
+	sched_yield_task_to.o
 
 obj-$(CONFIG_TASK_MEAS) += task_meas.o
