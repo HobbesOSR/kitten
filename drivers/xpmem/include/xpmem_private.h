@@ -25,21 +25,6 @@ struct xpmem_id {
 
 #define XPMEM_MAX_UNIQ_ID   ((1 << (sizeof(short) * 8)) - 1)
 
-/*
- * xpmem_sigid_t is of type __64 and designed to be opaque to the user. It consists of 
- * the following underlying fields
- *
- * 'apic_id' is the local apic id where the destination process is running
- * 'vector' is the ipi vector allocated by the destination process
- * 'irq' is the irq allocated by the destination process, which is only used if the
- * destination process is running in a local domain
- */
-struct xpmem_signal {
-    uint16_t apic_id;
-    uint16_t vector;
-    uint32_t irq;
-};
-
 
 static inline unsigned short
 xpmem_segid_to_uniq(xpmem_segid_t segid)
@@ -119,7 +104,7 @@ extern void xpmem_remove_domid_link(struct xpmem_partition_state *,
 extern xpmem_link_t xpmem_add_local_connection(
 		void *, 
 		int (*)(struct xpmem_cmd_ex *, void *),
-		int (*)(int, void *),
+		int (*)(xpmem_segid_t, xpmem_sigid_t, xpmem_domid_t, void *),
 		void (*)(void *));
 
 /* found in xpmem_ns.c */
@@ -135,10 +120,11 @@ extern int xpmem_fwd_deliver_cmd(struct xpmem_partition_state *, xpmem_link_t, s
 extern xpmem_domid_t xpmem_fwd_get_domid(struct xpmem_partition_state *, xpmem_link_t);
 
 /* found in xpmem_irq.c */
-extern int xpmem_request_irq(irqreturn_t (*)(int, void *), void *);
-extern int xpmem_release_irq(int, void *);
-extern int xpmem_local_irq_to_vector(int);
 extern void xpmem_send_ipi_to_apic(unsigned int, unsigned int);
+
+extern int xpmem_request_host_irq(irqreturn_t (*)(int, void *), void *);
+extern void xpmem_release_host_irq(int, void *);
+extern int xpmem_deliver_host_irq(xpmem_segid_t, xpmem_sigid_t, xpmem_domid_t);
 
 static inline char *
 xpmem_cmd_to_string(xpmem_op_t op)

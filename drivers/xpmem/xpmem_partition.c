@@ -80,10 +80,10 @@ struct xpmem_link_connection {
     struct xpmem_partition_state * state;
     xpmem_link_t                   link;
     atomic_t                       refcnt;   
-    int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data);
-    int  (*in_irq_fn)(int                   irq, void * priv_data);
-    void (*kill)     (void * priv_data);
     void	                 * priv_data;
+    int  (*in_cmd_fn)  (struct xpmem_cmd_ex *, void *);
+    int  (*in_segid_fn)(xpmem_segid_t, xpmem_sigid_t, xpmem_domid_t, void *);
+    void (*kill)       (void *);
 };
 
 static void
@@ -310,10 +310,10 @@ xpmem_get_partition(void)
 }
 
 xpmem_link_t
-xpmem_add_connection(void		  * priv_data,
-		     int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data),
-		     int  (*in_irq_fn)(int                   irq, void * priv_data),
-		     void (*kill)     (void *))
+xpmem_add_connection(void	      * priv_data,
+		     int  (*in_cmd_fn)  (struct xpmem_cmd_ex *, void *),
+		     int  (*in_segid_fn)(xpmem_segid_t, xpmem_sigid_t, xpmem_domid_t, void *),
+		     void (*kill)       (void *))
 {
     struct xpmem_partition_state * part = xpmem_get_partition();
     struct xpmem_link_connection * conn = NULL;
@@ -325,11 +325,11 @@ xpmem_add_connection(void		  * priv_data,
     }
 
     /* Set conn fields */
-    conn->state     = part;
-    conn->in_cmd_fn = in_cmd_fn;
-    conn->in_irq_fn = in_irq_fn;
-    conn->kill      = kill;
-    conn->priv_data = priv_data;
+    conn->state       = part;
+    conn->in_cmd_fn   = in_cmd_fn;
+    conn->in_segid_fn = in_segid_fn;
+    conn->kill        = kill;
+    conn->priv_data   = priv_data;
     atomic_set(&(conn->refcnt), 1);
 
     conn->link = xpmem_get_free_link(part, conn);
@@ -343,12 +343,12 @@ xpmem_add_connection(void		  * priv_data,
 
 xpmem_link_t
 xpmem_add_local_connection(void		  * priv_data,
-			   int  (*in_cmd_fn)(struct xpmem_cmd_ex * cmd, void * priv_data),
-			   int  (*in_irq_fn)(int                   irq, void * priv_data),
+			   int  (*in_cmd_fn)  (struct xpmem_cmd_ex *, void *),
+			   int  (*in_segid_fn)(xpmem_segid_t, xpmem_sigid_t, xpmem_domid_t, void *),
 			   void (*kill)     (void *))
 {
     struct xpmem_partition_state * part = xpmem_get_partition();
-    xpmem_link_t link = xpmem_add_connection(priv_data, in_cmd_fn, in_irq_fn, kill);
+    xpmem_link_t link = xpmem_add_connection(priv_data, in_cmd_fn, in_segid_fn, kill);
 
     if (link >= 0) {
 	/* Remember the local link */
@@ -408,82 +408,11 @@ xpmem_cmd_deliver(xpmem_link_t		link,
     return ret;
 }
 
-irqreturn_t
-xpmem_irq_callback(int    irq,
-		   void	* priv_data)
-{
-    struct xpmem_link_connection * conn = (struct xpmem_link_connection *)priv_data;
-
-    if (conn->in_irq_fn == NULL)
-	return IRQ_NONE;
-
-    conn->in_irq_fn(irq, conn->priv_data);
-
-    return IRQ_HANDLED;
-}
-
-
-int 
-xpmem_request_irq_link(xpmem_link_t link)
-{
-    struct xpmem_partition_state * part = xpmem_get_partition();
-    struct xpmem_link_connection * conn = NULL;
-    int                            irq  = 0;
-
-    conn = xpmem_get_link_conn(part, link);
-    if (conn == NULL)
-        return -1; 
-
-    if (conn->in_irq_fn == NULL) {
-	XPMEM_ERR("Requesting irq on invalid link %d", link);
-	put_conn(conn);
-	return -1;
-    }
-
-    irq = xpmem_request_irq(xpmem_irq_callback, conn);
-
-    /* If we got an irq, we don't put the conn until the irq is free'd */
-    if (irq <= 0) {
-        put_conn(conn);
-    }   
-
-    return irq;
-}
 
 int
-xpmem_release_irq_link(xpmem_link_t link,
-                       int          irq)
-{
-    struct xpmem_partition_state * part = xpmem_get_partition();
-    struct xpmem_link_connection * conn = NULL;
-    int                            ret  = 0;
-
-    conn = xpmem_get_link_conn(part, link);
-    if (conn == NULL)
-        return -1;
-
-    if (conn->in_irq_fn == NULL) {
-	XPMEM_ERR("Releasing irq on invalid link %d", link);
-	put_conn(conn);
-	return -1;
-    }
-
-    ret = xpmem_release_irq(irq, conn);
-    if (ret == 0) {
-        /* put the reference in the irq handler that we just free'd */
-        put_conn(conn);
-    }
-
-    /* put this function's ref */
-    put_conn(conn);
-
-    return ret;
-}
-
-int
-xpmem_irq_deliver(xpmem_link_t  src_link,
-                  xpmem_domid_t domid,
-                  xpmem_sigid_t sigid)
+xpmem_irq_deliver(xpmem_segid_t segid,
+                  xpmem_sigid_t sigid,
+		  xpmem_domid_t domid)
 {
     struct xpmem_partition_state * part = xpmem_get_partition();
     struct xpmem_link_connection * conn = NULL;
@@ -491,27 +420,25 @@ xpmem_irq_deliver(xpmem_link_t  src_link,
     xpmem_link_t                   link = xpmem_get_domid_link(part, domid);
     int                            ret  = 0;
 
-    /* If we do not have a local link for this domid, send an IPI */
-    if (link == 0) {
-        xpmem_send_ipi_to_apic(sig->apic_id, sig->vector);
-        return 0;
-    }
+    /* First, see if we have a link for the domid */
+    if (link > 0) {
+	/* We have a link --> invoke the irq callback directly */
+	conn = xpmem_get_link_conn(part, link);
+	if (conn == NULL)
+	    return -1; 
 
-    conn = xpmem_get_link_conn(part, link);
-    if (conn == NULL)
-        return -1;
+	if (conn->in_segid_fn != NULL) {
+	    ret = conn->in_segid_fn(segid, sigid, domid, conn->priv_data);
+	    put_conn(conn);
+	    return ret;
+	}
 
-    if (conn->in_irq_fn == NULL) {
-	XPMEM_ERR("Sending irq on invalid link %d", link);
 	put_conn(conn);
-	return -1;
-    }
+    }   
 
-    ret = conn->in_irq_fn(sig->irq, conn->priv_data);
-
-    put_conn(conn);
-
-    return ret;
+    /* Send IPI */
+    xpmem_send_ipi_to_apic(sig->apic_id, sig->vector);
+    return 0;
 }
 
 

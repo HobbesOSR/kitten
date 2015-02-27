@@ -26,6 +26,8 @@ struct xpmem_cmd_get_ex {
     int64_t       permit_value;
     xpmem_apid_t  apid;
     uint64_t      size;
+    xpmem_domid_t domid;
+    xpmem_sigid_t sigid;
 };
 
 struct xpmem_cmd_release_ex {
