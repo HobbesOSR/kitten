@@ -28,6 +28,7 @@ obj-y := \
 	semaphore.o \
 	random.o \
 	in_mem_fs.o \
+	proc_fs.o \
 	fifo.o \
 	task.o \
 	kthread.o \
