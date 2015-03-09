@@ -123,21 +123,31 @@ __task_create(
 
 #ifdef CONFIG_SCHED_EDF
 
-    if(start_state->edf.period){
-        tsk->edf.period = start_state->edf.period;
-    }
-    if(start_state->edf.slice){
-        tsk->edf.slice = start_state->edf.slice;
-    }
-    list_head_init(&tsk->edf.sched_link);
-    tsk->edf.cpu_reservation = 0;
-    tsk->edf.curr_deadline = 0;
-    tsk->edf.used_time = 0;
-    tsk->edf.last_wakeup = 0;
-    tsk->edf.deadlines = 0;
-    tsk->edf.miss_deadlines = 0;
-    tsk->edf.print_miss_deadlines = 0;
-    tsk->edf.extra_time = false;
+	if(start_state->edf.period){
+		tsk->edf.period = start_state->edf.period;
+		tsk->edf.release_period = start_state->edf.period;
+	}else{
+		tsk->edf.period = 0;
+		tsk->edf.release_period = 0;
+	}
+
+	if(start_state->edf.slice){
+		tsk->edf.slice = start_state->edf.slice;
+		tsk->edf.release_slice = start_state->edf.slice;
+	}else{
+		tsk->edf.slice = 0;
+		tsk->edf.release_slice = 0;
+	}
+
+	list_head_init(&tsk->edf.sched_link);
+	tsk->edf.cpu_reservation = 0;
+	tsk->edf.curr_deadline = 0;
+	tsk->edf.used_time = 0;
+	tsk->edf.last_wakeup = 0;
+	tsk->edf.deadlines = 0;
+	tsk->edf.miss_deadlines = 0;
+	tsk->edf.print_miss_deadlines = 0;
+	tsk->edf.extra_time = false;
 #endif
 
 #ifdef CONFIG_TASK_MEAS
