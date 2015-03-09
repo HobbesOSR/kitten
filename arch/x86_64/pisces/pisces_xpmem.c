@@ -7,6 +7,7 @@
 #include <lwk/list.h>
 #include <arch/uaccess.h>
 #include <arch/pgtable.h>
+#include <arch/apic.h>
 
 #include <arch/pisces/pisces.h>
 #include <arch/pisces/pisces_boot_params.h>
@@ -21,6 +22,9 @@
 
 extern struct pisces_boot_params * pisces_boot_params;
 
+static int should_exit = 0;
+DEFINE_SPINLOCK(exit_lock);
+
 /* Longcall structure */
 struct pisces_xpmem_cmd_lcall {
     union {
@@ -32,13 +36,9 @@ struct pisces_xpmem_cmd_lcall {
 } __attribute__ ((packed));
 
 struct pisces_xpmem_state {
-    /* state lock */
-    spinlock_t		      lock;
-
     /* kernel thread for xpmem commands */
     struct task_struct	    * xpmem_thread;
     int			      thread_active;
-    int			      thread_should_exit;
 
     /* waitq for kern thread */
     waitq_t		      waitq;
@@ -52,6 +52,7 @@ struct pisces_xpmem_state {
     /* XPMEM kernel interface */
     xpmem_link_t	      link;
 };
+
 
 
 /* Incoming XPMEM command from enclave - wake up kthread */
@@ -107,6 +108,43 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 }
 
 static int
+xpmem_segid_fn(xpmem_segid_t segid,
+               xpmem_sigid_t sigid,
+	       xpmem_domid_t domid,
+	       void        * priv_data)
+{
+    struct xpmem_signal * signal = (struct xpmem_signal *)&sigid;
+    unsigned long irq_state;
+
+    local_irq_save(irq_state);
+    {
+	lapic_send_ipi_to_apic(signal->apic_id, signal->vector);
+    }
+    local_irq_restore(irq_state);
+
+    return 0;
+}
+
+static void
+xpmem_kill_fn(void * priv_data)
+{
+    struct pisces_xpmem_state * state = (struct pisces_xpmem_state *)priv_data;
+
+    /* De-init xbuf server */
+    pisces_xbuf_server_deinit(state->xbuf_desc);
+
+    /* Kill kernel thread - it will free state when it exists */
+    spin_lock(&exit_lock);
+    {
+	should_exit = 1;
+
+	mb();
+	waitq_wakeup(&(state->waitq));
+    }
+    spin_unlock(&exit_lock);
+}
+
+static int
 map_domain_region(u64 pfn_pa,
 		  u64 size)
 {
@@ -136,16 +174,15 @@ xpmem_thread_fn(void * private)
     while (1) {
 	/* Wait on waitq */
 	wait_event_interruptible(
-		state->waitq,
-		((state->thread_active	    == 1) ||
-		 (state->thread_should_exit == 1)
-		)
+	    state->waitq,
+	     ((state->thread_active == 1) ||
+	      (should_exit          == 1)
+	     )
 	);
-	
+
 	mb();
-	if (state->thread_should_exit == 1) {
+	if (should_exit == 1)
 	    break;
-	}
 
 	state->thread_active = 0;
 	mb();
@@ -170,12 +207,20 @@ xpmem_thread_fn(void * private)
 	}
     }
 
+    /* Acquire lock to prevent from freeing underneath the thread that woke us up
+     */
+    spin_lock(&exit_lock);
+    {
+	kmem_free(state);
+    }
+    spin_unlock(&exit_lock);
+
     return 0;
 }
 
 
 
-int
+xpmem_link_t
 pisces_xpmem_init(void)
 {
     struct pisces_xpmem_state * state  = NULL;
@@ -188,20 +233,19 @@ pisces_xpmem_init(void)
 
     memset(state, 0, sizeof(struct pisces_xpmem_state));
 
+
     /* Init state */
-    spin_lock_init(&(state->lock));
     waitq_init(&(state->waitq));
 
-    state->data		      = 0;
-    state->thread_active      = 0;
-    state->thread_should_exit = 0;
+    state->data		 = 0;
+    state->thread_active = 0;
 
     /* Add connection link for enclave */
     state->link = xpmem_add_connection(
 	    state,
 	    xpmem_cmd_fn,
-	    NULL,
-	    NULL);
+	    xpmem_segid_fn,
+	    xpmem_kill_fn);
 
     if (state->link <= 0) {
 	printk(KERN_ERR "Cannot create XPMEM connection\n");
@@ -236,7 +280,7 @@ pisces_xpmem_init(void)
 
     printk("Initialized Pisces XPMEM cross-enclave connection\n");
 
-    return 0;
+    return state->link;
 
 err_thread:
     pisces_xbuf_server_deinit(state->xbuf_desc);
@@ -248,4 +292,13 @@ err_connection:
     kmem_free(state);
 
     return status;
+}
+
+
+void
+pisces_xpmem_deinit(xpmem_link_t link)
+{
+    struct pisces_xpmem_state * state = xpmem_get_link_data(link);
+
+    xpmem_remove_connection(state->link);
 }

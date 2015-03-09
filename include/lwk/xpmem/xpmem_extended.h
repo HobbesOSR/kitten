@@ -99,49 +99,6 @@ struct xpmem_cmd_ex {
 };
 
 
-struct xpmem_partition_state;
-
-
-/* Package XPMEM command into xpmem_cmd_ex structure and pass to forwarding/name
- * service layer
- */
-int
-xpmem_make_remote(xpmem_link_t    link,
-                  xpmem_segid_t   request,
-                  xpmem_segid_t * segid);
-
-int
-xpmem_remove_remote(xpmem_link_t  link,
-                    xpmem_segid_t segid);
-
-int
-xpmem_get_remote(xpmem_link_t   link,
-                 xpmem_segid_t  segid,
-		 int            flags,
-		 int            permit_type,
-		 s64            permit_value,
-		 xpmem_apid_t * apid,
-		 u64          * size);
-
-int
-xpmem_release_remote(xpmem_link_t  link,
-                     xpmem_segid_t segid,
-                     xpmem_apid_t  apid);
-
-int
-xpmem_attach_remote(xpmem_link_t  link,
-                    xpmem_segid_t segid,
-                    xpmem_apid_t  apid,
-		    off_t         offset,
-		    size_t        size,
-		    u64           at_vaddr);
-
-int
-xpmem_detach_remote(xpmem_link_t  link,
-                    xpmem_segid_t segid,
-                    xpmem_apid_t  apid,
-                    u64           vaddr);
-
 #endif /* __KERNEL__ */
 
 #endif /* _XPMEM_EXTENDED_H */

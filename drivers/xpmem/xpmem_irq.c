@@ -1,6 +1,9 @@
+#include <lwk/cpuinfo.h>
 #include <arch/apic.h>
 
 #include <xpmem_private.h>
+
+extern struct cpuinfo cpu_info[NR_CPUS];
 
 int
 xpmem_request_irq(irqreturn_t (*callback)(int, void *),
@@ -53,4 +56,21 @@ xpmem_deliver_host_irq(xpmem_segid_t segid,
     xpmem_send_ipi_to_apic(sig->apic_id, sig->vector);
 
     return 0;
+}
+
+int
+xpmem_request_host_vector(int vector)
+{
+    return vector;
+}
+
+void
+xpmem_release_host_vector(int vector)
+{
+}
+
+int
+xpmem_get_host_apic_id(int cpu)
+{
+    return cpu_info[cpu].arch.apic_id;
 }

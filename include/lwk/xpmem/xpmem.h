@@ -88,6 +88,7 @@ struct xpmem_cmd_make {
 	int permit_type;
 	int64_t permit_value;
 	xpmem_segid_t segid;	/* returned on success */
+	int fd;
 };
 
 struct xpmem_cmd_remove {
@@ -103,6 +104,10 @@ struct xpmem_cmd_get {
 };
 
 struct xpmem_cmd_release {
+	xpmem_apid_t apid;
+};
+
+struct xpmem_cmd_signal {
 	xpmem_apid_t apid;
 };
 

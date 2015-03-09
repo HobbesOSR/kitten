@@ -568,3 +568,18 @@ xpmem_fwd_get_domid(struct xpmem_partition_state * part,
 
     return domid;
 }
+
+int
+xpmem_fwd_ensure_valid_domid(struct xpmem_partition_state * part)
+{
+    struct xpmem_fwd_state * state = part->fwd_state;
+    xpmem_domid_t            domid = 0;
+
+    spin_lock(&(state->lock));
+    {
+	domid = state->domid;
+    }
+    spin_unlock(&(state->lock));
+
+    return (domid > 0);
+}

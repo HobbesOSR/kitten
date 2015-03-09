@@ -498,3 +498,14 @@ xpmem_get_domid(void)
     else
 	return xpmem_fwd_get_domid(part, part->local_link);
 }
+
+int
+xpmem_ensure_valid_domid(void)
+{
+    struct xpmem_partition_state * part = xpmem_get_partition();
+
+    if (part->is_nameserver)
+	return 1;
+    else
+	return xpmem_fwd_ensure_valid_domid(part);
+}
