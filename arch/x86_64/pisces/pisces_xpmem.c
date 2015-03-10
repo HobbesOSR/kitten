@@ -298,7 +298,5 @@ err_connection:
 void
 pisces_xpmem_deinit(xpmem_link_t link)
 {
-    struct pisces_xpmem_state * state = xpmem_get_link_data(link);
-
-    xpmem_remove_connection(state->link);
+    xpmem_remove_connection(link);
 }

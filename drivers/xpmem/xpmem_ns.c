@@ -156,8 +156,6 @@ static void
 domain_remove_xpmem_segid(struct xpmem_domain * domain,
 			  struct xpmem_id_val * val)
 {
-    INIT_LIST_HEAD(&(val->node));
-
     spin_lock(&(domain->lock));
     {
 	list_del(&(val->node));
@@ -184,8 +182,6 @@ static void
 domain_remove_xpmem_apid(struct xpmem_domain * domain,
 			 struct xpmem_id_val * val)
 {
-    INIT_LIST_HEAD(&(val->node));
-
     spin_lock(&(domain->lock));
     {
 	list_del(&(val->node));
