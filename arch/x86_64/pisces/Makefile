@@ -4,7 +4,6 @@ obj-$(CONFIG_PISCES) += pisces_init.o \
 			pisces_xbuf.o \
 			pisces_lcall.o \
 			pisces_file.o \
-			pisces_pagemap.o \
 			pisces_irq_proxy.o
 
 obj-$(CONFIG_XPMEM)  += pisces_xpmem.o
