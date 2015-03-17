@@ -113,8 +113,10 @@ insert_task_edf(struct task_struct *task, struct edf_rq *runqueue, int queue){
 		else if (task->edf.curr_deadline > curr_task->edf.curr_deadline)
 			new_rb = &((*new_rb)->rb_right);
 		else{
-			printk(KERN_INFO "EDF SCHED. insert_task_edf. Task %s not inserted in the rb_tree\n",
-				task->name);
+			printk(KERN_INFO "EDF SCHED. insert_task_edf. Task %s not inserted in the rb_tree, dl %llu, rq_U %d\n",
+					task->name,
+					task->edf.curr_deadline,
+					runqueue->cpu_u);
 			return false;
 		}
 	}
@@ -220,18 +222,8 @@ activate_task(struct task_struct * task, struct edf_rq *runqueue)
 		task->edf.curr_deadline = curr_deadline;
 		task->edf.used_time=0;
 
-		bool ins = insert_task_edf(task, runqueue, READY_QUEUE);
-		/*
-		 * If not inserted is possible that there is other task
-		 * with the same deadline.
-		 * Then, the deadline is modified and try again
-		 */
-		while(!ins){
-			task->edf.curr_deadline ++;
-			ins = insert_task_edf(task, runqueue, READY_QUEUE);
-		}
-
-		if (task->state == TASK_RUNNING) {
+		if ( insert_task_edf(task, runqueue, READY_QUEUE) &&
+			task->state == TASK_RUNNING) {
 			task->edf.cpu_reservation = 100 * task->edf.slice / task->edf.period;
 			runqueue->cpu_u += task->edf.cpu_reservation;
 		} else {
@@ -323,7 +315,7 @@ delete_task_edf( struct task_struct *task, struct edf_rq *runqueue, int queue){
 		return true;
 	}
 	else{
-		printk(KERN_INFO "EDF_SCHED. delete_task_edf.Attempted to erase unexisting task\n");
+		//printk(KERN_INFO "EDF_SCHED. delete_task_edf.Attempted to erase unexisting task\n");
 		return false;
 	}
 }
@@ -386,8 +378,9 @@ check_statistics(struct task_struct * task, struct  edf_rq *runqueue){
 static void
 deactivate_task(struct task_struct * task, struct edf_rq *runqueue){
 
-	delete_task_edf(task, runqueue, READY_QUEUE);
-	runqueue->cpu_u -= task->edf.cpu_reservation;
+	if(delete_task_edf(task, runqueue, READY_QUEUE) ){
+		runqueue->cpu_u -= task->edf.cpu_reservation;
+	}
 
 }
 
@@ -704,7 +697,14 @@ edf_sched_yield_to(struct edf_rq *runq, struct task_struct * task){
 	 */
 
 	if(task->edf.release_period){
-		deactivate_task(task, runq);
+
+		if( !delete_task_edf(task, runq, READY_QUEUE) ){
+			/* Task is in the RESCHED QUEUE remove it*/
+			delete_task_edf(task, runq, RESCHED_QUEUE);
+		}
+
+		/*Adjust runqueue utilization*/
+		runq->cpu_u -= task->edf.cpu_reservation;
 	}
 
 	/*
@@ -716,9 +716,6 @@ edf_sched_yield_to(struct edf_rq *runq, struct task_struct * task){
 		list_del(&task->rr.sched_link);
 		list_head_init(&task->rr.sched_link);
 	}
-
-	/* In the case that the target task is in the RESCHED QUEUE remove it*/
-	delete_task_edf(task, runq, RESCHED_QUEUE);
 
 	/*
 	 * Current task inherit sched parameters to target task
@@ -741,6 +738,14 @@ edf_sched_yield_to(struct edf_rq *runq, struct task_struct * task){
 
 	while(!insert_task_edf(task, runq, READY_QUEUE)){
 		task->edf.curr_deadline --;
+	}
+
+	/*Update reservation*/
+	if(task->state == TASK_RUNNING){
+		task->edf.cpu_reservation = 100 * task->edf.slice / task->edf.period;
+		runq->cpu_u += task->edf.cpu_reservation;
+	}else{
+		task->edf.cpu_reservation = 0;
 	}
 
 	edf_sched_yield();
