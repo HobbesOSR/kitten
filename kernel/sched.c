@@ -559,3 +559,69 @@ sched_yield_to(struct task_struct * task)
 		rr_sched_yield_to(&runq->rr, task);
 	}
 }
+
+void
+sched_set_params(struct task_struct * task, ktime_t slice, ktime_t period)
+{
+	id_t cpu;
+	struct run_queue *runq;
+	unsigned long irqstate;
+
+#ifdef CONFIG_SCHED_EDF
+repeat_lock_runq:
+	cpu  = task->cpu_id;
+	runq = &per_cpu(run_queue, cpu);
+	spin_lock_irqsave(&runq->lock, irqstate);
+	if (cpu != task->cpu_id) {
+		printk("Task %s, cpu %d, task_cpu %d\n", task->name, cpu, task->cpu_id);
+		spin_unlock_irqrestore(&runq->lock, irqstate);
+		goto repeat_lock_runq;
+	}
+
+	/*
+	 * This task isn't in the runqueue yet,
+	 * just set params and return
+	 */
+
+	if (task->state == TASK_STOPPED) {
+
+		task->edf.slice             = slice;
+		task->edf.period            = period;
+		task->edf.release_slice     = slice;
+		task->edf.release_period    = period;
+
+		spin_unlock_irqrestore(&runq->lock, irqstate);
+
+		return;
+	}
+
+	/*
+	 * Task already in the runqueue
+	 * If currently a RR task (not period), set the new params and add to the EDF runqueue
+	 * If already an EDF Task, set the new params and reinsert in EDF runqueue
+	 */
+
+
+	if (task->edf.period) {
+		edf_sched_del_task(&runq->edf, task);
+	} else
+	{
+		rr_sched_del_task(&runq->rr, task);
+		list_head_init(&task->rr.sched_link);
+	}
+
+	task->edf.slice             = slice;
+	task->edf.period            = period;
+	task->edf.release_slice     = slice;
+	task->edf.release_period    = period;
+
+	if (task->edf.period) {
+		edf_sched_add_task(&runq->edf, task);
+	} else
+	{
+		rr_sched_add_task(&runq->rr, task);
+	}
+
+	spin_unlock_irqrestore(&runq->lock, irqstate);
+#endif
+}

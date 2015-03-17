@@ -226,3 +226,4 @@ SYSCALL2(v3_start_guest, vaddr_t, size_t);
  * Scheduling control system calls.
  */
 SYSCALL2(sched_yield_task_to, int, int);
+SYSCALL4(sched_setparams_task, int, int, int64_t, int64_t);

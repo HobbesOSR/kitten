@@ -31,3 +31,22 @@ extern void sched_yield_task_to(int pid, int tid){
 		}
 	}
 }
+
+extern int sched_setparams_task(int pid, int tid, int64_t slice, int64_t period){
+
+	if(!slice || !period){
+		printk(" Sched parameters non set\n");
+		return -1;
+	}
+
+	struct task_struct * task = get_task(pid,tid);
+
+	if(!task){
+		printk("Error: Not task found!\n");
+		return -1;
+	}
+
+	sched_set_params(task, slice, period);
+
+	return 0;
+}

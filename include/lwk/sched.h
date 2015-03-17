@@ -34,6 +34,7 @@ extern ktime_t schedule_timeout(ktime_t timeout);
 
 extern void sched_yield(void);
 extern void sched_yield_to(struct task_struct * task);
+extern void sched_set_params(struct task_struct * task, ktime_t slice, ktime_t period);
 
 extern void
 fire_sched_out_preempt_notifiers(struct task_struct * curr,

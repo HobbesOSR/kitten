@@ -78,17 +78,12 @@ start_thread(int id, id_t cpu)
                 .aspace_id      = aspace_id,
                 .entry_point    = (vaddr_t)&simple_task,
                 .stack_ptr      = stack_ptr + THREAD_STACK_SIZE,
-                .cpu_id         = cpu,
-		.edf.slice	= SLICE,
-		.edf.period     = PERIOD,
+                .cpu_id         = cpu
         };
 
         sprintf(start_state.task_name, "cpu%u-task%d", cpu ,id);
-
-	printf(" *** Creating Task %s (S: %llu, T: %llu) on cpu %d\n",
+	printf(" *** Creating Task %s  on cpu %d\n",
 	       start_state.task_name,
-	       (unsigned long long)start_state.edf.slice,
-	       (unsigned long long)start_state.edf.period,
 	       cpu);
 
 	status = task_create(&start_state, NULL);
@@ -99,7 +94,8 @@ start_thread(int id, id_t cpu)
 		return -1;
         }
 
-        return 0;
+	sched_setparams_task(aspace_id, id, SLICE, PERIOD);
+	return 0;
 }
 
 
