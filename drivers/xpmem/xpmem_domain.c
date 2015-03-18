@@ -156,7 +156,7 @@ xpmem_get_domain(struct xpmem_cmd_get_ex * get_ex)
         return apid;
     }
 
-    status = xpmem_get_segment(flags, permit_type, permit_value, apid, 0, seg, seg_tg, ap_tg);
+    status = xpmem_get_segment(flags, permit_type, permit_value, apid, seg, seg_tg, ap_tg);
 
     if (status == 0) { 
         get_ex->apid  = apid;

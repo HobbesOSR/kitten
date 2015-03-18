@@ -6,6 +6,7 @@
 #include <lwk/spinlock_types.h>
 #include <lwk/mutex.h>
 #include <lwk/kfs.h>
+#include <lwk/aspace.h>
 
 #include <lwk/xpmem/xpmem.h>
 #include <lwk/xpmem/xpmem_extended.h>
@@ -72,6 +73,7 @@ struct xpmem_segment {
     int                         permit_type;
     void                      * permit_value;
     xpmem_domid_t               domid;
+    xpmem_apid_t                remote_apid;
 
     /* optional signalling stuff */
     struct xpmem_signal         sig;
@@ -98,7 +100,6 @@ struct xpmem_access_permit {
 
     /* this access permit's attached region */
     xpmem_apid_t                apid;
-    xpmem_apid_t                remote_apid;
     int                         mode;
 
     struct xpmem_segment      * seg;
@@ -207,7 +208,7 @@ struct xpmem_partition {
 
 
 /* found in xpmem_make.c */
-extern int xpmem_make_segment(vaddr_t, size_t, int, void *, int, struct xpmem_thread_group *, xpmem_segid_t, xpmem_domid_t, xpmem_sigid_t, int *);
+extern int xpmem_make_segment(vaddr_t, size_t, int, void *, int, struct xpmem_thread_group *, xpmem_segid_t, xpmem_apid_t, xpmem_domid_t, xpmem_sigid_t, int *);
 extern int xpmem_make(vaddr_t, size_t, int, void *, int, xpmem_segid_t,  xpmem_segid_t *, int *);
 extern void xpmem_remove_segs_of_tg(struct xpmem_thread_group *);
 extern int xpmem_remove(xpmem_segid_t);
@@ -215,7 +216,7 @@ extern int xpmem_remove(xpmem_segid_t);
 /* found in xpmem_get.c */
 extern int xpmem_check_permit_mode(int, struct xpmem_segment *);
 extern xpmem_apid_t xpmem_make_apid(struct xpmem_thread_group *);
-extern int xpmem_get_segment(int, int, void *, xpmem_apid_t, xpmem_apid_t, struct xpmem_segment *, struct xpmem_thread_group *, struct xpmem_thread_group *);
+extern int xpmem_get_segment(int, int, void *, xpmem_apid_t, struct xpmem_segment *, struct xpmem_thread_group *, struct xpmem_thread_group *);
 extern int xpmem_get(xpmem_segid_t, int, int, void *, xpmem_apid_t *);
 extern void xpmem_release_aps_of_tg(struct xpmem_thread_group *);
 extern void xpmem_release_ap(struct xpmem_thread_group *, struct xpmem_access_permit *);

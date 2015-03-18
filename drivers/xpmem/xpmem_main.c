@@ -54,7 +54,7 @@ xpmem_open(struct inode *inode, struct file *file)
     int index;
 
     /* if this has already been done, just return silently */
-    tg = xpmem_tg_ref_by_gid(current->gid);
+    tg = xpmem_tg_ref_by_gid(current->aspace->id);
     if (!IS_ERR(tg)) {
         xpmem_tg_deref(tg);
         return 0;
@@ -66,7 +66,7 @@ xpmem_open(struct inode *inode, struct file *file)
         return -ENOMEM;
 
     spin_lock_init(&(tg->lock));
-    tg->gid = current->gid;
+    tg->gid = current->aspace->id;
     atomic_set(&tg->uniq_apid, 0);
     rwlock_init(&(tg->seg_list_lock));
     INIT_LIST_HEAD(&tg->seg_list);
@@ -149,7 +149,7 @@ xpmem_release_op(struct inode * inodep,
 {
     struct xpmem_thread_group *tg;
 
-    tg = xpmem_tg_ref_by_gid(current->gid);
+    tg = xpmem_tg_ref_by_gid(current->aspace->id);
     if (tg == NULL) {
         /*
          * xpmem_flush() can get called twice for thread groups

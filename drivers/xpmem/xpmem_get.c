@@ -80,7 +80,6 @@ xpmem_get_segment(int                         flags,
                   int                         permit_type,
                   void                      * permit_value,
                   xpmem_apid_t                apid,
-                  xpmem_apid_t                remote_apid,
                   struct xpmem_segment      * seg,
                   struct xpmem_thread_group * seg_tg,
                   struct xpmem_thread_group * ap_tg)
@@ -97,7 +96,6 @@ xpmem_get_segment(int                         flags,
     ap->seg = seg;
     ap->tg = ap_tg;
     ap->apid = apid;
-    ap->remote_apid = remote_apid;
     ap->mode = flags;
     INIT_LIST_HEAD(&ap->att_list);
     INIT_LIST_HEAD(&ap->ap_node);
@@ -174,9 +172,9 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
 
         seg_flags |= XPMEM_FLAG_SHADOW;
 
-        seg_tg = xpmem_tg_ref_by_gid(current->gid);
+        seg_tg = xpmem_tg_ref_by_gid(current->aspace->id);
         xpmem_make_segment(0, remote_size, permit_type, permit_value, 
-            seg_flags, seg_tg, segid, remote_domid, remote_sigid, NULL);
+            seg_flags, seg_tg, segid, remote_apid, remote_domid, remote_sigid, NULL);
     }
 
     seg = xpmem_seg_ref_by_segid(seg_tg, segid);
@@ -186,7 +184,7 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
     }
 
     /* find accessor's thread group structure */
-    ap_tg = xpmem_tg_ref_by_gid(current->gid);
+    ap_tg = xpmem_tg_ref_by_gid(current->aspace->id);
     if (IS_ERR(ap_tg)) {
         BUG_ON(PTR_ERR(ap_tg) != -ENOENT);
         xpmem_seg_deref(seg);
@@ -202,7 +200,7 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
         return apid;
     }
  
-    status = xpmem_get_segment(flags, permit_type, permit_value, apid, remote_apid, seg, seg_tg, ap_tg);
+    status = xpmem_get_segment(flags, permit_type, permit_value, apid, seg, seg_tg, ap_tg);
 
     if (status == 0) {
         *apid_p = apid;
@@ -287,8 +285,10 @@ xpmem_release_ap(struct xpmem_thread_group *ap_tg,
     spin_unlock(&seg->lock);
     
     /* Release remote apid */
-    if (seg->flags & XPMEM_FLAG_SHADOW)
-        xpmem_release_remote(xpmem_my_part->domain_link, seg->segid, ap->remote_apid);
+    if (seg->flags & XPMEM_FLAG_SHADOW) {
+	BUG_ON(seg->remote_apid <= 0);
+        xpmem_release_remote(xpmem_my_part->domain_link, seg->segid, seg->remote_apid);
+    }
 
     xpmem_seg_deref(seg);   /* deref of xpmem_get()'s ref */
     xpmem_tg_deref(seg_tg); /* deref of xpmem_get()'s ref */
@@ -343,7 +343,7 @@ xpmem_release(xpmem_apid_t apid)
     if (IS_ERR(ap_tg))
         return PTR_ERR(ap_tg);
 
-    if (current->gid != ap_tg->gid) {
+    if (current->aspace->id != ap_tg->gid) {
         xpmem_tg_deref(ap_tg);
         return -EACCES;
     }
