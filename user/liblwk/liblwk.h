@@ -3,8 +3,6 @@
 #ifndef _LIBLWK_H_
 #define _LIBLWK_H_
 
-#define CONFIG_SCHED_EDF 0
-
 #include <lwk/macros.h>
 #include <lwk/types.h>
 #include <lwk/errno.h>

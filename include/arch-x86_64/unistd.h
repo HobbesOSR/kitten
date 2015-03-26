@@ -709,15 +709,21 @@ __SYSCALL(__NR_phys_cpu_remove, sys_phys_cpu_remove)
 #define __NR_task_meas		527
 #ifdef CONFIG_TASK_MEAS
 __SYSCALL(__NR_task_meas, sys_task_meas)
+#else
+__SYSCALL(__NR_task_meas, syscall_not_implemented)
 #endif
 
 #define __NR_aspace_update_user_cpumask     528
 __SYSCALL(__NR_aspace_update_user_cpumask, sys_aspace_update_user_cpumask)
 
+#define __NR_sched_yield_task_to	529
+__SYSCALL(__NR_sched_yield_task_to, sys_sched_yield_task_to)
+#define __NR_sched_setparams_task	530
+#ifdef CONFIG_SCHED_EDF
+__SYSCALL(__NR_sched_setparams_task, sys_sched_setparams_task)
+#else
+__SYSCALL(__NR_sched_setparams_task, syscall_not_implemented)
 #endif
 
-#define __NR_sched_yield_task_to        529
-__SYSCALL(__NR_sched_yield_task_to, sys_sched_yield_task_to)
 
-#define __NR_sched_setparams_task		530
-__SYSCALL(__NR_sched_setparams_task, sys_sched_setparams_task)
+#endif /* _ARCH_X86_64_UNISTD_H */

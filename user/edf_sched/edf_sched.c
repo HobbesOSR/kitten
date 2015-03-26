@@ -1,5 +1,4 @@
 #define _GNU_SOURCE
-#define CONFIG_SCHED_EDF 1
 
 #include <stdio.h>
 #include <stdlib.h>
