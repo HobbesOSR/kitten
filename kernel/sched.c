@@ -563,11 +563,11 @@ sched_yield_to(struct task_struct * task)
 void
 sched_set_params(struct task_struct * task, ktime_t slice, ktime_t period)
 {
+#ifdef CONFIG_SCHED_EDF
 	id_t cpu;
 	struct run_queue *runq;
 	unsigned long irqstate;
 
-#ifdef CONFIG_SCHED_EDF
 repeat_lock_runq:
 	cpu  = task->cpu_id;
 	runq = &per_cpu(run_queue, cpu);
