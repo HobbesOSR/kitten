@@ -265,6 +265,7 @@ pisces_xpmem_init(void)
 	goto err_xbuf;
     }
 
+  
     /* Create kernel thread */
     state->xpmem_thread = kthread_run(
 	    xpmem_thread_fn,
@@ -277,6 +278,8 @@ pisces_xpmem_init(void)
 	status = -EFAULT;
 	goto err_thread;
     }
+
+    pisces_xbuf_enable(state->xbuf_desc);
 
     printk("Initialized Pisces XPMEM cross-enclave connection\n");
 

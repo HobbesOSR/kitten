@@ -151,6 +151,9 @@ static int
 cmd_open(struct inode * inodep, 
 	 struct file  * filp) 
 {
+    
+	printk("enabling XBUF\n");
+	pisces_xbuf_enable(xbuf_desc);
 	return 0;
 }
 
@@ -159,6 +162,8 @@ cmd_open(struct inode * inodep,
 static int 
 cmd_close(struct file * filp) 
 {
+	printk("Disabling XBUF\n");
+	pisces_xbuf_disable(xbuf_desc);
 	return 0;
 }
 

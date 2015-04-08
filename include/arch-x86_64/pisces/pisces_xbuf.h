@@ -55,4 +55,7 @@ pisces_xbuf_complete(struct pisces_xbuf_desc * desc,
 		     u8                      * data, 
 		     u32                       data_len);
 
+
+int pisces_xbuf_enable(struct pisces_xbuf_desc * xbuf_desc);
+int pisces_xbuf_disable(struct pisces_xbuf_desc * xbuf_desc);
 #endif
