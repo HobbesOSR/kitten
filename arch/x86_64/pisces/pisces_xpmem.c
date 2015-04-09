@@ -19,6 +19,8 @@
 #include <lwk/xpmem/xpmem_iface.h>
 #include <lwk/xpmem/xpmem_extended.h>
 
+#define MAX_CMDS 16
+
 
 extern struct pisces_boot_params * pisces_boot_params;
 
@@ -35,16 +37,28 @@ struct pisces_xpmem_cmd_lcall {
     struct xpmem_cmd_ex xpmem_cmd;
 } __attribute__ ((packed));
 
+
+struct xpmem_cmd_entry {
+    struct xpmem_cmd_ex * cmd;
+    int                   in_use;
+};
+
+struct xpmem_cmd_ringbuf {
+    struct xpmem_cmd_entry entries[MAX_CMDS];
+    int                    offset;
+    spinlock_t             lock;
+    atomic_t               active_entries;
+};
+
 struct pisces_xpmem_state {
     /* kernel thread for xpmem commands */
     struct task_struct	    * xpmem_thread;
-    int			      thread_active;
 
     /* waitq for kern thread */
     waitq_t		      waitq;
 
     /* active xbuf data */
-    u8			    * data;
+    struct xpmem_cmd_ringbuf  xpmem_buf;
 
     /* xbuf for IPI-based communication */
     struct pisces_xbuf_desc * xbuf_desc;
@@ -54,20 +68,96 @@ struct pisces_xpmem_state {
 };
 
 
+static inline int next_offset(int off)
+{
+    return (off + 1) % MAX_CMDS;
+}
 
-/* Incoming XPMEM command from enclave - wake up kthread */
+static int
+push_active_entry(struct xpmem_cmd_ringbuf * buf,
+                  struct xpmem_cmd_ex      * cmd)
+{
+    struct xpmem_cmd_entry * entry = NULL;
+    unsigned long flags = 0;
+    int start, end, ret = -1;
+
+    spin_lock_irqsave(&(buf->lock), flags);
+
+    start = buf->offset;
+    end   = (start == 0) ? MAX_CMDS - 1 : buf->offset - 1;
+
+    while (buf->offset != end) {
+	entry =  &(buf->entries[buf->offset]);
+
+	if (!entry->in_use) {
+	    entry->in_use = 1;
+	    entry->cmd    = cmd;
+	    ret           = 0;
+	    break;
+	}
+
+	buf->offset = next_offset(buf->offset);
+    }
+
+    spin_unlock_irqrestore(&(buf->lock), flags);
+    return ret;
+}
+
+static void
+pop_active_entry(struct xpmem_cmd_ringbuf * buf,
+                 struct xpmem_cmd_ex      * cmd)
+{
+    unsigned long flags = 0;
+    int start, end;
+
+    spin_lock_irqsave(&(buf->lock), flags);
+
+    start = buf->offset;
+    end   = (start == 0) ? MAX_CMDS - 1 : buf->offset - 1;
+
+    while (buf->offset != end) {
+	struct xpmem_cmd_entry * entry = &(buf->entries[buf->offset]);
+
+	if (entry->in_use) {
+	    memcpy(cmd, entry->cmd, sizeof(struct xpmem_cmd_ex));
+	    kmem_free(entry->cmd);
+	    entry->in_use = 0;
+	    break;
+	}
+
+	buf->offset = next_offset(buf->offset);
+    }
+
+    spin_unlock_irqrestore(&(buf->lock), flags);
+}
+
+
+/* Incoming XPMEM command from enclave - enqueue and wake up kthread */
 static void
 xpmem_ctrl_handler(u8	* data, 
 		   u32	  data_len, 
 		   void * priv_data)
 {
     struct pisces_xpmem_state * state = (struct pisces_xpmem_state *)priv_data;
+    struct xpmem_cmd_ringbuf  * buf   = &(state->xpmem_buf);
 
-    state->thread_active = 1;
-    state->data		 = data;
+    if (data_len != sizeof(struct xpmem_cmd_ex)) {
+	printk(KERN_ERR "ERROR: DROPPING XPMEM CMD: MALFORMED CMD\n");
+	return;
+    }
 
+    /* Find open entry */
+    if (push_active_entry(buf, (struct xpmem_cmd_ex *)data) != 0) {
+	printk(KERN_ERR "ERROR: DROPPING XPMEM CMD: NO ENTRIES AVAILABLE\n");
+	return;
+    }
+
+    atomic_inc(&(buf->active_entries));
     mb();
     waitq_wakeup(&(state->waitq));
+
+    /* Xbuf now complete */
+    pisces_xbuf_complete(state->xbuf_desc, NULL, 0);
 }
 
 
@@ -169,30 +259,25 @@ static int
 xpmem_thread_fn(void * private)
 {
     struct pisces_xpmem_state * state  = (struct pisces_xpmem_state *)private;
-    struct xpmem_cmd_ex		cmd;
+    struct xpmem_cmd_ringbuf  * buf    = &(state->xpmem_buf);
+    struct xpmem_cmd_ex         cmd;
 
     while (1) {
 	/* Wait on waitq */
 	wait_event_interruptible(
 	    state->waitq,
-	     ((state->thread_active == 1) ||
-	      (should_exit          == 1)
+	     ((atomic_read(&(buf->active_entries)) > 0) ||
+	      (should_exit                          == 1)
 	     )
 	);
 
 	mb();
 	if (should_exit == 1)
 	    break;
-
-	state->thread_active = 0;
-	mb();
-
-	/* Copy the xbuf data out and free */
-	memcpy(&cmd, (struct xpmem_cmd_ex *)state->data, sizeof(struct xpmem_cmd_ex));
-	kmem_free(state->data);
-
-	/* Xbuf now complete */
-	pisces_xbuf_complete(state->xbuf_desc, NULL, 0);
+	
+	/* Get an active entry */
+	pop_active_entry(buf, &cmd);
+	atomic_dec(&(buf->active_entries));
 
 	if (cmd.type == XPMEM_ATTACH) {
 	    if (map_domain_region(cmd.attach.pfn_pa, (cmd.attach.num_pfns * sizeof(u32))) != 0) {
@@ -224,7 +309,7 @@ xpmem_link_t
 pisces_xpmem_init(void)
 {
     struct pisces_xpmem_state * state  = NULL;
-    int				status = 0;
+    int status = 0;
 
     state = kmem_alloc(sizeof(struct pisces_xpmem_state));
     if (state == NULL) {
@@ -237,8 +322,11 @@ pisces_xpmem_init(void)
     /* Init state */
     waitq_init(&(state->waitq));
 
-    state->data		 = 0;
-    state->thread_active = 0;
+
+    /* Init ringbuf */
+    memset(&(state->xpmem_buf), 0, sizeof(struct xpmem_cmd_ringbuf));
+    atomic_set(&(state->xpmem_buf.active_entries), 0);
+    spin_lock_init(&(state->xpmem_buf.lock));
 
     /* Add connection link for enclave */
     state->link = xpmem_add_connection(
