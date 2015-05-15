@@ -142,8 +142,16 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
         (XPMEM_RDONLY | XPMEM_RDWR))
         return -EINVAL;
 
-    if (permit_type != XPMEM_PERMIT_MODE || permit_value != NULL) 
-        return -EINVAL;
+    switch (permit_type) {
+	case XPMEM_PERMIT_MODE:
+	case XPMEM_GLOBAL_MODE:
+	    if (permit_value != NULL)
+		return -EINVAL;
+
+	    break;
+	default:
+	    return -EINVAL;
+    }
 
     seg_tg = xpmem_tg_ref_by_segid(segid);
     if (IS_ERR(seg_tg)) {

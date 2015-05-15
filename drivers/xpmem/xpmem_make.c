@@ -179,12 +179,23 @@ xpmem_make(vaddr_t         vaddr,
     struct xpmem_thread_group *seg_tg;
     int status;
 
-    if (permit_type != XPMEM_PERMIT_MODE ||
-        ((u64)permit_value & ~00777)) 
-    {
-        return -EINVAL;
-    }
+    /* BJK: sanity check permit mode and value */
+    switch (permit_type) {
+	case XPMEM_PERMIT_MODE:
+	    if ((u64)permit_value & ~00777)
+		return -EINVAL;
+	
+	    break;
 
+	 case XPMEM_GLOBAL_MODE:
+	     if (permit_value != NULL)
+		 return -EINVAL;
+
+	    break;
+
+	 default:
+	     return -EINVAL;
+    }
 
     /* BJK: sanity check xpmem_make_hobbes() stuff.
        MEM_MODE: size must be greater than 0 
@@ -201,6 +212,7 @@ xpmem_make(vaddr_t         vaddr,
         return -EINVAL;
     }
 
+    /* BJK: check if this is a well known segid request */
     if (flags & XPMEM_REQUEST_MODE) {
         if (request <= 0 || request > XPMEM_MAX_WK_SEGID) {
             return -EINVAL;
