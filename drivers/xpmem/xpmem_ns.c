@@ -794,11 +794,7 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	    /* Grab the apid's source domain from the domid */
 	    apid_domain = ns_state->domain_map[val->domid];
 
-	    /* Perform removal */
-	    if (remove_xpmem_apid(ns_state, apid_domain, cmd->release.segid, cmd->release.apid) != 0) {
-		XPMEM_ERR("Cannot remove apid %lli. Cannot complete XPMEM_RELEASE", cmd->release.apid);
-		goto err_release;
-	    }
+
 
 	    /* Search domid map for link */
 	    out_link = xpmem_get_domid_link(part_state, val->domid);
@@ -809,6 +805,12 @@ xpmem_ns_process_xpmem_cmd(struct xpmem_partition_state * part_state,
 	    }
 
 	    out_cmd->dst_dom = val->domid;
+
+	    /* Perform removal */
+	    if (remove_xpmem_apid(ns_state, apid_domain, cmd->release.segid, cmd->release.apid) != 0) {
+		XPMEM_ERR("Cannot remove apid %lli. Cannot complete XPMEM_RELEASE", cmd->release.apid);
+		goto err_release;
+	    }
 
 	    break;
 
