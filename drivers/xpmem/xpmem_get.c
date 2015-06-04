@@ -154,9 +154,11 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
     }
 
     seg_tg = xpmem_tg_ref_by_segid(segid);
-    if (IS_ERR(seg_tg)) {
+	if(!IS_ERR(seg_tg)){
+		seg = xpmem_seg_ref_by_segid(seg_tg, segid);
+	}
+    if (IS_ERR(seg_tg) || IS_ERR(seg) ) {
         int seg_flags = 0;
-
         /* No local segment found. Look for a remote one */
         if (xpmem_try_get_remote(segid, flags, permit_type, permit_value, 
                 &remote_apid, &remote_size, &remote_domid, &remote_sigid) != 0) 
@@ -169,27 +171,23 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
          */
         if (remote_size > 0)
             seg_flags |= XPMEM_MEM_MODE;
-
         if (remote_sigid != 0)
             seg_flags |= XPMEM_SIG_MODE;
-
         if (seg_flags == 0) {
             XPMEM_ERR("Creating shadow segment that is neither a memory segment nor signalable!");
             return -EINVAL;
         }
 
         seg_flags |= XPMEM_FLAG_SHADOW;
-
         seg_tg = xpmem_tg_ref_by_gid(current->aspace->id);
         xpmem_make_segment(0, remote_size, permit_type, permit_value, 
             seg_flags, seg_tg, segid, remote_apid, remote_domid, remote_sigid, NULL);
     }
-
-    seg = xpmem_seg_ref_by_segid(seg_tg, segid);
-    if (IS_ERR(seg)) {
-        xpmem_tg_deref(seg_tg);
-        return PTR_ERR(seg);
-    }
+		seg = xpmem_seg_ref_by_segid(seg_tg, segid);
+	    if (IS_ERR(seg)) {
+	        xpmem_tg_deref(seg_tg);
+	        return PTR_ERR(seg);
+	    }
 
     /* find accessor's thread group structure */
     ap_tg = xpmem_tg_ref_by_gid(current->aspace->id);
@@ -199,7 +197,6 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
         xpmem_tg_deref(seg_tg);
         return -XPMEM_ERRNO_NOPROC;
     }
-
     apid = xpmem_make_apid(ap_tg);
     if (apid < 0) {
         xpmem_tg_deref(ap_tg);
@@ -207,7 +204,6 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
         xpmem_tg_deref(seg_tg);
         return apid;
     }
- 
     status = xpmem_get_segment(flags, permit_type, permit_value, apid, seg, seg_tg, ap_tg);
 
     if (status == 0) {
@@ -216,7 +212,6 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
         xpmem_seg_deref(seg);
         xpmem_tg_deref(seg_tg);
     }
-
     xpmem_tg_deref(ap_tg);
 
     /*
