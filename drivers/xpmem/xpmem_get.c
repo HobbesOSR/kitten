@@ -119,6 +119,7 @@ xpmem_get_segment(int                         flags,
 
 /*
  * Get permission to access a specified segid.
+ * TODO(npe): clean up reference handling, add a goto with labels for cleanup
  */
 int
 xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
