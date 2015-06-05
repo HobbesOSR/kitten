@@ -3,9 +3,8 @@ include $(BASE)/Makefile.header
 
 PROGRAMS = hello_world
 
-CFLAGS += -I../../../libhobbes -I../../../xpmem/include
 hello_world_SOURCES = hello_world.c sched_getcpu.c
-hello_world_LDADD   = -llwk -lpthread -L../../../libhobbes -lhobbes -L../../../xpmem -lxpmem
+hello_world_LDADD   = -llwk -lpthread
 #ifdef CONFIG_TASK_MEAS
 hello_world_LDADD   += -lm
 #endif

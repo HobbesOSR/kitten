@@ -20,8 +20,6 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <math.h>
-#include <xpmem.h>
-#include <hobbes.h>
 
 #define TEST_BLOCK_LAYER 1
 //#define TEST_TASK_MEAS 1
@@ -33,7 +31,6 @@ static int task_migrate_test(void);
 static int fd_test(void);
 static int socket_api_test(void);
 static int hypervisor_api_test(void);
-static int enclave_comm_test(void);
 #ifdef TEST_BLOCK_LAYER
 static int block_layer_test(void);
 #endif
@@ -66,7 +63,7 @@ main(int argc, char *argv[], char *envp[])
 #endif
 	hypervisor_api_test();
         socket_api_test();
-	enclave_comm_test();
+
 	printf("\n");
 	printf("ALL TESTS COMPLETE\n");
 
@@ -718,47 +715,3 @@ task_meas_api_test(void)
 	return 0;
 }
 #endif
-
-static int
-enclave_comm_test(void)
-{
-	printf("TEST BEGIN: Enclave Communication\n");
-	xpmem_segid_t sid;
-	void *m;
-    int * addr;
-    int sec, i;
-    xpmem_segid_t segid;
-    long num_pages;
-    char * name;
-
-
-    num_pages = 200;
-    sec = 5;
-    name = strdup("hello_world_xpmem");
-
-    if (hobbes_client_init() != 0) {
-        printf("cannot init hobbes client\n");
-        return -1;
-    }
-
-    if (posix_memalign((void **)&addr, PAGE_SIZE, PAGE_SIZE * num_pages) != 0) {
-        perror("posix_memalign");
-        hobbes_client_deinit();
-        return -1;
-    }
-
-    segid = xpmem_make_hobbes((void *)addr, PAGE_SIZE * num_pages,
-            XPMEM_PERMIT_MODE, (void *)0600,
-            XPMEM_MEM_MODE, 0, NULL);
-
-	/*
-	 * Print segid so other process can use it.
-	 * Get it to wait for a signal on the made block
-	 * write something
-	 * signal that we've done it 
-	 * wait for an ack
-	 * finish
-	 */
-	printf("TEST END:	Enclave Communication\n");
-	return 0;
-}
