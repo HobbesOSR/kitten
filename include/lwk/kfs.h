@@ -208,6 +208,8 @@ extern int kfs_open_path(const char *pathname,
 		mode_t mode,
 		struct file **rv);
 
+extern int kfs_open_anon(const struct kfs_fops * fops, void * priv_data);
+
 extern struct inode * kfs_lookup(struct inode * root, const char * dirname, unsigned create_mode);
 
 extern struct inode * kfs_mkdir(char * name, unsigned mode);

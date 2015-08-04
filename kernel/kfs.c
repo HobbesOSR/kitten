@@ -663,6 +663,31 @@ kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
 	return 0;
 }
 
+int
+kfs_open_anon(const struct kfs_fops * fops, void * priv_data)
+{
+    struct file * file = kmem_alloc(sizeof(struct file));
+    int fd = 0;
+
+    if (NULL == file)
+	return -ENOMEM;
+
+    memset(file, 0x00, sizeof(struct file));
+
+    file->f_op = fops;
+    atomic_set(&file->f_count, 1);
+
+    __lock(&_lock);
+    {
+	fd = fdTableGetUnused( current->fdTable );
+	fdTableInstallFd( current->fdTable, fd, file );
+    }
+    __unlock(&_lock);
+
+    return fd;
+}
+
+
 void kfs_init_stdio(struct task_struct *task)
 {
 	struct fdTable *tbl = task->fdTable;
