@@ -675,6 +675,7 @@ kfs_open_anon(const struct kfs_fops * fops, void * priv_data)
     memset(file, 0x00, sizeof(struct file));
 
     file->f_op = fops;
+    file->private_data = priv_data;
     atomic_set(&file->f_count, 1);
 
     __lock(&_lock);
