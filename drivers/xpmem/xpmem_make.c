@@ -59,7 +59,6 @@ xpmem_make_segment(vaddr_t                     vaddr,
 
     spin_lock_init(&(seg->lock));
     mutex_init(&seg->mutex);
-    atomic_set(&(seg->irq_count), 0);
     seg->segid = segid;
     seg->remote_apid = remote_apid;
     seg->vaddr = vaddr;
@@ -70,6 +69,7 @@ xpmem_make_segment(vaddr_t                     vaddr,
     seg->tg = seg_tg;
     INIT_LIST_HEAD(&seg->ap_list);
     INIT_LIST_HEAD(&seg->seg_node);
+    atomic_set(&(seg->irq_count), 0);
 
     if (flags & XPMEM_FLAG_SHADOW)
         seg->flags = XPMEM_FLAG_SHADOW;
@@ -277,8 +277,12 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
 
     xpmem_seg_down(seg);
 
-    /* Remove signal and free from name server if this is a real segment */
-    if (!(seg->flags & XPMEM_FLAG_SHADOW)) {
+    if (seg->flags & XPMEM_FLAG_SHADOW) {
+        /* Release the remote apid for shadow segments */
+        BUG_ON(seg->remote_apid <= 0);
+        xpmem_release_remote(xpmem_my_part->domain_link, seg->segid, seg->remote_apid);
+    } else {
+	/* Remove signal and free from name server if this is a real segment */
         xpmem_free_seg_signal(seg);
         xpmem_remove_remote(xpmem_my_part->domain_link, seg->segid);
     }

@@ -297,6 +297,7 @@ xpmem_detach(vaddr_t at_vaddr)
         xpmem_ap_deref(ap);
         mutex_unlock(&att->mutex);
         xpmem_att_deref(att);
+        xpmem_tg_deref(tg);
         return -EACCES;
     }
 
