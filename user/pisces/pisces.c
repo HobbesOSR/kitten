@@ -305,7 +305,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	    start_state[rank].user_id  = 1;
 	    start_state[rank].group_id = 1;
 	    
-	    sprintf(start_state[rank].task_name, job_spec->name);
+	    strcpy(start_state[rank].task_name, job_spec->name);
 
 
 	    status = elf_load((void *)file_addr,
