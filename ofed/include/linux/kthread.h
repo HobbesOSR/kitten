@@ -33,20 +33,7 @@
 
 #include <linux/slab.h>
 #include <linux/sched.h>
-
-
-
-
-
-#define	kthread_run(fn, data, fmt, ...)					\
-    ({									\
-	struct task_struct *__k						\
-	    = kthread_create(fn, data, fmt, ## __VA_ARGS__);		\
-	if (!IS_ERR(__k))						\
-	    wake_up_process(__k);					\
-	__k;								\
-    })
-
+#include <lwk/kthread.h>
 
 
 static inline int

@@ -1,6 +1,11 @@
 
 menu "OFED"
 
+config OFED
+        bool "OFED Driver support"
+        ---help---
+          This compiles the OFED driver stack
+
 config OFED_COMPAT
         bool "OFED Compatibility Layer"
         ---help---

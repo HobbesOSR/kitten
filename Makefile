@@ -303,7 +303,7 @@ AFLAGS_MODULE   = $(MODFLAGS)
 LDFLAGS_MODULE  = -r
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
-LINUX_INCLUDE   = -Ilinux/include
+LINUX_INCLUDE   = -Iofed/include
 
 
 # Use LWKINCLUDE when you must reference the include/ directory.
@@ -454,6 +454,7 @@ net-y		:= net/
 block-y         := block/
 libs-y		:= lib/
 linux-y		:= linux/
+ofed-y          := ofed/
 #core-y		:= usr/
 endif # KBUILD_EXTMOD
 
@@ -549,13 +550,13 @@ core-y		+= kernel/ modules/
 
 vmlwk-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
-		     $(linux-y) $(linux-m) \
+		     $(linux-y) $(linux-m) $(ofed-y) $(ofed-m)\
 		     $(net-y) $(net-m) $(block-y) $(block-m) $(libs-y) $(libs-m)))
 
 vmlwk-alldirs	:= $(sort $(vmlwk-dirs) $(patsubst %/,%,$(filter %/, \
 		     $(init-n) $(init-) \
 		     $(core-n) $(core-) $(drivers-n) $(drivers-) \
-		     $(linux-n) $(linux-) \
+		     $(linux-n) $(linux-) $(ofed-n) $(ofed-) \
 		     $(net-n)  $(net-) $(block-n) $(block-)  $(libs-n)    $(libs-))))
 
 init-y		:= $(patsubst %/, %/built-in.o, $(init-y))
@@ -567,6 +568,7 @@ libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
 libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
 libs-y		:= $(libs-y1) $(libs-y2)
 linux-y		:= $(patsubst %/, %/built-in.o, $(linux-y))
+ofed-y          := $(patsubst %/, %/built-in.o, $(ofed-y))
 
 # Link the LWK with the Palacios virtual machine monitor
 libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
@@ -599,7 +601,7 @@ libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
 # System.map is generated to document addresses of all kernel symbols
 
 vmlwk-init := $(head-y) $(init-y)
-vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y) $(block-y) $(linux-y)
+vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y) $(block-y) $(linux-y) $(ofed-y)
 vmlwk-all  := $(vmlwk-init) $(vmlwk-main)
 vmlwk-lds  := arch/$(SRCARCH)/kernel/vmlwk.lds
 
@@ -1217,6 +1219,9 @@ define all-sources
 	  find $(__srctree)include/arch-generic $(RCS_FIND_IGNORE) \
 	       -name '*.[chS]' -print; \
 	  find $(__srctree)linux/include $(RCS_FIND_IGNORE) \
+	       \( -name config -o -name 'arch-*' \) -prune \
+	       -o -name '*.[chS]' -print; \
+	  find $(__srctree)ofed $(RCS_FIND_IGNORE) \
 	       \( -name config -o -name 'arch-*' \) -prune \
 	       -o -name '*.[chS]' -print; \
 	  for ARCH in $(ALLINCLUDE_ARCHS) ; do \
