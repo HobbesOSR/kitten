@@ -41,7 +41,7 @@ struct dma_pool {
 	size_t                  size;
 	size_t                  allocation;
 	size_t                  boundary;
-	struct device *         dev
+	struct device *         dev;
 	char                    name[32];
 };
 

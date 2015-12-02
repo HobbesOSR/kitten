@@ -36,7 +36,8 @@
 #include <linux/mm.h>
 #include <linux/page.h>
 
-#include <sys/systm.h>
+/*
+#include <sys/system.h>
 #include <sys/malloc.h>
 
 #include <vm/vm.h>
@@ -45,6 +46,7 @@
 
 #include <machine/bus.h>
 #include <machine/pmap.h>
+*/
 
 enum dma_data_direction {
 	DMA_BIDIRECTIONAL = 0,
@@ -54,39 +56,89 @@ enum dma_data_direction {
 };
 
 struct dma_map_ops {
-	void* (*alloc_coherent)(struct device *dev, size_t size,
-	    dma_addr_t *dma_handle, gfp_t gfp);
-	void (*free_coherent)(struct device *dev, size_t size,
-	    void *vaddr, dma_addr_t dma_handle);
-	dma_addr_t (*map_page)(struct device *dev, struct page *page,
-	    unsigned long offset, size_t size, enum dma_data_direction dir,
-	    struct dma_attrs *attrs);
-	void (*unmap_page)(struct device *dev, dma_addr_t dma_handle,
-	    size_t size, enum dma_data_direction dir, struct dma_attrs *attrs);
-	int (*map_sg)(struct device *dev, struct scatterlist *sg,
-	    int nents, enum dma_data_direction dir, struct dma_attrs *attrs);
-	void (*unmap_sg)(struct device *dev, struct scatterlist *sg, int nents,
-	    enum dma_data_direction dir, struct dma_attrs *attrs);
-	void (*sync_single_for_cpu)(struct device *dev, dma_addr_t dma_handle,
-	    size_t size, enum dma_data_direction dir);
-	void (*sync_single_for_device)(struct device *dev,
-	    dma_addr_t dma_handle, size_t size, enum dma_data_direction dir);
-	void (*sync_single_range_for_cpu)(struct device *dev,
-	    dma_addr_t dma_handle, unsigned long offset, size_t size,
-	    enum dma_data_direction dir);
-	void (*sync_single_range_for_device)(struct device *dev,
-	    dma_addr_t dma_handle, unsigned long offset, size_t size,
-	    enum dma_data_direction dir);
-	void (*sync_sg_for_cpu)(struct device *dev, struct scatterlist *sg,
-	    int nents, enum dma_data_direction dir);
-	void (*sync_sg_for_device)(struct device *dev, struct scatterlist *sg,
-	    int nents, enum dma_data_direction dir);
-	int (*mapping_error)(struct device *dev, dma_addr_t dma_addr);
-	int (*dma_supported)(struct device *dev, u64 mask);
-	int is_phys;
+    void * (*alloc_coherent) (struct device * dev, 
+			      size_t          size,
+			      dma_addr_t    * dma_handle,
+			      gfp_t           gfp);
+    
+    void (*free_coherent) (struct device * dev, 
+			   size_t          size,
+			   void          * vaddr, 
+			   dma_addr_t      dma_handle);
+
+    dma_addr_t (*map_page) (struct device           * dev,
+			    struct page             * page,
+			    unsigned long             offset, 
+			    size_t                    size,
+			    enum dma_data_direction   dir,
+			    struct dma_attrs        * attrs);
+
+    void (*unmap_page)(struct device *dev, dma_addr_t dma_handle,
+		       size_t size, enum dma_data_direction dir, struct dma_attrs *attrs);
+    int (*map_sg)(struct device *dev, struct scatterlist *sg,
+		  int nents, enum dma_data_direction dir, struct dma_attrs *attrs);
+    void (*unmap_sg)(struct device *dev, struct scatterlist *sg, int nents,
+		     enum dma_data_direction dir, struct dma_attrs *attrs);
+    void (*sync_single_for_cpu)(struct device *dev, dma_addr_t dma_handle,
+				size_t size, enum dma_data_direction dir);
+    void (*sync_single_for_device)(struct device *dev,
+				   dma_addr_t dma_handle, size_t size, enum dma_data_direction dir);
+    void (*sync_single_range_for_cpu)(struct device *dev,
+				      dma_addr_t dma_handle, unsigned long offset, size_t size,
+				      enum dma_data_direction dir);
+    void (*sync_single_range_for_device)(struct device *dev,
+					 dma_addr_t dma_handle, unsigned long offset, size_t size,
+					 enum dma_data_direction dir);
+    void (*sync_sg_for_cpu)(struct device *dev, struct scatterlist *sg,
+			    int nents, enum dma_data_direction dir);
+    void (*sync_sg_for_device)(struct device *dev, struct scatterlist *sg,
+			       int nents, enum dma_data_direction dir);
+    int (*mapping_error)(struct device *dev, dma_addr_t dma_addr);
+    int (*dma_supported)(struct device *dev, u64 mask);
+
+    int is_phys;
 };
 
+
 #define	DMA_BIT_MASK(n)	(((n) == 64) ? ~0ULL : ((1ULL << (n)) - 1))
+
+
+/*
+ * NOTE: do not use the below macros in new code and do not add new definitions
+ * here.
+ *
+ * Instead, just open-code DMA_BIT_MASK(n) within your driver
+ */
+#define DMA_64BIT_MASK  DMA_BIT_MASK(64)
+#define DMA_48BIT_MASK  DMA_BIT_MASK(48)
+#define DMA_47BIT_MASK  DMA_BIT_MASK(47)
+#define DMA_40BIT_MASK  DMA_BIT_MASK(40)
+#define DMA_39BIT_MASK  DMA_BIT_MASK(39)
+#define DMA_35BIT_MASK  DMA_BIT_MASK(35)
+#define DMA_32BIT_MASK  DMA_BIT_MASK(32)
+#define DMA_31BIT_MASK  DMA_BIT_MASK(31)
+#define DMA_30BIT_MASK  DMA_BIT_MASK(30)
+#define DMA_29BIT_MASK  DMA_BIT_MASK(29)
+#define DMA_28BIT_MASK  DMA_BIT_MASK(28)
+#define DMA_24BIT_MASK  DMA_BIT_MASK(24)
+
+#define DMA_MASK_NONE   0x0ULL
+
+
+
+#define dma_map_single(d, a, s, r) dma_map_single_attrs(d, a, s, r, NULL)
+#define dma_unmap_single(d, a, s, r) dma_unmap_single_attrs(d, a, s, r, NULL)
+#define dma_map_sg(d, s, n, r) dma_map_sg_attrs(d, s, n, r, NULL)
+#define dma_unmap_sg(d, s, n, r) dma_unmap_sg_attrs(d, s, n, r, NULL)
+
+#define	DEFINE_DMA_UNMAP_ADDR(name)		dma_addr_t name
+#define	DEFINE_DMA_UNMAP_LEN(name)		__u32 name
+#define	dma_unmap_addr(p, name)			((p)->name)
+#define	dma_unmap_addr_set(p, name, v)		(((p)->name) = (v))
+#define	dma_unmap_len(p, name)			((p)->name)
+#define	dma_unmap_len_set(p, name, v)		(((p)->name) = (v))
+
+
 
 static inline int
 dma_supported(struct device *dev, u64 mask)
@@ -271,19 +323,7 @@ static inline unsigned int dma_set_max_seg_size(struct device *dev,
 }
 
 
-#define dma_map_single(d, a, s, r) dma_map_single_attrs(d, a, s, r, NULL)
-#define dma_unmap_single(d, a, s, r) dma_unmap_single_attrs(d, a, s, r, NULL)
-#define dma_map_sg(d, s, n, r) dma_map_sg_attrs(d, s, n, r, NULL)
-#define dma_unmap_sg(d, s, n, r) dma_unmap_sg_attrs(d, s, n, r, NULL)
-
-#define	DEFINE_DMA_UNMAP_ADDR(name)		dma_addr_t name
-#define	DEFINE_DMA_UNMAP_LEN(name)		__u32 name
-#define	dma_unmap_addr(p, name)			((p)->name)
-#define	dma_unmap_addr_set(p, name, v)		(((p)->name) = (v))
-#define	dma_unmap_len(p, name)			((p)->name)
-#define	dma_unmap_len_set(p, name, v)		(((p)->name) = (v))
-
-int
+static inline int
 dma_get_cache_alignment(void)
 {
 	return boot_cpu_data.arch.x86_clflush_size;

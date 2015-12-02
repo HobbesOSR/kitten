@@ -39,7 +39,8 @@
 #define	PAGE_ALIGN(x)	ALIGN(x, PAGE_SIZE)
 
 
-
+/* finds the offset of a buffer in the page it starts in */
+#define offset_in_page(p)       ((unsigned long)(p) & ~PAGE_MASK)
 
 
 static inline void *

@@ -35,9 +35,14 @@
 #include <lwk/types.h>
 #include <lwk/linux_compat.h>
 
+#define __packed __attribute__((packed))
+
+#ifndef __DECONST
+#define __DECONST(type, var)    ((type)(uintptr_t)(const void *)(var))
+#endif
 
 typedef u64 phys_addr_t;
-
+typedef u64 vm_paddr_t;
 typedef unsigned long kernel_ulong_t;
 
 #endif	/* _LINUX_TYPES_H_ */

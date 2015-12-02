@@ -37,12 +37,13 @@
 #define	module_param_call(name, set, get, arg, perm)	
 
 #define	module_param_named(name, var, type, mode)                    	\
-	DRIVER_PARAM_NAMED(name,value,type)
+	DRIVER_PARAM_NAMED(name,var,type)
+
 #define	module_param(var, type, mode)	                          	\
-	DRIVER_PARAM(name,type)
+	DRIVER_PARAM(var,type)
 
 #define module_param_array(var, type, addr_argc, mode)                	\
-        DRIVER_PARAM_ARRAY(name,type,nump)
+        DRIVER_PARAM_ARRAY(var,type,nump)
 
 #define	MODULE_PARM_DESC(name, desc)
 

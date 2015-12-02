@@ -33,7 +33,7 @@
 
 #include <linux/module.h>
 
-#ifdef __linux__
+#if 0 && defined __linux__
 #include <linux/proc_fs.h>
 #endif
 
@@ -49,7 +49,7 @@
 
 #include <rdma/ib_smi.h>
 #include <rdma/ib_user_verbs.h>
-#include <rdma/ib_addr.h>
+//#include <rdma/ib_addr.h>
 
 #include <linux/mlx4/driver.h>
 #include <linux/mlx4/cmd.h>
@@ -72,7 +72,7 @@ MODULE_VERSION(DRV_VERSION);
 
 int mlx4_ib_sm_guid_assign = 1;
 
-#ifdef __linux__
+#if 0 && defined __linux__
 struct proc_dir_entry *mlx4_mrs_dir_entry;
 static struct proc_dir_entry *mlx4_ib_driver_dir_entry;
 #endif
@@ -673,7 +673,7 @@ static int mlx4_ib_dealloc_ucontext(struct ib_ucontext *ibcontext)
 
 	return 0;
 }
-#ifdef __linux__
+#if 0 && defined __linux__
 static unsigned long mlx4_ib_get_unmapped_area(struct file *file,
 			unsigned long addr,
 			unsigned long len, unsigned long pgoff,
@@ -1340,7 +1340,7 @@ static struct device_attribute *mlx4_class_attributes[] = {
 
 static void mlx4_addrconf_ifid_eui48(u8 *eui, u16 vlan_id, struct net_device *dev)
 {
-#ifdef __linux__
+#if 0 && defined __linux__
 	memcpy(eui, dev->dev_addr, 3);
 	memcpy(eui + 5, dev->dev_addr + 3, 3);
 #else
@@ -1414,7 +1414,7 @@ static int update_ipv6_gids(struct mlx4_ib_dev *dev, int port, int clear)
 
 	max_gids = dev->dev->caps.gid_table_len[port];
 
-#ifdef __linux__
+#if 0 && defined __linux__
 	rcu_read_lock();
 	for_each_netdev_rcu(&init_net, tmp) {
 #else
@@ -1454,7 +1454,7 @@ static int update_ipv6_gids(struct mlx4_ib_dev *dev, int port, int clear)
 				}
 			}
 		}
-#ifdef __linux__	
+#if 0 && defined __linux__	
         }
 	rcu_read_unlock();
 #else
@@ -1486,7 +1486,7 @@ static void handle_en_event(struct mlx4_ib_dev *dev, int port, unsigned long eve
 {
 	switch (event) {
 	case NETDEV_UP:
-#ifdef __linux__
+#if 0 && defined __linux__
 	case NETDEV_CHANGEADDR:
 #endif
 		update_ipv6_gids(dev, port, 0);
@@ -1517,7 +1517,7 @@ static int mlx4_ib_netdev_event(struct notifier_block *this, unsigned long event
 	struct mlx4_ib_iboe *iboe;
 	int port;
 
-#ifdef __linux__
+#if 0 && defined __linux__
 	if (!net_eq(dev_net(dev), &init_net))
 		return NOTIFY_DONE;
 #endif
@@ -1774,7 +1774,7 @@ static struct attribute_group diag_counters_group = {
 	.attrs  = diag_rprt_attrs
 };
 
-#ifdef __linux__
+#if 0 && defined __linux__
 static int mlx4_ib_proc_init(void)
 {
 	/* Creating procfs directories /proc/drivers/mlx4_ib/ &&
@@ -1952,7 +1952,7 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
 	ibdev->ib_dev.alloc_ucontext	= mlx4_ib_alloc_ucontext;
 	ibdev->ib_dev.dealloc_ucontext	= mlx4_ib_dealloc_ucontext;
 	ibdev->ib_dev.mmap		= mlx4_ib_mmap;
-#ifdef __linux__
+#if 0 && defined __linux__
 	ibdev->ib_dev.get_unmapped_area = mlx4_ib_get_unmapped_area;
 #endif
 	ibdev->ib_dev.alloc_pd		= mlx4_ib_alloc_pd;
@@ -2350,7 +2350,7 @@ static int __init mlx4_ib_init(void)
 	if (!wq)
 		return -ENOMEM;
 
-#ifdef __linux__
+#if 0 && defined __linux__
 	err = mlx4_ib_proc_init();
 	if (err)
 		goto clean_wq;
@@ -2372,7 +2372,7 @@ clean_mcg:
 	mlx4_ib_mcg_destroy();
 
 clean_proc:
-#ifdef __linux__
+#if 0 && defined __linux__
 	remove_proc_entry(MLX4_IB_MRS_PROC_DIR_NAME,
 			  mlx4_ib_driver_dir_entry);
 	remove_proc_entry(MLX4_IB_DRIVER_PROC_DIR_NAME, NULL);
@@ -2390,7 +2390,7 @@ static void __exit mlx4_ib_cleanup(void)
 	destroy_workqueue(wq);
 
 	/* Remove proc entries */
-#ifdef __linux__
+#if 0 && defined __linux__
 	remove_proc_entry(MLX4_IB_MRS_PROC_DIR_NAME,
 				mlx4_ib_driver_dir_entry);
 	remove_proc_entry(MLX4_IB_DRIVER_PROC_DIR_NAME, NULL);
@@ -2401,19 +2401,3 @@ static void __exit mlx4_ib_cleanup(void)
 module_init_order(mlx4_ib_init, SI_ORDER_MIDDLE);
 module_exit(mlx4_ib_cleanup);
 
-#undef MODULE_VERSION
-#include <sys/module.h>
-static int
-mlx4ib_evhand(module_t mod, int event, void *arg)
-{
-        return (0);
-}
-
-static moduledata_t mlx4ib_mod = {
-        .name = "mlx4ib",
-        .evhand = mlx4ib_evhand,
-};
-
-DECLARE_MODULE(mlx4ib, mlx4ib_mod, SI_SUB_SMP, SI_ORDER_ANY);
-MODULE_DEPEND(mlx4ib, mlx4, 1, 1, 1);
-MODULE_DEPEND(mlx4ib, ibcore, 1, 1, 1);

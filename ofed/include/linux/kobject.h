@@ -54,6 +54,34 @@ struct kobject {
 	//	struct sysctl_oid	*oidp;
 };
 
+
+
+/* Kitten Doesn't support Hotplug, so these become No-ops */
+
+enum kobject_action {
+    KOBJ_ADD,
+    KOBJ_REMOVE,
+    KOBJ_CHANGE,
+    KOBJ_MOVE,
+    KOBJ_ONLINE,
+    KOBJ_OFFLINE,
+    KOBJ_MAX
+};
+
+struct kobj_uevent_env {};
+
+static inline int kobject_uevent(struct kobject *kobj,
+				 enum kobject_action action)
+{ return 0; }
+
+static inline int add_uevent_var(struct kobj_uevent_env *env,
+				 const char *format, ...)
+{ return 0; }
+
+
+/** ** **/
+
+
 static inline void
 kobject_init(struct kobject *kobj, struct kobj_type *ktype)
 {

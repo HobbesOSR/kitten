@@ -12,7 +12,7 @@ config OFED_COMPAT
           This compiles the compatibility layer files without the infiniband drivers
 
 
-#source "ofed/drivers/infiniband/Kconfig"
+source "ofed/drivers/infiniband/Kconfig"
 
 endmenu
 

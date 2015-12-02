@@ -97,11 +97,38 @@ struct device_attribute {
 	struct device_attribute dev_attr_##_name =			\
 	    { { #_name, NULL, _mode }, _show, _store }
 
-#define	dev_err(dev, fmt, ...)	device_printf((dev)->bsddev, fmt, ##__VA_ARGS__)
-#define	dev_warn(dev, fmt, ...)	device_printf((dev)->bsddev, fmt, ##__VA_ARGS__)
-#define	dev_info(dev, fmt, ...)	device_printf((dev)->bsddev, fmt, ##__VA_ARGS__)
-#define	dev_printk(lvl, dev, fmt, ...)					\
-	    device_printf((dev)->bsddev, fmt, ##__VA_ARGS__)
+
+
+/* debugging and troubleshooting/diagnostic helpers. */
+
+static inline 
+const char *dev_driver_string(const struct device *dev)
+{
+	return dev->driver ? dev->driver->name :
+			(dev->bus ? dev->bus->name :
+			(dev->class ? dev->class->name : ""));
+}
+
+#define dev_printk(level, dev, format, arg...)	\
+	printk(level "%s %s: " format , dev_driver_string(dev) , \
+	       dev_name(dev) , ## arg)
+
+#define dev_emerg(dev, format, arg...)		\
+	dev_printk(KERN_EMERG , dev , format , ## arg)
+#define dev_alert(dev, format, arg...)		\
+	dev_printk(KERN_ALERT , dev , format , ## arg)
+#define dev_crit(dev, format, arg...)		\
+	dev_printk(KERN_CRIT , dev , format , ## arg)
+#define dev_err(dev, format, arg...)		\
+	dev_printk(KERN_ERR , dev , format , ## arg)
+#define dev_warn(dev, format, arg...)		\
+	dev_printk(KERN_WARNING , dev , format , ## arg)
+#define dev_notice(dev, format, arg...)		\
+	dev_printk(KERN_NOTICE , dev , format , ## arg)
+#define dev_info(dev, format, arg...)		\
+	dev_printk(KERN_INFO , dev , format , ## arg)
+
+
 
 static inline void *
 dev_get_drvdata(struct device *dev)

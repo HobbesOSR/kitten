@@ -46,6 +46,7 @@
 #define	GFP_HIGHUSER	0
 #define	GFP_HIGHUSER_MOVABLE	0
 #define	GFP_IOFS	GFP_ATOMIC
+#define GFP_ZERO        __GFP_ZERO
 
 static inline void *
 page_address(struct page *page)
@@ -53,6 +54,7 @@ page_address(struct page *page)
 
     return (void *)page->virtual;
 }
+
 
 static inline struct page *
 alloc_pages(gfp_t gfp_mask, int order)
@@ -63,6 +65,7 @@ alloc_pages(gfp_t gfp_mask, int order)
 	goto error;
     }
 
+    /* Pages are always zeroed by Kitten */
     page->virtual = kmem_get_pages(order);
     page->order   = order;
     page->user    = 0;
@@ -77,6 +80,8 @@ alloc_pages(gfp_t gfp_mask, int order)
     return NULL;
 }
 
+
+#define	get_zeroed_pages(mask, order)	alloc_pages(GFP_ZERO,   order);
 #define	get_zeroed_page(mask)	alloc_pages(GFP_ZERO,   0);
 #define	alloc_page(mask)	alloc_pages(GFP_KERNEL, 0);
 #define	__get_free_page(mask)	alloc_pages(GFP_ZERO,   0);
@@ -98,6 +103,12 @@ __free_pages(struct page * page, unsigned int order)
 	kmem_free(page);
 }
 
+
+static inline void
+free_pages(unsigned long addr, int order) 
+{
+    kmem_free_pages((void *)addr, order);
+}
 
 static inline void
 __free_page(struct page * page)

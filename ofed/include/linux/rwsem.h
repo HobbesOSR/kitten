@@ -30,12 +30,9 @@
 
 #include <lwk/semaphore.h>
 
-struct rw_semaphore {
-	struct sx sx;
-};
 
 #define rw_semaphore semaphore
-#defien init_rwsem   init_MUTEX
+#define init_rwsem   init_MUTEX
 
 #define	down_write(_rw)		        down	
 #define	up_write(_rw)		        up

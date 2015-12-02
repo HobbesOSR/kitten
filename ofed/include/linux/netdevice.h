@@ -165,7 +165,7 @@ unregister_netdevice_notifier(struct notifier_block *nb)
 /** JRL:
  * Do we need to reverse the byte order for the addr's??
  */
-
+#if 0
 static inline int
 dev_mc_delete(struct net_device *dev, void *addr, int alen, int all)
 {
@@ -212,4 +212,5 @@ dev_mc_add(struct net_device *dev, void *addr, int alen, int newonly)
 	return 0;
 }
 
+#endif
 #endif	/* _LINUX_NETDEVICE_H_ */
