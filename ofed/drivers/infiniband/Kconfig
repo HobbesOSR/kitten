@@ -33,6 +33,7 @@ config INFINIBAND_USER_MEM
 
 config INFINIBAND_ADDR_TRANS
 	bool
+	depends on INFINIBAND
 	default y
 
 source "ofed/drivers/infiniband/hw/mthca/Kconfig"
