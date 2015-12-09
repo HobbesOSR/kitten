@@ -43,6 +43,9 @@ typedef struct pci_dev {
 	struct pcicfg_hdr	cfg;		//!< a copy of the device's config header
 
 	struct pci_driver *	driver;		//!< the driver associated with this device
+
+	char                    name[80];       //!< the human readable name of the device
+
 } pci_dev_t;
 
 
@@ -197,6 +200,7 @@ pci_dev_t *pci_get_dev_bus_and_slot(uint32_t bus, uint32_t devfn);
 /** Creates a human-readable description of a PCI device. */
 void pci_describe_device(pci_dev_t *dev, size_t len, char *buf);
 
+const char * pci_name(pci_dev_t * dev);
 
 /** Reads a value from a PCI device's config space header. */
 uint32_t pci_read(pci_dev_t *dev, unsigned int reg, unsigned int width);

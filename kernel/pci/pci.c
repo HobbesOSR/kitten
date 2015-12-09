@@ -148,8 +148,7 @@ pci_scan_bus(pci_bus_t * bus)
 			list_add_tail(&new_dev->next, &pci_devices);
 
 			/* Create human-readable string describing the device */
-			char desc[80];
-			pci_describe_device(new_dev, sizeof(desc), desc);
+			pci_describe_device(new_dev, sizeof(new_dev->name), new_dev->name);
 
 			printk(KERN_INFO
 				"    Found PCI Device: %u:%u.%u %4x:%-4x %s\n",
@@ -158,7 +157,7 @@ pci_scan_bus(pci_bus_t * bus)
 				func,
 				(unsigned int) new_dev->cfg.vendor_id,
 				(unsigned int) new_dev->cfg.device_id,
-				desc
+				new_dev->name
 			);
 		}
 	}
@@ -217,6 +216,13 @@ pci_get_dev_bus_and_slot(uint32_t bus, uint32_t devfn)
     return NULL;
 }
 
+
+
+const char *
+pci_name(pci_dev_t * dev)
+{
+    return dev->name;
+}
 
 /** Reads a value from a PCI device's config space header. */
 uint32_t
