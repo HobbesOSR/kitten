@@ -62,6 +62,63 @@ typedef struct pci_dev_id {
 } pci_dev_id_t;
 
 
+typedef unsigned int __bitwise pci_ers_result_t;
+typedef unsigned int __bitwise pci_channel_state_t;
+
+typedef struct pm_message {
+        int event;
+} pm_message_t;
+
+
+
+enum pci_channel_state {
+        /* I/O channel is in normal state */
+        pci_channel_io_normal = (__force pci_channel_state_t) 1,
+
+        /* I/O to channel is blocked */
+        pci_channel_io_frozen = (__force pci_channel_state_t) 2,
+
+        /* PCI card is dead */
+        pci_channel_io_perm_failure = (__force pci_channel_state_t) 3,
+};
+
+enum pci_ers_result {
+        /* no result/none/not supported in device driver */
+        PCI_ERS_RESULT_NONE = (__force pci_ers_result_t) 1,
+
+        /* Device driver can recover without slot reset */
+        PCI_ERS_RESULT_CAN_RECOVER = (__force pci_ers_result_t) 2,
+
+        /* Device driver wants slot to be reset. */
+        PCI_ERS_RESULT_NEED_RESET = (__force pci_ers_result_t) 3,
+
+        /* Device has completely failed, is unrecoverable */
+        PCI_ERS_RESULT_DISCONNECT = (__force pci_ers_result_t) 4,
+
+        /* Device driver is fully recovered and operational */
+        PCI_ERS_RESULT_RECOVERED = (__force pci_ers_result_t) 5,
+};
+
+/* PCI bus error event callbacks */
+struct pci_error_handlers {
+        /* PCI bus error detected on this device */
+        pci_ers_result_t (*error_detected)(struct pci_dev *dev,
+                        enum pci_channel_state error);
+
+        /* MMIO has been re-enabled, but not DMA */
+        pci_ers_result_t (*mmio_enabled)(struct pci_dev *dev);
+
+        /* PCI Express link has been reset */
+        pci_ers_result_t (*link_reset)(struct pci_dev *dev);
+
+        /* PCI slot has been reset */
+        pci_ers_result_t (*slot_reset)(struct pci_dev *dev);
+
+        /* Device driver may resume normal operations */
+        void (*resume)(struct pci_dev *dev);
+};
+
+
 /** Describes a PCI driver.
  *
  * One of these structures exist for each PCI device driver that has
@@ -71,7 +128,12 @@ typedef struct pci_driver {
 	struct list_head	next;		//!< linkage for the global list of PCI drivers
 	char *			name;		//!< human readable name of the device
 	const pci_dev_id_t *	id_table;	//!< array of PCI device IDs the driver can handle
-	int (*probe)(pci_dev_t *dev, const pci_dev_id_t *id);
+	int  (*probe)   (pci_dev_t *dev, const pci_dev_id_t *id);
+	void (*remove)  (struct pci_dev * dev);
+        int  (*suspend) (struct pci_dev * dev, pm_message_t state);      /* Device suspended */
+        int  (*resume)  (struct pci_dev * dev);                          /* Device woken up */
+
+        struct pci_error_handlers * err_handler;
 } pci_driver_t;
 
 
@@ -118,6 +180,8 @@ void init_pci(void);
 
 /** Registers a PCI driver with the LWK. */
 int pci_register_driver(pci_driver_t *driver);
+
+void pci_unregister_driver(pci_driver_t * driver);
 
 /** Finds a PCI driver suitable for the PCI device passed in. */
 pci_driver_t *pci_find_driver(const pci_dev_t *dev, const pci_dev_id_t **idp);
