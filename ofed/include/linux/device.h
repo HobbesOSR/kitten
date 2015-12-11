@@ -52,24 +52,34 @@ struct class {
 	const char	*name;
 	struct module	*owner;
 	struct kobject	kobj;
-    //	devclass_t	bsdclass;
+
+	struct class_attribute		*class_attrs;
+	struct device_attribute		*dev_attrs;
+
 	void		(*class_release)(struct class *class);
 	void		(*dev_release)(struct device *dev);
+
+	//	struct class_private *p;
 };
+
+
+
 
 struct device {
 	struct device	*parent;
-	struct list_head irqents;
-    //	device_t	bsddev;
+
+
 	dev_t		devt;
 	struct class	*class;
 	void		(*release)(struct device *dev);
 	struct kobject	kobj;
+
+
 	uint64_t	*dma_mask;
 	void		*driver_data;
 	unsigned int	irq;
-	unsigned int	msix;
-	unsigned int	msix_max;
+	//	unsigned int	msix;
+	//	unsigned int	msix_max;
 };
 
 extern struct device linux_rootdev;
@@ -104,9 +114,12 @@ struct device_attribute {
 static inline 
 const char *dev_driver_string(const struct device *dev)
 {
+	/*
 	return dev->driver ? dev->driver->name :
 			(dev->bus ? dev->bus->name :
 			(dev->class ? dev->class->name : ""));
+	*/
+	return dev->class ? dev->class->name : "";
 }
 
 #define dev_printk(level, dev, format, arg...)	\
