@@ -46,7 +46,7 @@ xpmem_try_get_remote(struct xpmem_thread_group * seg_tg,
     size_t        size      = 0;
     int           status    = 0;
     int           seg_flags = 0;
-    
+
     status = xpmem_get_remote(
         xpmem_my_part->domain_link,
         segid,
@@ -329,10 +329,6 @@ xpmem_release_ap(struct xpmem_thread_group *ap_tg,
     list_del_init(&ap->ap_node);
     spin_unlock(&seg->lock);
     
-    /* Release shadow seg */
-    if (seg->flags & XPMEM_FLAG_SHADOW)
-        xpmem_remove_seg(seg_tg, seg);
-
     xpmem_seg_deref(seg);   /* deref of xpmem_get()'s ref */
     xpmem_tg_deref(seg_tg); /* deref of xpmem_get()'s ref */
 

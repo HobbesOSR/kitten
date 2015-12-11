@@ -151,8 +151,12 @@ xpmem_make_segment(vaddr_t                     vaddr,
     list_add_tail(&seg->seg_node, &seg_tg->seg_list);
     write_unlock(&seg_tg->seg_list_lock);
 
-    /* add seg to global hash list of well-known segids, if necessary */
-    if (segid <= XPMEM_MAX_WK_SEGID) {
+    /* add seg to global hash list of well-known segids, if necessary. Note
+     * that shadow segments are not added to the wk list, because multiple 
+     * shadow segments from different tgs can have the same segid
+     */
+    if ((segid <= XPMEM_MAX_WK_SEGID) &&
+        (!(seg->flags & XPMEM_FLAG_SHADOW))) {
         write_lock(&xpmem_my_part->wk_segid_to_gid_lock);
         xpmem_my_part->wk_segid_to_gid[segid] = seg_tg->gid;
         write_unlock(&xpmem_my_part->wk_segid_to_gid_lock);
@@ -264,7 +268,8 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
     BUG_ON(atomic_read(&seg->refcnt) <= 0);
 
     /* see if the requesting thread is the segment's owner */
-    if (current->aspace->id != seg_tg->gid)
+    if ( (current->aspace->id != seg_tg->gid) &&
+	!(seg->flags & XPMEM_FLAG_SHADOW))
         return -EACCES;
 
     spin_lock(&seg->lock);
