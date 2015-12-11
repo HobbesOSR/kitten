@@ -217,6 +217,12 @@ pci_get_dev_bus_and_slot(uint32_t bus, uint32_t devfn)
 }
 
 
+int 
+pci_find_capability(pci_dev_t * dev, int capid)
+{
+    return pcicfg_find_cap_offset(dev->parent_bus->bus, dev->slot, dev->func, &(dev->cfg), capid);
+}
+
 
 const char *
 pci_name(pci_dev_t * dev)

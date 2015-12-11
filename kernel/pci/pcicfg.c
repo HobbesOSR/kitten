@@ -141,6 +141,50 @@ pcicfg_hdrtypedata(
 }
 
 
+int
+pcicfg_find_cap_offset(
+	unsigned int   bus,
+	unsigned int   slot,
+	unsigned int   func,
+	pcicfg_hdr_t * hdr,
+	unsigned int   capid
+)
+{
+	int ptr, ptrptr;
+	
+	/* Figure out where to start */
+	switch (hdr->hdr_type) {
+	case 0:
+	case 1:  ptrptr = PCIR_CAP_PTR;   break;
+	case 2:  ptrptr = PCIR_CAP_PTR_2; break;
+	default: return 0;  /* no extended capabilities support */
+	}
+
+	/* Scan entries in the capability list */
+	ptr = RREG( ptrptr, 1 );
+	while (ptr != 0)
+	{
+		/* Sanity check */
+		if (ptr > 255) {
+			printk(KERN_WARNING
+				"Illegal PCI extended capability offset %d.",
+				ptr
+			);
+			return 0;
+		}
+
+		if (RREG( ptr + PCICAP_ID, 1) == capid) {
+			return ptr;
+		}
+
+		/* Find the next entry */
+		ptr = RREG( ptr + PCICAP_NEXTPTR, 1 );
+	}
+
+	return 0;
+}
+
+
 /** Reads PCI extended capabilities. */
 static void
 pcicfg_read_extcap(
