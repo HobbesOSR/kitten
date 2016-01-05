@@ -38,13 +38,13 @@ extern void __chk_io_ptr(void __iomem *);
 
 #ifdef __KERNEL__
 
-#if __GNUC__ > 4
-#error no compiler-gcc.h file for this gcc version
-#elif __GNUC__ == 4
-# include <lwk/compiler-gcc4.h>
+#if __GNUC__ >= 4
+# include <lwk/compiler-gcc.h>
 #else
 # error Sorry, your compiler is too old/not recognized.
 #endif
+
+#define notrace __attribute__((no_instrument_function))
 
 /*
  * Generic compiler-dependent macros required for kernel
