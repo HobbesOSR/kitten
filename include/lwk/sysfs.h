@@ -26,8 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef	_LINUX_SYSFS_H_
-#define	_LINUX_SYSFS_H_
+#ifndef	_LWK_SYSFS_H_
+#define	_LWK_SYSFS_H_
 
 #include <lwk/kfs.h>
 

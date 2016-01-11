@@ -730,6 +730,8 @@ void kfs_init_stdio(struct task_struct *task)
 	}
 }
 
+extern struct inode * sysfs_root;
+
 void
 kfs_init( void )
 {
@@ -744,6 +746,10 @@ kfs_init( void )
 
 	if (!kfs_mkdir("/tmp", 0777))
 		panic("Failed to 'mkdir /tmp'.");
+
+	sysfs_root = kfs_mkdir("/sys", 0777);
+	if (!sysfs_root) 
+		panic("Failed to 'mkdir /sys'.");
 
 	// Bring up any kfs drivers that we have linked in
 	driver_init_by_name( "kfs", "*" );
