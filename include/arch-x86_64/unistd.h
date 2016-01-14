@@ -572,7 +572,7 @@ __SYSCALL(__NR_inotify_rm_watch, syscall_not_implemented)
 #define __NR_migrate_pages	256
 __SYSCALL(__NR_migrate_pages, syscall_not_implemented)
 #define __NR_openat		257
-__SYSCALL(__NR_openat, syscall_not_implemented)
+__SYSCALL(__NR_openat, sys_openat)
 #define __NR_mkdirat		258
 __SYSCALL(__NR_mkdirat, syscall_not_implemented)
 #define __NR_mknodat		259

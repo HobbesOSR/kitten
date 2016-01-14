@@ -195,6 +195,16 @@ extern struct inode *kfs_create(const char *,
 				void *,
 				size_t);
 
+extern struct inode *kfs_create_at(struct inode *,
+				   const char *,
+				   const struct inode_operations *,
+				   const struct kfs_fops *,
+				   unsigned,
+				   void *,
+				   size_t);
+
+
+
 extern struct inode *kfs_link(struct inode *, struct inode *, const char *);
 
 /* generally useful file ops */
@@ -203,10 +213,18 @@ extern int kfs_readdir(struct file *, uaddr_t, unsigned int, dirent_filler f);
 extern void kfs_close( struct file* );
 
 /* kfs path operations */
-extern int kfs_open_path(const char *pathname,
-		int flags,
-		mode_t mode,
-		struct file **rv);
+
+extern int kfs_open_path_at(struct inode * root_inode, 
+			    const char   * pathname,
+			    int            flags,
+			    mode_t         mode,
+			    struct file ** rv);
+
+extern int kfs_open_path(const char   * pathname,
+			 int            flags,
+			 mode_t         mode,
+			 struct file ** rv);
+
 
 extern int kfs_open_anon(const struct kfs_fops * fops, void * priv_data);
 

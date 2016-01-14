@@ -46,6 +46,7 @@ obj-y := \
 	read.o	 \
 	close.o	 \
 	open.o	 \
+	openat.o \
 	mknod.o	 \
 	mkdir.o	 \
 	unlink.o \
