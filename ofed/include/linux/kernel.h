@@ -97,8 +97,10 @@
 
 
 /* JRL: huh? What is this? */
+/*
 typedef struct pm_message {
         int event;
 } pm_message_t;
+*/
 
 #endif	/* _LINUX_KERNEL_H_ */

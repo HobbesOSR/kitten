@@ -142,7 +142,7 @@ pci_resource_start(struct pci_dev * dev,
     
     pcicfg_bar_decode(&(dev->cfg), bar, &tmp_bar);
 
-    return bar.address;
+    return tmp_bar.address;
 }
 
 static inline unsigned long 
@@ -153,7 +153,7 @@ pci_resource_len(struct pci_dev * dev,
 
     pcicfg_bar_decode(&(dev->cfg), bar, &tmp_bar);
 
-    return bar.size;
+    return tmp_bar.size;
 }
 
 /*
@@ -192,8 +192,8 @@ pci_set_drvdata(struct pci_dev *pdev, void *data)
 static inline int
 pci_enable_device(struct pci_dev *pdev)
 {
-	pci_mmio_enable(pdev->lwk_dev);
-	pci_ioport_enable(pdev->lwk_dev);
+	pci_mmio_enable(pdev);
+	pci_ioport_enable(pdev);
     
 	return (0);
 }
@@ -206,7 +206,7 @@ pci_disable_device(struct pci_dev *pdev)
 static inline int
 pci_set_master(struct pci_dev *pdev)
 {
-    pci_dma_dnable(pdev->lwk_dev);
+    pci_dma_enable(pdev);
     return (0);
 }
 
@@ -215,7 +215,7 @@ pci_request_region(struct pci_dev * pdev,
 		   int              bar, 
 		   const char     * res_name)
 {
-	int ret   = 0;
+	struct resource * region = NULL;
 	
 	unsigned long res_start = 0;
 	unsigned long res_len   = 0;
@@ -230,10 +230,10 @@ pci_request_region(struct pci_dev * pdev,
 	res_len   = pci_resource_len  (pdev, bar);
 	
 
-	ret = (res_flags & IORESOURCE_IO)  ? request_region     ( res_start, res_len, res_name ) :
-	      (res_flags & IORESOURCE_MEM) ? request_mem_region ( res_start, res_len, res_name ) : 0;
+	region = (res_flags & IORESOURCE_IO)  ? request_region     ( res_start, res_len, res_name ) :
+	         (res_flags & IORESOURCE_MEM) ? request_mem_region ( res_start, res_len, res_name ) : NULL;
 
-	if (!ret) goto err_out;
+	if (!region) goto err_out;
 
 	return 0;
 
@@ -242,7 +242,9 @@ pci_request_region(struct pci_dev * pdev,
 		 bar,
 		 (pci_resource_flags(pdev, bar) & IORESOURCE_IO) ? "I/O" : "mem",
 		 (unsigned long long)pci_resource_start ( pdev, bar ),
-		 (unsigned long long)pci_resource_end   ( pdev, bar ) );
+		 ( (unsigned long long)pci_resource_start ( pdev, bar ) +
+		   (unsigned long long)pci_resource_len   ( pdev, bar )  )
+		 );
 	return -EBUSY;   
 	
 }
@@ -264,7 +266,7 @@ pci_release_region(struct pci_dev *pdev, int bar)
 	res_len   = pci_resource_len  (pdev, bar);
 	
 	(res_flags & IORESOURCE_IO)  ? release_region     ( res_start, res_len ) :
-	(res_flags & IORESOURCE_MEM) ? release_mem_region ( res_start, res_len ) : ;
+	(res_flags & IORESOURCE_MEM) ? release_mem_region ( res_start, res_len ) : 0;
 }
 
 
@@ -375,12 +377,13 @@ pci_write_config_dword(struct pci_dev *pdev, int where, u32 val)
 
 
 
+#if 0
 static struct pci_driver *
 linux_pci_find(device_t dev, struct pci_device_id **idp)
 {
     return pci_find_driver(dev, idp);
 }
-
+#endif
 
 
 
