@@ -16,9 +16,9 @@
 #define SMP_MAGIC_IDENT	(('_'<<24)|('P'<<16)|('M'<<8)|'_')
 
 /*
- * A maximum of 255 APICs with the current APIC ID architecture.
+ * Maximum number of APICs supported.
  */
-#define MAX_APICS 255
+#define MAX_APICS 512
 
 struct intel_mp_floating
 {
