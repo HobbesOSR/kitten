@@ -413,7 +413,7 @@ early_identify_cpu(struct cpuinfo *c)
 	/*
  	 * Zero structure, except apic_id should have already been filled in.
  	 */
-	uint8_t apic_id = a->apic_id;
+	uint32_t apic_id = a->apic_id;
 	memset(a, 0, sizeof(*a));
 	a->apic_id = apic_id;
 
