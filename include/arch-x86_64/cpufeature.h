@@ -275,6 +275,7 @@
 #define cpu_has_clflush	       boot_cpu_has(X86_FEATURE_CLFLSH)
 #define cpu_has_ds             boot_cpu_has(X86_FEATURE_DS)
 #define cpu_has_bts            boot_cpu_has(X86_FEATURE_BTS)
-#define cpu_has_x2apic         boot_cpu_has(X86_FEATURE_X2APIC)
+//#define cpu_has_x2apic         boot_cpu_has(X86_FEATURE_X2APIC)
+#define cpu_has_x2apic         0
 
 #endif /* _X86_64_CPUFEATURE_H */
