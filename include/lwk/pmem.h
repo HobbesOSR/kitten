@@ -42,6 +42,7 @@ struct pmem_region {
  * Core physical memory management functions.
  */
 int pmem_add(const struct pmem_region *rgn);
+int pmem_del(const struct pmem_region *rgn);
 int pmem_update(const struct pmem_region *update);
 int pmem_query(const struct pmem_region *query, struct pmem_region *result);
 int pmem_alloc(size_t size, size_t alignment,
