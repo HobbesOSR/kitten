@@ -5,7 +5,6 @@
 #include <lwk/smp.h>
 #include <lwk/cpuinfo.h>
 
-#define CACHE_LINE_SIZE 128
 
 /*
  * linux 2.6.27.57 code
