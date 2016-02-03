@@ -145,7 +145,18 @@ pci_scan_bus(pci_bus_t * bus)
 			new_dev->parent_bus = bus;
 			new_dev->slot       = slot;
 			new_dev->func       = func;
+
+			/* Redundant fields. Needed for Linux compatibility */
+			new_dev->devfn      = PCI_DEVFN(slot, func); 
+			new_dev->device     = new_dev->cfg.device_id;
+			new_dev->vendor     = new_dev->cfg.vendor_id;
+			new_dev->revision   = new_dev->cfg.rev_id;
+
 			new_dev->driver	    = NULL;			
+
+			/* For now we are going to disable all legacy IRQs in Kitten */
+			/* This will cause request_irq to fail when called with this as an argument */
+			new_dev->irq        = (uint32_t)(-1);
 
 			/* Add new device onto parent bus's list of devices */
 			list_add_tail(&new_dev->siblings, &bus->devices);
@@ -209,8 +220,6 @@ pci_lookup_device(uint16_t vendor_id, uint16_t device_id)
 
 	return NULL;
 }
-
-#define PCI_DEVFN(slot, func) ((((slot) & 0x1f) << 3) | ((func) & 0x07))
 
 pci_dev_t *
 pci_get_dev_bus_and_slot(uint32_t bus, uint32_t devfn)

@@ -43,6 +43,20 @@ typedef struct pci_dev {
 	uint8_t			slot;		//!< config space slot number of the device
 	uint8_t			func;		//!< config space function number of the device
 
+
+	/* Redundant fields ; needed for Linux Compatibility 
+	 *  True location is in the pcicfg_hdr structure 
+	 */
+	uint8_t                 devfn;          //!< replicated slot/func values for portability with drivers	
+	uint8_t                 revision;
+        uint16_t                device;         //!< This slots PCI device ID
+        uint16_t                vendor;         //!< This devices PCI vendor ID
+	/* ** */
+
+
+	uint32_t                irq;            //!< Legacy IRQ number assigned to this PCI device
+
+
 	struct pci_bus *	parent_bus;	//!< pointer to this device's parent bus
 	struct pcicfg_hdr	cfg;		//!< a copy of the device's config header
 
