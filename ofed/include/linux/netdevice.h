@@ -38,6 +38,7 @@
 #include <net/if_dl.h>
 */
 
+#include <lwk/if.h>
 #include <lwip/netif.h>
 #include <lwip/igmp.h>
 
@@ -49,22 +50,78 @@
 #include <linux/net.h>
 #include <linux/notifier.h>
 
-struct net {
-};
 
-extern struct net init_net;
+extern rwlock_t dev_base_lock;
+#define for_each_netdev(net, d)						\
+	list_for_each_entry(d, &(net)->dev_base_head, dev_list)
+
+struct net {
+	struct list_head        dev_base_head;
+};
 
 #define	MAX_ADDR_LEN		20
 
-#define	net_device	netif
+struct net_device {
+	char            name[IFNAMSIZ];
+	
+	unsigned char       addr_len;   /* hardware address length  */
+	
+	unsigned short type;
+	/* Interface address info used in eth_type_trans() */
+	unsigned char       dev_addr[MAX_ADDR_LEN]; /* hw address, (before bcast 
+						       because most packets are unicast) */
+	
+	unsigned char       broadcast[MAX_ADDR_LEN];    /* hw bcast add */
+	struct list_head        dev_list;
+	atomic_t                refcnt ____cacheline_aligned_in_smp;
+	
+	
+	unsigned int flags;
+	unsigned int priv_flags;
+	const struct ethtool_ops *ethtool_ops;
+	unsigned                mtu; 
+	int                     ifindex;
+
+        void * priv_data;
+};
+
+struct ethtool_cmd {
+	u32 cmd;
+	u32 supported;
+	u16 speed;
+};
+
+
+struct ethtool_ops {
+        int     (*get_settings)(struct net_device *, struct ethtool_cmd *);
+};
+
+
+extern struct net init_net;
+
+
+void rtnl_lock(void);
+void rtnl_unlock(void);
 
 
 #define	dev_hold(d)	
 #define	dev_put(d)	
 
-#define	netif_running(dev)	netif_is_up(dev)
-#define	netif_oper_up(dev)	netif_is_link_up(dev)
 #define	netif_carrier_ok(dev)	netif_running(dev)
+
+static inline int netif_running(const struct net_device *dev)
+{
+	STOP_HERE("\n");
+	return 1;//test_bit(__LINK_STATE_START, &dev->state);
+}
+
+static inline int netif_oper_up(const struct net_device *dev)
+{
+        return 1;//(dev->operstate == IF_OPER_UP ||
+                 //dev->operstate == IF_OPER_UNKNOWN /* backward compat */);
+}
+
+
 
 
 
@@ -74,57 +131,18 @@ extern struct net init_net;
 static inline struct net_device *
 dev_get_by_index(struct net *net, int ifindex)
 {
-    struct netif *netif;
-    
-    for(netif = netif_list; netif != NULL; netif = netif->next) {
-	if (ifindex == netif->num ) {
-	    LWIP_DEBUGF(NETIF_DEBUG, ("netif_find: found %c%c\n", netif->name[0], netif->name[1]));
-	    return netif;
-	}
-    }
-    
-    return NULL;
+	STOP_HERE("\n");
+	return NULL;
 }
 
 
 static inline void *
 netdev_priv(const struct net_device *dev)
 {
-	return (dev->state);
+	return (dev->priv_data);
 }
 
-/*
-static inline void
-_handle_ifnet_link_event(void *arg, struct ifnet *ifp, int linkstate)
-{
-	struct notifier_block *nb;
 
-	nb = arg;
-	if (linkstate == LINK_STATE_UP)
-		nb->notifier_call(nb, NETDEV_UP, ifp);
-	else
-		nb->notifier_call(nb, NETDEV_DOWN, ifp);
-}
-
-static inline void
-_handle_ifnet_arrival_event(void *arg, struct ifnet *ifp)
-{
-	struct notifier_block *nb;
-
-	nb = arg;
-	nb->notifier_call(nb, NETDEV_REGISTER, ifp);
-}
-
-static inline void
-_handle_ifnet_departure_event(void *arg, struct ifnet *ifp)
-{
-	struct notifier_block *nb;
-
-	nb = arg;
-	nb->notifier_call(nb, NETDEV_UNREGISTER, ifp);
-}
-
-*/
 static inline int
 register_netdevice_notifier(struct notifier_block *nb)
 {
@@ -134,37 +152,26 @@ register_netdevice_notifier(struct notifier_block *nb)
       netif_set_remove_callback();
     */
 
-    /*
-	nb->tags[NETDEV_UP] = EVENTHANDLER_REGISTER(
-	    ifnet_link_event, _handle_ifnet_link_event, nb, 0);
-	nb->tags[NETDEV_REGISTER] = EVENTHANDLER_REGISTER(
-	    ifnet_arrival_event, _handle_ifnet_arrival_event, nb, 0);
-	nb->tags[NETDEV_UNREGISTER] = EVENTHANDLER_REGISTER(
-	    ifnet_departure_event, _handle_ifnet_departure_event, nb, 0);
-    */
+
 	return (0);
 }
 
 static inline int
 unregister_netdevice_notifier(struct notifier_block *nb)
 {
-
-    /*
-        EVENTHANDLER_DEREGISTER(ifnet_link_event, nb->tags[NETDEV_UP]);
-        EVENTHANDLER_DEREGISTER(ifnet_arrival_event, nb->tags[NETDEV_REGISTER]);
-        EVENTHANDLER_DEREGISTER(ifnet_departure_event,
-	    nb->tags[NETDEV_UNREGISTER]);
-    */
+	STOP_HERE("\n");
 	return (0);
 }
 
-#define	rtnl_lock()
-#define	rtnl_unlock()
 
+struct net_device * ip_dev_find(struct net *net, uint32_t addr);
 
 /** JRL:
  * Do we need to reverse the byte order for the addr's??
  */
+static inline int dev_mc_delete(struct net_device *dev, void *addr, int alen, int all)  { return 0; }
+static inline int dev_mc_add(struct net_device *dev, void *addr, int alen, int newonly) { return 0; }
+
 #if 0
 static inline int
 dev_mc_delete(struct net_device *dev, void *addr, int alen, int all)

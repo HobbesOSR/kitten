@@ -236,13 +236,10 @@ static void process_mod_param_profile(struct mlx4_profile *profile)
 		profile->num_mtt = 1 << mod_param_profile.num_mtt;
 	else {
 		profile->num_mtt =
-			roundup_pow_of_two(max_t(unsigned,
-						1 << (MLX4_LOG_NUM_MTT - log_mtts_per_seg),
-						min(1UL << 
-						(MLX4_MAX_LOG_NUM_MTT -
-						log_mtts_per_seg),
-						(hwphyssz << 1)
-						>> log_mtts_per_seg)));
+		    roundup_pow_of_two(max_t(unsigned,
+					     1U << (MLX4_LOG_NUM_MTT - log_mtts_per_seg),
+					     min(1U << (MLX4_MAX_LOG_NUM_MTT - log_mtts_per_seg),
+						 (hwphyssz << 1) >> log_mtts_per_seg)));
 		/* set the actual value, so it will be reflected to the user
 		   using the sysfs */
 		mod_param_profile.num_mtt = ilog2(profile->num_mtt * (1 << log_mtts_per_seg));
@@ -2862,17 +2859,4 @@ static void __exit mlx4_cleanup(void)
 module_init_order(mlx4_init, SI_ORDER_MIDDLE);
 module_exit(mlx4_cleanup);
 
-#undef MODULE_VERSION
-#include <sys/module.h>
-static int
-mlx4_evhand(module_t mod, int event, void *arg)
-{
-	return (0);
-}
 
-static moduledata_t mlx4_mod = {
-	.name = "mlx4",
-	.evhand = mlx4_evhand,
-};
-MODULE_VERSION(mlx4, 1);
-DECLARE_MODULE(mlx4, mlx4_mod, SI_SUB_SMP, SI_ORDER_ANY);

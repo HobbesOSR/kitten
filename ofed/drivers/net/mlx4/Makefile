@@ -1,4 +1,4 @@
-obj-$(CONFIG_MLX4_CORE)  :=  alloc.o catas.o cmd.o cq.o eq.o fw.o icm.o intf.o main.o mcg.o \
+obj-$(CONFIG_MLX4_INFINIBAND)  :=  alloc.o catas.o cmd.o cq.o eq.o fw.o icm.o intf.o main.o mcg.o \
 		                mr.o pd.o port.o profile.o qp.o reset.o resource_tracker.o \
 				 sense.o srq.o sys_tune.o xrcd.o
 

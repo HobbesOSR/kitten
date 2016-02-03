@@ -32,7 +32,7 @@
 #include <asm/page.h>
 #include <lwk/aspace.h>
 #include <arch/pgtable.h>
-
+#include <arch/io.h>
 
 #define	VM_MAP		VM_SMARTMAP
 

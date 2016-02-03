@@ -68,11 +68,16 @@ struct pci_device_id {
 
 
 #define PCI_VDEVICE(_vendor, _device)					\
-	    .vendor = PCI_VENDOR_ID_##_vendor, .device = (_device),	\
-	    .subvendor = PCI_ANY_ID, .subdevice = PCI_ANY_ID
+        .vendor_id    = PCI_VENDOR_ID_##_vendor,			\
+	.device_id    = (_device),			       		\
+	.subvendor_id = PCI_ANY_ID,					\
+	.subdevice_id = PCI_ANY_ID
+
 #define	PCI_DEVICE(_vendor, _device)					\
-	    .vendor = (_vendor), .device = (_device),			\
-	    .subvendor = PCI_ANY_ID, .subdevice = PCI_ANY_ID
+        .vendor_id    = (_vendor),					\
+	.device_id    = (_device),					\
+	.subvendor_id = PCI_ANY_ID,					\
+	.subdevice_id = PCI_ANY_ID
 
 #define	to_pci_dev(n)	container_of(n, struct pci_dev, dev)
 

@@ -29,11 +29,13 @@
 #ifndef _LINUX_DMAPOOL_H_
 #define	_LINUX_DMAPOOL_H_
 
+
 #include <linux/types.h>
 #include <linux/io.h>
 #include <linux/scatterlist.h>
 #include <linux/device.h>
 #include <linux/slab.h>
+#include <linux/dma-mapping.h>
 
 struct dma_pool {
 	struct list_head        page_list;

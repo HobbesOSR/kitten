@@ -49,7 +49,7 @@
 
 #include <rdma/ib_smi.h>
 #include <rdma/ib_user_verbs.h>
-//#include <rdma/ib_addr.h>
+#include <rdma/ib_addr.h>
 
 #include <linux/mlx4/driver.h>
 #include <linux/mlx4/cmd.h>
@@ -76,6 +76,7 @@ int mlx4_ib_sm_guid_assign = 1;
 struct proc_dir_entry *mlx4_mrs_dir_entry;
 static struct proc_dir_entry *mlx4_ib_driver_dir_entry;
 #endif
+
 
 module_param_named(sm_guid_assign, mlx4_ib_sm_guid_assign, int, 0444);
 MODULE_PARM_DESC(sm_guid_assign, "Enable SM alias_GUID assignment if sm_guid_assign > 0 (Default: 1)");
@@ -327,7 +328,6 @@ static u8 state_to_phys_state(enum ib_port_state state)
 static int eth_link_query_port(struct ib_device *ibdev, u8 port,
 			       struct ib_port_attr *props, int netw_view)
 {
-
 	struct mlx4_ib_dev *mdev = to_mdev(ibdev);
 	struct mlx4_ib_iboe *iboe = &mdev->iboe;
 	struct net_device *ndev;
@@ -365,8 +365,12 @@ static int eth_link_query_port(struct ib_device *ibdev, u8 port,
 	ndev = iboe->netdevs[port - 1];
 	if (!ndev)
 		goto out_unlock;
-
+#ifdef __linux__
+	tmp = iboe_get_mtu(ndev->mtu);
+#else 
 	tmp = iboe_get_mtu(ndev->if_mtu);
+#endif
+
 	props->active_mtu = tmp ? min(props->max_mtu, tmp) : IB_MTU_256;
 
 	props->state		= (netif_running(ndev) && netif_carrier_ok(ndev)) ?
@@ -377,6 +381,7 @@ out_unlock:
 out:
 	mlx4_free_cmd_mailbox(mdev->dev, mailbox);
 	return err;
+
 }
 
 int __mlx4_ib_query_port(struct ib_device *ibdev, u8 port,
@@ -1340,7 +1345,7 @@ static struct device_attribute *mlx4_class_attributes[] = {
 
 static void mlx4_addrconf_ifid_eui48(u8 *eui, u16 vlan_id, struct net_device *dev)
 {
-#if 0 && defined __linux__
+#ifdef __linux__
 	memcpy(eui, dev->dev_addr, 3);
 	memcpy(eui + 5, dev->dev_addr + 3, 3);
 #else
@@ -1414,7 +1419,10 @@ static int update_ipv6_gids(struct mlx4_ib_dev *dev, int port, int clear)
 
 	max_gids = dev->dev->caps.gid_table_len[port];
 
-#if 0 && defined __linux__
+#ifdef __LWK__
+	read_lock(&dev_base_lock);
+	for_each_netdev(&init_net, tmp) {
+#elif defined(__linux__)
 	rcu_read_lock();
 	for_each_netdev_rcu(&init_net, tmp) {
 #else
@@ -1454,7 +1462,11 @@ static int update_ipv6_gids(struct mlx4_ib_dev *dev, int port, int clear)
 				}
 			}
 		}
-#if 0 && defined __linux__	
+
+#ifdef __LWK__
+	}
+	read_unlock(&dev_base_lock);
+#elif defined __linux__	
         }
 	rcu_read_unlock();
 #else

@@ -47,5 +47,16 @@ struct page {
 #define	clear_page(page)		memset((page), 0, PAGE_SIZE)
 
 
+/* This is a PAT operation that enables write combining
+   Kitten doesn't have PAT support, so we'll just set it to write-through here
+   This might be a problem
+*/
+static inline pgprot_t pgprot_writecombine(pgprot_t _prot)
+{
+    printk(KERN_WARNING "Requested Write combining, but we are only setting Write Through. This might cause the machine to crash.\n");
+    
+    return __pgprot(pgprot_val(_prot) | _PAGE_CACHE_WC);
+}
+
 
 #endif	/* _LINUX_PAGE_H_ */
