@@ -38,6 +38,7 @@ obj-y := \
 	percpu.o \
 	sysfs.o \
 	kobject.o \
+	device.o \
 
 obj-$(CONFIG_SCHED_EDF) += sched_edf.o
 obj-$(CONFIG_KGDB) += kgdb.o

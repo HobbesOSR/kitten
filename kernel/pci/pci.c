@@ -29,6 +29,7 @@
  */
 
 #include <lwk/kernel.h>
+#include <lwk/device.h>
 #include <lwk/pci/pci.h>
 #include <lwk/pci/msidef.h>
 #include <lwk/cpuinfo.h>
@@ -70,6 +71,11 @@ LIST_HEAD(pci_devices);
  * a suitable driver available.
  */
 static LIST_HEAD(pci_drivers);
+
+
+
+extern struct device  dev_root;
+
 
 
 static pci_dev_t *
@@ -149,6 +155,9 @@ pci_scan_bus(pci_bus_t * bus)
 
 			/* Create human-readable string describing the device */
 			pci_describe_device(new_dev, sizeof(new_dev->name), new_dev->name);
+
+			/* Initialize the device layer */
+			device_init(&(new_dev->dev), NULL, &dev_root, 0, NULL, new_dev->name);
 
 			printk(KERN_INFO
 				"    Found PCI Device: %u:%u.%u %4x:%-4x %s\n",

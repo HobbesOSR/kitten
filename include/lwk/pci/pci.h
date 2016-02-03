@@ -3,6 +3,8 @@
 #ifndef _LWK_PCI_H
 #define _LWK_PCI_H
 
+#include <lwk/device.h>
+
 #include <lwk/list.h>
 #include <lwk/pci/pcicfg.h>
 
@@ -33,6 +35,8 @@ typedef struct pci_bus {
  * One of these structures exists for each PCI device in the system.
  */
 typedef struct pci_dev {
+	struct device           dev;
+
 	struct list_head	siblings;	//!< linkage for list of devices on the same bus
 	struct list_head	next;		//!< linkage for list of all devices in system
 
