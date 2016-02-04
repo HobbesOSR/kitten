@@ -282,11 +282,7 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
 
     xpmem_seg_down(seg);
 
-    if (seg->flags & XPMEM_FLAG_SHADOW) {
-        /* Release the remote apid for shadow segments */
-        BUG_ON(seg->remote_apid <= 0);
-        xpmem_release_remote(xpmem_my_part->domain_link, seg->segid, seg->remote_apid);
-    } else {
+    if (!(seg->flags & XPMEM_FLAG_SHADOW)) {
 	/* Remove signal and free from name server if this is a real segment */
         xpmem_free_seg_signal(seg);
         xpmem_remove_remote(xpmem_my_part->domain_link, seg->segid);
