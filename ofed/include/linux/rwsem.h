@@ -34,12 +34,12 @@
 #define rw_semaphore semaphore
 #define init_rwsem   init_MUTEX
 
-#define	down_write(_rw)		        down	
-#define	up_write(_rw)		        up
-#define	down_read(_rw)			down
-#define	up_read(_rw)			up
-#define	down_read_trylock(_rw)		down_trylock
-#define	down_write_trylock(_rw)		down_trylock
+#define	down_write(_rw)		        down(_rw)
+#define	up_write(_rw)		        up(_rw)
+#define	down_read(_rw)			down(_rw)
+#define	up_read(_rw)			up(_rw)
+#define	down_read_trylock(_rw)		down_trylock(_rw)
+#define	down_write_trylock(_rw)		down_trylock(_rw)
 #define	downgrade_write(_rw)		
 #define	down_read_nested(_rw, _sc)	down_read(_rw)
 
