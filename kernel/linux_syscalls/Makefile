@@ -58,3 +58,4 @@ obj-y := \
 	getdents64.o \
 	readlink.o \
 	access.o \
+	reboot.o

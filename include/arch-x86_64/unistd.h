@@ -385,7 +385,7 @@ __SYSCALL(__NR_swapon, syscall_not_implemented)
 __SYSCALL(__NR_swapoff, syscall_not_implemented)
 
 #define __NR_reboot                            169
-__SYSCALL(__NR_reboot, syscall_not_implemented)
+__SYSCALL(__NR_reboot, sys_reboot)
 
 #define __NR_sethostname                       170
 __SYSCALL(__NR_sethostname, sys_sethostname)
@@ -726,6 +726,5 @@ __SYSCALL(__NR_sched_setparams_task, sys_sched_setparams_task)
 #else
 __SYSCALL(__NR_sched_setparams_task, syscall_not_implemented)
 #endif
-
 
 #endif /* _ARCH_X86_64_UNISTD_H */
