@@ -1,6 +1,8 @@
 obj-$(CONFIG_MLX4_INFINIBAND)  :=  alloc.o catas.o cmd.o cq.o eq.o fw.o icm.o intf.o main.o mcg.o \
 		                mr.o pd.o port.o profile.o qp.o reset.o resource_tracker.o \
-				 sense.o srq.o sys_tune.o xrcd.o
+				 sense.o srq.o sys_tune.o 
+
+#xrcd.o -- seems to be completely contained in pd.c, but still here for some reason
 
 obj-$(CONFIG_MLX4_EN)  :=  en_main.o en_ethtool.o en_params.o en_port.o en_cq.o \
 	                en_resources.o en_netdev.o en_frag.o en_rx.o en_selftest.o en_tx.o

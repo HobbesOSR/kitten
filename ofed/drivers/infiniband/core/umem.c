@@ -35,11 +35,16 @@
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <linux/sched.h>
-#ifdef __linux__
+
+#if 0 &&  defined(__linux__)
 #include <linux/hugetlb.h>
 #endif
+
 #include <linux/dma-attrs.h>
 
+#include <linux/module.h>
+
+#if 0
 #include <sys/priv.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
@@ -48,10 +53,11 @@
 #include <vm/vm_map.h>
 #include <vm/vm_object.h>
 #include <vm/vm_pageout.h>
+#endif
 
 #include "uverbs.h"
 
-static int allow_weak_ordering;
+static bool allow_weak_ordering;
 module_param(allow_weak_ordering, bool, 0444);
 MODULE_PARM_DESC(allow_weak_ordering,  "Allow weak ordering for data registered memory");
 
