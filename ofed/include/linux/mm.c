@@ -1,10 +1,10 @@
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/io.h>
-#include <linux/pfn.h>
 
 #include "mm.h"
 
+#if 0
 
 int
 get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
@@ -65,15 +65,15 @@ error:
 	}
 	return status;
 }
-
-
+#endif
+#if 0
 void
 put_page(struct page *page)
 {
 	kmem_free(page);
 }
-
-
+#endif
+#if 0
 /**
  * remap_pfn_range - remap kernel memory to userspace
  * @vma: user vma to map to
@@ -99,3 +99,4 @@ remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 		panic("In remap_pfn_range(): __aspace_map_pmem() failed (status=%d).", status);
 	return status;
 }
+#endif

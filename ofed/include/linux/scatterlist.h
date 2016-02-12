@@ -63,10 +63,13 @@ sg_set_page(struct scatterlist * sg,
 	    unsigned int         len,
 	    unsigned int         offset)
 {
-	sg_page(sg)    = page;
-	sg->address    = page->virtual;
-	sg->length     = len;
-	sg->offset     = offset;
+	sg_page(sg)     = page;
+	sg->address     = page->virtual;
+	sg->length      = len;
+	sg->offset      = offset;
+
+	sg->dma_address = virt_to_phys(sg->address);
+	sg->length      = sg->length;
 
 	if (offset > PAGE_SIZE)
 		panic("sg_set_page: Invalid offset %d\n", offset);

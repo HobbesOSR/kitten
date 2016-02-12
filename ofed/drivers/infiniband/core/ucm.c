@@ -377,8 +377,10 @@ static int ib_ucm_event_handler(struct ib_cm_id *cm_id,
 	list_add_tail(&uevent->file_list, &ctx->file->events);
 	list_add_tail(&uevent->ctx_list, &ctx->events);
 	wake_up_interruptible(&ctx->file->poll_wait);
+#if 0
 	if (ctx->file->filp)
 		selwakeup(&ctx->file->filp->f_selinfo);
+#endif
 	mutex_unlock(&ctx->file->file_mutex);
 	return 0;
 
@@ -1176,7 +1178,7 @@ static int ib_ucm_open(struct inode *inode, struct file *filp)
 
 	filp->private_data = file;
 	file->filp = filp;
-	file->device = container_of(inode->i_cdev->si_drv1, struct ib_ucm_device, cdev);
+	file->device = container_of(inode->i_cdev, struct ib_ucm_device, cdev);
 
 	return 0;
 }

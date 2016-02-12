@@ -84,6 +84,7 @@ RB_GENERATE(linux_root, rb_node, __entry, panic_cmp);
 */
 
 
+#if 0
 
 
 
@@ -177,7 +178,7 @@ struct kfs_fops linux_shim_fops = {
 };
 
 
-
+#endif
 
 
 

@@ -45,6 +45,7 @@ typedef u64 uintmax_t;
 typedef u64 phys_addr_t;
 typedef u64 vm_paddr_t;
 typedef unsigned long kernel_ulong_t;
+typedef unsigned __bitwise__ fmode_t;
 
 #define STOP_HERE(fmt, args...) { \
 	printk("HALTING AT %s:%s()%i: " fmt, __FILE__, __FUNCTION__, __LINE__, ## args); \

@@ -39,8 +39,8 @@
 */
 
 #include <lwk/if.h>
-#include <lwip/netif.h>
-#include <lwip/igmp.h>
+//#include <lwip/netif.h>
+//#include <lwip/igmp.h>
 
 
 #include <linux/completion.h>

@@ -39,8 +39,7 @@
 
 struct page {
     void * virtual;
-    int    order;
-    int    user;
+    //    int    order;
 };
 
 

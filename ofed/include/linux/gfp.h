@@ -59,24 +59,43 @@ page_address(struct page *page)
 static inline struct page *
 alloc_pages(gfp_t gfp_mask, int order)
 {
-    struct page * page = kmem_alloc(sizeof(struct page));
+    struct page * pages     = NULL;
+    void        * page_addr = NULL;
 
-    if (!page) {
+    int npages = (1 << order);
+    int i = 0;
+
+
+
+    pages = kmem_alloc(sizeof(struct page) * npages);
+    if (!pages) {
+	goto error;
+    }
+
+//    pages->order = order;
+
+
+    page_addr = kmem_get_pages(order);
+
+    if (!page_addr) { 
 	goto error;
     }
 
     /* Pages are always zeroed by Kitten */
-    page->virtual = kmem_get_pages(order);
-    page->order   = order;
-    page->user    = 0;
+    for (i = 0 ; i < npages ; i++) {
+	pages[i].virtual = page_addr + (i * PAGE_SIZE);
+    }
+
     
-    return page;
+    return pages;
 
  error:
     if (gfp_mask & GFP_ATOMIC)
 	    panic("Out of memory! alloc_pages(GFP_ATOMIC) failed.");
-    if (page)
-	    kmem_free(page);
+    if (pages)
+	    kmem_free(pages);
+    if (page_addr)
+	kmem_free_pages(page_addr, order);
     return NULL;
 }
 
@@ -107,6 +126,10 @@ __free_pages(struct page * page, unsigned int order)
 static inline void
 free_pages(unsigned long addr, int order) 
 {
+    printk("MEMORY LEAK!!! MEMORY LEAK!!! Should call __free_pages instead\n");
+    printk("Need to track address->page mappings\n");
+    printk("SOMEBODY BUILD A HASHTABLE!!!\n");
+
     kmem_free_pages((void *)addr, order);
 }
 

@@ -119,7 +119,7 @@ static ssize_t (*uverbs_cmd_table[])(struct ib_uverbs_file *file,
 	[IB_USER_VERBS_CMD_UNREG_XRC_RCV_QP]	= ib_uverbs_unreg_xrc_rcv_qp,
 };
 
-#ifdef __linux__
+#if 0 && defined(__linux__)
 /* BSD Does not require a fake mountpoint for all files. */
 static struct vfsmount *uverbs_event_mnt;
 #endif
@@ -442,8 +442,10 @@ void ib_uverbs_comp_handler(struct ib_cq *cq, void *cq_context)
 	spin_unlock_irqrestore(&file->lock, flags);
 
 	wake_up_interruptible(&file->poll_wait);
+#ifndef __LWK__
 	if (file->filp)
 		selwakeup(&file->filp->f_selinfo);
+#endif
 	kill_fasync(&file->async_queue, SIGIO, POLL_IN);
 }
 
@@ -477,8 +479,10 @@ static void ib_uverbs_async_handler(struct ib_uverbs_file *file,
 	spin_unlock_irqrestore(&file->async_file->lock, flags);
 
 	wake_up_interruptible(&file->async_file->poll_wait);
+#ifndef __LWK__
 	if (file->async_file->filp)
 		selwakeup(&file->async_file->filp->f_selinfo);
+#endif
 	kill_fasync(&file->async_file->async_queue, SIGIO, POLL_IN);
 }
 
@@ -905,7 +909,7 @@ static void ib_uverbs_remove_one(struct ib_device *device)
 	wait_for_completion(&uverbs_dev->comp);
 	kfree(uverbs_dev);
 }
-#ifdef __linux__
+#if 0 && defined(__linux__)
 static int uverbs_event_get_sb(struct file_system_type *fs_type, int flags,
 			       const char *dev_name, void *data,
 			       struct vfsmount *mnt)
@@ -948,7 +952,7 @@ static int __init ib_uverbs_init(void)
 		goto out_class;
 	}
 
-#ifdef __linux__
+#if 0 && defined(__linux__)
 	ret = register_filesystem(&uverbs_event_fs);
 	if (ret) {
 		printk(KERN_ERR "user_verbs: couldn't register infinibandeventfs\n");
@@ -972,7 +976,7 @@ static int __init ib_uverbs_init(void)
 	return 0;
 
 out_mnt:
-#ifdef __linux__
+#if 0 && defined(__linux__)
 	mntput(uverbs_event_mnt);
 
 out_fs:
@@ -992,7 +996,7 @@ out:
 static void __exit ib_uverbs_cleanup(void)
 {
 	ib_unregister_client(&uverbs_client);
-#ifdef __linux__
+#if 0 && defined(__linux__)
 	mntput(uverbs_event_mnt);
 	unregister_filesystem(&uverbs_event_fs);
 #endif

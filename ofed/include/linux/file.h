@@ -40,41 +40,40 @@
 #include <linux/fs.h>
 #include <lwk/kfs.h>
 
-struct linux_file;
+#include <arch-generic/fcntl.h>
+
+//struct linux_file;
 
 
 
-extern struct kfs_fops linux_shim_fops;
+//extern struct kfs_fops linux_shim_fops;
 
 /* Blow away any abstracted redefines (fs.h) */
-#undef file
+//#undef file
 
 
-static inline struct linux_file *
-linux_fget(unsigned int fd)
+static inline struct file *
+fget(unsigned int fd)
 {
-	struct file *file;
+	struct file * file = NULL;
 
 	file = fdTableFile( current->fdTable, fd );
 	int __attribute__((unused)) count;
 	count = atomic_add_return( 1, &file->f_count );
 
-	return (struct linux_file *)file->private_data;
+	return file;
 }
 
 static inline void
-linux_fput(struct linux_file *filp)
+fput(struct file *filp)
 {
-	struct file *file;
 
-	if (filp->_file == NULL) {
-		kfree(filp);
+	if (filp == NULL) {
 		return;
 	}
 
-	file = filp->_file;
 
-	if ( atomic_dec_and_test( &file->f_count ) ) {
+	if ( atomic_dec_and_test( &filp->f_count ) ) {
 	    //kmem_free(file);
 	    // kfree(filp);
 	}    
@@ -83,7 +82,7 @@ linux_fput(struct linux_file *filp)
 
 
 
-
+/*
 static inline void
 linux_fd_install(unsigned int fd, struct linux_file *filp)
 {
@@ -105,30 +104,142 @@ linux_fd_install(unsigned int fd, struct linux_file *filp)
 
 	fd_install(fd, file);
 }
+*/
+
+#define FASYNC_MAGIC 0x4601
+
+struct fasync_struct {
+	struct file          * fa_file;
+	int                    magic;
+	int                    fa_fd;
+	struct fasync_struct * fa_next; /* singly linked list */
+	id_t                   aspace_id;
+	id_t                   task_id;
+};
 
 
-static inline struct linux_file *
-_alloc_file(int mode, struct file_operations *fops)
+
+
+static inline int
+fasync_helper(int                     fd, 
+	      struct file           * filp,
+	      int                     mode, 
+	      struct fasync_struct ** fa) 
 {
-	struct linux_file *filp;
+	int ret = 0;
 
-	filp = kzalloc(sizeof(*filp), GFP_KERNEL);
+__lock(&_lock);
+	
+	if ((mode)) {
+		struct fasync_struct * new_fa = NULL;
+		struct fasync_struct * tmp_fa = *fa;
+
+		new_fa = kmem_alloc(sizeof(struct fasync_struct));
+		memset(new_fa, 0, sizeof(struct fasync_struct));
+		
+		new_fa->magic     = FASYNC_MAGIC;
+		new_fa->aspace_id = current->aspace->id;
+		new_fa->task_id   = current->id;
+		new_fa->fa_fd     = fd;
+		new_fa->fa_file   = filp;
+
+		while (tmp_fa) {
+
+			if (tmp_fa->fa_file == filp) {
+				tmp_fa->fa_fd = fd;
+				kmem_free(new_fa);
+				goto out;
+			}
+			
+			tmp_fa = tmp_fa->fa_next;
+		}
+		
+
+		new_fa->fa_next   = *fa;
+
+		*fa               = new_fa;
+		filp->f_flags    |= FASYNC; 
+		ret               = 1; // success
+
+	} else {
+		struct fasync_struct * tmp_fa = *fa;
+		struct fasync_struct * prv_fa = NULL;
+
+		while (tmp_fa) {
+			if (tmp_fa->fa_file != filp) {
+				prv_fa = tmp_fa;
+				tmp_fa = tmp_fa->fa_next;
+				continue;
+			}
+			
+			if (prv_fa) {
+				prv_fa->fa_next = tmp_fa->fa_next;
+			}
+			
+			tmp_fa->magic = 0; // poison the memory location
+
+			kmem_free(tmp_fa);
+
+			filp->f_flags &= ~FASYNC;
+			ret            =  1; // success
+		}
+	}
+ out:
+__unlock(&_lock);
+
+	return ret;
+}
+
+static inline void 
+kill_fasync(struct fasync_struct ** fa, 
+	    int                     sig,
+	    int                     band)
+{
+	
+	while (*fa) {
+    		struct siginfo s;
+		memset(&s, 0, sizeof(struct siginfo));
+		
+		BUG_ON((*fa)->magic != FASYNC_MAGIC);
+
+		s.si_signo = sig;
+		s.si_errno = 0;
+		s.si_code  = SI_KERNEL;
+		s.si_pid   = 0;
+		s.si_uid   = 0;
+		
+		sigsend((*fa)->aspace_id, (*fa)->task_id, sig, &s);
+
+		*fa = (*fa)->fa_next;
+	}
+}
+
+
+static inline struct file *
+_alloc_file(int mode, const struct file_operations *fops)
+{
+	struct file *filp;
+
+	filp = kmem_alloc(sizeof(struct file));	
 
 	if (filp == NULL) {
 		return (NULL);
 	}
 
-	filp->fops   = fops;
+	memset(filp, 0, sizeof(struct file));
+
+	filp->f_op   = fops;
 	filp->f_mode = mode;
+	atomic_set(&filp->f_count, 1);
 
 	return filp;
 }
 
 #define	alloc_file(mnt, root, mode, fops)	_alloc_file((mode), (fops))
 
-#define	file	   linux_file
-#define	fget	   linux_fget
-#define fput       linux_fput
-#define fd_install linux_fd_install 
+
+//#define	fget	   linux_fget
+//#define fput       linux_fput
+//#define fd_install linux_fd_install 
 
 #endif	/* _LINUX_FILE_H_ */
