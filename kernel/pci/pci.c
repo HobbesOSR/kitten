@@ -681,6 +681,12 @@ pci_register_driver(pci_driver_t * driver)
 	return 0;
 }
 
+void
+pci_unregister_driver(pci_driver_t * driver) 
+{
+	printk(KERN_ERR "Well this is awkward...\n");
+	printk("pci_unregister_driver not implemented\n");
+}
 
 /** Finds a PCI driver suitable for the PCI device passed in. */
 pci_driver_t *
