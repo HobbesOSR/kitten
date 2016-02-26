@@ -131,10 +131,8 @@ signal_close(struct file * filp)
 {
     int ret = __xpmem_segid_close((xpmem_segid_t)filp->private_data);
 
-    if (ret == 0) {
-	/* Destroy kfs file */
-	kfs_destroy(filp->inode);
-    }
+    /* Close kfs file */
+    kfs_close(filp);
 
     return ret;
 }

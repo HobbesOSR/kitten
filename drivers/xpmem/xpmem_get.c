@@ -64,13 +64,9 @@ xpmem_try_get_remote(struct xpmem_thread_group * seg_tg,
     if (apid == -1)
         return -1;
 
-    if (size > 0)
-	seg_flags |= XPMEM_MEM_MODE;
-
     if (sigid != 0)
-	seg_flags |= XPMEM_SIG_MODE;
-
-    if (seg_flags == 0) {
+	seg_flags |= XPMEM_FLAG_SIGNALLABLE;
+    else if (size == 0) {
 	XPMEM_ERR("Creating shadow segment that is neither a memory segment nor signalable! This should be impossible");
         xpmem_release_remote(xpmem_my_part->domain_link, segid, apid);
 	return -EINVAL;
