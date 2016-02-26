@@ -186,6 +186,16 @@ out_1:
     return ret;
 }
 
+/* BJK: note that this function can be called with ap->tg->aspace already locked. This
+ * happens if the task calls exit() with attachments still open, in which case the 
+ * kernel locks the aspace and then closes all open files with the aspace locked.
+ *
+ * We can tell if this is the case by checking the XPMEM_FLAG_DESTROYING flag in the tg,
+ * which gets set in xpmem_flush_tg() in xpmem_main.c
+ *
+ * If this is the case, we don't really need to teardown the mappings because that is going
+ * to happen whenver aspace_destroy() is called
+ */
 static void
 __xpmem_detach_att(struct xpmem_access_permit * ap, 
 		   struct xpmem_attachment    * att)
@@ -196,30 +206,32 @@ __xpmem_detach_att(struct xpmem_access_permit * ap,
     /* No address space to update on remote attachments - they are purely for bookkeeping */
     if (!(att->flags & XPMEM_FLAG_REMOTE)) {
 
-	/* Lookup aspace mapping */
-	status = aspace_lookup_mapping(ap->tg->aspace->id, att->at_vaddr, &mapping);
-	if (status != 0) {
-	    XPMEM_ERR("aspace_lookup_mapping() failed (%d)", status);
-	    return;
-	}
-
-	/* On shadow attachments, we added a new aspace region. Remove it now */
-	if (ap->seg->flags & XPMEM_FLAG_SHADOW) {
-	    BUG_ON(mapping.flags & VM_SMARTMAP);
-
-	    /* Remove aspace mapping */
-	    status = aspace_del_region(ap->tg->aspace->id, mapping.start, mapping.end - mapping.start);
+	if (!(ap->tg->flags & XPMEM_FLAG_DESTROYING)) {
+	    /* Lookup aspace mapping */
+	    status = aspace_lookup_mapping(ap->tg->aspace->id, att->at_vaddr, &mapping);
 	    if (status != 0) {
-		XPMEM_ERR("aspace_del_region() failed (%d)", status);
+		XPMEM_ERR("aspace_lookup_mapping() failed (%d)", status);
 		return;
 	    }
 
-	    /* Perform remote detachment */
-	    xpmem_detach_remote(xpmem_my_part->domain_link, ap->seg->segid, ap->seg->remote_apid, att->at_vaddr);
-	}
-	else {
-	    /* If this was a real attachment, it should be using SMARTMAP */
-	    BUG_ON(!(mapping.flags & VM_SMARTMAP));
+	    /* On shadow attachments, we added a new aspace region. Remove it now */
+	    if (ap->seg->flags & XPMEM_FLAG_SHADOW) {
+		BUG_ON(mapping.flags & VM_SMARTMAP);
+
+		/* Remove aspace mapping */
+		status = aspace_del_region(ap->tg->aspace->id, mapping.start, mapping.end - mapping.start);
+		if (status != 0) {
+		    XPMEM_ERR("aspace_del_region() failed (%d)", status);
+		    return;
+		}
+
+		/* Perform remote detachment */
+		xpmem_detach_remote(xpmem_my_part->domain_link, ap->seg->segid, ap->seg->remote_apid, att->at_vaddr);
+	    }
+	    else {
+		/* If this was a real attachment, it should be using SMARTMAP */
+		BUG_ON(!(mapping.flags & VM_SMARTMAP));
+	    }
 	}
 
 	/* Remove from att hash list - only done on local memory */
