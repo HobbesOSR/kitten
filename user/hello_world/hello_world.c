@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <math.h>
+#include <lwk/rcr/rcr.h>
+#include <sys/mman.h>
 
 #define TEST_BLOCK_LAYER 1
 //#define TEST_TASK_MEAS 1
@@ -37,6 +39,7 @@ static int block_layer_test(void);
 #ifdef TEST_TASK_MEAS
 static int task_meas_api_test(void);
 #endif
+static int rcr_test(void);
 
 int
 main(int argc, char *argv[], char *envp[])
@@ -44,8 +47,7 @@ main(int argc, char *argv[], char *envp[])
 	int i;
 
 	printf("Hello, world!\n");
-
-	printf("Arguments:\n");
+printf("Arguments:\n");
 	for (i = 0; i < argc; i++)
 		printf("  argv[%d] = %s\n", i, argv[i]);
 
@@ -63,6 +65,7 @@ main(int argc, char *argv[], char *envp[])
 #endif
 	hypervisor_api_test();
         socket_api_test();
+	rcr_test();
 
 	printf("\n");
 	printf("ALL TESTS COMPLETE\n");
@@ -715,3 +718,57 @@ task_meas_api_test(void)
 	return 0;
 }
 #endif
+
+
+static int
+rcr_test(void)
+{
+	int rcr_fd, i;
+	void *blackboard;
+	uint64_t s0_energy;
+	uint64_t s0_timestamp;
+	double s0_joules, s0_joules_prev=0.0, s0_joules_delta;
+	double s0_time_delta;
+	double s0_watts;
+
+	printf("TEST BEGIN: RCR\n");
+
+	printf("  Opening /dev/rcr...\n");
+	if ((rcr_fd = open(RCR_DEV_PATH, O_RDWR)) == -1) {
+		printf("    ERROR: open failed\n");
+		return -1;
+	}
+	printf("    Success, rcr_fd = %d\n", rcr_fd);
+
+	printf("  Calling mmap() on /dev/rcr...\n");
+	blackboard = mmap(0, RCR_BLACKBOARD_SIZE, PROT_READ, MAP_SHARED, rcr_fd, 0);
+	if (blackboard == MAP_FAILED) {
+		printf("    ERROR: mmap of blackboard failed\n");
+		return -1;
+	}
+	printf("    Success, blackboard mapped to %p\n", blackboard);
+
+	/* Read some stuff from the blackboard */
+	printf("  Reading values from the blackboard...\n");
+	for (i = 0; i < 100; i++) {
+		/* Read values from the blackboard */
+		s0_energy    = *((uint64_t *)(blackboard + 0xf0));
+		s0_timestamp = *((uint64_t *)(blackboard + 0x100));
+		printf("    BB_RAW: energy=%lu, timestamp=%lu\n", s0_energy, s0_timestamp);
+
+		/* Calculate Joules used since last measurement and
+		 * average Watts since last measurement */
+		s0_joules       = (double) s0_energy / 1024.0;  // bb energy ticks in 1/1024 J increments
+		s0_joules_delta = s0_joules - s0_joules_prev;
+		s0_time_delta   = 10.0;  // todo, calc time from timestamps
+		s0_watts        = s0_joules_delta / s0_time_delta;
+		printf("    CALC:   joules=%.3f joules_delta=%.3f, watts=%.3f\n", s0_joules, s0_joules_delta, s0_watts);
+
+		s0_joules_prev  = s0_joules;
+		sleep(10);
+	}
+	printf("  Done.\n");
+
+	printf("TEST END:   RCR\n");
+	return 0;
+}
