@@ -47,7 +47,8 @@ main(int argc, char *argv[], char *envp[])
 	int i;
 
 	printf("Hello, world!\n");
-printf("Arguments:\n");
+
+	printf("Arguments:\n");
 	for (i = 0; i < argc; i++)
 		printf("  argv[%d] = %s\n", i, argv[i]);
 
