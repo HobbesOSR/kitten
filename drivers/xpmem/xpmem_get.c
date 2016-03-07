@@ -324,6 +324,10 @@ xpmem_release_ap(struct xpmem_thread_group *ap_tg,
     spin_lock(&seg->lock);
     list_del_init(&ap->ap_node);
     spin_unlock(&seg->lock);
+
+    /* Try to teardown a shadow segment */
+    if (seg->flags & XPMEM_FLAG_SHADOW)
+	xpmem_remove_seg(seg_tg, seg);
     
     xpmem_seg_deref(seg);   /* deref of xpmem_get()'s ref */
     xpmem_tg_deref(seg_tg); /* deref of xpmem_get()'s ref */
