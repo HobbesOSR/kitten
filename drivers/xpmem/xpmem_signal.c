@@ -129,12 +129,7 @@ __xpmem_segid_close(xpmem_segid_t segid)
 static int
 signal_close(struct file * filp)
 {
-    int ret = __xpmem_segid_close((xpmem_segid_t)filp->private_data);
-
-    /* Close kfs file */
-    kfs_close(filp);
-
-    return ret;
+    return  __xpmem_segid_close((xpmem_segid_t)filp->private_data);
 }
 
 static int

@@ -249,7 +249,7 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
     /* Cancel removal if
      * (1) it's already being removed
      * (2) the segment is a shadow segment and has more than 2 references
-     *		(one at createion, plus the one about to be dropped by the
+     *		(one at creation, plus the one about to be dropped by the
      *		invoker of this function)
      */
     if ( (seg->flags & XPMEM_FLAG_DESTROYING) ||

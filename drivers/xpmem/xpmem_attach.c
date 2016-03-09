@@ -16,10 +16,11 @@ xpmem_try_attach_remote(xpmem_segid_t segid,
                         xpmem_apid_t  apid,
                         off_t         offset,
                         size_t        size,
+			vmflags_t     pgflags,
                         vaddr_t     * vaddr)
 {
-    int     status   = 0;
-    vaddr_t at_vaddr = 0;
+    int       status   = 0;
+    vaddr_t   at_vaddr = 0;
 
     /* Find free address space */
     status = aspace_find_hole(current->aspace->id, 0, size, PAGE_SIZE, &at_vaddr);
@@ -29,8 +30,8 @@ xpmem_try_attach_remote(xpmem_segid_t segid,
     }
 
     /* Add region to aspace */
-    status = aspace_add_region(current->aspace->id, at_vaddr, size, VM_READ | VM_WRITE | VM_USER,
-		PAGE_SIZE, "xpmem");
+    status = aspace_add_region(current->aspace->id, at_vaddr, size, 
+	pgflags, PAGE_SIZE, "xpmem");
     if (status != 0) {
 	XPMEM_ERR("aspace_add_region() failed (%d)", status);
 	return status;
@@ -78,6 +79,7 @@ xpmem_attach(xpmem_apid_t apid,
 {
     int ret, index;
     vaddr_t seg_vaddr, at_vaddr;
+    vmflags_t pgflags;
     struct xpmem_thread_group *ap_tg, *seg_tg;
     struct xpmem_access_permit *ap;
     struct xpmem_segment *seg;
@@ -85,6 +87,11 @@ xpmem_attach(xpmem_apid_t apid,
 
     if (apid <= 0)
         return -EINVAL;
+
+    /* Only one flag at this point */
+    if ((att_flags) &&
+	(att_flags != XPMEM_NOCACHE_MODE))
+	return -EINVAL;
 
     /* If the size is not page aligned, fix it */
     if (offset_in_page(size) != 0) 
@@ -114,15 +121,25 @@ xpmem_attach(xpmem_apid_t apid,
     /* size needs to reflect page offset to start of segment */
     size += offset_in_page(seg_vaddr);
 
+    pgflags = VM_READ | VM_WRITE | VM_USER;
+
     if (seg->flags & XPMEM_FLAG_SHADOW) {
         BUG_ON(seg->remote_apid <= 0);
 
+	if (att_flags & XPMEM_NOCACHE_MODE)
+	    pgflags |= VM_NOCACHE | VM_WRITETHRU;
+
 	/* remote - load pfns in now */
-	ret = xpmem_try_attach_remote(seg->segid, seg->remote_apid, offset, size, &at_vaddr);
+	ret = xpmem_try_attach_remote(seg->segid, seg->remote_apid, 
+		offset, size, pgflags, &at_vaddr);
 	if (ret != 0)
             goto out_1;
     } else {
 	/* not remote - simply figure out where we are smartmapped to this process */
+	if (att_flags & XPMEM_NOCACHE_MODE) {
+	    ret = -ENOMEM;
+	    goto out_1;
+	}
 	at_vaddr = xpmem_make_smartmap_addr(seg_tg->aspace->id, seg_vaddr);
     }
 
