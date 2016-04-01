@@ -1,0 +1,18 @@
+language: c
+sudo: required
+dist: trusty
+script: make defconfig && make isoimage && qemu-system-x86_64 -cdrom kitten/arch/x86_64/boot/image.iso -m 1024 -serial stdio -smp 4
+compiler:
+- gcc-4.8
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-4.8
+    - mtools
+    - genisoimage
+    - syslinux
+    - qemu
+    - live-image-rescue
+
