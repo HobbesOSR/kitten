@@ -87,6 +87,9 @@ ifeq ($(CONFIG_SYSLINUX_BOOTLOADER),y)
 		elif [ -f /usr/$$i/syslinux/bios/isolinux.bin ] ; then \
 			cp /usr/$$i/syslinux/bios/* $(obj)/isoimage ; \
 			break ; \
+		elif [ -f /usr/$$i/ISOLINUX/isolinux.bin ] ; then \
+			cp /usr/$$i/ISOLINUX/* $(obj)/isoimage ; \
+			break ; \
 		fi ; \
 		if [ $$i = end ] ; then exit 1 ; fi ; \
 	done
