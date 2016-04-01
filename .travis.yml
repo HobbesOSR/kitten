@@ -1,7 +1,7 @@
 language: c
 sudo: required
 dist: trusty
-script: make defconfig && make isoimage && qemu-system-x86_64 -cdrom kitten/arch/x86_64/boot/image.iso -m 1024 -serial stdio -smp 4
+script: make defconfig && make isoimage && qemu-system-x86_64 -cdrom arch/x86_64/boot/image.iso -m 1024 -serial stdio -smp 4
 before_install: ci/before_install.sh
 compiler:
 - gcc-4.8
