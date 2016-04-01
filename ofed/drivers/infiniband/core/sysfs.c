@@ -488,7 +488,7 @@ static void ib_device_release(struct device *device)
 	kfree(dev);
 }
 
-#ifdef __linux__
+#if 0 && defined __linux__
 /* BSD supports this through devfs(5) and devd(8). */
 static int ib_device_uevent(struct device *device,
 			    struct kobj_uevent_env *env)
@@ -609,7 +609,7 @@ static int add_port(struct ib_device *device, int port_num,
 
 	list_add_tail(&p->kobj.entry, &device->port_list);
 
-#ifdef __linux__
+#if 0 && defined(__linux__)
 	kobject_uevent(&p->kobj, KOBJ_ADD);
 #endif
 	return 0;
@@ -730,7 +730,7 @@ static struct device_attribute *ib_class_attributes[] = {
 static struct class ib_class = {
 	.name    = "infiniband",
 	.dev_release = ib_device_release,
-#ifdef __linux__
+#if 0 && defined __linux__
 	.dev_uevent = ib_device_uevent,
 #endif
 };

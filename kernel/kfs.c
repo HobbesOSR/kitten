@@ -502,17 +502,24 @@ kfs_lookup(struct inode *       root,
 
 
 struct inode *
-kfs_create(const char *            full_filename,
-	   const struct inode_operations * iops,
-	   const struct kfs_fops * fops,
-	   unsigned		   mode,
-	   void *		   priv,
-	   size_t		   priv_len)
+kfs_create_at(struct inode                  * root_inode,
+	      const char                    * full_filename,
+	      const struct inode_operations * iops,
+	      const struct kfs_fops         * fops,
+	      unsigned		              mode,
+	      void                          * priv,
+	      size_t		              priv_len)
 {
 	struct inode *dir;
-	const char *filename = strrchr( full_filename, '/' );
+	const char * filename = strrchr( full_filename, '/' );
 
-	dbg("name=`%s`\n",full_filename);
+	BUG_ON(!root_inode);
+
+	if ( full_filename[0] == '/' ) {
+		root_inode = kfs_root;
+	}
+
+	dbg("name=`%s`\n", full_filename);
 
 	if( !filename )
 	{
@@ -523,13 +530,25 @@ kfs_create(const char *            full_filename,
 
 	filename++;
 
-	dir = kfs_lookup( kfs_root, full_filename, 0777 );
+	dir = kfs_lookup( root_inode, full_filename, 0777 );
 
 	if( !dir )
 		return NULL;
 
 	// Create the file entry in the directory
 	return kfs_mkdirent(dir, filename, iops, fops, mode, priv, priv_len);
+}
+
+
+struct inode *
+kfs_create(const char *            full_filename,
+	   const struct inode_operations * iops,
+	   const struct kfs_fops * fops,
+	   unsigned		   mode,
+	   void *		   priv,
+	   size_t		   priv_len)
+{
+	return kfs_create_at(kfs_root, full_filename, iops, fops, mode, priv, priv_len);
 }
 
 struct inode *
@@ -641,10 +660,24 @@ kfs_close(struct file *file)
 	kmem_free(file);
 }
 
+
 int
-kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
+kfs_open_path_at(struct inode * root_inode,
+		 const char   * pathname, 
+		 int            flags, 
+		 mode_t         mode, 
+		 struct file **rv)
 {
-	struct inode * inode = kfs_lookup( kfs_root, pathname, 0 );
+	struct inode * inode = NULL;
+	
+	BUG_ON(!root_inode);
+
+	/* If pathname is absolute, then use kfs root inode */
+	if (pathname[0] == '/') {
+		root_inode = kfs_root;
+	}
+	
+	inode = kfs_lookup( root_inode, pathname, 0 );
 	if( !inode )
 		return -ENOENT;
 
@@ -662,6 +695,39 @@ kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
 
 	return 0;
 }
+
+int
+kfs_open_path(const char *pathname, int flags, mode_t mode, struct file **rv)
+{
+	return kfs_open_path_at(kfs_root, pathname, flags, mode, rv);
+}
+
+
+int
+kfs_open_anon(const struct kfs_fops * fops, void * priv_data)
+{
+    struct file * file = kmem_alloc(sizeof(struct file));
+    int fd = 0;
+
+    if (NULL == file)
+	return -ENOMEM;
+
+    memset(file, 0x00, sizeof(struct file));
+
+    file->f_op = fops;
+    file->private_data = priv_data;
+    atomic_set(&file->f_count, 1);
+
+    __lock(&_lock);
+    {
+	fd = fdTableGetUnused( current->fdTable );
+	fdTableInstallFd( current->fdTable, fd, file );
+    }
+    __unlock(&_lock);
+
+    return fd;
+}
+
 
 void kfs_init_stdio(struct task_struct *task)
 {
@@ -704,6 +770,8 @@ void kfs_init_stdio(struct task_struct *task)
 	}
 }
 
+extern struct inode * sysfs_root;
+
 void
 kfs_init( void )
 {
@@ -718,6 +786,10 @@ kfs_init( void )
 
 	if (!kfs_mkdir("/tmp", 0777))
 		panic("Failed to 'mkdir /tmp'.");
+
+	sysfs_root = kfs_mkdir("/sys", 0777);
+	if (!sysfs_root) 
+		panic("Failed to 'mkdir /sys'.");
 
 	// Bring up any kfs drivers that we have linked in
 	driver_init_by_name( "kfs", "*" );

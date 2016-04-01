@@ -305,7 +305,7 @@ launch_job(int pisces_fd, struct pisces_job_spec * job_spec)
 	    start_state[rank].user_id  = 1;
 	    start_state[rank].group_id = 1;
 	    
-	    sprintf(start_state[rank].task_name, job_spec->name);
+	    strcpy(start_state[rank].task_name, job_spec->name);
 
 
 	    status = elf_load((void *)file_addr,
@@ -845,7 +845,7 @@ main(int argc, char ** argv, char * envp[])
 			    }
 
 			    /* Signal Palacios to connect the console */
-			    if (issue_vm_cmd(vm_cmd.vm_id, V3_VM_CONSOLE_CONNECT, (uintptr_t)&cons_ring_buf) == -1) {
+			    if (issue_vm_cmd(vm_cmd.vm_id, PISCES_VM_CONS_CONNECT, (uintptr_t)&cons_ring_buf) == -1) {
 				    cons_ring_buf        = 0;
 			    }
 					
@@ -868,7 +868,7 @@ main(int argc, char ** argv, char * envp[])
 
 
 			    /* Send Disconnect Request to Palacios */
-			    if (issue_vm_cmd(vm_cmd.vm_id, V3_VM_CONSOLE_DISCONNECT, (uintptr_t)NULL) == -1) {
+			    if (issue_vm_cmd(vm_cmd.vm_id, PISCES_VM_CONS_DISCONNECT, (uintptr_t)NULL) == -1) {
 				    send_resp(pisces_fd, -1);
 				    break;
 			    }

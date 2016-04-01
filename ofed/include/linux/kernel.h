@@ -93,12 +93,23 @@
 #endif
 
 
+#define roundup round_up
 
 
+/* Let's try to approximate random. 
+   This is probably used to generate new GUIDs for SRIOV instances, so we do need to try to avoid overlap 
 
-/* JRL: huh? What is this? */
-typedef struct pm_message {
-        int event;
-} pm_message_t;
+   This is ( (data at stack location) XOR (high TSC) XOR (low TSC) )
+*/
+static inline u32 random( void ) 
+{
+    u32 val;
+    u32 tmp_hi, tmp_lo; 
+
+    __asm__ __volatile__ ("rdtsc" : "=a"(tmp_lo), "=d"(tmp_hi));
+
+    return val ^ tmp_hi ^ tmp_lo;
+}
+
 
 #endif	/* _LINUX_KERNEL_H_ */

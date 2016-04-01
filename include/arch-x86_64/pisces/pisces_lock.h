@@ -6,8 +6,7 @@
 
 #ifndef __PISCES_LOCK_H__
 #define __PISCES_LOCK_H__
-
-#include <linux/types.h>
+#include <arch/types.h>
 
 struct pisces_spinlock {
     u64 raw_lock; 

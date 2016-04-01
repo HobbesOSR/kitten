@@ -191,17 +191,23 @@ config X86_INTERNODE_CACHE_SHIFT
 	int
 	default X86_L1_CACHE_SHIFT
 
+config MAX_CPUS
+        int
+        default 1024 if !PISCES
+        default 64 if PISCES
+
 config NR_CPUS
-        int "Maximum number of CPUs (2-256)"
-        range 1 255
-        default "64"
+        int "Maximum number of CPUs (1-1024) (1-64 if CONFIG_PISCES)"
+        range 1 MAX_CPUS
+        default "512" if !PISCES
+        default "64" if PISCES
         help
           This allows you to specify the maximum number of CPUs which this
-          kernel will support. Current maximum is 256 CPUs due to
-          APIC addressing limits. Less depending on the hardware.
+          kernel will support.
 
           This is purely to save memory - each supported CPU requires
           memory in the static kernel configuration.
+
 
 #
 # Physical address where the kernel is loaded
@@ -305,4 +311,5 @@ source "block/Kconfig"
 source "drivers/Kconfig"
 source "arch/x86_64/boot/Kconfig"
 source "arch/x86_64/Kconfig.debug"
-source "linux/arch/x86_64/Kconfig"
+#source "linux/arch/x86_64/Kconfig"
+source "ofed/Kconfig"

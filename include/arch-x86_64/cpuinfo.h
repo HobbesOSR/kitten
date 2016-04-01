@@ -61,8 +61,8 @@ struct arch_cpuinfo {
     uint32_t min_cpu_khz;           /* Minimum CPU freq. in KHz */
     uint32_t tsc_khz;               /* Time stamp counter freq. in KHz */
     uint32_t lapic_khz;             /* Local APIC bus freq. in KHz */
-    uint8_t  apic_id;               /* Local APIC ID, phys CPU ID */
-    uint8_t  initial_lapic_id;      /* As reported by CPU ID */
+    uint32_t apic_id;               /* Local APIC ID, phys CPU ID */
+    uint32_t initial_lapic_id;      /* As reported by CPU ID */
     uint16_t x86_max_cores;         /* CPUID max cores val */
 };
 

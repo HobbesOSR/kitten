@@ -8,7 +8,7 @@
 
 #include <lwk/kfs.h>
 #include <lwk/poll.h>
-#include <asm/uaccess.h>
+#include <arch/uaccess.h>
 
 #include <xpmem.h>
 #include <xpmem_private.h>
@@ -129,14 +129,7 @@ __xpmem_segid_close(xpmem_segid_t segid)
 static int
 signal_close(struct file * filp)
 {
-    int ret = __xpmem_segid_close((xpmem_segid_t)filp->private_data);
-
-    if (ret == 0) {
-	/* Destroy kfs file */
-	kfs_destroy(filp->inode);
-    }
-
-    return ret;
+    return  __xpmem_segid_close((xpmem_segid_t)filp->private_data);
 }
 
 static int

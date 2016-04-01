@@ -212,6 +212,7 @@ extern int xpmem_make_segment(vaddr_t, size_t, int, void *, int, struct xpmem_th
 extern int xpmem_make(vaddr_t, size_t, int, void *, int, xpmem_segid_t,  xpmem_segid_t *, int *);
 extern void xpmem_remove_segs_of_tg(struct xpmem_thread_group *);
 extern int xpmem_remove(xpmem_segid_t);
+extern int xpmem_remove_seg(struct xpmem_thread_group *, struct xpmem_segment *);
 
 /* found in xpmem_get.c */
 extern int xpmem_check_permit_mode(int, struct xpmem_segment *);

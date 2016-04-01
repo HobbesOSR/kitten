@@ -150,15 +150,20 @@ static inline void iboe_mac_vlan_to_ll(union ib_gid *gid, u8 *mac, u16 vid)
 
 static inline u16 rdma_vlan_dev_vlan_id(const struct net_device *dev)
 {
-#ifdef __linux__
+
+#if 0 && __linux__
 	return dev->priv_flags & IFF_802_1Q_VLAN ?
 		vlan_dev_vlan_id(dev) : 0xffff;
 #else
-	uint16_t tag;
-
-	if (VLAN_TAG(__DECONST(struct ifnet *, dev), &tag) != 0)
-		return 0xffff;
-	return tag;
+	/* JRL: Don't know what this is, but we probably don't need it.
+	   uint16_t tag;
+	   
+	   if (VLAN_TAG(__DECONST(struct ifnet *, dev), &tag) != 0)
+	   return 0xffff;
+	   return tag;
+	
+	*/
+	return 0xffff;	
 #endif
 }
 
@@ -224,7 +229,6 @@ static inline enum ib_mtu iboe_get_mtu(int mtu)
 		return 0;
 }
 
-#ifdef __linux__
 static inline int iboe_get_rate(struct net_device *dev)
 {
 	struct ethtool_cmd cmd;
@@ -244,27 +248,6 @@ static inline int iboe_get_rate(struct net_device *dev)
 	else
 		return IB_RATE_PORT_CURRENT;
 }
-#else
-static inline int iboe_get_rate(struct net_device *dev)
-{
-	uintmax_t baudrate;
-	int exp;
-
-	baudrate = dev->if_baudrate;
-	for (exp = dev->if_baudrate_pf; exp > 0; exp--)
-		baudrate *= 10;
-	if (baudrate >= IF_Gbps(40))
-		return IB_RATE_40_GBPS;
-	else if (baudrate >= IF_Gbps(30))
-		return IB_RATE_30_GBPS;
-	else if (baudrate >= IF_Gbps(20))
-		return IB_RATE_20_GBPS;
-	else if (baudrate >= IF_Gbps(10))
-		return IB_RATE_10_GBPS;
-	else
-		return IB_RATE_PORT_CURRENT;
-}
-#endif
 
 static inline int rdma_link_local_addr(struct in6_addr *addr)
 {
@@ -307,11 +290,14 @@ static inline u16 rdma_get_vlan_id(union ib_gid *dgid)
 
 static inline struct net_device *rdma_vlan_dev_real_dev(const struct net_device *dev)
 {
-#ifdef __linux__
+#if 0 && __linux__
 	return dev->priv_flags & IFF_802_1Q_VLAN ?
 		vlan_dev_real_dev(dev) : 0;
 #else
-	return VLAN_TRUNKDEV(__DECONST(struct ifnet *, dev));
+	/* JRL: We aren't going to be using VLANs 
+	   return VLAN_TRUNKDEV(__DECONST(struct ifnet *, dev));
+	*/
+	return NULL;
 #endif
 }
 

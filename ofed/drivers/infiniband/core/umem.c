@@ -32,26 +32,33 @@
  * SOFTWARE.
  */
 
+
+
+/* JRL: We are going to rewrite this file...
+ * This allows us to clean up a lot of crap that has been strewn throughout the rest of Kitten
+ * We will try to keep a list of things that are no longer needed here
+
+ * ofed/include/linux/compatibility.h
+ * ofed/include/linux/mm.c && mm.h 
+ * struct aspace -> mmap_sem, locked_vm
+ */
+
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-attrs.h>
 #include <linux/sched.h>
-#ifdef __linux__
-#include <linux/hugetlb.h>
-#endif
+
+
+
 #include <linux/dma-attrs.h>
 
-#include <sys/priv.h>
-#include <sys/resource.h>
-#include <sys/resourcevar.h>
+#include <linux/module.h>
 
-#include <vm/vm.h>
-#include <vm/vm_map.h>
-#include <vm/vm_object.h>
-#include <vm/vm_pageout.h>
+#include <lwk/aspace.h>
 
 #include "uverbs.h"
 
-static int allow_weak_ordering;
+static bool allow_weak_ordering;
 module_param(allow_weak_ordering, bool, 0444);
 MODULE_PARM_DESC(allow_weak_ordering,  "Allow weak ordering for data registered memory");
 
@@ -60,59 +67,25 @@ MODULE_PARM_DESC(allow_weak_ordering,  "Allow weak ordering for data registered 
 	 ((void *) &((struct ib_umem_chunk *) 0)->page_list[1] -	\
 	  (void *) &((struct ib_umem_chunk *) 0)->page_list[0]))
 
-#ifdef __ia64__
-extern int dma_map_sg_hp_wa;
-
-static int dma_map_sg_ia64(struct ib_device *ibdev,
-			   struct scatterlist *sg,
-			   int nents,
-			   enum dma_data_direction dir)
-{
-	int i, rc, j, lents = 0;
-	struct device *dev;
-
-	if (!dma_map_sg_hp_wa)
-		return ib_dma_map_sg(ibdev, sg, nents, dir);
-
-	dev = ibdev->dma_device;
-	for (i = 0; i < nents; ++i) {
-		rc = dma_map_sg(dev, sg + i, 1, dir);
-		if (rc <= 0) {
-			for (j = 0; j < i; ++j)
-				dma_unmap_sg(dev, sg + j, 1, dir);
-
-			return 0;
-		}
-		lents += rc;
-	}
-
-	return lents;
-}
-
-static void dma_unmap_sg_ia64(struct ib_device *ibdev,
-			      struct scatterlist *sg,
-			      int nents,
-			      enum dma_data_direction dir)
-{
-	int i;
-	struct device *dev;
-
-	if (!dma_map_sg_hp_wa)
-		return ib_dma_unmap_sg(ibdev, sg, nents, dir);
-
-	dev = ibdev->dma_device;
-	for (i = 0; i < nents; ++i)
-		dma_unmap_sg(dev, sg + i, 1, dir);
-}
-
-#define ib_dma_map_sg(dev, sg, nents, dir) dma_map_sg_ia64(dev, sg, nents, dir)
-#define ib_dma_unmap_sg(dev, sg, nents, dir) dma_unmap_sg_ia64(dev, sg, nents, dir)
-
-#endif
 
 static void __ib_umem_release(struct ib_device *dev, struct ib_umem *umem, int dirty)
 {
-#ifdef __linux__
+
+#ifdef __LWK__ 
+	struct ib_umem_chunk * chunk, *tmp;
+	int i;
+	
+    
+	list_for_each_entry_safe(chunk, tmp, &umem->chunk_list, list) {
+		for (i = 0; i < chunk->nents; ++i) {
+			struct page *page = sg_page(&chunk->page_list[i]);
+			kmem_free(page);
+		}
+		kfree(chunk);
+	}
+
+
+#elif defined(__linux__)
 	struct ib_umem_chunk *chunk, *tmp;
 	int i;
 
@@ -167,7 +140,145 @@ static void __ib_umem_release(struct ib_device *dev, struct ib_umem *umem, int d
 struct ib_umem *ib_umem_get(struct ib_ucontext *context, unsigned long addr,
 			    size_t size, int access, int dmasync)
 {
-#ifdef __linux__
+#ifdef __LWK__
+	struct ib_umem *umem;
+
+	struct ib_umem_chunk *chunk;
+
+	unsigned long cur_base;
+	unsigned long npages;
+	int ret = 0;
+	//	int off;
+	int i;
+
+	//	struct aspace * cur_aspace = NULL;
+
+
+
+	DEFINE_DMA_ATTRS(attrs);
+
+	if (dmasync)
+		dma_set_attr(DMA_ATTR_WRITE_BARRIER, &attrs);
+	else if (allow_weak_ordering)
+		dma_set_attr(DMA_ATTR_WEAK_ORDERING, &attrs);
+
+
+
+	umem = kmalloc(sizeof *umem, GFP_KERNEL);
+	if (!umem)
+		return ERR_PTR(-ENOMEM);
+
+	umem->context   = context;
+	umem->length    = size;
+	umem->offset    = addr & ~PAGE_MASK;
+	umem->page_size = PAGE_SIZE;
+
+	/*
+	 * We ask for writable memory if any access flags other than
+	 * "remote read" are set.  "Local write" and "remote write"
+	 * obviously require write access.  "Remote atomic" can do
+	 * things like fetch and add, which will modify memory, and
+	 * "MW bind" can change permissions by binding a window.
+	 */
+	umem->writable  = !!(access & ~IB_ACCESS_REMOTE_READ);
+
+	INIT_LIST_HEAD(&umem->chunk_list);
+
+
+/*
+
+	page_list = (struct page **) __get_free_page(GFP_KERNEL);
+	if (!page_list) {
+		kfree(umem);
+		return ERR_PTR(-ENOMEM);
+	}
+*/
+
+	/*
+	 * if we can't alloc the vma_list, it's not so bad;
+	 * just assume the memory is not hugetlb memory
+	 */
+	/*
+	vma_list = (struct vm_area_struct **) __get_free_page(GFP_KERNEL);
+	if (!vma_list)
+		umem->hugetlb = 0;
+	*/
+
+	npages = PAGE_ALIGN(size + umem->offset) >> PAGE_SHIFT;
+
+	//	down_write(&current->mm->mmap_sem);
+
+	/*
+	locked     = npages + current->mm->locked_vm;
+	*/
+	/* JRL:  HACK TAKEN FROM OTHER OFED LAYER */
+	/*
+	lock_limit = locked; // current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur >> PAGE_SHIFT;
+
+	if ((locked > lock_limit) && !capable(CAP_IPC_LOCK)) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	*/
+
+ 	cur_base = addr & PAGE_MASK;
+
+	//	ret = 0;
+
+
+	
+	
+
+	while (npages) {
+
+		chunk = kmem_alloc(sizeof(*chunk) + sizeof(struct scatterlist) *
+				   min_t(int, npages, IB_UMEM_MAX_PAGE_CHUNK));
+		if (!chunk) {
+			ret = -ENOMEM;
+			goto err;
+		}
+
+
+		chunk->attrs = attrs;
+		chunk->nents = min_t(int, npages, IB_UMEM_MAX_PAGE_CHUNK);
+		chunk->nmap  = chunk->nents;	
+		sg_init_table(chunk->page_list, chunk->nents);
+
+
+		for (i = 0; i < chunk->nents; ++i) {
+			struct page * new_pg = kmem_alloc(sizeof(struct page));
+			paddr_t phys_addr = 0;
+
+			ret = aspace_virt_to_phys(MY_ID, cur_base + (i * PAGE_SIZE), &phys_addr);
+			
+			if (ret < 0) {
+				printk("ERROR: IB_UMEM requested invalid user memory region\n");
+				printk("Maybe a good idea to implement error handling\n");
+			}
+			BUG_ON(ret != 0);
+
+			new_pg->virtual = __va(phys_addr);
+			//new_pg->order   = 0;
+
+			sg_set_page(&chunk->page_list[i], new_pg, PAGE_SIZE, 0);
+		}
+
+		npages   -= chunk->nents;
+		cur_base += (chunk->nents * PAGE_SIZE);
+		list_add_tail(&chunk->list, &umem->chunk_list);
+	}
+
+		
+	return umem;
+	
+ err:
+	__ib_umem_release(context->device, umem, 0);
+	kfree(umem);
+	
+	
+	return NULL;
+
+#elif defined(__linux__)
 	struct ib_umem *umem;
 	struct page **page_list;
 	struct vm_area_struct **vma_list;
@@ -230,7 +341,8 @@ struct ib_umem *ib_umem_get(struct ib_ucontext *context, unsigned long addr,
 	down_write(&current->mm->mmap_sem);
 
 	locked     = npages + current->mm->locked_vm;
-	lock_limit = current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur >> PAGE_SHIFT;
+	/* JRL:  HACK TAKEN FROM OTHER OFED LAYER */
+	lock_limit = locked; // current->signal->rlim[RLIMIT_MEMLOCK].rlim_cur >> PAGE_SHIFT;
 
 	if ((locked > lock_limit) && !capable(CAP_IPC_LOCK)) {
 		ret = -ENOMEM;
@@ -430,7 +542,7 @@ out:
 }
 EXPORT_SYMBOL(ib_umem_get);
 
-#ifdef __linux__
+#if 0 && defined( __linux__)
 static void ib_umem_account(struct work_struct *work)
 {
 	struct ib_umem *umem = container_of(work, struct ib_umem, work);
@@ -449,7 +561,14 @@ static void ib_umem_account(struct work_struct *work)
  */
 void ib_umem_release(struct ib_umem *umem)
 {
-#ifdef __linux__
+#ifdef __LWK__
+
+    __ib_umem_release(umem->context->device, umem, 1);
+
+    kmem_free(umem);
+
+    return;
+#elif defined(__linux__)
 	struct ib_ucontext *context = umem->context;
 	struct mm_struct *mm;
 	unsigned long diff;

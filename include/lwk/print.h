@@ -88,11 +88,11 @@ extern char * kvasprintf( int, const char * fmt, va_list args )
     printk(KERN_INFO fmt, ##__VA_ARGS__)
 
 
-#define print printk
+#define print(fmt, args...) printk(fmt, ##args)
 #else
 #include <stdio.h>
 #include <stdarg.h>
-#define print printf
+#define print(fmt, args...) printf(fmt, ##args)
 #endif
 
 extern const char *

@@ -45,6 +45,16 @@ lapic_map(void)
 	if (!cpu_has_apic)
 		panic("No local APIC.");
 
+	/*
+	 * If CPU supports X2APIC mode, we use it. In X2APIC mode,
+	 * LAPIC registers are accessed via MSR accesses rather than memory
+	 * mapped I/O, so there is no need to setup the APIC memory mapping.
+	 */
+	if (cpu_has_x2apic) {
+		printk(KERN_INFO "Using X2APIC mode.\n");
+		return;
+	}
+
 	/* Reserve physical memory used by the local APIC */
 	lapic_resource.start = lapic_phys_addr;
 	lapic_resource.end   = lapic_phys_addr + 4096 - 1;
@@ -66,18 +76,29 @@ lapic_init(void)
 	uint32_t val;
 
 	/*
-	 * Initialize Destination Format Register.
-	 * When using logical destination mode, we want to use the flat model.
+	 * If CPU has X2APIC mode, we use it.
+	 * Enable X2APIC mode by setting bit 10 in APIC_BASE MSR.
 	 */
-	apic_write(APIC_DFR, APIC_DFR_FLAT);
+	if (cpu_has_x2apic) {
+		rdmsrl(MSR_IA32_APICBASE, val);
+		wrmsrl(MSR_IA32_APICBASE, val | MSR_IA32_APICBASE_X2APIC);
+	}
 
-	/*
- 	 * Initialize the Logical Destination Register.
- 	 * The LWK never uses logical destination mode, so just set it to zero.
- 	 */
-	val = apic_read(APIC_LDR) & ~APIC_LDR_MASK;
-	val |= SET_APIC_LOGICAL_ID(0);
-	apic_write(APIC_LDR, val);
+	if (!cpu_has_x2apic) {
+		/*
+		 * Initialize Destination Format Register.
+		 * When using logical destination mode, we want to use the flat model.
+		 */
+		apic_write(APIC_DFR, APIC_DFR_FLAT);
+
+		/*
+		 * Initialize the Logical Destination Register.
+		 * The LWK never uses logical destination mode, so just set it to zero.
+		 */
+		val = apic_read(APIC_LDR) & ~APIC_LDR_MASK;
+		val |= SET_APIC_LOGICAL_ID(0);
+		apic_write(APIC_LDR, val);
+	}
 
 	/*
 	 * Initialize the Task Priority Register.
@@ -286,9 +307,12 @@ lapic_send_init_ipi(unsigned int cpu)
 	unsigned int apic_id = cpu_info[cpu].arch.apic_id;
 
 	/* Turn on INIT at target CPU */
-	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
-	apic_write(APIC_ICR, APIC_INT_LEVELTRIG | APIC_INT_ASSERT
-				| APIC_DM_INIT);
+	apic_write_icr(((uint64_t)apic_id << 32) | APIC_INT_LEVELTRIG | APIC_INT_ASSERT | APIC_DM_INIT);
+
+	/* If using X2APIC mode, we are done... it is fire and forget. */
+	if (cpu_has_x2apic)
+		return;
+
 	status = lapic_wait4_icr_idle();
 	if (status)
 		panic("INIT IPI ERROR: failed to assert INIT. (%x)", status);
@@ -320,12 +344,13 @@ lapic_send_startup_ipi(
 	apic_write(APIC_ESR, 0);
 	apic_read(APIC_ESR);
 
-	/* Set target CPU */
-	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
-
 	/* Send Startup IPI to target CPU */
-	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
-	apic_write(APIC_ICR, APIC_DM_STARTUP | (start_rip >> 12));
+	apic_write_icr(((uint64_t)apic_id << 32) | APIC_DM_STARTUP | (start_rip >> 12));
+
+	/* If using X2APIC mode, we are done... it is fire and forget. */
+	if (cpu_has_x2apic)
+		return;
+
 	udelay(300);  /* Give AP CPU some time to accept the IPI */
 	status = lapic_wait4_icr_idle();
 	if (status)
@@ -376,21 +401,18 @@ lapic_send_ipi_to_apic(
 	unsigned int	vector		/* Interrupt vector to send */
 )
 {
-	uint32_t status;
-
 	/* Wait for idle */
-	status = lapic_wait4_icr_idle();
-	if (status)
-		panic("lapic_wait4_icr_idle() timed out. (%x)", status);
-
-	/* Set target APIC */
-	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+	if (!cpu_has_x2apic) {
+		uint32_t status = lapic_wait4_icr_idle();
+		if (status)
+			panic("lapic_wait4_icr_idle() timed out. (%x)", status);
+	}
 
 	/* Send the IPI */
 	if (unlikely(vector == NMI_VECTOR))
-		apic_write(APIC_ICR, APIC_DEST_PHYSICAL|APIC_DM_NMI);
+		apic_write_icr(((uint64_t)apic_id << 32) | APIC_DEST_PHYSICAL | APIC_DM_NMI);
 	else
-		apic_write(APIC_ICR, APIC_DEST_PHYSICAL|APIC_DM_FIXED|vector);
+		apic_write_icr(((uint64_t)apic_id << 32) | APIC_DEST_PHYSICAL | APIC_DM_FIXED | vector);
 }
 
 
@@ -403,18 +425,15 @@ lapic_issue_raw_ipi (
 	unsigned int    icr
 )
 {
-	uint32_t status;
-
 	/* Wait for idle */
-	status = lapic_wait4_icr_idle();
-	if (status)
-		panic("lapic_wait4_icr_idle() timed out. (%x)", status);
-
-	/* Set target APIC */
-	apic_write(APIC_ICR2, SET_APIC_DEST_FIELD(apic_id));
+	if (!cpu_has_x2apic) {
+		uint32_t status = lapic_wait4_icr_idle();
+		if (status)
+			panic("lapic_wait4_icr_idle() timed out. (%x)", status);
+	}
 
 	/* Send the IPI */
-	apic_write(APIC_ICR, icr);
+	apic_write_icr(((uint64_t)apic_id << 32) | icr);
 }
 
 /**

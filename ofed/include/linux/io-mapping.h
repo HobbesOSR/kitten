@@ -29,10 +29,18 @@
 #ifndef	_LINUX_IO_MAPPING_H_
 #define	_LINUX_IO_MAPPING_H_
 
+#include <lwk/kernel.h>
 #include <linux/types.h>
 #include <linux/io.h>
 
 struct io_mapping;
+
+static inline void __iomem * 
+ioremap_wc(resource_size_t phys_addr, unsigned long size)
+{
+	printk("ioremap_wc : not implemented\n");
+	return NULL; /* ioremap_nocache(phys_addr, size); */
+}
 
 static inline struct io_mapping *
 io_mapping_create_wc(resource_size_t base, unsigned long size)

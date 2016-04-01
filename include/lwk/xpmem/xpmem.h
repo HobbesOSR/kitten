@@ -63,6 +63,9 @@ struct xpmem_addr {
 #define XPMEM_SIG_MODE          0x2
 #define XPMEM_REQUEST_MODE	0x4
 
+/* Valid flags for xpmem_attach() */
+#define XPMEM_NOCACHE_MODE	0x1
+
 /*
  * ioctl() commands used to interface to the kernel module.
  */

@@ -4,6 +4,7 @@
 
 /* from /usr/include/linux/time.h */
 #define CLOCK_REALTIME                  0
+#define CLOCK_MONOTONIC                 1
 
 int
 sys_clock_gettime(
@@ -17,7 +18,7 @@ sys_clock_gettime(
                 .tv_sec  = when / NSEC_PER_SEC,
                 .tv_nsec = when % NSEC_PER_SEC,
         };
-	if ( which_clock != CLOCK_REALTIME ) 
+	if ( (which_clock != CLOCK_REALTIME) && (which_clock != CLOCK_MONOTONIC) ) 
 		return -EINVAL;	
 
         if (copy_to_user(tp, &_rem, sizeof(_rem)))

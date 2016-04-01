@@ -59,7 +59,6 @@ xpmem_make_segment(vaddr_t                     vaddr,
 
     spin_lock_init(&(seg->lock));
     mutex_init(&seg->mutex);
-    atomic_set(&(seg->irq_count), 0);
     seg->segid = segid;
     seg->remote_apid = remote_apid;
     seg->vaddr = vaddr;
@@ -68,14 +67,13 @@ xpmem_make_segment(vaddr_t                     vaddr,
     seg->permit_value = permit_value;
     seg->domid = domid;
     seg->tg = seg_tg;
+    seg->flags = flags;
     INIT_LIST_HEAD(&seg->ap_list);
     INIT_LIST_HEAD(&seg->seg_node);
+    atomic_set(&(seg->irq_count), 0);
 
-    if (flags & XPMEM_FLAG_SHADOW)
-        seg->flags = XPMEM_FLAG_SHADOW;
-
-    if (flags & XPMEM_SIG_MODE) {
-        if (flags & XPMEM_FLAG_SHADOW) {
+    if (seg->flags & XPMEM_FLAG_SIGNALLABLE) {
+        if (seg->flags & XPMEM_FLAG_SHADOW) {
             /* We are making a shadow segment that is signallable. We simply need
              * to record the sigid that will be used to IPI the segment
              */
@@ -84,12 +82,8 @@ xpmem_make_segment(vaddr_t                     vaddr,
             seg->sig.irq     = signal->irq;
             seg->sig.vector  = signal->vector;
             seg->sig.apic_id = signal->apic_id;
-
-            seg->flags |= XPMEM_FLAG_SIGNALLABLE;
         } else {
             /* Else, create the signal structures locally */
-	    struct inode * inodep = NULL;
-            char name[16];
             int fd;
 
             /* Allocate signal */
@@ -101,44 +95,18 @@ xpmem_make_segment(vaddr_t                     vaddr,
 
             seg->domid = xpmem_get_domid();
             waitq_init(&seg->signalled_wq);
-            seg->flags |= XPMEM_FLAG_SIGNALLABLE;
 
-            memset(name, 0, 16);
-            snprintf(name, 16, XPMEM_DEV_PATH "%d", seg->sig.irq);
-
-	    /* Create kfs file */
-	    inodep = kfs_create(name, NULL, &xpmem_signal_fops, 0444, (void *)seg->segid, sizeof(xpmem_segid_t));
-	    if (inodep == NULL) {
-		XPMEM_ERR("Unable to create kfs file %s for xpmem signalling", name);
+	    /* Create anonymous kfs file */
+	    fd = kfs_open_anon(&xpmem_signal_fops, (void *)seg->segid);
+	    if (fd < 0) {
+		XPMEM_ERR("Unable to create anon fd for xpmem signalling");
 		xpmem_free_seg_signal(seg);
 		kmem_free(seg);
 		return -ENFILE;
 	    }
 
-	    /* Open now */
-	    status = kfs_open_path(name, 0, O_RDONLY, &(seg->kfs_file));
-	    if (status != 0) {
-		XPMEM_ERR("Unable to open kfs file %s for xpmem signalling (%d)", name, status);
-		kfs_destroy(inodep);
-		xpmem_free_seg_signal(seg);
-		kmem_free(seg);
-		return status;
-	    }
-
-	    /* Get fd */
-	    fd = fdTableGetUnused(current->fdTable);
-
-	    if (fd < 0) {
-		XPMEM_ERR("Unable to get fd for kfs file %s for xpmem signalling (%d)", name, fd);
-		kfs_close(seg->kfs_file);
-		kfs_destroy(inodep);
-		xpmem_free_seg_signal(seg);
-		kmem_free(seg);
-		return fd;
-	    }
-
-	    /* Install fd */
-	    fdTableInstallFd(current->fdTable, fd, seg->kfs_file);
+	    /* Save kfs ptr */
+	    seg->kfs_file = get_current_file(fd);
 
             *fd_p = fd;
         }
@@ -151,8 +119,12 @@ xpmem_make_segment(vaddr_t                     vaddr,
     list_add_tail(&seg->seg_node, &seg_tg->seg_list);
     write_unlock(&seg_tg->seg_list_lock);
 
-    /* add seg to global hash list of well-known segids, if necessary */
-    if (segid <= XPMEM_MAX_WK_SEGID) {
+    /* add seg to global hash list of well-known segids, if necessary. Note
+     * that shadow segments are not added to the wk list, because multiple 
+     * shadow segments from different tgs can have the same segid
+     */
+    if ((segid <= XPMEM_MAX_WK_SEGID) &&
+        (!(seg->flags & XPMEM_FLAG_SHADOW))) {
         write_lock(&xpmem_my_part->wk_segid_to_gid_lock);
         xpmem_my_part->wk_segid_to_gid[segid] = seg_tg->gid;
         write_unlock(&xpmem_my_part->wk_segid_to_gid_lock);
@@ -177,7 +149,7 @@ xpmem_make(vaddr_t         vaddr,
     xpmem_segid_t segid;
     xpmem_domid_t domid;
     struct xpmem_thread_group *seg_tg;
-    int status;
+    int status, seg_flags = 0;
 
     /* BJK: sanity check permit mode and value */
     switch (permit_type) {
@@ -221,6 +193,10 @@ xpmem_make(vaddr_t         vaddr,
         request = 0;
     }
 
+    /* Signallable segid */
+    if (flags & XPMEM_SIG_MODE)
+	seg_flags |= XPMEM_FLAG_SIGNALLABLE;
+
     seg_tg = xpmem_tg_ref_by_gid(current->aspace->id);
     if (IS_ERR(seg_tg)) {
         BUG_ON(PTR_ERR(seg_tg) != -ENOENT);
@@ -245,7 +221,7 @@ xpmem_make(vaddr_t         vaddr,
     domid = xpmem_get_domid();
     BUG_ON(domid <= 0);
 
-    status = xpmem_make_segment(vaddr, size, permit_type, permit_value, flags, seg_tg, segid, 0, domid, 0, fd_p);
+    status = xpmem_make_segment(vaddr, size, permit_type, permit_value, seg_flags, seg_tg, segid, 0, domid, 0, fd_p);
     if (status == 0)
         *segid_p = segid;
 
@@ -264,21 +240,39 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
     BUG_ON(atomic_read(&seg->refcnt) <= 0);
 
     /* see if the requesting thread is the segment's owner */
-    if (current->aspace->id != seg_tg->gid)
+    if ( (current->aspace->id != seg_tg->gid) &&
+	!(seg->flags & XPMEM_FLAG_SHADOW))
         return -EACCES;
 
     spin_lock(&seg->lock);
-    if (seg->flags & XPMEM_FLAG_DESTROYING) {
+
+    /* Cancel removal if
+     * (1) it's already being removed
+     * (2) the segment is a shadow segment and has more than 2 references
+     *		(one at creation, plus the one about to be dropped by the
+     *		invoker of this function)
+     */
+    if ( (seg->flags & XPMEM_FLAG_DESTROYING) ||
+	   ((seg->flags & XPMEM_FLAG_SHADOW) &&
+	    (atomic_read(&seg->refcnt) > 2)
+	   )
+	)
+    {
 	spin_unlock(&seg->lock);
 	return 0;
     }
+
     seg->flags |= XPMEM_FLAG_DESTROYING;
     spin_unlock(&seg->lock);
 
     xpmem_seg_down(seg);
 
-    /* Remove signal and free from name server if this is a real segment */
-    if (!(seg->flags & XPMEM_FLAG_SHADOW)) {
+    if (seg->flags & XPMEM_FLAG_SHADOW) {
+        /* Release the remote apid for shadow segments */
+        BUG_ON(seg->remote_apid <= 0);
+        xpmem_release_remote(xpmem_my_part->domain_link, seg->segid, seg->remote_apid);
+    } else {
+	/* Remove signal and free from name server if this is a real segment */
         xpmem_free_seg_signal(seg);
         xpmem_remove_remote(xpmem_my_part->domain_link, seg->segid);
     }

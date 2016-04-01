@@ -38,7 +38,7 @@
 #include <linux/workqueue.h>
 #include <net/arp.h>
 #include <net/neighbour.h>
-#include <net/route.h>
+//#include <net/route.h>
 #include <net/netevent.h>
 #include <net/addrconf.h>
 #include <net/ip6_route.h>
@@ -219,7 +219,9 @@ static void queue_req(struct addr_req *req)
 	mutex_unlock(&lock);
 }
 
-#ifdef __linux__
+
+/* JRL: Disable the linux stuff */
+#if 0 && defined( __linux__)
 static int addr4_resolve(struct sockaddr_in *src_in,
 			 struct sockaddr_in *dst_in,
 			 struct rdma_dev_addr *addr)

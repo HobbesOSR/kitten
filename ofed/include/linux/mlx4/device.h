@@ -38,6 +38,8 @@
 #include <linux/radix-tree.h>
 //#include <linux/cpu_rmap.h> /* XXX SK Probably not needed in freeBSD XXX */
 
+#include <linux/workqueue.h>
+
 #include <asm/atomic.h>
 
 #include <linux/clocksource.h> /* XXX SK ported to freeBSD */

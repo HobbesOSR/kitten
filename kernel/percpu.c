@@ -5,7 +5,6 @@
 #include <lwk/smp.h>
 #include <lwk/cpuinfo.h>
 
-#define CACHE_LINE_SIZE 128
 
 /*
  * linux 2.6.27.57 code
@@ -38,7 +37,7 @@ static void percpu_depopulate(void *__pdata, int cpu)
 static void __percpu_depopulate_mask(void *__pdata, cpumask_t *mask)
 {
     int cpu;
-    for_each_cpu_mask_nr(cpu, *mask)
+    for_each_cpu_mask(cpu, *mask)
         percpu_depopulate(__pdata, cpu);
 }
 
@@ -88,7 +87,7 @@ static int __percpu_populate_mask(void *__pdata, size_t size, cpumask_t *mask)
     int cpu;
 
     cpus_clear(populated);
-    for_each_cpu_mask_nr(cpu, *mask)
+    for_each_cpu_mask(cpu, *mask)
         if (unlikely(!percpu_populate(__pdata, size, cpu))) {
             __percpu_depopulate_mask(__pdata, &populated);
             return -ENOMEM;
