@@ -28,8 +28,10 @@
 #ifndef	_LINUX_MODULE_H_
 #define	_LINUX_MODULE_H_
 
+#include <lwk/types.h>
 #include <lwk/driver.h>
-
+#include <linux/compat.h>
+#include <linux/moduleparam.h>
 
 #define MODULE_AUTHOR(name)
 #define MODULE_DESCRIPTION(name)
@@ -41,6 +43,8 @@
 
 #define module_init(init_func) DRIVER_INIT("linux", (init_func))
 #define module_exit(exit_func) DRIVER_EXIT((exit_func))
+
+#define module_init_order(init_func, param) module_init(init_func)
 
 struct module;
 static inline void module_put(struct module *module) { }

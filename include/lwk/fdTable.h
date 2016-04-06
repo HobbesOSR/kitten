@@ -89,10 +89,10 @@ static inline int fdTableGetUnused( struct fdTable* tbl )
 extern void fdTableClose( struct fdTable* tbl );
 
 // this is the linux interface
-extern int get_unused_fd(void);
-extern void put_unused_fd(unsigned int fd);
-extern struct file *fget(unsigned int fd);
-extern void fput(struct file * filep);
-extern void fd_install(unsigned int fd, struct file *file);
+#define get_unused_fd() fdTableGetUnused(current->fdTable);
+#define put_unused_fd(fd) fdTableInstallFd(current->fdTable, fd, NULL);
+#define fd_install(fd, file) fdTableInstallFd(current->fdTable, fd, file);
+
+
 
 #endif

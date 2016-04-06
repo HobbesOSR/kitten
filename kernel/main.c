@@ -23,6 +23,7 @@
 #include <lwk/driver.h>
 #include <lwk/kfs.h>
 #include <lwk/pci/pci.h>
+#include <lwk/device.h>
 #include <lwk/random.h>
 #include <lwk/linux_compat.h>
 #include <lwk/workq.h>
@@ -157,8 +158,9 @@ start_kernel()
 	}
 
 	/*
-	 * Initialize the PCI subsystem.
+	 * Initialize the device layer and PCI subsystem.
 	 */
+	init_devices();
 	init_pci();
 
 	/*

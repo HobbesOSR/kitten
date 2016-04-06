@@ -294,6 +294,7 @@ static inline unsigned int cpuid_edx(unsigned int op)
 
 #define MSR_IA32_APICBASE               0x1b
 #define MSR_IA32_APICBASE_BSP           (1<<8)
+#define MSR_IA32_APICBASE_X2APIC        (1<<10)
 #define MSR_IA32_APICBASE_ENABLE        (1<<11)
 #define MSR_IA32_APICBASE_BASE          (0xfffff<<12)
 
@@ -420,5 +421,37 @@ static inline unsigned int cpuid_edx(unsigned int op)
 #define MSR_P4_TC_ESCR1 		0x3c5
 #define MSR_P4_U2L_ESCR0 		0x3b0
 #define MSR_P4_U2L_ESCR1 		0x3b1
+
+
+/* Run Time Average Power Limiting (RAPL) Interface */
+
+#define MSR_RAPL_POWER_UNIT             0x00000606
+
+#define MSR_PKG_POWER_LIMIT             0x00000610
+#define MSR_PKG_ENERGY_STATUS           0x00000611
+#define MSR_PKG_PERF_STATUS             0x00000613
+#define MSR_PKG_POWER_INFO              0x00000614
+
+#define MSR_DRAM_POWER_LIMIT            0x00000618
+#define MSR_DRAM_ENERGY_STATUS          0x00000619
+#define MSR_DRAM_PERF_STATUS            0x0000061b
+#define MSR_DRAM_POWER_INFO             0x0000061c
+
+#define MSR_PP0_POWER_LIMIT             0x00000638
+#define MSR_PP0_ENERGY_STATUS           0x00000639
+#define MSR_PP0_POLICY                  0x0000063a
+#define MSR_PP0_PERF_STATUS             0x0000063b
+
+#define MSR_PP1_POWER_LIMIT             0x00000640
+#define MSR_PP1_ENERGY_STATUS           0x00000641
+#define MSR_PP1_POLICY                  0x00000642
+
+#define MSR_PKG_WEIGHTED_CORE_C0_RES    0x00000658
+#define MSR_PKG_ANY_CORE_C0_RES         0x00000659
+#define MSR_PKG_ANY_GFXE_C0_RES         0x0000065A
+#define MSR_PKG_BOTH_CORE_GFXE_C0_RES   0x0000065B
+
+#define MSR_CORE_C1_RES                 0x00000660
+
 
 #endif

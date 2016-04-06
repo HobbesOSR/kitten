@@ -1,5 +1,6 @@
 obj-y := \
 	pmem_add.o \
+	pmem_del.o \
 	pmem_update.o \
 	pmem_query.o \
 	pmem_alloc.o \

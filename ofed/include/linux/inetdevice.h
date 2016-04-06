@@ -29,13 +29,31 @@
 #ifndef	_LINUX_INETDEVICE_H_
 #define	_LINUX_INETDEVICE_H_
 
+#include <linux/net.h>
 #include <linux/netdevice.h>
-#include <lwip/netif.h>
+//#include <lwip/netif.h>
+
+
+#include <linux/arp_table.h>
+	
+extern struct net init_net;
+	
+struct in_device {
+	struct net_device* dev;
+
+	// lwk specific
+	__be32  ifa_address;            
+	struct arp_table*       arp_table;
+};
+
+extern struct net_device *ip_dev_find(struct net *net, __be32 addr);
+	
 
 /** 
  * JRL: Byte ordering in the ip addresses??
  */
 
+#if 0
 static inline struct net_device *
 ip_dev_find(struct net *net, uint32_t addr)
 {
@@ -51,5 +69,5 @@ ip_dev_find(struct net *net, uint32_t addr)
     printk("Error: Could not find net_device in %s()\n", __func__);
     return NULL;
 }
-
+#endif
 #endif	/* _LINUX_INETDEVICE_H_ */

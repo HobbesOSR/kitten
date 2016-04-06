@@ -29,6 +29,7 @@
 #ifndef _LINUX_NET_IP_H_
 #define	_LINUX_NET_IP_H_
 
+#if 0
 #include "opt_inet.h"
 
 #include <sys/types.h>
@@ -40,8 +41,15 @@
 
 #include <netinet/in.h>
 #include <netinet/in_pcb.h>
+#endif
 
-#ifdef INET
+static inline void inet_get_local_port_range(int *low, int *high)
+{
+        *low = 1;
+        *high = 1024;
+}
+
+#if 0 && defined(INET)
 static inline void inet_get_local_port_range(int *low, int *high)
 {
 	*low = V_ipport_firstauto;

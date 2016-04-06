@@ -11,8 +11,9 @@
  *
  */
 
-#include <linux/kref.h>
-#include <linux/module.h>
+#include <lwk/kref.h>
+#include <arch/bug.h>
+#include <arch/system.h>
 
 /**
  * kref_set - initialize object and set refcount to requested number.
@@ -71,7 +72,3 @@ int kref_put(struct kref *kref, void (*release)(struct kref *kref))
 	return 0;
 }
 
-EXPORT_SYMBOL(kref_set);
-EXPORT_SYMBOL(kref_init);
-EXPORT_SYMBOL(kref_get);
-EXPORT_SYMBOL(kref_put);

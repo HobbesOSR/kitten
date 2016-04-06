@@ -34,6 +34,8 @@
  *
  */
 #include <linux/dma-mapping.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <rdma/ib_cache.h>
 
 #include "mad_priv.h"

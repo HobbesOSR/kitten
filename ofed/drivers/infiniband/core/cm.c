@@ -45,6 +45,7 @@
 #include <linux/sysfs.h>
 #include <linux/workqueue.h>
 #include <linux/kdev_t.h>
+#include <linux/module.h>
 
 #include <rdma/ib_cache.h>
 #include <rdma/ib_cm.h>

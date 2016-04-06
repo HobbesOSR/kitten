@@ -446,3 +446,10 @@ phys_cpu_remove(unsigned int phys_cpu_id,
 
         return 0;
 }
+
+void
+arch_shutdown_cpu(void)
+{
+    local_irq_disable();
+    halt();
+}

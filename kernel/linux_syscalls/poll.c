@@ -111,12 +111,12 @@ static void __pollwait(struct file *filp, waitq_t *wait_address,
 static long estimate_accuracy(struct timespec *tv)
 {
 	/*
-
 	 * TODO: Using realtime setting - because of simplicity.
 	 * Realtime tasks get a slack of 0 for obvious reasons.
 	 */
-		 return 0;
+	return 0;
 }
+
 void poll_initwait(struct poll_wqueues *pwq)
 {
 	init_poll_funcptr(&pwq->pt, __pollwait);
@@ -161,15 +161,20 @@ int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
 
 	set_current_state(state);
 	if (!pwq->triggered) {
-		if(!expires)
+		if (!expires) {
 			/* wait indefinitely */
 			schedule();
-		else
+		} else {
 			schedule_timeout(*expires);
-		/* TODO: currently, we can never return EINTR since we don't implement
-		   signals in the kernel. once we do, we should consider setting rc to
-		   -EINTR here iff our sleep was interrupted by a signal. */
-		rc = 0;
+		}
+
+		/* Assume that if there is no signal pending, we were woken
+		 * up either because one of the things we are waiting on
+		 * happened or because a timeout occurred. In either case,
+		 * we return 0 to the caller. */
+		if (!signal_pending(current)) {
+			rc = 0;
+		}
 	}
 	__set_current_state(TASK_RUNNING);
 
@@ -267,6 +272,7 @@ static int do_poll(unsigned int nfds,  struct poll_list *list,
 				}
 			}
 		}
+
 		/*
 		 * All waiters have already been registered, so don't provide
 		 * a poll_table to them on the next loop iteration.
@@ -274,9 +280,11 @@ static int do_poll(unsigned int nfds,  struct poll_list *list,
 		pt = NULL;
 		if (!count) {
 			count = wait->error;
-			if (signal_pending(current))
+			if (signal_pending(current)) {
 				count = -EINTR;
+			}
 		}
+
 		if (count || timed_out)
 			break;
 
@@ -290,9 +298,11 @@ static int do_poll(unsigned int nfds,  struct poll_list *list,
 			to = &expire;
 		}
 
-		if (!poll_schedule_timeout(wait, TASK_INTERRUPTIBLE, to, slack))
+		if (!poll_schedule_timeout(wait, TASK_INTERRUPTIBLE, to, slack)) {
 			timed_out = 1;
+		}
 	}
+
 	return count;
 }
 

@@ -41,7 +41,7 @@
 #include <stddef.h> /* for size_t */
 
 /* BJK: For O_NONBLOCK */
-#include <asm-generic/fcntl.h>
+#include <arch-generic/fcntl.h>
 
 #include "lwip/ip_addr.h"
 #include "lwip/inet.h"

@@ -235,6 +235,79 @@ pmem_add(const struct pmem_region *rgn)
 }
 
 static int
+__pmem_del(const struct pmem_region *update)
+{
+	struct pmem_list_entry *entry, *next, *head, *tail;
+	struct pmem_region overlap;
+
+	if (!region_is_sane(update))
+		return -EINVAL;
+
+	if (!region_is_known(update))
+		return -ENOENT;
+
+	list_for_each_entry_safe(entry, next,&pmem_list, link) {
+		if (!calc_overlap(update, &entry->rgn, &overlap))
+			continue;
+
+		if (get_cpu_var(umem_only) == true) {
+			if (!entry->rgn.type_is_set
+			     || (entry->rgn.type != PMEM_TYPE_UMEM))
+				return -EPERM;
+			if (!update->type_is_set
+			     || (update->type != PMEM_TYPE_UMEM))
+				return -EPERM;
+		}
+
+		/* Only proceed if entry is allocatable ...*/
+		if (!entry->rgn.allocated_is_set)
+		    return -EINVAL;
+		    
+		/* ... and is not currently allocated */
+		if (entry->rgn.allocated == true)
+		    return -EBUSY;
+
+		/* Handle head of entry non-overlap */
+		if (entry->rgn.start < overlap.start) {
+			if (!(head = alloc_pmem_list_entry()))
+				return -ENOMEM;
+			head->rgn = entry->rgn;
+			head->rgn.end = overlap.start;
+			list_add_tail(&head->link, &entry->link);
+		}
+
+		/* Handle tail of entry non-overlap */
+		if (entry->rgn.end > overlap.end) {
+			if (!(tail = alloc_pmem_list_entry()))
+				return -ENOMEM;
+			tail->rgn = entry->rgn;
+			tail->rgn.start = overlap.end;
+			list_add(&tail->link, &entry->link);
+		}
+
+		list_del(&entry->link); 
+		free_pmem_list_entry(entry);
+	}
+
+	merge_pmem_list();
+
+	return 0;
+}
+
+int
+pmem_del(const struct pmem_region *rgn)
+{
+	int status;
+	unsigned long irqstate;
+
+	spin_lock_irqsave(&pmem_list_lock, irqstate);
+	status = __pmem_del(rgn);
+	spin_unlock_irqrestore(&pmem_list_lock, irqstate);
+
+	return status;
+}
+
+static int
 __pmem_update(const struct pmem_region *update)
 {
 	struct pmem_list_entry *entry, *head, *tail;

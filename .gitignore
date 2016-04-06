@@ -51,6 +51,9 @@ user/test_app/test_app
 user/install
 user/external/portals4*
 user/external/ompi*
+user/multi_loader/app1
+user/multi_loader/app2
+user/multi_loader/loader
 user/pisces/pisces
 docs/html/*
 docs/latex/*

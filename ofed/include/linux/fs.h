@@ -31,6 +31,7 @@
 #include <lwk/kfs.h>
 #include <lwk/stat.h>
 #include <lwk/dev.h>
+#include <lwk/aspace.h>
 //#include <arch/current.h>
 
 #include <linux/types.h>
@@ -59,86 +60,12 @@ struct dentry {
 	struct inode	*d_inode;
 };
 
-/* 
- * FreeBSD calls to handle threads blocking on poll...
- *  We're just going to no-op them for now
- */ 
-struct selinfo {
-};
-#define selwakeup(selinfo) 
 
 
 /* The definitions are identical */
 #define file_operations kfs_fops
 
-struct linux_file {
-	struct file	*_file;
-	struct file_operations * fops;
-	void 		*private_data;
-	int		f_flags;
-	int		f_mode;	/* Just starting mode. */
 
-	struct dentry	*f_dentry;
-	//	struct dentry	f_dentry_store;
-
-	struct selinfo	f_selinfo;
-
-	struct fasync_struct	*f_fasync;
-	id_t             aspace_id;
-};
-
-
-
-
-struct fasync_struct {
-	int     magic;
-	int     fa_fd;
-	struct  fasync_struct   *fa_next; /* singly linked list */
-	id_t    aspace_id;
-	id_t    task_id;
-};
-
-
-
-#define	file		linux_file
-
-
-/* JRL: This should really be a list of structs... 
- *    For now we hope only one thread will every register for it
- */
-static inline int
-fasync_helper(int fd, struct file *filp,
-	      int mode, struct fasync_struct **fa) 
-{
-	if ((mode)) {
-		/* We don't handle multiple recipients */
-		BUG_ON((*fa) != NULL);
-
-		*fa              = filp->f_fasync;
-		(*fa)->aspace_id = current->aspace->parent->id;
-		(*fa)->task_id   = current->id;
-	} else {		
-		*fa = NULL;
-	}
-	return 0;
-}
-
-static inline void 
-kill_fasync(struct fasync_struct **fa, int sig, int band)
-{
-	if ((*fa) != NULL) {
-		struct siginfo s;
-		memset(&s, 0, sizeof(struct siginfo));
-		
-		s.si_signo = SIGIO;
-		s.si_errno = 0;
-		s.si_code  = SI_KERNEL;
-		s.si_pid   = 0;
-		s.si_uid   = 0;
-		
-		sigsend((*fa)->aspace_id, (*fa)->task_id, sig, &s);
-	}
-}
 
 typedef int (*filldir_t)(void *, const char *, int, loff_t, u64, unsigned);
 
@@ -198,6 +125,6 @@ iput(struct inode *inode)
 
 
 
-#undef file
+
 
 #endif	/* _LINUX_FS_H_ */

@@ -28,6 +28,6 @@
 #ifndef _ASM_FCNTL_H_
 #define	_ASM_FCNTL_H_
 
-#include <arch/fcntl.h>
+#include <arch-generic/fcntl.h>
 
 #endif	/* _ASM_FCNTL_H_ */

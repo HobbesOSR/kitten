@@ -87,7 +87,7 @@ del_timer_sync( struct timer_list * timer )
 
 
 
-int
+static inline int
 __mod_timer( struct timer_list *             timer,
 	     unsigned long                   expires )
 {
@@ -107,7 +107,7 @@ __mod_timer( struct timer_list *             timer,
 	return not_expired;
 }
 
-int
+static inline int
 mod_timer( struct timer_list *             timer,
 	   unsigned long                   expires )
 {
@@ -132,7 +132,8 @@ mod_timer( struct timer_list *             timer,
  * Timers with an ->expires field in the past will be executed in the next
  * timer tick.
  */
-static inline void add_timer(struct timer_list *timer)
+static inline void 
+add_timer(struct timer_list *timer)
 {
 	BUG_ON(timer_pending(timer));
 	__mod_timer(timer, timer->expires);
