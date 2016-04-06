@@ -34,6 +34,8 @@
 #include <lwk/spinlock.h>
 
 
+#define spin_lock_nested(lock, subclass)     _spin_lock(lock)
+#define spin_lock_nest_lock(lock, nest_lock) _spin_lock(lock)
 
 
 //mtx_init(&idr->lock, "idr", NULL, MTX_DEF);

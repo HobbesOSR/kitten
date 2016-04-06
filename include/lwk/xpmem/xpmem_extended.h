@@ -23,11 +23,12 @@ struct xpmem_cmd_get_ex {
     xpmem_segid_t segid;
     uint32_t      flags;
     uint32_t      permit_type;
-    int64_t       permit_value;
+    uint64_t      permit_value;
     xpmem_apid_t  apid;
     uint64_t      size;
     xpmem_domid_t domid;
     xpmem_sigid_t sigid;
+    uint32_t      seg_flags;
 };
 
 struct xpmem_cmd_release_ex {

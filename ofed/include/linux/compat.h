@@ -29,6 +29,13 @@
 #ifndef	_LINUX_COMPAT_H_
 #define	_LINUX_COMPAT_H_
 
+/* This is a FreeBSD macro to get information from the system
+ * Currently only used to get the amount of memory on the system ("hw.realmem")
+ */	
+#define TUNABLE_ULONG_FETCH(name, tgt) 
+
+typedef unsigned vm_size_t;
+
 #define is_multicast_ether_addr(x) 0
 #define is_broadcast_ether_addr(x) 0
 

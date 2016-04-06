@@ -524,7 +524,7 @@ static void int_to_threadref(unsigned char *id, int value){
 	*scan++ = (value & 0xff);
 }
 
-struct task_struct *get_task(id_t pid, id_t tid){
+static struct task_struct *get_task(id_t pid, id_t tid){
 	struct task_struct *tsk, *tskret = NULL;
 	struct aspace *aspace = aspace_acquire(pid);
 	if(aspace){

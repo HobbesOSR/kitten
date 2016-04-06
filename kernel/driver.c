@@ -2,7 +2,7 @@
 #include <lwk/string.h>
 
 
-static int driver_debug;
+static bool driver_debug;
 param(driver_debug, bool);
 
 

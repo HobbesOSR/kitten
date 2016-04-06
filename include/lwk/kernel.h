@@ -43,6 +43,8 @@ extern const char lwk_banner[];
 
 #define STACK_MAGIC     0xdeadbeef
 
+#define CACHE_LINE_SIZE 128
+
 extern void panic(const char * fmt, ...) __noreturn;
 
 extern unsigned long simple_strtoul(const char *,char **,unsigned int);

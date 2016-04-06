@@ -252,6 +252,33 @@ int strncmp(const char *cs, const char *ct, size_t count)
 EXPORT_SYMBOL(strncmp);
 #endif
 
+#ifndef __HAVE_ARCH_STRNCASECMP
+/**
+ * strncasecmp - Compare two length-limited strings
+ * @cs: One string             
+ * @ct: Another string
+ * @count: The maximum number of bytes to compare
+ */
+
+int strncasecmp(const char * s1, const char * s2, size_t limit) {
+    size_t i = 0;
+
+    while (i < limit) {
+        int cmp = (tolower(*s1) - tolower(*s2));
+
+        if ((cmp != 0) || (*s1 == '\0') || (*s2 == '\0')) {
+            return cmp;
+        }
+
+        ++s1;
+        ++s2;
+        ++i;
+    }
+
+    return 0;
+}
+#endif
+
 #ifndef __HAVE_ARCH_STRCHR
 /**
  * strchr - Find the first occurrence of a character in a string

@@ -33,6 +33,8 @@
 #include <linux/kdev_t.h>
 #include <linux/list.h>
 #include <linux/kobj_map.h>
+#include <linux/slab.h>
+#include <linux/module.h>
 
 struct file_operations;
 struct inode;

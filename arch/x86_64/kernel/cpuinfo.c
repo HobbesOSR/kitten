@@ -153,9 +153,6 @@ amd_cpu(struct cpuinfo *c)
 	if (a->x86_family == 0xf || a->x86_family == 0x10 || a->x86_family == 0x11)
 		set_bit(X86_FEATURE_K8, &a->x86_capability);
 
-	/* RDTSC can be speculated around */
-	clear_bit(X86_FEATURE_SYNC_RDTSC, &a->x86_capability);
-
 	/* Family 10 doesn't support C states in MWAIT so don't use it */
 	if (a->x86_family == 0x10)
 		clear_bit(X86_FEATURE_MWAIT, &a->x86_capability);
@@ -416,7 +413,7 @@ early_identify_cpu(struct cpuinfo *c)
 	/*
  	 * Zero structure, except apic_id should have already been filled in.
  	 */
-	uint8_t apic_id = a->apic_id;
+	uint32_t apic_id = a->apic_id;
 	memset(a, 0, sizeof(*a));
 	a->apic_id = apic_id;
 
@@ -475,7 +472,7 @@ early_identify_cpu(struct cpuinfo *c)
 	a->x86_stepping = tfms & 0xf;
 
 	/* Determine the CLFLUSH size, if the CPU supports CLFLUSH */
-	if (a->x86_capability[0] & (1 << X86_FEATURE_CLFLSH))
+	if (a->x86_capability[0] & (1 << X86_FEATURE_CLFLUSH))
 		a->x86_clflush_size = ((misc >> 8) & 0xff) * 8;
 
 	/*

@@ -550,7 +550,7 @@ sys_futex(
 	/* Get the command id, masking off any flags */
 	cmd = (op & FUTEX_CMD_MASK);
 
-	if (utime && (cmd == FUTEX_WAIT)) {
+	if (utime && (cmd == FUTEX_WAIT || cmd == FUTEX_WAIT_BITSET)) {
 		if (copy_from_user(&_utime, utime, sizeof(_utime)) != 0)
 			return -EFAULT;
 		if (!timespec_valid(&_utime))

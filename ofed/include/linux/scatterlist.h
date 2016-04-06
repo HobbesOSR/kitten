@@ -28,22 +28,29 @@
 #ifndef	_LINUX_SCATTERLIST_H_
 #define	_LINUX_SCATTERLIST_H_
 
+#include <asm/types.h>
 #include <linux/string.h>
 #include <linux/page.h>
+
+#include <arch/io.h>
 
 struct scatterlist {
 	union {
 		struct page		*page;
 		struct scatterlist	*sg;
 	} sl_un;
-	dma_addr_t	address;
+	void     * address;
+	uint32_t   length;
+	
+
+	dma_addr_t	dma_address;
+	uint32_t	dma_length;
 	unsigned long	offset;
-	uint32_t	length;
 	uint32_t	flags;
 };
 
-#define	sg_dma_address(sg)	(sg)->address
-#define	sg_dma_len(sg)		(sg)->length
+#define	sg_dma_address(sg)	(sg)->dma_address
+#define	sg_dma_len(sg)		(sg)->dma_length
 #define	sg_page(sg)		(sg)->sl_un.page
 #define	sg_scatternext(sg)	(sg)->sl_un.sg
 
@@ -51,21 +58,31 @@ struct scatterlist {
 #define	SG_CHAIN	0x02
 
 static inline void
-sg_set_page(struct scatterlist *sg, struct page *page, unsigned int len,
-    unsigned int offset)
+sg_set_page(struct scatterlist * sg,
+	    struct page        * page,
+	    unsigned int         len,
+	    unsigned int         offset)
 {
-	sg_page(sg) = page;
-	sg_dma_len(sg) = len;
-	sg->offset = offset;
+	sg_page(sg)     = page;
+	sg->address     = page->virtual;
+	sg->length      = len;
+	sg->offset      = offset;
+
+	sg->dma_address = virt_to_phys(sg->address);
+	sg->length      = sg->length;
+
 	if (offset > PAGE_SIZE)
 		panic("sg_set_page: Invalid offset %d\n", offset);
 }
 
 static inline void
-sg_set_buf(struct scatterlist *sg, const void *buf, unsigned int buflen)
+sg_set_buf(struct scatterlist * sg, const void * buf, unsigned int buflen)
 {
-	sg_set_page(sg, virt_to_page(buf), buflen,
-	    ((uintptr_t)buf) & ~PAGE_MASK);
+	sg_page(sg)  = NULL;
+	sg->address  = (void *)buf;
+	sg->length   = buflen;
+	sg->offset   = 0;
+
 }
 
 static inline void
@@ -89,7 +106,7 @@ sg_next(struct scatterlist *sg)
 static inline vm_paddr_t
 sg_phys(struct scatterlist *sg)
 {
-	return sg_page(sg)->phys_addr + sg->offset;
+	return virt_to_phys(sg->address) + sg->offset;
 }
 
 #define	for_each_sg(sglist, sg, sgmax, _itr)				\

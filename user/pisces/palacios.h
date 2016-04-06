@@ -38,6 +38,9 @@
 #define V3_VM_KEYBOARD_EVENT     142
 #define V3_VM_STREAM_CONNECT     145
 
+#define PISCES_VM_CONS_CONNECT		200
+#define PISCES_VM_CONS_DISCONNECT	201
+
 #define V3_VM_XPMEM_CONNECT      12000
 
 #define V3_CMD_PATH         "/dev/v3vee"

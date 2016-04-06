@@ -36,10 +36,13 @@
 #include <lwk/pfn.h>
 #include <lwk/aspace.h>
 
+
+
 #define	PAGE_ALIGN(x)	ALIGN(x, PAGE_SIZE)
 
 
-
+/* finds the offset of a buffer in the page it starts in */
+#define offset_in_page(p)       ((unsigned long)(p) & ~PAGE_MASK)
 
 
 static inline void *
@@ -69,5 +72,32 @@ io_remap_pfn_range(struct vm_area_struct *vma,
 
     return status;
 }
+
+
+extern void
+put_page(struct page *page);
+
+static inline void get_page(struct page *page)
+{
+        printk("get_page: not implemented\n");
+}
+
+extern int
+set_page_dirty_lock(struct page *page);
+
+extern int
+can_do_mlock(void);
+
+extern int
+remap_pfn_range(struct vm_area_struct *, unsigned long addr,
+                unsigned long pfn, unsigned long size, pgprot_t);
+
+
+
+extern int
+get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
+               unsigned long start, int len, int write, int force,
+               struct page **pages, struct vm_area_struct **vmas);
+
 
 #endif	/* _LINUX_MM_H_ */

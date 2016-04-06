@@ -34,6 +34,8 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 
+extern struct device dev_root;
+
 struct miscdevice  {
 	const char	*name;
 	struct device	*this_device;
@@ -47,7 +49,7 @@ extern struct class	miscclass;
 static inline int
 misc_register(struct miscdevice *misc)
 {
-	misc->this_device = device_create(&miscclass, &linux_rootdev, 0, misc, 
+	misc->this_device = device_create(&miscclass, &dev_root, 0, misc, 
 	    misc->name);
 	misc->cdev = cdev_alloc();
 	if (misc->cdev == NULL)

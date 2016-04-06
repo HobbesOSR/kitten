@@ -229,7 +229,7 @@ void flush_workqueue(struct workqueue_struct *wq)
     might_sleep();
     lock_map_acquire(&wq->lockdep_map);
     lock_map_release(&wq->lockdep_map);
-    for_each_cpu_mask_nr(cpu, *cpu_map)
+    for_each_cpu_mask(cpu, *cpu_map)
         flush_cpu_workqueue(per_cpu_ptr(wq->cpu_wq, cpu));
 #endif
 }
@@ -440,7 +440,7 @@ void destroy_workqueue(struct workqueue_struct *wq)
     list_del(&wq->list);
     spin_unlock(&workqueue_lock);
 
-    for_each_cpu_mask_nr(cpu, *cpu_map)
+    for_each_cpu_mask(cpu, *cpu_map)
         cleanup_workqueue_thread(per_cpu_ptr(wq->cpu_wq, cpu));
     cpu_maps_update_done();
     

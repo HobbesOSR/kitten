@@ -16,10 +16,11 @@ xpmem_try_attach_remote(xpmem_segid_t segid,
                         xpmem_apid_t  apid,
                         off_t         offset,
                         size_t        size,
+			vmflags_t     pgflags,
                         vaddr_t     * vaddr)
 {
-    int     status   = 0;
-    vaddr_t at_vaddr = 0;
+    int       status   = 0;
+    vaddr_t   at_vaddr = 0;
 
     /* Find free address space */
     status = aspace_find_hole(current->aspace->id, 0, size, PAGE_SIZE, &at_vaddr);
@@ -29,8 +30,8 @@ xpmem_try_attach_remote(xpmem_segid_t segid,
     }
 
     /* Add region to aspace */
-    status = aspace_add_region(current->aspace->id, at_vaddr, size, VM_READ | VM_WRITE | VM_USER,
-		PAGE_SIZE, "xpmem");
+    status = aspace_add_region(current->aspace->id, at_vaddr, size, 
+	pgflags, PAGE_SIZE, "xpmem");
     if (status != 0) {
 	XPMEM_ERR("aspace_add_region() failed (%d)", status);
 	return status;
@@ -78,6 +79,7 @@ xpmem_attach(xpmem_apid_t apid,
 {
     int ret, index;
     vaddr_t seg_vaddr, at_vaddr;
+    vmflags_t pgflags;
     struct xpmem_thread_group *ap_tg, *seg_tg;
     struct xpmem_access_permit *ap;
     struct xpmem_segment *seg;
@@ -85,6 +87,11 @@ xpmem_attach(xpmem_apid_t apid,
 
     if (apid <= 0)
         return -EINVAL;
+
+    /* Only one flag at this point */
+    if ((att_flags) &&
+	(att_flags != XPMEM_NOCACHE_MODE))
+	return -EINVAL;
 
     /* If the size is not page aligned, fix it */
     if (offset_in_page(size) != 0) 
@@ -114,15 +121,25 @@ xpmem_attach(xpmem_apid_t apid,
     /* size needs to reflect page offset to start of segment */
     size += offset_in_page(seg_vaddr);
 
+    pgflags = VM_READ | VM_WRITE | VM_USER;
+
     if (seg->flags & XPMEM_FLAG_SHADOW) {
         BUG_ON(seg->remote_apid <= 0);
 
+	if (att_flags & XPMEM_NOCACHE_MODE)
+	    pgflags |= VM_NOCACHE | VM_WRITETHRU;
+
 	/* remote - load pfns in now */
-	ret = xpmem_try_attach_remote(seg->segid, seg->remote_apid, offset, size, &at_vaddr);
+	ret = xpmem_try_attach_remote(seg->segid, seg->remote_apid, 
+		offset, size, pgflags, &at_vaddr);
 	if (ret != 0)
             goto out_1;
     } else {
 	/* not remote - simply figure out where we are smartmapped to this process */
+	if (att_flags & XPMEM_NOCACHE_MODE) {
+	    ret = -ENOMEM;
+	    goto out_1;
+	}
 	at_vaddr = xpmem_make_smartmap_addr(seg_tg->aspace->id, seg_vaddr);
     }
 
@@ -186,6 +203,16 @@ out_1:
     return ret;
 }
 
+/* BJK: note that this function can be called with ap->tg->aspace already locked. This
+ * happens if the task calls exit() with attachments still open, in which case the 
+ * kernel locks the aspace and then closes all open files with the aspace locked.
+ *
+ * We can tell if this is the case by checking the XPMEM_FLAG_DESTROYING flag in the tg,
+ * which gets set in xpmem_flush_tg() in xpmem_main.c
+ *
+ * If this is the case, we don't really need to teardown the mappings because that is going
+ * to happen whenver aspace_destroy() is called
+ */
 static void
 __xpmem_detach_att(struct xpmem_access_permit * ap, 
 		   struct xpmem_attachment    * att)
@@ -196,30 +223,32 @@ __xpmem_detach_att(struct xpmem_access_permit * ap,
     /* No address space to update on remote attachments - they are purely for bookkeeping */
     if (!(att->flags & XPMEM_FLAG_REMOTE)) {
 
-	/* Lookup aspace mapping */
-	status = aspace_lookup_mapping(ap->tg->aspace->id, att->at_vaddr, &mapping);
-	if (status != 0) {
-	    XPMEM_ERR("aspace_lookup_mapping() failed (%d)", status);
-	    return;
-	}
-
-	/* On shadow attachments, we added a new aspace region. Remove it now */
-	if (ap->seg->flags & XPMEM_FLAG_SHADOW) {
-	    BUG_ON(mapping.flags & VM_SMARTMAP);
-
-	    /* Remove aspace mapping */
-	    status = aspace_del_region(ap->tg->aspace->id, mapping.start, mapping.end - mapping.start);
+	if (!(ap->tg->flags & XPMEM_FLAG_DESTROYING)) {
+	    /* Lookup aspace mapping */
+	    status = aspace_lookup_mapping(ap->tg->aspace->id, att->at_vaddr, &mapping);
 	    if (status != 0) {
-		XPMEM_ERR("aspace_del_region() failed (%d)", status);
+		XPMEM_ERR("aspace_lookup_mapping() failed (%d)", status);
 		return;
 	    }
 
-	    /* Perform remote detachment */
-	    xpmem_detach_remote(xpmem_my_part->domain_link, ap->seg->segid, ap->seg->remote_apid, att->at_vaddr);
-	}
-	else {
-	    /* If this was a real attachment, it should be using SMARTMAP */
-	    BUG_ON(!(mapping.flags & VM_SMARTMAP));
+	    /* On shadow attachments, we added a new aspace region. Remove it now */
+	    if (ap->seg->flags & XPMEM_FLAG_SHADOW) {
+		BUG_ON(mapping.flags & VM_SMARTMAP);
+
+		/* Remove aspace mapping */
+		status = aspace_del_region(ap->tg->aspace->id, mapping.start, mapping.end - mapping.start);
+		if (status != 0) {
+		    XPMEM_ERR("aspace_del_region() failed (%d)", status);
+		    return;
+		}
+
+		/* Perform remote detachment */
+		xpmem_detach_remote(xpmem_my_part->domain_link, ap->seg->segid, ap->seg->remote_apid, att->at_vaddr);
+	    }
+	    else {
+		/* If this was a real attachment, it should be using SMARTMAP */
+		BUG_ON(!(mapping.flags & VM_SMARTMAP));
+	    }
 	}
 
 	/* Remove from att hash list - only done on local memory */
@@ -297,6 +326,7 @@ xpmem_detach(vaddr_t at_vaddr)
         xpmem_ap_deref(ap);
         mutex_unlock(&att->mutex);
         xpmem_att_deref(att);
+        xpmem_tg_deref(tg);
         return -EACCES;
     }
 

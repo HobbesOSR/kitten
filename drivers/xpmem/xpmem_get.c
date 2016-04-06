@@ -34,21 +34,19 @@ xpmem_make_apid(struct xpmem_thread_group *ap_tg)
 
 
 static int
-xpmem_try_get_remote(xpmem_segid_t   segid,
-                     int             flags,
-                     int             permit_type,
-                     void          * permit_value,
-                     xpmem_apid_t  * remote_apid,
-                     size_t        * remote_size,
-                     xpmem_domid_t * remote_domid,
-                     xpmem_sigid_t * remote_sigid)
+xpmem_try_get_remote(struct xpmem_thread_group * seg_tg,
+                     xpmem_segid_t               segid,
+                     int                         flags,
+                     int                         permit_type,
+                     void                      * permit_value)
 {
-    xpmem_apid_t  apid   = 0;
-    xpmem_domid_t domid  = 0;
-    xpmem_sigid_t sigid  = 0;
-    size_t        size   = 0;
-    int           status = 0;
-    
+    xpmem_apid_t  apid      = 0;
+    xpmem_domid_t domid     = 0;
+    xpmem_sigid_t sigid     = 0;
+    size_t        size      = 0;
+    int           status    = 0;
+    int           seg_flags = 0;
+
     status = xpmem_get_remote(
         xpmem_my_part->domain_link,
         segid,
@@ -61,16 +59,33 @@ xpmem_try_get_remote(xpmem_segid_t   segid,
         &sigid);
 
     if (status != 0)
-        return -1;
+        return status;
 
     if (apid == -1)
         return -1;
 
-    *remote_apid  = apid;
-    *remote_size  = size;
-    *remote_domid = domid;
-    *remote_sigid = sigid;
+    if (sigid != 0)
+	seg_flags |= XPMEM_FLAG_SIGNALLABLE;
+    else if (size == 0) {
+	XPMEM_ERR("Creating shadow segment that is neither a memory segment nor signalable! This should be impossible");
+        xpmem_release_remote(xpmem_my_part->domain_link, segid, apid);
+	return -EINVAL;
+    }
 
+    seg_flags |= XPMEM_FLAG_SHADOW;
+
+    /* We've been given a remote apid. The strategy is to fake like the segid
+     * was created locally by creating a "shadow" segment ourselves
+     */
+    status = xpmem_make_segment(0, size, permit_type, permit_value, 
+            seg_flags, seg_tg, segid, apid, domid, sigid, NULL);
+    if (status != 0) {
+	XPMEM_ERR("Unable to create shadow segment");
+	xpmem_release_remote(xpmem_my_part->domain_link, segid, apid);
+	return status;
+    }
+
+    /* Success */
     return 0;
 }
 
@@ -119,21 +134,17 @@ xpmem_get_segment(int                         flags,
 
 /*
  * Get permission to access a specified segid.
- * TODO(npe): clean up reference handling, add a goto with labels for cleanup
  */
 int
 xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
       xpmem_apid_t *apid_p)
 {
-    xpmem_apid_t  apid         = 0;
-    xpmem_apid_t  remote_apid  = 0;
-    xpmem_domid_t remote_domid = 0;
-    xpmem_sigid_t remote_sigid = 0;
-    size_t        remote_size  = 0;
+    xpmem_apid_t apid       = 0;
+    int          status     = 0;
+    int          shadow_seg = 0;
 
-    struct xpmem_segment *seg;
+    struct xpmem_segment *seg = NULL;
     struct xpmem_thread_group *ap_tg, *seg_tg;
-    int status;
 
     if (segid <= 0)
         return -EINVAL;
@@ -154,65 +165,75 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
 	    return -EINVAL;
     }
 
+    /* There are 2 cases that result in a remote lookup:
+     * (1) The thread group encoded in the segment does not exist locally.
+     *	
+     * (2) The thread group exists locally, but the segment does not. The
+     * ids for thread groups are not globally unique, so it's possible that
+     * the same thread group id exists in two separate enclaves, but only
+     * one will own the segment
+     */
+
     seg_tg = xpmem_tg_ref_by_segid(segid);
-	if(!IS_ERR(seg_tg)){
-		seg = xpmem_seg_ref_by_segid(seg_tg, segid);
-	}
-    if (IS_ERR(seg_tg) || IS_ERR(seg) ) {
-        int seg_flags = 0;
-        /* No local segment found. Look for a remote one */
-        if (xpmem_try_get_remote(segid, flags, permit_type, permit_value, 
-                &remote_apid, &remote_size, &remote_domid, &remote_sigid) != 0) 
-        {
-            return PTR_ERR(seg_tg);
-        }
+    if (IS_ERR(seg_tg)) {
+	seg_tg = xpmem_tg_ref_by_gid(current->aspace->id);
+	if (IS_ERR(seg_tg))
+	    return PTR_ERR(seg_tg);
 
-        /* We've been given a remote apid. The strategy is to fake like the segid
-         * was created locally by creating a "shadow" segment ourselves
-         */
-        if (remote_size > 0)
-            seg_flags |= XPMEM_MEM_MODE;
-        if (remote_sigid != 0)
-            seg_flags |= XPMEM_SIG_MODE;
-        if (seg_flags == 0) {
-            XPMEM_ERR("Creating shadow segment that is neither a memory segment nor signalable!");
-            return -EINVAL;
-        }
-
-        seg_flags |= XPMEM_FLAG_SHADOW;
-        seg_tg = xpmem_tg_ref_by_gid(current->aspace->id);
-        xpmem_make_segment(0, remote_size, permit_type, permit_value, 
-            seg_flags, seg_tg, segid, remote_apid, remote_domid, remote_sigid, NULL);
+	shadow_seg = 1;
     }
-		seg = xpmem_seg_ref_by_segid(seg_tg, segid);
-	    if (IS_ERR(seg)) {
-	        xpmem_tg_deref(seg_tg);
-	        return PTR_ERR(seg);
-	    }
+
+    if (!shadow_seg) {
+	seg = xpmem_seg_ref_by_segid(seg_tg, segid);
+	if (IS_ERR(seg))
+	    shadow_seg = 1;
+    }
+
+    if (shadow_seg) {
+        /* No local segment found. Look for a remote one */
+	/* NOTE: in either case, the tg has already been ref'd. We ref the 
+	 * current process' tg if no tg is found for the segid
+	 */
+        status = xpmem_try_get_remote(seg_tg, segid, flags, permit_type, 
+		permit_value);
+	if (status != 0) {
+	    xpmem_tg_deref(seg_tg);
+	    return status;
+        }
+
+	/* Now, get the shadow segment */
+	seg = xpmem_seg_ref_by_segid(seg_tg, segid);
+	if (IS_ERR(seg)) {
+	    /* Error should be impossible here, but we'll
+	     * check anyway. The shadow segment was created in
+	     * xpmem_try_get_remote, so destroy it here */
+	    xpmem_remove(segid);
+	    xpmem_tg_deref(seg_tg);
+	    return PTR_ERR(seg);
+	}
+    }
 
     /* find accessor's thread group structure */
     ap_tg = xpmem_tg_ref_by_gid(current->aspace->id);
     if (IS_ERR(ap_tg)) {
         BUG_ON(PTR_ERR(ap_tg) != -ENOENT);
-        xpmem_seg_deref(seg);
-        xpmem_tg_deref(seg_tg);
-        return -XPMEM_ERRNO_NOPROC;
+	status = -XPMEM_ERRNO_NOPROC;
+	goto err_ap_tg;
     }
+
     apid = xpmem_make_apid(ap_tg);
     if (apid < 0) {
-        xpmem_tg_deref(ap_tg);
-        xpmem_seg_deref(seg);
-        xpmem_tg_deref(seg_tg);
-        return apid;
+	status = apid;
+	goto err_apid;
     }
-    status = xpmem_get_segment(flags, permit_type, permit_value, apid, seg, seg_tg, ap_tg);
 
-    if (status == 0) {
-        *apid_p = apid;
-    } else {
-        xpmem_seg_deref(seg);
-        xpmem_tg_deref(seg_tg);
-    }
+    status = xpmem_get_segment(flags, permit_type, permit_value, apid, 
+	seg, seg_tg, ap_tg);
+
+    if (status != 0)
+	goto err_get;
+
+    *apid_p = apid;
     xpmem_tg_deref(ap_tg);
 
     /*
@@ -228,6 +249,22 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
      * These two derefs will be done by xpmem_release_ap() at the time
      * this ap structure is destroyed.
      */
+
+    return status;
+
+err_get:
+err_apid:
+    xpmem_tg_deref(ap_tg); 
+
+err_ap_tg:
+    /* If we created a shadow segment, destroy it on error. Else, just 
+     * deref it
+     */
+    if (shadow_seg)
+	xpmem_remove(segid);
+    else
+	xpmem_seg_deref(seg);
+    xpmem_tg_deref(seg_tg);
 
     return status;
 }
@@ -287,13 +324,11 @@ xpmem_release_ap(struct xpmem_thread_group *ap_tg,
     spin_lock(&seg->lock);
     list_del_init(&ap->ap_node);
     spin_unlock(&seg->lock);
-    
-    /* Release remote apid */
-    if (seg->flags & XPMEM_FLAG_SHADOW) {
-	BUG_ON(seg->remote_apid <= 0);
-        xpmem_release_remote(xpmem_my_part->domain_link, seg->segid, seg->remote_apid);
-    }
 
+    /* Try to teardown a shadow segment */
+    if (seg->flags & XPMEM_FLAG_SHADOW)
+	xpmem_remove_seg(seg_tg, seg);
+    
     xpmem_seg_deref(seg);   /* deref of xpmem_get()'s ref */
     xpmem_tg_deref(seg_tg); /* deref of xpmem_get()'s ref */
 

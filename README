@@ -178,7 +178,7 @@ Instructions for Building with Palacios VMM Support
                    config option should be set to the path of the image.
 
     5. Build Kitten
-           > make kitten isoimage
+           > make isoimage
 
              If successful, a bootable ISO image will be located at:
                 kitten/arch/x86_64/boot/image.iso

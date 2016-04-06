@@ -12,7 +12,7 @@
 
 struct lwk_arpreq {
 	struct sockaddr arp_pa;
-	char            arp_ha[MAX_ADDR_LEN];
+	char            arp_ha[MAX_ARP_ADDR_LEN];
 	int             arp_flags;
 	char            arp_dev[16];
 };

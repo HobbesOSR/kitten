@@ -35,7 +35,7 @@
 #include <linux/module.h>
 #include <linux/sched.h>
 
-#ifdef __linux__
+#if !defined(__LWK__) && defined(__linux__)
 #include <linux/proc_fs.h>
 #include <linux/cred.h>
 #endif
@@ -50,7 +50,8 @@ static u32 convert_access(int acc)
 	       (acc & IB_ACCESS_LOCAL_WRITE   ? MLX4_PERM_LOCAL_WRITE  : 0) |
 	       MLX4_PERM_LOCAL_READ;
 }
-#ifdef __linux__
+
+#if !defined(__LWK__) && defined(__linux__)
 static ssize_t shared_mr_proc_read(struct file *file,
 			  char __user *buffer,
 			  size_t len,
@@ -433,7 +434,7 @@ end:
 	return block_shift;
 }
 
-#ifdef __linux__
+#if !defined(__LWK__) && defined(__linux__)
 static int prepare_shared_mr(struct mlx4_ib_mr *mr, int access_flags, int mr_id)
 {
 	struct proc_dir_entry *mr_proc_entry;
@@ -516,7 +517,7 @@ struct ib_mr *mlx4_ib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 		goto err_mr;
 
 	mr->ibmr.rkey = mr->ibmr.lkey = mr->mmr.key;
-#ifdef __linux__
+#if !defined(__LWK__) && defined(__linux__)
 	/* Check whether MR should be shared */
 	if (is_shared_mr(access_flags)) {
 	/* start address and length must be aligned to page size in order
@@ -566,7 +567,7 @@ int mlx4_ib_dereg_mr(struct ib_mr *ibmr)
 		    That's why no sync mechanism is needed when we release
 		    below the shared umem.
 		*/
-#ifdef __linux__
+#if !defined(__LWK__) && defined(__linux__)
 		remove_proc_entry(name_buff, mlx4_mrs_dir_entry);
 		kfree(mr->smr_info);
 #endif

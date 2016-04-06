@@ -29,7 +29,8 @@
 #ifndef	_LINUX_NET_NETEVENT_H_
 #define	_LINUX_NET_NETEVENT_H_
 
-#include <netinet/if_ether.h>
+#if 0 /* JRL Disable all this */
+//#include <netinet/if_ether.h>
 
 enum netevent_notif_type {
 	NETEVENT_NEIGH_UPDATE = 0,
@@ -44,17 +45,20 @@ struct llentry;
 static inline void
 _handle_arp_update_event(void *arg, struct llentry *lle, int evt __unused)
 {
+    /*
 	struct notifier_block *nb;
 
 	nb = arg;
 	nb->notifier_call(nb, NETEVENT_NEIGH_UPDATE, lle);
+    */
 }
 
 static inline int
 register_netevent_notifier(struct notifier_block *nb)
 {
-	nb->tags[NETEVENT_NEIGH_UPDATE] = EVENTHANDLER_REGISTER(
+    /*	nb->tags[NETEVENT_NEIGH_UPDATE] = EVENTHANDLER_REGISTER(
 	    lle_event, _handle_arp_update_event, nb, 0);
+    */
 	return (0);
 }
 
@@ -62,9 +66,11 @@ static inline int
 unregister_netevent_notifier(struct notifier_block *nb)
 {
 
-	EVENTHANDLER_DEREGISTER(lle_event, nb->tags[NETEVENT_NEIGH_UPDATE]);
+    //	EVENTHANDLER_DEREGISTER(lle_event, nb->tags[NETEVENT_NEIGH_UPDATE]);
 
 	return (0);
 }
+
+#endif
 
 #endif /* _LINUX_NET_NETEVENT_H_ */
