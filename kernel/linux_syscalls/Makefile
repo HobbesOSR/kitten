@@ -46,6 +46,7 @@ obj-y := \
 	read.o	 \
 	close.o	 \
 	open.o	 \
+	openat.o \
 	mknod.o	 \
 	mkdir.o	 \
 	unlink.o \
@@ -57,3 +58,4 @@ obj-y := \
 	getdents64.o \
 	readlink.o \
 	access.o \
+	reboot.o

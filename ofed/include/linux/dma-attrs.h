@@ -44,4 +44,14 @@ init_dma_attrs(struct dma_attrs *attrs)
 	attrs->flags = 0;
 }
 
+static inline void 
+dma_set_attr(enum   dma_attr    attr, 
+	     struct dma_attrs * attrs)
+{
+    if (attrs == NULL) return;
+
+    attrs->flags |= (0x1 << attr);
+}
+	
+
 #endif	/* _LINUX_DMA_ATTR_H_ */

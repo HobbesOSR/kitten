@@ -81,20 +81,24 @@
  *    inside a macro, the way we do the other calls.
  */
 
+
 /**
- * Fixed size cpumask structure for user-space.
- * As long as CPU_MAX_ID >= NR_CPUS, we're good to go... 
- * otherwise we need to bump up CPU_MAX_ID and therefore break
- * user-level binary compatibility, causing a flag day.
+ * We define a fixed size cpumask, user_cpumask_t, for use by user-space.
+ * This allows the kernel to change its notion of the number of CPUs
+ * supported, NR_CPUS, without breaking compatibility with user-space.
+ * As long as (NR_CPUS <= (CPU_MAX_ID+1)), the user_cpumask_t is big
+ * enough to support the number of CPUs supported by the kernel.  If
+ * NR_CPUS is ever increased beyond CPU_MAX_ID+1, then we will need to
+ * bump up CPU_MAX_ID to a larger value and then break user-level
+ * binary compatibility, causing a flag day.
  */
-
-#define CPU_MIN_ID 0
-#define CPU_MAX_ID 1023
-
-#define __BITS_PER_LONG (sizeof(unsigned long) * 8)
+#define CPU_MIN_ID 0     // Do not change this
+#define CPU_MAX_ID 1023  // CPU_MAX_ID+1 must be >= NR_CPUS and
+                         // CPU_MAX_ID must be multiple of (sizeof(unsigned long)*8)
 typedef struct {
-	unsigned long bits[(CPU_MAX_ID+1)/__BITS_PER_LONG];
+	unsigned long bits[(CPU_MAX_ID+1)/(sizeof(unsigned long)*8)];
 } user_cpumask_t;
+
 
 /** User-space macros for manipulating bits in user_cpumask_t.
  *
@@ -109,6 +113,7 @@ typedef struct {
  */
 #ifndef __KERNEL__
 
+# define __BITS_PER_LONG (sizeof(unsigned long) * 8)
 # define __BITS_INDEX(cpu) ((cpu) / __BITS_PER_LONG)
 # define __BITS_MASK(cpu)  ((unsigned long)1 << (((cpu) % __BITS_PER_LONG)))
 
@@ -133,8 +138,8 @@ typedef struct {
 #include <lwk/bitmap.h>
 #include <lwk/cpu.h>
 
-#if (CPU_MAX_ID + 1 < NR_CPUS)
-#error "NR_CPUS must be <= CPU_MAX_ID"
+#if (NR_CPUS > CPU_MAX_ID+1)
+#error "NR_CPUS must be <= CPU_MAX_ID+1"
 #endif
 
 typedef struct cpumask { DECLARE_BITMAP(bits, NR_CPUS); } cpumask_t;
@@ -396,14 +401,6 @@ static inline void __cpus_remap(cpumask_t *dstp, const cpumask_t *srcp,
 {
 	bitmap_remap(dstp->bits, srcp->bits, oldp->bits, newp->bits, nbits);
 }
-
-#if NR_CPUS <= 64
-
-#define for_each_cpu_mask_nr(cpu, mask) for_each_cpu_mask(cpu, mask)
-
-#else /* NR_CPUS > 64 */
-    #error "for_each_cpu_mask_nr not supported for NR_CPUS > 64 "
-#endif
 
 
 #define for_each_cpu_mask(cpu, mask)		\

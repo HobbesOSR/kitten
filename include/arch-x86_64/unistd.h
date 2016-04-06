@@ -24,7 +24,7 @@ __SYSCALL(__NR_stat, sys_stat)
 #define __NR_fstat                               5
 __SYSCALL(__NR_fstat, sys_fstat)
 #define __NR_lstat                               6
-__SYSCALL(__NR_lstat, syscall_not_implemented)
+__SYSCALL(__NR_lstat, sys_stat)
 #define __NR_poll                                7
 __SYSCALL(__NR_poll, sys_poll)
 #define __NR_lseek                               8
@@ -385,7 +385,7 @@ __SYSCALL(__NR_swapon, syscall_not_implemented)
 __SYSCALL(__NR_swapoff, syscall_not_implemented)
 
 #define __NR_reboot                            169
-__SYSCALL(__NR_reboot, syscall_not_implemented)
+__SYSCALL(__NR_reboot, sys_reboot)
 
 #define __NR_sethostname                       170
 __SYSCALL(__NR_sethostname, sys_sethostname)
@@ -572,7 +572,7 @@ __SYSCALL(__NR_inotify_rm_watch, syscall_not_implemented)
 #define __NR_migrate_pages	256
 __SYSCALL(__NR_migrate_pages, syscall_not_implemented)
 #define __NR_openat		257
-__SYSCALL(__NR_openat, syscall_not_implemented)
+__SYSCALL(__NR_openat, sys_openat)
 #define __NR_mkdirat		258
 __SYSCALL(__NR_mkdirat, syscall_not_implemented)
 #define __NR_mknodat		259
@@ -641,89 +641,90 @@ __SYSCALL(__NR_fallocate, syscall_not_implemented)
  */
 #define __NR_pmem_add		500
 __SYSCALL(__NR_pmem_add, sys_pmem_add)
-#define __NR_pmem_update	501
+#define __NR_pmem_del		501
+__SYSCALL(__NR_pmem_del, sys_pmem_del)
+#define __NR_pmem_update	502
 __SYSCALL(__NR_pmem_update, sys_pmem_update)
-#define __NR_pmem_query		502
+#define __NR_pmem_query		503
 __SYSCALL(__NR_pmem_query, sys_pmem_query)
-#define __NR_pmem_alloc		503
+#define __NR_pmem_alloc		504
 __SYSCALL(__NR_pmem_alloc, sys_pmem_alloc)
-#define __NR_pmem_zero		504
+#define __NR_pmem_zero		505
 __SYSCALL(__NR_pmem_zero, sys_pmem_zero)
 
-#define __NR_aspace_get_myid	505
+#define __NR_aspace_get_myid	506
 __SYSCALL(__NR_aspace_get_myid, sys_aspace_get_myid)
-#define __NR_aspace_create	506
+#define __NR_aspace_create	507
 __SYSCALL(__NR_aspace_create, sys_aspace_create)
-#define __NR_aspace_destroy	507
+#define __NR_aspace_destroy	508
 __SYSCALL(__NR_aspace_destroy, sys_aspace_destroy)
-#define __NR_aspace_find_hole	508
+#define __NR_aspace_find_hole	509
 __SYSCALL(__NR_aspace_find_hole, sys_aspace_find_hole)
-#define __NR_aspace_add_region	509
+#define __NR_aspace_add_region	510
 __SYSCALL(__NR_aspace_add_region, sys_aspace_add_region)
-#define __NR_aspace_del_region	510
+#define __NR_aspace_del_region	511
 __SYSCALL(__NR_aspace_del_region, sys_aspace_del_region)
-#define __NR_aspace_map_pmem	511
+#define __NR_aspace_map_pmem	512
 __SYSCALL(__NR_aspace_map_pmem, sys_aspace_map_pmem)
-#define __NR_aspace_unmap_pmem	512
+#define __NR_aspace_unmap_pmem	513
 __SYSCALL(__NR_aspace_unmap_pmem, sys_aspace_unmap_pmem)
-#define __NR_aspace_virt_to_phys 513
+#define __NR_aspace_virt_to_phys 514
 __SYSCALL(__NR_aspace_virt_to_phys, sys_aspace_virt_to_phys)
-#define __NR_aspace_smartmap	514
+#define __NR_aspace_smartmap	515
 __SYSCALL(__NR_aspace_smartmap, sys_aspace_smartmap)
-#define __NR_aspace_unsmartmap	515
+#define __NR_aspace_unsmartmap	516
 __SYSCALL(__NR_aspace_unsmartmap, sys_aspace_unsmartmap)
-#define __NR_aspace_dump2console 516
+#define __NR_aspace_dump2console 517
 __SYSCALL(__NR_aspace_dump2console, sys_aspace_dump2console)
-#define __NR_task_create	517
+#define __NR_task_create	518
 __SYSCALL(__NR_task_create, sys_task_create)
-#define __NR_task_switch_cpus	518
+#define __NR_task_switch_cpus	519
 __SYSCALL(__NR_task_switch_cpus, sys_task_switch_cpus)
-#define __NR_elf_hwcap		519
+#define __NR_elf_hwcap		520
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
-#define __NR_v3_start_guest	520
+#define __NR_v3_start_guest	521
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
-#define __NR_getcpu		521
+#define __NR_getcpu		522
 __SYSCALL(__NR_getcpu, sys_getcpu)
-#define __NR_mce_inject		522
+#define __NR_mce_inject		523
 __SYSCALL(__NR_mce_inject, syscall_not_implemented)
 
-#define __NR_lwk_arp            523
+#define __NR_lwk_arp            524
 #ifdef CONFIG_LINUX
 __SYSCALL(__NR_lwk_arp, sys_lwk_arp)
 #else
 __SYSCALL(__NR_lwk_arp, syscall_not_implemented)
 #endif
 
-#define __NR_lwk_ifconfig       524
+#define __NR_lwk_ifconfig       525
 #ifdef CONFIG_LINUX
 __SYSCALL(__NR_lwk_ifconfig, sys_lwk_ifconfig)
 #else
 __SYSCALL(__NR_lwk_ifconfig, syscall_not_implemented)
 #endif
 
-#define __NR_phys_cpu_add	525
+#define __NR_phys_cpu_add	526
 __SYSCALL(__NR_phys_cpu_add, sys_phys_cpu_add)
-#define __NR_phys_cpu_remove	526
+#define __NR_phys_cpu_remove	527
 __SYSCALL(__NR_phys_cpu_remove, sys_phys_cpu_remove)
 
-#define __NR_task_meas		527
+#define __NR_task_meas		528
 #ifdef CONFIG_TASK_MEAS
 __SYSCALL(__NR_task_meas, sys_task_meas)
 #else
 __SYSCALL(__NR_task_meas, syscall_not_implemented)
 #endif
 
-#define __NR_aspace_update_user_cpumask     528
+#define __NR_aspace_update_user_cpumask     529
 __SYSCALL(__NR_aspace_update_user_cpumask, sys_aspace_update_user_cpumask)
 
-#define __NR_sched_yield_task_to	529
+#define __NR_sched_yield_task_to	530
 __SYSCALL(__NR_sched_yield_task_to, sys_sched_yield_task_to)
-#define __NR_sched_setparams_task	530
+#define __NR_sched_setparams_task	531
 #ifdef CONFIG_SCHED_EDF
 __SYSCALL(__NR_sched_setparams_task, sys_sched_setparams_task)
 #else
 __SYSCALL(__NR_sched_setparams_task, syscall_not_implemented)
 #endif
-
 
 #endif /* _ARCH_X86_64_UNISTD_H */

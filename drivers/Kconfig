@@ -92,4 +92,14 @@ config XPMEM_FWD
 endchoice
 
 
+config RCR
+	bool "RCR driver"
+	default n
+	help
+		Resource Centric Reflection driver.
+		If this driver is enabled, a kernel thread will be created
+		that periodically reads a set of performance counters and
+		publishes them to a 'blackboard' region of memory that can
+		be mapped into a user-space process via /dev/msr.
+
 endmenu

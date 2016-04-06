@@ -24,3 +24,4 @@ lib-y := \
 	siginfo.o \
 	find_last_bit.o \
 	find_next_bit.o \
+	kref.o \

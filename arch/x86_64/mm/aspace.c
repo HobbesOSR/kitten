@@ -528,7 +528,7 @@ arch_aspace_map_pmem_into_kernel(paddr_t start, paddr_t end)
 	for (paddr = start; paddr < end; paddr += VM_PAGE_2MB) {
 		/* If the page isn't already mapped, we need to map it */
 		if (arch_aspace_virt_to_phys(&bootstrap_aspace, (vaddr_t)__va(paddr), NULL) == -ENOENT) {
-			printk(KERN_INFO "Missing kernel memory found, paddr=0x%016lx.\n", paddr);
+		    //	printk(KERN_INFO "Missing kernel memory found, paddr=0x%016lx.\n", paddr);
 
 			status =
 			arch_aspace_map_page(

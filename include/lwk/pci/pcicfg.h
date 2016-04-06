@@ -319,6 +319,14 @@ pcicfg_exp_rom_decode(
 	pci_exp_rom_bar_t * bar
 );
 
+int
+pcicfg_find_cap_offset(
+	unsigned int   bus,
+	unsigned int   slot,
+	unsigned int   func,
+	pcicfg_hdr_t * hdr,
+	unsigned int   capid
+);
 
 /** Prints a pci_bar_t structure to the console. */
 void pcicfg_bar_print(pci_bar_t *bar);

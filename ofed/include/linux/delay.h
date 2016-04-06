@@ -32,7 +32,7 @@
 #include <linux/jiffies.h>
 
 static inline void
-linux_msleep(int ms)
+linux_msleep(int msecs)
 {
     __udelay(msecs * 1000);
 }

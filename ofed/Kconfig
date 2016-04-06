@@ -1,13 +1,18 @@
 
 menu "OFED"
 
+config OFED
+        bool "OFED Driver support"
+        ---help---
+          This compiles the OFED driver stack
+
 config OFED_COMPAT
         bool "OFED Compatibility Layer"
         ---help---
           This compiles the compatibility layer files without the infiniband drivers
 
 
-#source "ofed/drivers/infiniband/Kconfig"
+source "ofed/drivers/infiniband/Kconfig"
 
 endmenu
 

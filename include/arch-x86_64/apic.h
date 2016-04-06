@@ -2,9 +2,11 @@
 #define __ASM_APIC_H
 
 #include <lwk/init.h>
+#include <lwk/cpuinfo.h>
 #include <arch/fixmap.h>
 #include <arch/apicdef.h>
 #include <arch/system.h>
+#include <arch/msr.h>
 
 /*
  * Debugging macros
@@ -37,13 +39,37 @@ struct pt_regs;
 
 static __inline void apic_write(unsigned long reg, uint32_t val)
 {
-	*((volatile uint32_t *)(APIC_BASE+reg)) = val;
+	if (cpu_has_x2apic) {
+		wrmsrl(0x800+(reg>>4), val);
+	} else {
+		*((volatile uint32_t *)(APIC_BASE+reg)) = val;
+	}
 }
 
 static __inline uint32_t apic_read(unsigned long reg)
 {
-	return *((volatile uint32_t *)(APIC_BASE+reg));
+	uint32_t val;
+
+	if (cpu_has_x2apic) {
+		rdmsrl(0x800+(reg>>4), val);
+	} else {
+		val = *((volatile uint32_t *)(APIC_BASE+reg));
+	}
+
+	return val;
 }
+
+static __inline void apic_write_icr(uint64_t val)
+{
+	if (cpu_has_x2apic) {
+		wrmsrl(0x800 + (APIC_ICR >> 4), val);
+	} else {
+		uint32_t apic_id = (val >> 32) & 0xFFFFFFFFul;
+		*((volatile uint32_t *)(APIC_BASE + APIC_ICR2)) = SET_APIC_DEST_FIELD(apic_id);
+		*((volatile uint32_t *)(APIC_BASE + APIC_ICR))  = val & 0xFFFFFFFFul;
+	}
+}
+
 
 static inline void lapic_ack_interrupt(void)
 {

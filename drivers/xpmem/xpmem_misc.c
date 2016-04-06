@@ -102,6 +102,14 @@ xpmem_seg_ref_by_segid(struct xpmem_thread_group *seg_tg, xpmem_segid_t segid)
             if (seg->flags & XPMEM_FLAG_DESTROYING)
                 continue; /* could be others with this segid */
 
+	    /* Shadow segments may only be lookeup up via segid by the process
+	     * that created them. This is to force all xpmem_gets() of remote
+	     * segids to issue independent get requests to the source domain
+	     */
+	    if ((seg->flags & XPMEM_FLAG_SHADOW) &&
+		(current->aspace->id != seg_tg->gid))
+		continue;
+
             xpmem_seg_ref(seg);
             read_unlock(&seg_tg->seg_list_lock);
             return seg;
@@ -120,16 +128,15 @@ void
 xpmem_seg_deref(struct xpmem_segment *seg)
 {
     BUG_ON(atomic_read(&seg->refcnt) <= 0);
-    if (atomic_dec_return(&seg->refcnt) > 0)
-        return;
+    if (atomic_dec_return(&seg->refcnt) == 0) {
+	/*
+	 * Segment has been removed from lookup lists and is no
+	 * longer being referenced so it is safe to free it.
+	 */
+	BUG_ON(!(seg->flags & XPMEM_FLAG_DESTROYING));
 
-    /*
-     * Segment has been removed from lookup lists and is no
-     * longer being referenced so it is safe to free it.
-     */
-    BUG_ON(!(seg->flags & XPMEM_FLAG_DESTROYING));
-
-    kmem_free(seg);
+	kmem_free(seg);
+    }
 }
 
 /*
