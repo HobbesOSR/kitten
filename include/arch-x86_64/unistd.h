@@ -600,7 +600,7 @@ __SYSCALL(__NR_faccessat, syscall_not_implemented)
 #define __NR_pselect6		270
 __SYSCALL(__NR_pselect6, syscall_not_implemented)
 #define __NR_ppoll		271
-__SYSCALL(__NR_ppoll,	syscall_not_implemented)
+__SYSCALL(__NR_ppoll,	sys_ppoll)
 #define __NR_unshare		272
 __SYSCALL(__NR_unshare,	syscall_not_implemented)
 #define __NR_set_robust_list	273
