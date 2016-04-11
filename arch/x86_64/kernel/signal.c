@@ -245,10 +245,14 @@ handle_signal(
 	if ((long)regs->orig_rax >= 0) {
 		// If so, and if requested, setup to restart the interrupted
 		// system call automatically once the signal handler is finished
-		switch ((long)regs->rax) {
+		switch ((long)(int)regs->rax) {
+		case -ERESTARTNOHAND:
+			sigprocmask(SIG_SETMASK, &current->saved_sigmask, NULL);
+			regs->rax = (unsigned)-EINTR;
+			break;
 			case -ERESTARTSYS:
 				if (!(sigact->sa_flags & SA_RESTART)) {
-					regs->rax = -EINTR;
+					regs->rax = (unsigned)-EINTR;
 					break;
 				}
 				// fallthrough

@@ -130,6 +130,7 @@ struct task_struct {
 
 	unsigned long		ptrace;
 	uint32_t		flags;
+	sigset_t saved_sigmask;
 
 	int			exit_status;	// Reason the task exited
 

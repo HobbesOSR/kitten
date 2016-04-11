@@ -191,7 +191,7 @@ int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
 	 */
 	set_mb(pwq->triggered, 0);
 
-	return rc;
+  return rc;
 }
 
 
@@ -287,7 +287,6 @@ static int do_poll(unsigned int nfds,  struct poll_list *list,
 
 		if (count || timed_out)
 			break;
-
 		/*
 		 * If this is the first loop and we have a timeout
 		 * given, then we convert to ktime_t and set the to
@@ -376,3 +375,100 @@ out_fds:
 
 	return err;
 }
+
+int
+sys_ppoll(struct pollfd *fds, nfds_t nfds,
+		struct timespec __user * tsp, const sigset_t __user * sigmask,
+		size_t sigsetsize)
+{
+	struct poll_wqueues table;
+	sigset_t ksigmask, sigsaved;
+	struct timespec end_time, *end_time_p = NULL;
+	int len, fdcount, size, err = -EFAULT;
+	long stack_pps[256/sizeof(long)];
+	struct poll_list *const head = (struct poll_list *)stack_pps;
+	struct poll_list *walk = head;
+	unsigned long todo = nfds;
+
+	if (tsp) {
+		if (copy_from_user(&end_time, tsp, sizeof(end_time)))
+			return -EFAULT;
+		if (!timespec_valid(&end_time))
+			return -EINVAL;
+		end_time_p = &end_time;
+	}
+
+	if (sigmask) {
+		/* XXX: Don't preclude handling different sized sigset_t's.  */
+		if (sigsetsize != sizeof(sigset_t))
+			return -EINVAL;
+		if (copy_from_user(&ksigmask, sigmask, sizeof(ksigmask)))
+			return -EFAULT;
+		sigset_del(&ksigmask, SIGKILL);
+		sigset_del(&ksigmask, SIGSTOP);
+		sigprocmask(SIG_SETMASK, &ksigmask, &sigsaved);
+	}
+
+	len = min_t(unsigned int, nfds, N_STACK_PPS);
+	for (;;) {
+		walk->next = NULL;
+		walk->len = len;
+		if (!len)
+			break;
+
+		if (copy_from_user(walk->entries, fds + nfds-todo,
+                       sizeof(struct pollfd) * walk->len))
+			goto out_fds;
+
+		todo -= walk->len;
+		if (!todo)
+			break;
+
+		len = min(todo, POLLFD_PER_PAGE);
+		size = sizeof(struct poll_list) + sizeof(struct pollfd) * len;
+		walk = walk->next = kmem_alloc(size);
+		if (!walk) {
+			err = -ENOMEM;
+			goto out_fds;
+		}
+	}
+
+	poll_initwait(&table);
+	fdcount = do_poll(nfds, head, &table, end_time_p);
+	poll_freewait(&table);
+
+	/* We can restart this syscall, usually */
+	if (fdcount == -EINTR) {
+		/*
+		 * Don't restore the signal mask yet. Let do_signal() deliver
+		 * the signal on the way back to userspace, before the signal
+		 * mask is restored.
+		 */
+		if (sigmask)
+			memcpy(&current->saved_sigmask, &sigsaved,
+					sizeof(sigsaved));
+		err = -ERESTARTNOHAND;
+		goto out_fds;
+	} else if (sigmask)
+		sigprocmask(SIG_SETMASK, &sigsaved, NULL);
+
+	for (walk = head; walk; walk = walk->next) {
+		struct pollfd *wfds = walk->entries;
+		int j;
+
+		for (j = 0; j < walk->len; j++, fds++)
+			if (__put_user(wfds[j].revents, &fds->revents))
+				goto out_fds;
+	}
+	err = fdcount;
+out_fds:
+	walk = head->next;
+	while (walk) {
+		struct poll_list *pos = walk;
+		walk = walk->next;
+		kmem_free(pos);
+	}
+
+	return err;
+}
+
