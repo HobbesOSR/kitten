@@ -191,7 +191,7 @@ int poll_schedule_timeout(struct poll_wqueues *pwq, int state,
 	 */
 	set_mb(pwq->triggered, 0);
 
-	return rc;
+  return rc;
 }
 
 
@@ -287,7 +287,6 @@ static int do_poll(unsigned int nfds,  struct poll_list *list,
 
 		if (count || timed_out)
 			break;
-
 		/*
 		 * If this is the first loop and we have a timeout
 		 * given, then we convert to ktime_t and set the to
@@ -388,19 +387,15 @@ sys_ppoll(struct pollfd *fds, nfds_t nfds,
 	int len, fdcount, size, err = -EFAULT;
 	long stack_pps[256/sizeof(long)];
 	struct poll_list *const head = (struct poll_list *)stack_pps;
-  struct poll_list *walk = head;
+	struct poll_list *walk = head;
 	unsigned long todo = nfds;
 
 	if (tsp) {
 		if (copy_from_user(&end_time, tsp, sizeof(end_time)))
 			return -EFAULT;
-
-    if (!timespec_valid(&end_time))
+		if (!timespec_valid(&end_time))
 			return -EINVAL;
 		end_time_p = &end_time;
-
-		//if (poll_set_timeout(to, ts.tv_sec, ts.tv_nsec))
-		//	return -EINVAL;
 	}
 
 	if (sigmask) {
@@ -409,7 +404,8 @@ sys_ppoll(struct pollfd *fds, nfds_t nfds,
 			return -EINVAL;
 		if (copy_from_user(&ksigmask, sigmask, sizeof(ksigmask)))
 			return -EFAULT;
-
+		sigset_del(&ksigmask, SIGKILL);
+		sigset_del(&ksigmask, SIGSTOP);
 		sigprocmask(SIG_SETMASK, &ksigmask, &sigsaved);
 	}
 
@@ -442,14 +438,17 @@ sys_ppoll(struct pollfd *fds, nfds_t nfds,
 	poll_freewait(&table);
 
 	/* We can restart this syscall, usually */
-	if (err == -EINTR) {
+	if (fdcount == -EINTR) {
 		/*
 		 * Don't restore the signal mask yet. Let do_signal() deliver
 		 * the signal on the way back to userspace, before the signal
 		 * mask is restored.
 		 */
+		if (sigmask)
+			memcpy(&current->saved_sigmask, &sigsaved,
+					sizeof(sigsaved));
 		err = -ERESTARTNOHAND;
-    goto out_fds;
+		goto out_fds;
 	} else if (sigmask)
 		sigprocmask(SIG_SETMASK, &sigsaved, NULL);
 
@@ -461,9 +460,8 @@ sys_ppoll(struct pollfd *fds, nfds_t nfds,
 			if (__put_user(wfds[j].revents, &fds->revents))
 				goto out_fds;
 	}
-
 	err = fdcount;
- out_fds:
+out_fds:
 	walk = head->next;
 	while (walk) {
 		struct poll_list *pos = walk;
@@ -473,15 +471,4 @@ sys_ppoll(struct pollfd *fds, nfds_t nfds,
 
 	return err;
 }
-
-
-
-
-
-
-
-
-
-
-
 
