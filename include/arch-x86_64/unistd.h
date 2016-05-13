@@ -516,7 +516,7 @@ __SYSCALL(__NR_clock_settime, syscall_not_implemented)
 #define __NR_clock_gettime	228
 __SYSCALL(__NR_clock_gettime, sys_clock_gettime)
 #define __NR_clock_getres	229
-__SYSCALL(__NR_clock_getres, syscall_not_implemented)
+__SYSCALL(__NR_clock_getres, sys_clock_getres)
 #define __NR_clock_nanosleep	230
 __SYSCALL(__NR_clock_nanosleep, syscall_not_implemented)
 #define __NR_exit_group		231
