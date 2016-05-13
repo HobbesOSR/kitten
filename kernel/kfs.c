@@ -523,12 +523,13 @@ kfs_create_at(struct inode                  * root_inode,
 
 	if( !filename )
 	{
-		printk( "%s: Non-absolute path name! '%s'\n",
-			__func__, full_filename );
-		return NULL;
+		//printk( "%s: Non-absolute path name! '%s'\n",
+		//	__func__, full_filename );
+		//return NULL;
+		root_inode = kfs_root;
+	}else{
+		filename++;
 	}
-
-	filename++;
 
 	dir = kfs_lookup( root_inode, full_filename, 0777 );
 
