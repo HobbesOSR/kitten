@@ -146,22 +146,29 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
     struct xpmem_segment *seg = NULL;
     struct xpmem_thread_group *ap_tg, *seg_tg;
 
+
     if (segid <= 0)
         return -EINVAL;
 
     if ((flags & ~(XPMEM_RDONLY | XPMEM_RDWR)) ||
         (flags & (XPMEM_RDONLY | XPMEM_RDWR)) ==
-        (XPMEM_RDONLY | XPMEM_RDWR))
+        (XPMEM_RDONLY | XPMEM_RDWR)){
+      printk("%s: bad perms\n", __func__);
         return -EINVAL;
-
+    }
     switch (permit_type) {
 	case XPMEM_PERMIT_MODE:
 	case XPMEM_GLOBAL_MODE:
-	    if (permit_value != NULL)
-		return -EINVAL;
+          if (permit_value != NULL){
+
+            printk("%s: bad permit val but we don't care\n", __func__);
+
+            //return -EINVAL;
+          }
 
 	    break;
 	default:
+          printk("%s: I don't know this permit val\n", __func__);
 	    return -EINVAL;
     }
 

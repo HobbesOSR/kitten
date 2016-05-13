@@ -62,8 +62,10 @@ xpmem_make_smartmap_addr(pid_t   source_pid,
     if (source_pid == INIT_ASPACE_ID)
 	slot = 0;
     else
-	slot = source_pid - 0x1000 + 1;
+	//slot = source_pid - 0x1000 + 1;
+		slot = source_pid-2;
 
+	printk("%s: making smartmap addr in pid %d at %lx addr is: %lx\n", __func__, source_pid, source_vaddr, (((slot + 1) << SMARTMAP_SHIFT) | ((unsigned long)source_vaddr)));
     return (((slot + 1) << SMARTMAP_SHIFT) | ((unsigned long)source_vaddr));
 }
 
