@@ -25,9 +25,11 @@ xpmem_make_segid(struct xpmem_thread_group *seg_tg, xpmem_segid_t request)
     *segid_p = 0;
 
     /* If there's no explicit request, the gid is encoded directly in the segid */
-    if (request == 0)
-        segid.gid = seg_tg->gid;
-
+    printk("%s: request %d\n", __func__, request);
+    if (request == 0){
+      segid.gid = seg_tg->gid;
+      printk("%s: encoding gid %d in segid %ld segid.gid %d\n", __func__, seg_tg->gid, *segid_p, segid.gid);
+    }
     /* Allocate a segid from the nameserver */
     ret = xpmem_make_remote(xpmem_my_part->domain_link, request, segid_p);
     if (ret != 0)

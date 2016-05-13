@@ -178,7 +178,7 @@ __SYSCALL(__NR_ftruncate, syscall_not_implemented)
 #define __NR_getdents                           78
 __SYSCALL(__NR_getdents, sys_getdents)
 #define __NR_getcwd                             79
-__SYSCALL(__NR_getcwd, syscall_not_implemented)
+__SYSCALL(__NR_getcwd, sys_getcwd)
 
 #define __NR_chdir                              80
 __SYSCALL(__NR_chdir, syscall_not_implemented)
