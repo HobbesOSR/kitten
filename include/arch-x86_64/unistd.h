@@ -98,13 +98,13 @@ __SYSCALL(__NR_getpid, sys_getpid)
 #define __NR_sendfile                           40
 __SYSCALL(__NR_sendfile, syscall_not_implemented)
 #define __NR_socket                             41
-__SYSCALL(__NR_socket, syscall_not_implemented)
+__SYSCALL(__NR_socket, sys_socket)
 #define __NR_connect                            42
-__SYSCALL(__NR_connect, syscall_not_implemented)
+__SYSCALL(__NR_connect, sys_connect)
 #define __NR_accept                             43
 __SYSCALL(__NR_accept, syscall_not_implemented)
 #define __NR_sendto                             44
-__SYSCALL(__NR_sendto, syscall_not_implemented)
+__SYSCALL(__NR_sendto, sys_sendto)
 #define __NR_recvfrom                           45
 __SYSCALL(__NR_recvfrom, syscall_not_implemented)
 #define __NR_sendmsg                            46
@@ -123,7 +123,7 @@ __SYSCALL(__NR_getsockname, syscall_not_implemented)
 #define __NR_getpeername                        52
 __SYSCALL(__NR_getpeername, syscall_not_implemented)
 #define __NR_socketpair                         53
-__SYSCALL(__NR_socketpair, syscall_not_implemented)
+__SYSCALL(__NR_socketpair, sys_socketpair)
 #define __NR_setsockopt                         54
 __SYSCALL(__NR_setsockopt, syscall_not_implemented)
 #define __NR_getsockopt                         55
@@ -630,6 +630,24 @@ __SYSCALL(__NR_timerfd, syscall_not_implemented)
 __SYSCALL(__NR_eventfd, syscall_not_implemented)
 #define __NR_fallocate		285
 __SYSCALL(__NR_fallocate, syscall_not_implemented)
+#define __NR_timerfd_settime 286
+__SYSCALL(__NR_timerfd_settime, syscall_not_implemented)
+#define __NR_timerfd_gettime 287
+__SYSCALL(__NR_timerfd_gettime, syscall_not_implemented)
+#define __NR_accept4 288
+__SYSCALL(__NR_accept4, syscall_not_implemented)
+#define __NR_signalfd4 289
+__SYSCALL(__NR_signalfd4, syscall_not_implemented)
+#define __NR_eventfd2 290
+__SYSCALL(__NR_eventfd2, sys_eventfd2)
+#define __NR_epoll_create1 291
+__SYSCALL(__NR_epoll_create1, syscall_not_implemented)
+#define __NR_dup3 292
+__SYSCALL(__NR_dup3, syscall_not_implemented)
+#define __NR_pipe2 293
+__SYSCALL(__NR_pipe2, syscall_not_implemented)
+#define __NR_inotify_init1 294
+__SYSCALL(__NR_inotify_init1, syscall_not_implemented)
 
 /**
  * LWK specific system calls.

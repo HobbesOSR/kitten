@@ -58,6 +58,11 @@ obj-y := \
 	getdents64.o \
 	readlink.o \
 	access.o \
+	socketpair.o \
+	eventfd2.o \
 	getcwd.o \
+	socket.o \
+	connect.o \
+	sendto.o \
 	clock_getres.o \
 	reboot.o
