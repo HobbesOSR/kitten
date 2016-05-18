@@ -270,8 +270,12 @@ static inline int get_family(int cpuid)
 }
 
 
+#ifdef CONFIG_PISCES
+static void __init __attribute__((unused))
+#else
 static void __init
-setup_pc_arch(void) 
+#endif
+setup_pc_arch(void)
 {
 
 	/*
