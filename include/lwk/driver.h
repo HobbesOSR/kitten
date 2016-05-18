@@ -130,7 +130,8 @@ extern struct driver_info __stop___driver_table[];
  * \note This is a placeholder.
  * Currently drivers are never unloaded once loaded.
  */
-#define DRIVER_EXIT(exit_func)	
+#define DRIVER_EXIT(exit_func)						\
+	static void * __driver_exit __used = exit_func;			\
 
 
 /** Initialize a single device.
