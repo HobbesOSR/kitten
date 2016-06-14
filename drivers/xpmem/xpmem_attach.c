@@ -53,20 +53,25 @@ xpmem_try_attach_remote(xpmem_segid_t segid,
 /*
  * Use SMARTMAP to figure out where the mapping is
  */
-static vaddr_t
+static int
 xpmem_make_smartmap_addr(pid_t   source_pid,
-                         vaddr_t source_vaddr)
+                         vaddr_t source_vaddr, vaddr_t *dest_vaddr)
 {
     unsigned long slot;
 
+    slot = aspace_get_rank(source_pid);
+    printk("%s: got slot %lu\n", __func__, slot);
+    if(slot < 0)
+	return -EINVAL;
+    /*
     if (source_pid == INIT_ASPACE_ID)
 	slot = 0;
     else
-	//slot = source_pid - 0x1000 + 1;
-		slot = source_pid-2;
-
+	slot = source_pid-2;
+    */
 	printk("%s: making smartmap addr in pid %d at %lx addr is: %lx\n", __func__, source_pid, source_vaddr, (((slot + 1) << SMARTMAP_SHIFT) | ((unsigned long)source_vaddr)));
-    return (((slot + 1) << SMARTMAP_SHIFT) | ((unsigned long)source_vaddr));
+    *dest_vaddr = (((slot + 1) << SMARTMAP_SHIFT) | ((unsigned long)source_vaddr));
+    return 0;
 }
 
 /*
@@ -142,7 +147,9 @@ xpmem_attach(xpmem_apid_t apid,
 	    ret = -ENOMEM;
 	    goto out_1;
 	}
-	at_vaddr = xpmem_make_smartmap_addr(seg_tg->aspace->id, seg_vaddr);
+	ret = xpmem_make_smartmap_addr(seg_tg->aspace->id, seg_vaddr, &at_vaddr);
+	if(ret < 0)
+	    return -EINVAL;
     }
 
     /* create new attach structure */

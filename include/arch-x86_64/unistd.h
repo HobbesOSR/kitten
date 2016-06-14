@@ -745,4 +745,9 @@ __SYSCALL(__NR_sched_setparams_task, sys_sched_setparams_task)
 __SYSCALL(__NR_sched_setparams_task, syscall_not_implemented)
 #endif
 
+#define __NR_aspace_get_rank 532
+__SYSCALL(__NR_aspace_get_rank, sys_get_rank)
+#define __NR_aspace_set_rank 533
+__SYSCALL(__NR_aspace_set_rank, sys_set_rank)
+
 #endif /* _ARCH_X86_64_UNISTD_H */

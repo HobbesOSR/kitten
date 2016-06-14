@@ -18,6 +18,8 @@ obj-y := \
 	aspace_dump2console.o \
 	aspace_virt_to_phys.o \
 	aspace_update_user_cpumask.o \
+	aspace_get_rank.o \
+	aspace_set_rank.o \
 	task_create.o \
 	task_switch_cpus.o \
 	elf_hwcap.o \

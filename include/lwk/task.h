@@ -107,6 +107,8 @@ struct fdTable;
 // represents a user-level process, user-level thread, or kernel thread.
 struct task_struct {
 	id_t			id;		// The task's ID, aspace local
+	id_t      rank; // The tasks rank relative to its
+	                // process, this is set by a user space process
 	char			name[32];	// The task's name
 
 	taskstate_t		state;		// The task's current state

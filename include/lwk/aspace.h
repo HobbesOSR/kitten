@@ -151,6 +151,16 @@ extern int aspace_dump2console(
 	id_t			id
 );
 
+extern int
+aspace_set_rank(id_t id,
+                id_t rank
+);
+
+extern int
+aspace_get_rank(
+                id_t *id
+);
+
 // End core address space management API
 
 
@@ -212,6 +222,7 @@ struct aspace {
 	bool			reaped;		// If true, aspace has been waited on
 
 	id_t			id;		// aspace's ID
+	id_t			rank;	// aspace's rank
 	char			name[32];	// aspace's name
 	struct hlist_node	ht_link;	// Linkage for aspace hash table
 
@@ -532,6 +543,16 @@ sys_aspace_dump2console(
 	id_t			id
 );
 
+extern int
+sys_get_rank(
+	id_t *id
+);
+
+extern int
+sys_set_rank(
+	id_t aspace_id,
+	id_t rank
+);
 // End aspace system call handler prototypes
 
 
