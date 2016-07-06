@@ -45,20 +45,6 @@ xpmem_send_ipi_to_apic(unsigned int apic_id,
 }
 
 int
-xpmem_deliver_host_irq(xpmem_segid_t segid,
-                       xpmem_sigid_t sigid,
-		       xpmem_domid_t domid)
-{
-    struct xpmem_signal * sig = (struct xpmem_signal *)&sig;
-
-    /* No guest support at this point in Kitten, so we know we are in
-     * a host enclave. This is just an IPI */
-    xpmem_send_ipi_to_apic(sig->apic_id, sig->vector);
-
-    return 0;
-}
-
-int
 xpmem_request_host_vector(int vector)
 {
     return vector;
