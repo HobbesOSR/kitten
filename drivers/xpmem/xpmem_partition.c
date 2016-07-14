@@ -92,12 +92,12 @@ get_conn(struct xpmem_link_connection * conn)
     atomic_inc(&(conn->refcnt));
 }
 
-/* NOTE: the partition spinlock is already held */
 static void
 put_conn_last(struct xpmem_link_connection * conn)
 {
     struct xpmem_partition_state * state = conn->state;
     xpmem_link_t                   idx   = 0;
+    unsigned long                  flags = 0;
     int i;
 
     /* Need to do four things:
@@ -107,22 +107,26 @@ put_conn_last(struct xpmem_link_connection * conn)
      * (4) Free the conn
      */
 
+    spin_lock_irqsave(&(state->lock), flags);
+
     idx = conn->link % XPMEM_MAX_LINK;
     state->conn_map[idx] = NULL;
 
     for (i = 0; i < XPMEM_MAX_DOMID; i++) {
-	xpmem_link_t link = state->link_map[i];
-	if (link == conn->link) {
+	if (state->link_map[i] == conn->link) {;
+	    /* Clear the link map */
+	    state->link_map[i] = 0;
+
 	    if (state->is_nameserver) {
 		/* Update name server map */
-		spin_unlock(&(state->lock));
+		spin_unlock_irqrestore(&(state->lock), flags);
 		xpmem_ns_kill_domain(state, i);
-		spin_lock(&(state->lock));
+		spin_lock_irqsave(&(state->lock), flags);
 	    }
-
-	    state->link_map[i] = 0;
 	}
     }
+
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     if (conn->kill)
 	conn->kill(conn->priv_data);
@@ -134,81 +138,42 @@ static void
 put_conn(struct xpmem_link_connection * conn)
 {
     struct xpmem_partition_state * state = conn->state;
+    unsigned long                  flags = 0;
+    int                            last  = 0;
 
     /* See lock reasoning below */
-    spin_lock(&(state->lock));
-    {
-	if (atomic_dec_return(&(conn->refcnt)) == 0)
-	    put_conn_last(conn);
-    }
-    spin_unlock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
+    last = (atomic_dec_return(&(conn->refcnt)) == 0);
+    spin_unlock_irqrestore(&(state->lock), flags);
+
+    if (last)
+	put_conn_last(conn);
 }
 
 static struct xpmem_link_connection *
 xpmem_get_link_conn(struct xpmem_partition_state * state,
 		    xpmem_link_t                   link)
 {
-    struct xpmem_link_connection * conn = NULL;
-    xpmem_link_t                   idx  = link % XPMEM_MAX_LINK;
+    struct xpmem_link_connection * conn  = NULL;
+    xpmem_link_t                   idx   = link % XPMEM_MAX_LINK;
+    unsigned long                  flags = 0;
     
     /* We need to synchronize with the last put of the conn, which otherwise could free
      * the conn in between us grabbing it from the conn_map and incrementing the refcnt */
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	conn = state->conn_map[idx];
 
 	if ((conn != NULL) &&
-	    (conn->link == link))
+	    (conn->link == link) &&
+	    (atomic_read(&(conn->refcnt)) > 0))
 	{
 	    get_conn(conn);
 	}
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     return conn;
-}
-
-char *
-cmd_to_string(xpmem_op_t op)
-{
-    switch (op) {
-	case XPMEM_MAKE:
-	    return "XPMEM_MAKE";
-	case XPMEM_REMOVE:
-	    return "XPMEM_REMOVE";
-	case XPMEM_GET:
-	    return "XPMEM_GET";
-	case XPMEM_RELEASE:
-	    return "XPMEM_RELEASE";
-	case XPMEM_ATTACH:
-	    return "XPMEM_ATTACH";
-	case XPMEM_DETACH:
-	    return "XPMEM_DETACH";
-	case XPMEM_MAKE_COMPLETE:
-	    return "XPMEM_MAKE_COMPLETE";
-	case XPMEM_REMOVE_COMPLETE:
-	    return "XPMEM_REMOVE_COMPLETE";
-	case XPMEM_GET_COMPLETE:
-	    return "XPMEM_GET_COMPLETE";
-	case XPMEM_RELEASE_COMPLETE:
-	    return "XPMEM_RELEASE_COMPLETE";
-	case XPMEM_ATTACH_COMPLETE:
-	    return "XPMEM_ATTACH_COMPLETE";
-	case XPMEM_DETACH_COMPLETE:
-	    return "XPMEM_DETACH_COMPLETE";
-	case XPMEM_PING_NS:
-	    return "XPMEM_PING_NS";
-	case XPMEM_PONG_NS:
-	    return "XPMEM_PONG_NS";
-	case XPMEM_DOMID_REQUEST:
-	    return "XPMEM_DOMID_REQUEST";
-	case XPMEM_DOMID_RESPONSE:
-	    return "XPMEM_DOMID_RESPONSE";
-	case XPMEM_DOMID_RELEASE:
-	    return "XPMEM_DOMID_RELEASE";
-	default:
-	    return "UNKNOWN OPERATION";
-    }
 }
 
 /* Send a command through a connection link */
@@ -236,24 +201,27 @@ xpmem_add_domid_link(struct xpmem_partition_state * state,
 		     xpmem_domid_t		    domid,
 		     xpmem_link_t		    link)
 {
-    spin_lock(&(state->lock));
+    unsigned long flags;
+
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	state->link_map[domid] = link;
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 }
 
 xpmem_link_t
 xpmem_get_domid_link(struct xpmem_partition_state * state,
 		     xpmem_domid_t		    domid)
 {
-    xpmem_link_t link = 0;
+    xpmem_link_t link;
+    unsigned long flags;
 
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	link = state->link_map[domid];
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     return link;
 }
@@ -262,11 +230,13 @@ void
 xpmem_remove_domid_link(struct xpmem_partition_state * state,
 			xpmem_domid_t		       domid)
 {
-    spin_lock(&(state->lock));
+    unsigned long flags;
+
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	state->link_map[domid] = 0;
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 }
 
 /* Link ids are always unique, but are hashed into a table with a simple modular 
@@ -280,8 +250,9 @@ xpmem_get_free_link(struct xpmem_partition_state * state,
     xpmem_link_t ret  = -1;
     xpmem_link_t link = 0;
     xpmem_link_t end  = 0;
+    unsigned long flags;
 
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	end = state->uniq_link;
 	do {
@@ -294,7 +265,7 @@ xpmem_get_free_link(struct xpmem_partition_state * state,
 	    }
 	} while (idx != end);
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     return ret;
 }

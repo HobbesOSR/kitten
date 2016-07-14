@@ -52,6 +52,7 @@ xpmem_open(struct inode *inode, struct file *file)
 {
     struct xpmem_thread_group *tg;
     int index;
+    unsigned long flags;
 
     /* if this has already been done, just return silently */
     tg = xpmem_tg_ref_by_tgid(current->aspace->id);
@@ -101,11 +102,11 @@ xpmem_open(struct inode *inode, struct file *file)
     xpmem_tg_not_destroyable(tg);
 
     /* add tg to its hash list */
-    write_lock(&xpmem_my_part->tg_hashtable[index].lock);
     index = xpmem_tg_hashtable_index(tg->tgid);
+    write_lock_irqsave(&xpmem_my_part->tg_hashtable[index].lock, flags);
     list_add_tail(&tg->tg_hashnode,
               &xpmem_my_part->tg_hashtable[index].list);
-    write_unlock(&xpmem_my_part->tg_hashtable[index].lock);
+    write_unlock_irqrestore(&xpmem_my_part->tg_hashtable[index].lock, flags);
 
     return 0;
 }
@@ -114,24 +115,25 @@ static int
 xpmem_flush_tg(struct xpmem_thread_group * tg)
 {
     int index;
+    unsigned long flags;
 
-    spin_lock(&tg->lock);
+    spin_lock_irqsave(&tg->lock, flags);
     if (tg->flags & XPMEM_FLAG_DESTROYING) {
-	spin_unlock(&tg->lock);
+	spin_unlock_irqrestore(&tg->lock, flags);
 	xpmem_tg_deref(tg);
 	return -EALREADY;
     }
     tg->flags |= XPMEM_FLAG_DESTROYING;
-    spin_unlock(&tg->lock);
+    spin_unlock_irqrestore(&tg->lock, flags);
 
     xpmem_release_aps_of_tg(tg);
     xpmem_remove_segs_of_tg(tg);
 
     /* Remove tg structure from its hash list */
-    write_lock(&xpmem_my_part->tg_hashtable[index].lock);
     index = xpmem_tg_hashtable_index(tg->tgid);
+    write_lock_irqsave(&xpmem_my_part->tg_hashtable[index].lock, flags);
     list_del_init(&tg->tg_hashnode);
-    write_unlock(&xpmem_my_part->tg_hashtable[index].lock);
+    write_unlock_irqrestore(&xpmem_my_part->tg_hashtable[index].lock, flags);
 
     xpmem_tg_destroyable(tg);
     xpmem_tg_deref(tg);

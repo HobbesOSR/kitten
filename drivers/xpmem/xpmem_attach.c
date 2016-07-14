@@ -94,12 +94,13 @@ xpmem_attach(xpmem_apid_t apid,
 	     vaddr_t    * at_vaddr_p)
 {
     int ret, index;
-    vaddr_t seg_vaddr, at_vaddr;
+    vaddr_t seg_vaddr, at_vaddr = 0;
     vmflags_t pgflags;
     struct xpmem_thread_group *ap_tg, *seg_tg;
     struct xpmem_access_permit *ap;
     struct xpmem_segment *seg;
     struct xpmem_attachment *att;
+    unsigned long flags, flags2;
 
     if (apid <= 0)
         return -EINVAL;
@@ -190,9 +191,9 @@ xpmem_attach(xpmem_apid_t apid,
     *at_vaddr_p = at_vaddr + offset_in_page(att->vaddr);
 
     /* link attach structure to its access permit's att list */
-    spin_lock(&ap->lock);
+    spin_lock_irqsave(&ap->lock, flags);
     if (ap->flags & XPMEM_FLAG_DESTROYING) {
-	spin_unlock(&ap->lock);
+	spin_unlock_irqrestore(&ap->lock, flags);
 	ret = -ENOENT;
 	goto out_2;
     }
@@ -200,11 +201,11 @@ xpmem_attach(xpmem_apid_t apid,
 
     /* add att to its ap_tg's hash list */
     index = xpmem_att_hashtable_index(att->at_vaddr);
-    write_lock(&ap_tg->att_hashtable[index].lock);
+    write_lock_irqsave(&ap_tg->att_hashtable[index].lock, flags2);
     list_add_tail(&att->att_hashnode, &ap_tg->att_hashtable[index].list);
-    write_unlock(&ap_tg->att_hashtable[index].lock);
+    write_unlock_irqrestore(&ap_tg->att_hashtable[index].lock, flags2);
 
-    spin_unlock(&ap->lock);
+    spin_unlock_irqrestore(&ap->lock, flags);
 
     ret = 0;
 out_2:
@@ -238,6 +239,7 @@ __xpmem_detach_att(struct xpmem_access_permit * ap,
 {
     aspace_mapping_t mapping;
     int status, index;
+    unsigned long flags;
 
     /* No address space to update on remote attachments - they are purely for bookkeeping */
     if (!(att->flags & XPMEM_FLAG_REMOTE)) {
@@ -272,15 +274,15 @@ __xpmem_detach_att(struct xpmem_access_permit * ap,
 
 	/* Remove from att hash list - only done on local memory */
 	index = xpmem_att_hashtable_index(att->at_vaddr);
-	write_lock(&ap->tg->att_hashtable[index].lock);
+	write_lock_irqsave(&ap->tg->att_hashtable[index].lock, flags);
 	list_del(&att->att_hashnode);
-	write_unlock(&ap->tg->att_hashtable[index].lock);
+	write_unlock_irqrestore(&ap->tg->att_hashtable[index].lock, flags);
     }
 
     /* Remove from ap list */
-    spin_lock(&ap->lock);
+    spin_lock_irqsave(&ap->lock, flags);
     list_del_init(&att->att_node);
-    spin_unlock(&ap->lock);
+    spin_unlock_irqrestore(&ap->lock, flags);
 }
 
 

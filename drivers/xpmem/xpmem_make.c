@@ -52,6 +52,7 @@ xpmem_make_segment(vaddr_t                     vaddr,
 {
     struct xpmem_segment *seg;
     int status;
+    unsigned long irq_flags;
 
     /* create a new struct xpmem_segment structure with a unique segid */
     seg = kmem_alloc(sizeof(struct xpmem_segment));
@@ -116,9 +117,9 @@ xpmem_make_segment(vaddr_t                     vaddr,
     xpmem_seg_not_destroyable(seg);
 
     /* add seg to its tg's list of segs */
-    write_lock(&seg_tg->seg_list_lock);
+    write_lock_irqsave(&seg_tg->seg_list_lock, irq_flags);
     list_add_tail(&seg->seg_node, &seg_tg->seg_list);
-    write_unlock(&seg_tg->seg_list_lock);
+    write_unlock_irqrestore(&seg_tg->seg_list_lock, irq_flags);
 
     /* add seg to global hash list of well-known segids, if necessary. Note
      * that shadow segments are not added to the wk list, because multiple 
@@ -126,9 +127,9 @@ xpmem_make_segment(vaddr_t                     vaddr,
      */
     if ((segid <= XPMEM_MAX_WK_SEGID) &&
         (!(seg->flags & XPMEM_FLAG_SHADOW))) {
-        write_lock(&xpmem_my_part->wk_segid_to_gid_lock);
-        xpmem_my_part->wk_segid_to_gid[segid] = seg_tg->gid;
-        write_unlock(&xpmem_my_part->wk_segid_to_gid_lock);
+        write_lock_irqsave(&xpmem_my_part->wk_segid_to_tgid_lock, irq_flags);
+        xpmem_my_part->wk_segid_to_tgid[segid] = seg_tg->tgid;
+        write_unlock_irqrestore(&xpmem_my_part->wk_segid_to_tgid_lock, irq_flags);
     }
 
     return 0;
@@ -238,6 +239,8 @@ int
 xpmem_remove_seg(struct xpmem_thread_group * seg_tg, 
                  struct xpmem_segment      * seg)
 {
+    unsigned long flags;
+
     BUG_ON(atomic_read(&seg->refcnt) <= 0);
 
     /* see if the requesting thread is the segment's owner */
@@ -245,7 +248,7 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
 	!(seg->flags & XPMEM_FLAG_SHADOW))
         return -EACCES;
 
-    spin_lock(&seg->lock);
+    spin_lock_irqsave(&seg->lock, flags);
 
     /* Cancel removal if
      * (1) it's already being removed
@@ -259,12 +262,12 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
 	   )
 	)
     {
-	spin_unlock(&seg->lock);
+	spin_unlock_irqrestore(&seg->lock, flags);
 	return 0;
     }
 
     seg->flags |= XPMEM_FLAG_DESTROYING;
-    spin_unlock(&seg->lock);
+    spin_unlock_irqrestore(&seg->lock, flags);
 
     xpmem_seg_down(seg);
 
@@ -279,15 +282,15 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
     }
 
     /* Remove segment structure from its tg's list of segs */
-    write_lock(&seg_tg->seg_list_lock);
+    write_lock_irqsave(&seg_tg->seg_list_lock, flags);
     list_del_init(&seg->seg_node);
-    write_unlock(&seg_tg->seg_list_lock);
+    write_unlock_irqrestore(&seg_tg->seg_list_lock, flags);
 
     /* Remove segment structure from global list of well-known segids */
     if (seg->segid <= XPMEM_MAX_WK_SEGID) {
-        write_lock(&xpmem_my_part->wk_segid_to_gid_lock);
-        xpmem_my_part->wk_segid_to_gid[seg->segid] = 0;
-        write_unlock(&xpmem_my_part->wk_segid_to_gid_lock);
+        write_lock_irqsave(&xpmem_my_part->wk_segid_to_tgid_lock, flags);
+        xpmem_my_part->wk_segid_to_tgid[seg->segid] = 0;
+        write_unlock_irqrestore(&xpmem_my_part->wk_segid_to_tgid_lock, flags);
     }
 
     xpmem_seg_up(seg);
@@ -303,10 +306,11 @@ void
 xpmem_remove_segs_of_tg(struct xpmem_thread_group *seg_tg)
 {
     struct xpmem_segment *seg;
+    unsigned long flags;
 
     BUG_ON(current->aspace->id != seg_tg->tgid);
 
-    read_lock(&seg_tg->seg_list_lock);
+    read_lock_irqsave(&seg_tg->seg_list_lock, flags);
 
     while (!list_empty(&seg_tg->seg_list)) {
         seg = list_entry((&seg_tg->seg_list)->next,
@@ -314,15 +318,15 @@ xpmem_remove_segs_of_tg(struct xpmem_thread_group *seg_tg)
 	if (!(seg->flags & XPMEM_FLAG_DESTROYING)) {
 
 	    xpmem_seg_ref(seg);
-	    read_unlock(&seg_tg->seg_list_lock);
+	    read_unlock_irqrestore(&seg_tg->seg_list_lock, flags);
 
 	    (void)xpmem_remove_seg(seg_tg, seg);
 
 	    xpmem_seg_deref(seg);
-	    read_lock(&seg_tg->seg_list_lock);
+	    read_lock_irqsave(&seg_tg->seg_list_lock, flags);
 	}
     }
-    read_unlock(&seg_tg->seg_list_lock);
+    read_unlock_irqrestore(&seg_tg->seg_list_lock, flags);
 }
 
 /*

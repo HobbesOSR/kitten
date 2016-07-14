@@ -101,6 +101,7 @@ xpmem_get_segment(int                         flags,
 {
     struct xpmem_access_permit *ap;
     int index;
+    unsigned long irq_flags;
 
     /* create a new xpmem_access_permit structure with a unique apid */
     ap = kmem_alloc(sizeof(struct xpmem_access_permit));
@@ -119,15 +120,15 @@ xpmem_get_segment(int                         flags,
     xpmem_ap_not_destroyable(ap);
 
     /* add ap to its seg's access permit list */
-    spin_lock(&seg->lock);
+    spin_lock_irqsave(&seg->lock, flags);
     list_add_tail(&ap->ap_node, &seg->ap_list);
-    spin_unlock(&seg->lock);
+    spin_unlock_irqrestore(&seg->lock, flags);
 
     /* add ap to its hash list */
     index = xpmem_ap_hashtable_index(ap->apid);
-    write_lock(&ap_tg->ap_hashtable[index].lock);
+    write_lock_irqsave(&ap_tg->ap_hashtable[index].lock, irq_flags);
     list_add_tail(&ap->ap_hashnode, &ap_tg->ap_hashtable[index].list);
-    write_unlock(&ap_tg->ap_hashtable[index].lock);
+    write_unlock_irqrestore(&ap_tg->ap_hashtable[index].lock, irq_flags);
 
     return 0;
 }
@@ -284,13 +285,14 @@ xpmem_release_ap(struct xpmem_thread_group *ap_tg,
           struct xpmem_access_permit *ap)
 {
     int index;
+    unsigned long flags;
     struct xpmem_thread_group *seg_tg;
     struct xpmem_attachment *att;
     struct xpmem_segment *seg;
 
-    spin_lock(&ap->lock);
+    spin_lock_irqsave(&ap->lock, flags);
     if (ap->flags & XPMEM_FLAG_DESTROYING) {
-	spin_unlock(&ap->lock);
+	spin_unlock_irqrestore(&ap->lock, flags);
 	return;
     }
     ap->flags |= XPMEM_FLAG_DESTROYING;
@@ -300,15 +302,15 @@ xpmem_release_ap(struct xpmem_thread_group *ap_tg,
         att = list_entry((&ap->att_list)->next, struct xpmem_attachment,
                  att_node);
         xpmem_att_ref(att);
-        spin_unlock(&ap->lock);
+        spin_unlock_irqrestore(&ap->lock, flags);
 
         xpmem_detach_att(ap, att);
 
         xpmem_att_deref(att);
-        spin_lock(&ap->lock);
+        spin_lock_irqsave(&ap->lock, flags);
     }
 
-    spin_unlock(&ap->lock);
+    spin_unlock_irqrestore(&ap->lock, flags);
 
     /*
      * Remove access structure from its hash list.
@@ -319,18 +321,18 @@ xpmem_release_ap(struct xpmem_thread_group *ap_tg,
      * use it.
      */
     index = xpmem_ap_hashtable_index(ap->apid);
-    write_lock(&ap_tg->ap_hashtable[index].lock);
+    write_lock_irqsave(&ap_tg->ap_hashtable[index].lock, flags);
     list_del_init(&ap->ap_hashnode);
-    write_unlock(&ap_tg->ap_hashtable[index].lock);
+    write_unlock_irqrestore(&ap_tg->ap_hashtable[index].lock, flags);
 
     /* the ap's seg and the seg's tg were ref'd in xpmem_get() */
     seg = ap->seg;
     seg_tg = seg->tg;
 
     /* remove ap from its seg's access permit list */
-    spin_lock(&seg->lock);
+    spin_lock_irqsave(&seg->lock, flags);
     list_del_init(&ap->ap_node);
-    spin_unlock(&seg->lock);
+    spin_unlock_irqrestore(&seg->lock, flags);
 
     /* Try to teardown a shadow segment */
     if (seg->flags & XPMEM_FLAG_SHADOW)
@@ -352,24 +354,25 @@ xpmem_release_aps_of_tg(struct xpmem_thread_group *ap_tg)
     struct xpmem_hashlist *hashlist;
     struct xpmem_access_permit *ap;
     int index;
+    unsigned long flags;
 
     for (index = 0; index < XPMEM_AP_HASHTABLE_SIZE; index++) {
         hashlist = &ap_tg->ap_hashtable[index];
 
-        read_lock(&hashlist->lock);
+        read_lock_irqsave(&hashlist->lock, flags);
         while (!list_empty(&hashlist->list)) {
             ap = list_entry((&hashlist->list)->next,
                     struct xpmem_access_permit,
                     ap_hashnode);
             xpmem_ap_ref(ap);
-            read_unlock(&hashlist->lock);
+            read_unlock_irqrestore(&hashlist->lock, flags);
 
             xpmem_release_ap(ap_tg, ap);
 
             xpmem_ap_deref(ap);
-            read_lock(&hashlist->lock);
+            read_lock_irqsave(&hashlist->lock, flags);
         }
-        read_unlock(&hashlist->lock);
+        read_unlock_irqrestore(&hashlist->lock, flags);
     }
 }
 

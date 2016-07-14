@@ -201,13 +201,14 @@ void
 xpmem_free_seg_signal(struct xpmem_segment * seg)
 {
     int status = 0;
+    unsigned long flags;
 
-    spin_lock(&(seg->lock));
+    spin_lock_irqsave(&(seg->lock), flags);
     if (seg->flags & XPMEM_FLAG_SIGNALLABLE) {
         status = 1;
         seg->flags &= ~XPMEM_FLAG_SIGNALLABLE;
     } 
-    spin_unlock(&(seg->lock));
+    spin_unlock_irqrestore(&(seg->lock), flags);
 
     if (status) {
         /* Release host IDT vector */

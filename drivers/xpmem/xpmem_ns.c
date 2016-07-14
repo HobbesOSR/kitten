@@ -142,52 +142,60 @@ static void
 domain_add_xpmem_segid(struct xpmem_domain * domain,
 		       struct xpmem_id_val * val)
 {
+    unsigned long flags;
+
     INIT_LIST_HEAD(&(val->node));
 
-    spin_lock(&(domain->lock));
+    spin_lock_irqsave(&(domain->lock), flags);
     {
 	list_add_tail(&(val->node), &(domain->segid_list));
 	domain->num_segids++;
     }
-    spin_unlock(&(domain->lock));
+    spin_unlock_irqrestore(&(domain->lock), flags);
 }
 
 static void
 domain_remove_xpmem_segid(struct xpmem_domain * domain,
 			  struct xpmem_id_val * val)
 {
-    spin_lock(&(domain->lock));
+    unsigned long flags;
+
+    spin_lock_irqsave(&(domain->lock), flags);
     {
 	list_del(&(val->node));
 	domain->num_segids--;
     }
-    spin_unlock(&(domain->lock));
+    spin_unlock_irqrestore(&(domain->lock), flags);
 }
 
 static void
 domain_add_xpmem_apid(struct xpmem_domain * domain,
 		      struct xpmem_id_val * val)
 {
+    unsigned long flags;
+
     INIT_LIST_HEAD(&(val->node));
 
-    spin_lock(&(domain->lock));
+    spin_lock_irqsave(&(domain->lock), flags);
     {
 	list_add_tail(&(val->node), &(domain->apid_list));
 	domain->num_apids++;
     }
-    spin_unlock(&(domain->lock));
+    spin_unlock_irqrestore(&(domain->lock), flags);
 }
 
 static void
 domain_remove_xpmem_apid(struct xpmem_domain * domain,
 			 struct xpmem_id_val * val)
 {
-    spin_lock(&(domain->lock));
+    unsigned long flags;
+
+    spin_lock_irqsave(&(domain->lock), flags);
     {
 	list_del(&(val->node));
 	domain->num_apids--;
     }
-    spin_unlock(&(domain->lock));
+    spin_unlock_irqrestore(&(domain->lock), flags);
 }
 
 static int
@@ -196,9 +204,10 @@ alloc_segid(struct xpmem_ns_state * ns_state,
 {
     struct xpmem_segid_list_node * iter = NULL;
     struct xpmem_id		 * id	= NULL;
+    unsigned long flags;
 
     /* Grab the first free segid */
-    spin_lock(&(ns_state->lock));
+    spin_lock_irqsave(&(ns_state->lock), flags);
     {
 	if (!list_empty(&(ns_state->segid_free_list))) {
 	    iter = list_first_entry(&(ns_state->segid_free_list),
@@ -209,7 +218,7 @@ alloc_segid(struct xpmem_ns_state * ns_state,
 	    iter = NULL;
 	}
     }
-    spin_unlock(&(ns_state->lock));
+    spin_unlock_irqrestore(&(ns_state->lock), flags);
 
     if (iter == NULL) {
 	return -1;
@@ -228,6 +237,7 @@ free_segid(struct xpmem_ns_state * ns_state,
 	   xpmem_segid_t	   segid)
 {
     struct xpmem_segid_list_node * iter = NULL;
+    unsigned long flags;
 
     /* Nothing to do for well-known segids */
     if (segid <= XPMEM_MAX_WK_SEGID)
@@ -241,11 +251,11 @@ free_segid(struct xpmem_ns_state * ns_state,
 
     iter->uniq = xpmem_segid_to_uniq(segid);
 
-    spin_lock(&(ns_state->lock));
+    spin_lock_irqsave(&(ns_state->lock), flags);
     {
 	list_add_tail(&(iter->list_node), &(ns_state->segid_free_list));
     }
-    spin_unlock(&(ns_state->lock));
+    spin_unlock_irqrestore(&(ns_state->lock), flags);
 }
 
 static int
@@ -439,8 +449,9 @@ alloc_xpmem_domid(struct xpmem_ns_state * ns_state,
 		  xpmem_domid_t		  domid)
 {
     xpmem_domid_t allocated = -1;
+    unsigned long flags;
 
-    spin_lock(&(ns_state->lock));
+    spin_lock_irqsave(&(ns_state->lock), flags);
     {
 	if ((domid >= 0) &&
 	    (domid < XPMEM_MAX_DOMID))
@@ -461,7 +472,7 @@ alloc_xpmem_domid(struct xpmem_ns_state * ns_state,
 	    }
 	}
     }
-    spin_unlock(&(ns_state->lock));
+    spin_unlock_irqrestore(&(ns_state->lock), flags);
 
     return allocated;
 }

@@ -58,6 +58,7 @@ xpmem_request_domid(struct xpmem_partition_state * part,
     xpmem_link_t             link  = 0;
     int                      ret   = -ENOENT;
     struct xpmem_cmd_ex      domid_cmd;
+    unsigned long            flags;
 
     memset(&(domid_cmd), 0, sizeof(struct xpmem_cmd_ex));
 
@@ -66,11 +67,11 @@ xpmem_request_domid(struct xpmem_partition_state * part,
     domid_cmd.src_dom = -1;
     domid_cmd.dst_dom = XPMEM_NS_DOMID;
 
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	link = state->ns_link;
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     /* If we know how to get to the name server, send it there. Else, ping 
      * each of our connections
@@ -103,18 +104,19 @@ xpmem_wait_domid(struct xpmem_partition_state * part)
 {
     struct xpmem_fwd_state * state = part->fwd_state;
     xpmem_domid_t            domid = 0;
+    unsigned long            flags;
 
     wait_event_interruptible(state->domid_waitq,
 	(state->domid_received == 1));
     mb();
 
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	/* Return nonzero if we don't have a domid */
 	domid = state->domid;
 	state->domid_requested = 0;
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     return domid;
 }
@@ -143,6 +145,7 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part,
     struct xpmem_cmd_ex    * out_cmd  = cmd;
     xpmem_link_t	     out_link = link;
     int                      ret      = 0;
+    unsigned long            flags;
 
     switch (cmd->type) {
 	case XPMEM_DOMID_REQUEST: {
@@ -158,11 +161,11 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part,
 
 	    iter->link = link;
 
-	    spin_lock(&(state->lock));
+	    spin_lock_irqsave(&(state->lock), flags);
 	    {
 		list_add_tail(&(iter->node), &(state->domid_req_list));
 	    }
-	    spin_unlock(&(state->lock));
+	    spin_unlock_irqrestore(&(state->lock), flags);
 
 	    /* If we do not have a domid, we send two requests here: one for the
 	     * requesting domain and one for us.
@@ -186,7 +189,7 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part,
 	     * Otherwise, assign it to a link that has requested a domid from us
 	     */
 	    int forward = 1;
-	    spin_lock(&(state->lock));
+	    spin_lock_irqsave(&(state->lock), flags);
 	    {
 		if (state->domid == -1) {
 		    /* Take the domid */
@@ -207,7 +210,7 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part,
 		    forward = 0;
 		}
 	    }
-	    spin_unlock(&(state->lock));
+	    spin_unlock_irqrestore(&(state->lock), flags);
 
 	    if (forward == 0) {
 		/* We took the domid - no command to forward */
@@ -215,7 +218,7 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part,
 	    } else {
 		struct xpmem_domid_req_iter * iter = NULL;
 
-		spin_lock(&(state->lock));
+		spin_lock_irqsave(&(state->lock), flags);
 		{
 		    if (list_empty(&(state->domid_req_list))) {
 			XPMEM_ERR("We currently do not support the buffering of XPMEM domids");
@@ -227,7 +230,7 @@ xpmem_fwd_process_domid_cmd(struct xpmem_partition_state * part,
 			list_del(&(iter->node));
 		    }
 		}
-		spin_unlock(&(state->lock));
+		spin_unlock_irqrestore(&(state->lock), flags);
 
 		if (ret == 0) {
 		    /* Forward the domid to this link */
@@ -345,14 +348,15 @@ xpmem_fwd_process_xpmem_cmd(struct xpmem_partition_state * part,
     /* There's no reason not to reuse the input command struct for responses */
     struct xpmem_cmd_ex * out_cmd  = cmd;
     xpmem_link_t          out_link = link;
-    int ret = 0;
+    int                   ret      = 0;
+    unsigned long         flags;
 
-    spin_lock(&(part->fwd_state->lock));
+    spin_lock_irqsave(&(part->fwd_state->lock), flags);
     {
         if (part->fwd_state->domid == -1)
             ret = -ENOENT;
     }
-    spin_unlock(&(part->fwd_state->lock));
+    spin_unlock_irqrestore(&(part->fwd_state->lock), flags);
 
     if (ret != 0) {
         XPMEM_ERR("This domain has no XPMEM domid. Are you running the name server anywhere?");
@@ -479,8 +483,9 @@ xpmem_fwd_deinit(struct xpmem_partition_state * part)
     struct xpmem_fwd_state * state   = part->fwd_state;
     xpmem_domid_t            domid   = -1;
     int                      release = 0;
+    unsigned long            flags;
 
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	if (state->domid > 0) {
 	    release = 1;
@@ -493,7 +498,7 @@ xpmem_fwd_deinit(struct xpmem_partition_state * part)
 	/* Wake up all wait queue waiters */
 	xpmem_wakeup_domid(part);
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     /* Send a domid release, if we have one */
     if (release) {
@@ -513,7 +518,7 @@ xpmem_fwd_deinit(struct xpmem_partition_state * part)
     }
 
     /* Delete domid cmd list */
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	struct xpmem_domid_req_iter * iter = NULL;
 	struct xpmem_domid_req_iter * next = NULL;
@@ -523,7 +528,7 @@ xpmem_fwd_deinit(struct xpmem_partition_state * part)
 	    kmem_free(iter);
 	}
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     kmem_free(state);
     part->fwd_state = NULL;
@@ -539,12 +544,13 @@ xpmem_fwd_get_domid(struct xpmem_partition_state * part,
 {
     struct xpmem_fwd_state * state = part->fwd_state;
     xpmem_domid_t            domid = 0;
+    unsigned long            flags;
 
     int request = 0;
     int wait    = 0;
     int ret     = 0;
 
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	domid = state->domid;
 
@@ -558,7 +564,7 @@ xpmem_fwd_get_domid(struct xpmem_partition_state * part,
 	    }
 	}
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     if (request)
 	ret = xpmem_request_domid(part, request_link);
@@ -574,12 +580,13 @@ xpmem_fwd_ensure_valid_domid(struct xpmem_partition_state * part)
 {
     struct xpmem_fwd_state * state = part->fwd_state;
     xpmem_domid_t            domid = 0;
+    unsigned long            flags;
 
-    spin_lock(&(state->lock));
+    spin_lock_irqsave(&(state->lock), flags);
     {
 	domid = state->domid;
     }
-    spin_unlock(&(state->lock));
+    spin_unlock_irqrestore(&(state->lock), flags);
 
     return (domid > 0);
 }

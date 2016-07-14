@@ -95,8 +95,9 @@ struct xpmem_segment *
 xpmem_seg_ref_by_segid(struct xpmem_thread_group *seg_tg, xpmem_segid_t segid)
 {
     struct xpmem_segment *seg;
+    unsigned long flags;
 
-    read_lock(&seg_tg->seg_list_lock);
+    read_lock_irqsave(&seg_tg->seg_list_lock, flags);
 
     list_for_each_entry(seg, &seg_tg->seg_list, seg_node) {
         if (seg->segid == segid) {
@@ -112,12 +113,12 @@ xpmem_seg_ref_by_segid(struct xpmem_thread_group *seg_tg, xpmem_segid_t segid)
 		continue;
 
             xpmem_seg_ref(seg);
-            read_unlock(&seg_tg->seg_list_lock);
+            read_unlock_irqrestore(&seg_tg->seg_list_lock, flags);
             return seg;
         }
     }
 
-    read_unlock(&seg_tg->seg_list_lock);
+    read_unlock_irqrestore(&seg_tg->seg_list_lock, flags);
     return ERR_PTR(-ENOENT);
 }
 
@@ -152,10 +153,11 @@ struct xpmem_access_permit *
 xpmem_ap_ref_by_apid(struct xpmem_thread_group *ap_tg, xpmem_apid_t apid)
 {
     int index;
+    unsigned long flags;
     struct xpmem_access_permit *ap;
 
     index = xpmem_ap_hashtable_index(apid);
-    read_lock(&ap_tg->ap_hashtable[index].lock);
+    read_lock_irqsave(&ap_tg->ap_hashtable[index].lock, flags);
 
     list_for_each_entry(ap, &ap_tg->ap_hashtable[index].list,
                 ap_hashnode) {
@@ -164,12 +166,12 @@ xpmem_ap_ref_by_apid(struct xpmem_thread_group *ap_tg, xpmem_apid_t apid)
                 break;  /* can't be others with this apid */
 
             xpmem_ap_ref(ap);
-            read_unlock(&ap_tg->ap_hashtable[index].lock);
+            read_unlock_irqrestore(&ap_tg->ap_hashtable[index].lock, flags);
             return ap;
         }
     }
 
-    read_unlock(&ap_tg->ap_hashtable[index].lock);
+    read_unlock_irqrestore(&ap_tg->ap_hashtable[index].lock, flags);
 
     return ERR_PTR(-ENOENT);
 }
@@ -205,10 +207,11 @@ xpmem_att_ref_by_vaddr(struct xpmem_thread_group * att_tg,
                        vaddr_t                     vaddr)
 {
     int index;
+    unsigned long flags;
     struct xpmem_attachment *att;
 
     index = xpmem_att_hashtable_index(vaddr);
-    read_lock(&att_tg->att_hashtable[index].lock);
+    read_lock_irqsave(&att_tg->att_hashtable[index].lock, flags);
 
     list_for_each_entry(att, &att_tg->att_hashtable[index].list,
                 att_hashnode) {
@@ -217,12 +220,12 @@ xpmem_att_ref_by_vaddr(struct xpmem_thread_group * att_tg,
                 break;  /* can't be others with this address */
 
             xpmem_att_ref(att);
-            read_unlock(&att_tg->att_hashtable[index].lock);
+            read_unlock_irqrestore(&att_tg->att_hashtable[index].lock, flags);
             return att;
         }
     }
 
-    read_unlock(&att_tg->att_hashtable[index].lock);
+    read_unlock_irqrestore(&att_tg->att_hashtable[index].lock, flags);
 
     return ERR_PTR(-ENOENT);
 
@@ -280,9 +283,10 @@ xpmem_segid_to_tgid(xpmem_segid_t segid)
     if (segid > XPMEM_MAX_WK_SEGID) {
         tgid = ((struct xpmem_id *)&segid)->tgid;
     } else {
-        read_lock(&xpmem_my_part->wk_segid_to_gid_lock);
-        gid = xpmem_my_part->wk_segid_to_gid[segid];
-        read_unlock(&xpmem_my_part->wk_segid_to_gid_lock);
+	unsigned long flags;
+        read_lock_irqsave(&xpmem_my_part->wk_segid_to_tgid_lock, flags);
+        tgid = xpmem_my_part->wk_segid_to_tgid[segid];
+        read_unlock_irqrestore(&xpmem_my_part->wk_segid_to_tgid_lock, flags);
     }
 
     return tgid;

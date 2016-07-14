@@ -319,6 +319,7 @@ xpmem_attach_domain(struct xpmem_cmd_attach_ex * attach_ex)
     struct xpmem_access_permit *ap;
     struct xpmem_segment *seg;
     struct xpmem_attachment *att;
+    unsigned long flags;
 
     xpmem_apid_t apid = attach_ex->apid;
     off_t offset = attach_ex->off;
@@ -383,14 +384,14 @@ xpmem_attach_domain(struct xpmem_cmd_attach_ex * attach_ex)
         goto out_2;
 
     /* link attach structure to its access permit's remote att list */
-    spin_lock(&ap->lock);
+    spin_lock_irqsave(&ap->lock, flags);
     if (ap->flags & XPMEM_FLAG_DESTROYING) {
-        spin_unlock(&ap->lock);
+        spin_unlock_irqrestore(&ap->lock, flags);
         ret = -ENOENT;
         goto out_2;
     }
     list_add_tail(&att->att_node, &ap->att_list);
-    spin_unlock(&ap->lock);
+    spin_unlock_irqrestore(&ap->lock, flags);
 
     /* NOTE: We don't add remote attachments to the tgap hash list, as there is no actual
      * teardown that requires knowledge of the virtual address on remote teardown

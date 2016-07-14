@@ -272,6 +272,7 @@ htable_insert(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
     u32 index = 0;
     u32 new_size = 0;
     int expand = 0;
+    unsigned long flags;
 
     /* Allocate new entry */
     new_entry = (struct hash_entry *)kmem_alloc(sizeof(struct hash_entry));
@@ -280,7 +281,7 @@ htable_insert(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
     }
     
     /* Lock htable */
-    spin_lock(&(htable->lock));
+    spin_lock_irqsave(&(htable->lock), flags);
 
     /* Determine if table needs expanding */
     if ((htable->expanding	  == 0) &&
@@ -298,7 +299,7 @@ htable_insert(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
 	if (htable->prime_index == (prime_table_len - 1)) {
 	    kmem_free(new_entry);
 	    htable->expanding = 0;
-	    spin_unlock(&(htable->lock));
+	    spin_unlock_irqrestore(&(htable->lock), flags);
 	    return 0;
 	}
 
@@ -309,15 +310,15 @@ htable_insert(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
 	 * inserting, but expansion is not strictly required for insertion so the race is
 	 * inconsequential
 	 */
-	spin_unlock(&(htable->lock));
+	spin_unlock_irqrestore(&(htable->lock), flags);
 	new_table = (struct hash_entry **)kmem_alloc(sizeof(struct hash_entry *) * new_size);
-	spin_lock(&(htable->lock));
+	spin_lock_irqsave(&(htable->lock), flags);
 
 	if (new_table == NULL) {
 	    (htable->prime_index)--;
 	    kmem_free(new_entry);
 	    htable->expanding = 0;
-	    spin_unlock(&(htable->lock));
+	    spin_unlock_irqrestore(&(htable->lock), flags);
 	    return 0; /* oom */
 	}
 
@@ -340,7 +341,7 @@ htable_insert(struct xpmem_hashtable * htable, uintptr_t key, uintptr_t value) {
     htable->table[index] = new_entry;
 
     /* Unlock htable */
-    spin_unlock(&(htable->lock));
+    spin_unlock_irqrestore(&(htable->lock), flags);
 
     return -1;
 }
@@ -385,12 +386,13 @@ htable_change(struct xpmem_hashtable * htable,
 	      int		       free_value)
 {
     int ret = 0;
+    unsigned long flags;
 
-    spin_lock(&(htable->lock));
+    spin_lock_irqsave(&(htable->lock), flags);
     {
 	ret = __htable_change(htable, key, value, free_value);
     }
-    spin_unlock(&(htable->lock));
+    spin_unlock_irqrestore(&(htable->lock), flags);
 
     return ret;
 }
@@ -430,12 +432,13 @@ htable_inc(struct xpmem_hashtable * htable,
 	   uintptr_t		    value)
 {
     int ret = 0;
+    unsigned long flags;
 
-    spin_lock(&(htable->lock));
+    spin_lock_irqsave(&(htable->lock), flags);
     {
 	ret = __htable_inc(htable, key, value);
     }
-    spin_unlock(&(htable->lock));
+    spin_unlock_irqrestore(&(htable->lock), flags);
 
     return ret;
 }
@@ -475,12 +478,13 @@ htable_dec(struct xpmem_hashtable * htable,
 	   uintptr_t		    value)
 {
     int ret = 0;
+    unsigned long flags;
 
-    spin_lock(&(htable->lock));
+    spin_lock_irqsave(&(htable->lock), flags);
     {
 	ret = __htable_dec(htable, key, value);
     }
-    spin_unlock(&(htable->lock));
+    spin_unlock_irqrestore(&(htable->lock), flags);
 
     return ret;
 }
@@ -520,12 +524,13 @@ htable_search(struct xpmem_hashtable * htable,
 	      uintptr_t		       key)
 {
     uintptr_t ret = 0;
+    unsigned long flags;
 
-    spin_lock(&(htable->lock));
+    spin_lock_irqsave(&(htable->lock), flags);
     {
 	ret = __htable_search(htable, key);
     }
-    spin_unlock(&(htable->lock));
+    spin_unlock_irqrestore(&(htable->lock), flags);
 
     return ret;
 }
@@ -583,12 +588,13 @@ htable_remove(struct xpmem_hashtable * htable,
 	      int		       free_key)
 {
     uintptr_t ret = 0;
+    unsigned long flags;
 
-    spin_lock(&(htable->lock));
+    spin_lock_irqsave(&(htable->lock), flags);
     {
 	ret = __htable_remove(htable, key, free_key);
     }
-    spin_unlock(&(htable->lock));
+    spin_unlock_irqrestore(&(htable->lock), flags);
 
     return ret;
 }
@@ -648,11 +654,13 @@ free_htable(struct xpmem_hashtable * htable,
 	    int			     free_values, 
 	    int			     free_keys)
 {
-    spin_lock(&(htable->lock));
+    unsigned long flags;
+
+    spin_lock_irqsave(&(htable->lock), flags);
     {
 	__free_htable(htable, free_values, free_keys);
     }
-    spin_unlock(&(htable->lock));
+    spin_unlock_irqrestore(&(htable->lock), flags);
 
     kmem_free(htable);
 }
