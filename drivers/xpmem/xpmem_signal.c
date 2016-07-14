@@ -14,6 +14,7 @@
 #include <xpmem_private.h>
 
 
+
 static int
 signal_open(struct inode * inodep,
             struct file  * filp)
@@ -33,6 +34,7 @@ signal_read(struct file * filp,
     struct xpmem_segment      * seg;
     xpmem_segid_t               segid;
     unsigned long               irqs;
+    int                         err;
 
     if (length != sizeof(unsigned long))
         return -EINVAL;
@@ -49,15 +51,15 @@ signal_read(struct file * filp,
         return PTR_ERR(seg);
     }
 
-    wait_event_interruptible(seg->signalled_wq,
-        (atomic_read(&(seg->irq_count)) > 0)
-    );
-
+    /* Only ack if there are pending notifications */
+    err  = (atomic_add_unless(&(seg->irq_count), -1, 0) == 0);
     irqs = atomic_read(&(seg->irq_count));
-    atomic_set(&(seg->irq_count), 0);
 
     xpmem_seg_deref(seg);
     xpmem_tg_deref(seg_tg);
+
+    if (err)
+	return -ENODEV;
 
     if (copy_to_user(buffer, &irqs, sizeof(unsigned long))) 
         return -EFAULT;
