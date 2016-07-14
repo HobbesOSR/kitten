@@ -99,6 +99,30 @@ struct xpmem_cmd_ex {
     };
 };
 
+static inline char *
+xpmem_op_to_str(xpmem_op_t op)
+{
+    switch (op) {
+	case XPMEM_MAKE:		    return "XPMEM_MAKE";
+	case XPMEM_REMOVE:		    return "XPMEM_REMOVE";
+	case XPMEM_GET:			    return "XPMEM_GET";
+	case XPMEM_RELEASE:		    return "XPMEM_RELEASE";
+	case XPMEM_ATTACH:		    return "XPMEM_ATTACH";
+	case XPMEM_DETACH:		    return "XPMEM_DETACH";
+	case XPMEM_MAKE_COMPLETE:	    return "XPMEM_MAKE_COMPLETE";
+	case XPMEM_REMOVE_COMPLETE:	    return "XPMEM_REMOVE_COMPLETE";
+	case XPMEM_GET_COMPLETE:	    return "XPMEM_GET_COMPLETE";
+	case XPMEM_RELEASE_COMPLETE:	    return "XPMEM_RELEASE_COMPLETE";
+	case XPMEM_ATTACH_COMPLETE:	    return "XPMEM_ATTACH_COMPLETE";
+	case XPMEM_DETACH_COMPLETE:	    return "XPMEM_DETACH_COMPLETE";
+	case XPMEM_PING_NS:		    return "XPMEM_PING_NS";
+	case XPMEM_PONG_NS:		    return "XPMEM_PONG_NS";
+	case XPMEM_DOMID_REQUEST:	    return "XPMEM_DOMID_REQUEST";
+	case XPMEM_DOMID_RESPONSE:	    return "XPMEM_DOMID_RESPONSE";
+	case XPMEM_DOMID_RELEASE:	    return "XPMEM_DOMID_RELEASE";
+	default:			    return "XPMEM_INVALID_OP";
+    }
+}
 
 #endif /* __KERNEL__ */
 
