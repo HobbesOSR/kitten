@@ -5,12 +5,10 @@ int
 sys_set_rank(
          id_t aspace_id,
          id_t rank_id
-         )
+)
 {
-	int status;
-
-  // look up aspace from addr
-  // then get rank id
+	if (aspace_id == MY_ID)
+		aspace_get_myid(&aspace_id);
 
 	return aspace_set_rank(aspace_id, rank_id);
 }

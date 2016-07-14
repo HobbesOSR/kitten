@@ -158,7 +158,8 @@ aspace_set_rank(id_t id,
 
 extern int
 aspace_get_rank(
-                id_t *id
+		id_t   id,
+                id_t * rank
 );
 
 // End core address space management API
@@ -545,7 +546,8 @@ sys_aspace_dump2console(
 
 extern int
 sys_get_rank(
-	id_t *id
+	id_t   aspace_id,
+	id_t * rank
 );
 
 extern int

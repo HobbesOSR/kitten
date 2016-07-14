@@ -192,7 +192,7 @@ SYSCALL2(aspace_unsmartmap, id_t, id_t);
 SYSCALL3(aspace_virt_to_phys, id_t, vaddr_t, paddr_t *);
 SYSCALL1(aspace_dump2console, id_t);
 SYSCALL2(aspace_update_user_cpumask, id_t, user_cpumask_t *);
-SYSCALL1(aspace_get_rank, id_t *);
+SYSCALL2(aspace_get_rank, id_t, id_t *);
 SYSCALL2(aspace_set_rank, id_t, id_t);
 
 /**

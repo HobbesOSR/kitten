@@ -1119,32 +1119,42 @@ aspace_dump2console(id_t id)
 
 int
 aspace_set_rank(id_t id,
-                  id_t rank)
+                id_t rank)
 {
-	int status;
 	struct aspace *aspace;
 	unsigned long irqstate;
 
 	local_irq_save(irqstate);
-	aspace = lookup_and_lock(id);
-  aspace->rank = rank;
-	if (aspace) spin_unlock(&aspace->lock);
+
+	if ((aspace = lookup_and_lock(id)) == NULL) {
+		local_irq_restore(irqstate);
+		return -EINVAL;
+	}
+
+	aspace->rank = rank;
+
+	spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
-	return status;
+	return 0;
 }
 
 int
-aspace_get_rank(id_t *rank)
+aspace_get_rank(id_t   id,
+		id_t * rank)
 {
-  id_t id;
 	struct aspace *aspace;
 	unsigned long irqstate;
 
-  aspace_get_myid(&id);
 	local_irq_save(irqstate);
-	aspace = lookup_and_lock(id);
-  *rank = aspace->rank;
-	if (aspace) spin_unlock(&aspace->lock);
+
+	if ((aspace = lookup_and_lock(id)) == NULL) {
+		local_irq_restore(irqstate);
+		return -EINVAL;
+	}
+	
+	*rank = aspace->rank;
+
+	spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);
-	return *rank;
+	return 0;
 }
