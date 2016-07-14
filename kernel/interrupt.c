@@ -41,9 +41,10 @@ irq_dispatch(
 {
 	struct irq_desc *irq_desc = &irqs[irq];
 	struct handler_desc *handler_desc;
+	unsigned long irq_state;
 	irqreturn_t status = IRQ_NONE;
 
-	spin_lock(&irq_desc->lock);
+	spin_lock_irqsave(&irq_desc->lock, irq_state);
 
 	list_for_each_entry(handler_desc, &irq_desc->handlers, link) {
 		status = handler_desc->handler(irq, handler_desc->dev_id);
@@ -51,7 +52,7 @@ irq_dispatch(
 			break;
 	}
 
-	spin_unlock(&irq_desc->lock);
+	spin_unlock_irqrestore(&irq_desc->lock, irq_state);
 }
 
 
