@@ -73,21 +73,24 @@ static inline int next_offset(int off)
     return (off + 1) % MAX_CMDS;
 }
 
+static inline int prev_offset(int off)
+{
+    return (off == 0) ? MAX_CMDS - 1 : off - 1;
+}
+
 static int
 push_active_entry(struct xpmem_cmd_ringbuf * buf,
                   struct xpmem_cmd_ex      * cmd)
 {
-    struct xpmem_cmd_entry * entry = NULL;
     unsigned long flags = 0;
-    int start, end, ret = -1;
+    int start, ret = -1;
 
     spin_lock_irqsave(&(buf->lock), flags);
 
     start = buf->offset;
-    end   = (start == 0) ? MAX_CMDS - 1 : buf->offset - 1;
 
-    while (buf->offset != end) {
-	entry =  &(buf->entries[buf->offset]);
+    do {
+	struct xpmem_cmd_entry * entry = &(buf->entries[buf->offset]);
 
 	if (!entry->in_use) {
 	    entry->in_use = 1;
@@ -97,9 +100,10 @@ push_active_entry(struct xpmem_cmd_ringbuf * buf,
 	}
 
 	buf->offset = next_offset(buf->offset);
-    }
+    } while (buf->offset != start);
 
     spin_unlock_irqrestore(&(buf->lock), flags);
+
     return ret;
 }
 
@@ -108,29 +112,32 @@ pop_active_entry(struct xpmem_cmd_ringbuf * buf,
                  struct xpmem_cmd_ex      * cmd)
 {
     unsigned long flags = 0;
-    int start, end;
+    int start, ret = -1;
 
     spin_lock_irqsave(&(buf->lock), flags);
 
     start = buf->offset;
-    end   = (start == 0) ? MAX_CMDS - 1 : buf->offset - 1;
 
-    while (buf->offset != end) {
+    do {
 	struct xpmem_cmd_entry * entry = &(buf->entries[buf->offset]);
 
 	if (entry->in_use) {
 	    memcpy(cmd, entry->cmd, sizeof(struct xpmem_cmd_ex));
 	    kmem_free(entry->cmd);
 	    entry->in_use = 0;
+	    ret           = 0;
 	    break;
 	}
 
-	buf->offset = next_offset(buf->offset);
-    }
+	buf->offset = prev_offset(buf->offset);
+    } while (buf->offset != start);
 
     spin_unlock_irqrestore(&(buf->lock), flags);
-}
 
+    /* We were kicked, but nothing is active */
+    if (ret != 0)
+	panic("XEMEM control channel BUG");
+}
 
 /* Incoming XPMEM command from enclave - enqueue and wake up kthread */
 static void
@@ -219,19 +226,20 @@ static void
 xpmem_kill_fn(void * priv_data)
 {
     struct pisces_xpmem_state * state = (struct pisces_xpmem_state *)priv_data;
+    unsigned long               flags;
 
     /* De-init xbuf server */
     pisces_xbuf_server_deinit(state->xbuf_desc);
 
     /* Kill kernel thread - it will free state when it exists */
-    spin_lock(&exit_lock);
+    spin_lock_irqsave(&exit_lock, flags);
     {
 	should_exit = 1;
 
 	mb();
 	waitq_wakeup(&(state->waitq));
     }
-    spin_unlock(&exit_lock);
+    spin_unlock_irqrestore(&exit_lock, flags);
 }
 
 static int
@@ -261,6 +269,7 @@ xpmem_thread_fn(void * private)
     struct pisces_xpmem_state * state  = (struct pisces_xpmem_state *)private;
     struct xpmem_cmd_ringbuf  * buf    = &(state->xpmem_buf);
     struct xpmem_cmd_ex         cmd;
+    unsigned long               flags;
 
     while (1) {
 	/* Wait on waitq */
@@ -294,11 +303,11 @@ xpmem_thread_fn(void * private)
 
     /* Acquire lock to prevent from freeing underneath the thread that woke us up
      */
-    spin_lock(&exit_lock);
+    spin_lock_irqsave(&exit_lock, flags);
     {
 	kmem_free(state);
     }
-    spin_unlock(&exit_lock);
+    spin_unlock_irqrestore(&exit_lock, flags);
 
     return 0;
 }
