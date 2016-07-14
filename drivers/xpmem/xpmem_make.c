@@ -26,8 +26,7 @@ xpmem_make_segid(struct xpmem_thread_group *seg_tg, xpmem_segid_t request)
 
     /* If there's no explicit request, the gid is encoded directly in the segid */
     if (request == 0) {
-        segid.gid = seg_tg->gid;
-        printk("%s: encoding gid %d in segid %ld segid.gid %d\n", __func__, seg_tg->gid, (long) *segid_p, segid.gid);
+        segid.tgid = seg_tg->tgid;
     }
 
     /* Allocate a segid from the nameserver */
@@ -199,7 +198,7 @@ xpmem_make(vaddr_t         vaddr,
     if (flags & XPMEM_SIG_MODE)
 	seg_flags |= XPMEM_FLAG_SIGNALLABLE;
 
-    seg_tg = xpmem_tg_ref_by_gid(current->aspace->id);
+    seg_tg = xpmem_tg_ref_by_tgid(current->aspace->id);
     if (IS_ERR(seg_tg)) {
         BUG_ON(PTR_ERR(seg_tg) != -ENOENT);
         return -XPMEM_ERRNO_NOPROC;
@@ -242,7 +241,7 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
     BUG_ON(atomic_read(&seg->refcnt) <= 0);
 
     /* see if the requesting thread is the segment's owner */
-    if ( (current->aspace->id != seg_tg->gid) &&
+    if ( (current->aspace->id != seg_tg->tgid) &&
 	!(seg->flags & XPMEM_FLAG_SHADOW))
         return -EACCES;
 
@@ -305,7 +304,7 @@ xpmem_remove_segs_of_tg(struct xpmem_thread_group *seg_tg)
 {
     struct xpmem_segment *seg;
 
-    BUG_ON(current->aspace->id != seg_tg->gid);
+    BUG_ON(current->aspace->id != seg_tg->tgid);
 
     read_lock(&seg_tg->seg_list_lock);
 
@@ -343,7 +342,7 @@ xpmem_remove(xpmem_segid_t segid)
     if (IS_ERR(seg_tg))
         return PTR_ERR(seg_tg);
 
-    if (current->aspace->id != seg_tg->gid) {
+    if (current->aspace->id != seg_tg->tgid) {
         xpmem_tg_deref(seg_tg);
         return -EACCES;
     }

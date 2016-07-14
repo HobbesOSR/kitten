@@ -317,7 +317,7 @@ xpmem_detach(vaddr_t at_vaddr)
     struct xpmem_access_permit *ap;
     struct xpmem_attachment *att;
 
-    tg = xpmem_tg_ref_by_gid(current->aspace->id);
+    tg = xpmem_tg_ref_by_tgid(current->aspace->id);
     if (IS_ERR(tg))
 	return PTR_ERR(tg);
 
@@ -340,7 +340,7 @@ xpmem_detach(vaddr_t at_vaddr)
     ap = att->ap;
     xpmem_ap_ref(ap);
 
-    if (current->aspace->id != ap->tg->gid) {
+    if (current->aspace->id != ap->tg->tgid) {
 	att->flags &= ~XPMEM_FLAG_DESTROYING;
         xpmem_ap_deref(ap);
         mutex_unlock(&att->mutex);

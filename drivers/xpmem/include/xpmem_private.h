@@ -33,9 +33,8 @@
 
 
 struct xpmem_thread_group {
-    /* process/thread group ids */
-    pid_t                   pid;
-    pid_t                   gid;
+    /* thread group ids */
+    pid_t                   tgid;
 
     /* list of segments */
     struct list_head        seg_list;
@@ -151,7 +150,7 @@ struct xpmem_attachment {
  */
 struct xpmem_id {
     unsigned short uniq;  /* this value makes the ID unique */
-    gid_t gid;           /* thread group that owns ID */
+    gid_t tgid;           /* thread group that owns ID */
 };
 
 #define XPMEM_MAX_UNIQ_ID   ((1 << (sizeof(short) * 8)) - 1)
@@ -193,8 +192,8 @@ struct xpmem_partition {
     struct xpmem_hashlist      * tg_hashtable;
 
     /* wk segid->gid mapping */
-    gid_t                        wk_segid_to_gid[XPMEM_MAX_WK_SEGID + 1];
-    rwlock_t                     wk_segid_to_gid_lock;
+    gid_t                        wk_segid_to_tgid[XPMEM_MAX_WK_SEGID + 1];
+    rwlock_t                     wk_segid_to_tgid_lock;
 
     /* per-partition state */
     struct xpmem_partition_state part_state;
@@ -238,7 +237,7 @@ extern int do_xpmem_attach_domain(xpmem_apid_t apid, off_t offset,
 	size_t size, u64 num_pfns, paddr_t pfn_pa);
 
 /* found in xpmem_misc.c */
-extern struct xpmem_thread_group * xpmem_tg_ref_by_gid(gid_t);
+extern struct xpmem_thread_group * xpmem_tg_ref_by_tgid(gid_t);
 extern struct xpmem_thread_group * xpmem_tg_ref_by_segid(xpmem_segid_t);
 extern struct xpmem_thread_group * xpmem_tg_ref_by_apid(xpmem_apid_t);
 extern void xpmem_tg_deref(struct xpmem_thread_group *);
@@ -249,9 +248,9 @@ extern void xpmem_ap_deref(struct xpmem_access_permit *);
 extern struct xpmem_attachment * xpmem_att_ref_by_vaddr(struct xpmem_thread_group *, vaddr_t);
 extern void xpmem_att_deref(struct xpmem_attachment *);
 
-extern gid_t xpmem_segid_to_gid(xpmem_segid_t);
+extern gid_t xpmem_segid_to_tgid(xpmem_segid_t);
 extern unsigned short xpmem_segid_to_uniq(xpmem_segid_t);
-extern gid_t xpmem_apid_to_gid(xpmem_apid_t);
+extern gid_t xpmem_apid_to_tgid(xpmem_apid_t);
 extern unsigned short xpmem_apid_to_uniq(xpmem_apid_t);
 
 extern int xpmem_validate_access(struct xpmem_thread_group *, struct xpmem_access_permit *, 

@@ -25,7 +25,7 @@ xpmem_make_apid(struct xpmem_thread_group *ap_tg)
     }
 
     *apid_p = 0;
-    apid.gid = ap_tg->gid;
+    apid.tgid = ap_tg->tgid;
     apid.uniq = (unsigned short)uniq;
 
     BUG_ON(*apid_p <= 0);
@@ -183,7 +183,7 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
 
     seg_tg = xpmem_tg_ref_by_segid(segid);
     if (IS_ERR(seg_tg)) {
-	seg_tg = xpmem_tg_ref_by_gid(current->aspace->id);
+	seg_tg = xpmem_tg_ref_by_tgid(current->aspace->id);
 	if (IS_ERR(seg_tg))
 	    return PTR_ERR(seg_tg);
 
@@ -221,7 +221,7 @@ xpmem_get(xpmem_segid_t segid, int flags, int permit_type, void *permit_value,
     }
 
     /* find accessor's thread group structure */
-    ap_tg = xpmem_tg_ref_by_gid(current->aspace->id);
+    ap_tg = xpmem_tg_ref_by_tgid(current->aspace->id);
     if (IS_ERR(ap_tg)) {
         BUG_ON(PTR_ERR(ap_tg) != -ENOENT);
 	status = -XPMEM_ERRNO_NOPROC;
@@ -389,7 +389,7 @@ xpmem_release(xpmem_apid_t apid)
     if (IS_ERR(ap_tg))
         return PTR_ERR(ap_tg);
 
-    if (current->aspace->id != ap_tg->gid) {
+    if (current->aspace->id != ap_tg->tgid) {
         xpmem_tg_deref(ap_tg);
         return -EACCES;
     }

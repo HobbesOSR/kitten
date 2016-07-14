@@ -54,7 +54,7 @@ xpmem_open(struct inode *inode, struct file *file)
     int index;
 
     /* if this has already been done, just return silently */
-    tg = xpmem_tg_ref_by_gid(current->aspace->id);
+    tg = xpmem_tg_ref_by_tgid(current->aspace->id);
     if (!IS_ERR(tg)) {
         xpmem_tg_deref(tg);
         return 0;
@@ -66,7 +66,7 @@ xpmem_open(struct inode *inode, struct file *file)
         return -ENOMEM;
 
     spin_lock_init(&(tg->lock));
-    tg->gid = current->aspace->id;
+    tg->tgid = current->aspace->id;
     atomic_set(&tg->uniq_apid, 0);
     rwlock_init(&(tg->seg_list_lock));
     INIT_LIST_HEAD(&tg->seg_list);
@@ -101,8 +101,8 @@ xpmem_open(struct inode *inode, struct file *file)
     xpmem_tg_not_destroyable(tg);
 
     /* add tg to its hash list */
-    index = xpmem_tg_hashtable_index(tg->gid);
     write_lock(&xpmem_my_part->tg_hashtable[index].lock);
+    index = xpmem_tg_hashtable_index(tg->tgid);
     list_add_tail(&tg->tg_hashnode,
               &xpmem_my_part->tg_hashtable[index].list);
     write_unlock(&xpmem_my_part->tg_hashtable[index].lock);
@@ -128,8 +128,8 @@ xpmem_flush_tg(struct xpmem_thread_group * tg)
     xpmem_remove_segs_of_tg(tg);
 
     /* Remove tg structure from its hash list */
-    index = xpmem_tg_hashtable_index(tg->gid);
     write_lock(&xpmem_my_part->tg_hashtable[index].lock);
+    index = xpmem_tg_hashtable_index(tg->tgid);
     list_del_init(&tg->tg_hashnode);
     write_unlock(&xpmem_my_part->tg_hashtable[index].lock);
 
@@ -149,13 +149,13 @@ xpmem_release_op(struct inode * inodep,
 {
     struct xpmem_thread_group *tg;
 
-    tg = xpmem_tg_ref_by_gid(current->aspace->id);
+    tg = xpmem_tg_ref_by_tgid(current->aspace->id);
     if (tg == NULL) {
         /*
          * xpmem_flush() can get called twice for thread groups
          * which inherited /dev/xpmem: once for the inherited fd,
          * once for the first explicit use of /dev/xpmem. If we
-         * don't find the tg via xpmem_tg_ref_by_gid() we assume we
+         * don't find the tg via xpmem_tg_ref_by_tgid() we assume we
          * are in this type of scenario and return silently.
          */
         return 0;
@@ -349,7 +349,7 @@ xpmem_init(void)
         INIT_LIST_HEAD(&xpmem_my_part->tg_hashtable[i].list);
     }
 
-    rwlock_init(&(xpmem_my_part->wk_segid_to_gid_lock));
+    rwlock_init(&(xpmem_my_part->wk_segid_to_tgid_lock));
 
     ret = xpmem_partition_init(is_ns);
     if (ret != 0) 

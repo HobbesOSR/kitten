@@ -11,30 +11,31 @@
 
 /*
  * Return a pointer to the xpmem_thread_group structure that corresponds to the
- * specified gid. Increment the refcnt as well if found.
+ * specified tgid. Increment the refcnt as well if found.
  */
 struct xpmem_thread_group *
-xpmem_tg_ref_by_gid(gid_t gid)
+xpmem_tg_ref_by_tgid(gid_t tgid)
 {
     int index;
+    unsigned long flags;
     struct xpmem_thread_group *tg;
 
-    index = xpmem_tg_hashtable_index(gid);
-    read_lock(&xpmem_my_part->tg_hashtable[index].lock);
+    index = xpmem_tg_hashtable_index(tgid);
+    read_lock_irqsave(&xpmem_my_part->tg_hashtable[index].lock, flags);
 
     list_for_each_entry(tg, &xpmem_my_part->tg_hashtable[index].list,
                                 tg_hashnode) {
-        if (tg->gid == gid) {
+        if (tg->tgid == tgid) {
             if (tg->flags & XPMEM_FLAG_DESTROYING)
-                continue;  /* could be others with this gid */
+                continue;  /* could be others with this tgid */
 
             xpmem_tg_ref(tg);
-            read_unlock(&xpmem_my_part->tg_hashtable[index].lock);
+            read_unlock_irqrestore(&xpmem_my_part->tg_hashtable[index].lock, flags);
             return tg; 
         }
     }   
 
-    read_unlock(&xpmem_my_part->tg_hashtable[index].lock);
+    read_unlock_irqrestore(&xpmem_my_part->tg_hashtable[index].lock, flags);
     return ERR_PTR(-ENOENT);
 }
 
@@ -45,7 +46,7 @@ xpmem_tg_ref_by_gid(gid_t gid)
 struct xpmem_thread_group *
 xpmem_tg_ref_by_segid(xpmem_segid_t segid)
 {
-    return xpmem_tg_ref_by_gid(xpmem_segid_to_gid(segid));
+    return xpmem_tg_ref_by_tgid(xpmem_segid_to_tgid(segid));
 }
 
 /*
@@ -55,12 +56,12 @@ xpmem_tg_ref_by_segid(xpmem_segid_t segid)
 struct xpmem_thread_group *
 xpmem_tg_ref_by_apid(xpmem_apid_t apid)
 {
-    return xpmem_tg_ref_by_gid(xpmem_apid_to_gid(apid));
+    return xpmem_tg_ref_by_tgid(xpmem_apid_to_tgid(apid));
 }
 
 /*
  * Decrement the refcnt for a xpmem_thread_group structure previously
- * referenced via xpmem_tg_ref(), xpmem_tg_ref_by_gid(), or
+ * referenced via xpmem_tg_ref(), xpmem_tg_ref_by_tgid(), or
  * xpmem_tg_ref_by_segid().
  */
 void
@@ -107,7 +108,7 @@ xpmem_seg_ref_by_segid(struct xpmem_thread_group *seg_tg, xpmem_segid_t segid)
 	     * segids to issue independent get requests to the source domain
 	     */
 	    if ((seg->flags & XPMEM_FLAG_SHADOW) &&
-		(current->aspace->id != seg_tg->gid))
+		(current->aspace->id != seg_tg->tgid))
 		continue;
 
             xpmem_seg_ref(seg);
@@ -255,7 +256,7 @@ xpmem_validate_access(struct xpmem_thread_group * tg, struct xpmem_access_permit
               size_t size, int mode, vaddr_t *vaddr)
 {
     /* ensure that this thread has permission to access segment */
-    if (tg->gid != ap->tg->gid ||
+    if (tg->tgid != ap->tg->tgid ||
         (mode == XPMEM_RDWR && ap->mode == XPMEM_RDONLY))
         return -EACCES;
 
@@ -267,9 +268,9 @@ xpmem_validate_access(struct xpmem_thread_group * tg, struct xpmem_access_permit
 }
 
 gid_t
-xpmem_segid_to_gid(xpmem_segid_t segid)
+xpmem_segid_to_tgid(xpmem_segid_t segid)
 {
-    gid_t gid;
+    gid_t tgid;
 
     BUG_ON(segid <= 0);
 
@@ -277,14 +278,14 @@ xpmem_segid_to_gid(xpmem_segid_t segid)
      * directly to a thread group. Else, it is a well-known segid 
      */
     if (segid > XPMEM_MAX_WK_SEGID) {
-        gid = ((struct xpmem_id *)&segid)->gid;
+        tgid = ((struct xpmem_id *)&segid)->tgid;
     } else {
         read_lock(&xpmem_my_part->wk_segid_to_gid_lock);
         gid = xpmem_my_part->wk_segid_to_gid[segid];
         read_unlock(&xpmem_my_part->wk_segid_to_gid_lock);
     }
 
-    return gid;
+    return tgid;
 }
 
 unsigned short
@@ -295,10 +296,10 @@ xpmem_segid_to_uniq(xpmem_segid_t segid)
 }
 
 gid_t
-xpmem_apid_to_gid(xpmem_apid_t apid)
+xpmem_apid_to_tgid(xpmem_apid_t apid)
 {
     BUG_ON(apid <= 0);
-    return ((struct xpmem_id *)&apid)->gid;
+    return ((struct xpmem_id *)&apid)->tgid;
 }
 
 unsigned short
