@@ -65,6 +65,50 @@ signal_read(struct file * filp,
     return length;
 }
 
+static ssize_t
+signal_write(struct file       * filp,
+	     const char __user * buffer,
+	     size_t		 length,
+	     loff_t	       * offset)
+{
+    struct xpmem_thread_group * seg_tg;
+    struct xpmem_segment      * seg;
+    xpmem_segid_t               segid;
+    unsigned long		irqs;
+    unsigned long		acks;
+    int				status;
+
+    if (length != sizeof(unsigned long))
+	return -EINVAL;
+
+    status = copy_from_user(&acks, buffer, sizeof(unsigned long));
+    if (status)
+	return status;
+
+    segid = (xpmem_segid_t)filp->private_data;
+
+    seg_tg = xpmem_tg_ref_by_segid(segid);
+    if (IS_ERR(seg_tg))
+	return PTR_ERR(seg_tg);
+
+    seg = xpmem_seg_ref_by_segid(seg_tg, segid);
+    if (IS_ERR(seg)) {
+	xpmem_tg_deref(seg_tg);
+	return PTR_ERR(seg);
+    }
+
+    irqs = atomic_read(&(seg->irq_count));
+    if (acks > irqs)
+	acks = irqs;
+
+    atomic_sub(acks, &(seg->irq_count));
+
+    xpmem_seg_deref(seg);
+    xpmem_tg_deref(seg_tg);
+
+    return length;
+}
+
 static unsigned int
 signal_poll(struct file              * filp,
             struct poll_table_struct * poll)
@@ -73,7 +117,7 @@ signal_poll(struct file              * filp,
     struct xpmem_segment      * seg;
     xpmem_segid_t               segid;
     unsigned long               irqs;
-    unsigned int                mask = 0;
+    unsigned int                mask = POLLOUT | POLLWRNORM;
 
     segid = (xpmem_segid_t)filp->private_data;
 
@@ -88,7 +132,6 @@ signal_poll(struct file              * filp,
     }
 
     poll_wait(filp, &(seg->signalled_wq), poll);
-
     irqs = atomic_read(&(seg->irq_count));
     if (irqs > 0) 
         mask = POLLIN | POLLRDNORM;
@@ -146,9 +189,9 @@ xpmem_signal_fops =
     .close   = signal_close,
     .release = signal_release,
     .read    = signal_read,
+    .write   = signal_write,
     .poll    = signal_poll,
 };
-
 
 static irqreturn_t 
 xpmem_irq_fn(int    irq,
