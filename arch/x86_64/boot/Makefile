@@ -66,13 +66,14 @@ FDINITRD = $(shell echo $(CONFIG_INIT_TASK_IMAGE))
 # Set this if you want to pass append arguments to the isoimage kernel
 FDARGS = $(KERNEL_ARGS) init_argv=$(CONFIG_INIT_TASK_ARGS) init_envp=$(CONFIG_INIT_TASK_ENVS)
 FDARGS_GRUB = $(KERNEL_ARGS) init_argv=\"$(CONFIG_INIT_TASK_ARGS)\" init_envp=\"$(CONFIG_INIT_TASK_ENVS)\"
+FDARGS_GRUB2 = $(KERNEL_ARGS) init_argv=$(CONFIG_INIT_TASK_ARGS) init_envp=$(CONFIG_INIT_TASK_ENVS)
 
 # Initial grub2 modules to be loaded.
 GRUB2_INIT_MODS = $(shell echo $(CONFIG_GRUB2_MODS))
 
 image_cmdline = default lwk $(FDARGS) $(if $(FDINITRD),initrd=initrd.img,)
 gimage_cmdline = default 0\ntimeout 5\n\ntitle Kitten\nroot (cd)\nkernel /boot/lwk ro $(FDARGS_GRUB)\n$(if $(FDINITRD),initrd /boot/initrd.img,)
-gimage2_cmdline = set default=0\nset timeout=5\n\nmenuentry Kitten {\n\tlinux /boot/lwk ro $(FDARGS_GRUB)\n $(if $(FDINITRD),\tinitrd /boot/initrd.img,)\n}
+gimage2_cmdline = set default=0\nset timeout=5\n\nmenuentry Kitten {\n\tlinux /boot/lwk ro $(FDARGS_GRUB2)\n $(if $(FDINITRD),\tinitrd /boot/initrd.img,)\n}
 
 # This requires being root or having syslinux 2.02 or higher installed
 isoimage: $(BOOTIMAGE)
@@ -122,7 +123,7 @@ ifeq ($(CONFIG_SYSLINUX_BOOTLOADER),y)
 	fi
 	rm -rf $(obj)/isoimage
 else
-	@ver=`grub-install -v | sed "s,.* \([0-9]\).[0-9].*,\1,"`; \
+	@ver=`grub-install --version | sed "s,.* \([0-9]\).[0-9].*,\1,"`; \
 	platform=pc; \
 	model=`uname -m`; \
 	if [ "$$model" = "i486" -o "$$model" = "i586" -o "$$model" = "i686" -o $$ver -ne 0 ]; then \
@@ -147,6 +148,13 @@ else
 			cp /usr/lib/grub/$${model}-$$platform/stage2_eltorito $(obj)/isoimage/boot/grub; \
 			mkisofs -J -R -o $(obj)/image.iso -b boot/grub/stage2_eltorito \
 				-c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table $(obj)/isoimage; \
+		elif [ $$ver -eq 2 ]; then \
+			modules="$(cat $(bootprep)/partmap.lst) $(GRUB2_INIT_MODS)"; \
+			(for i in $$modules; do \
+				echo "insmod $$i";   \
+			done; \
+			echo '$(gimage2_cmdline)') > $(obj)/isoimage/boot/grub/grub.cfg; \
+		  grub-mkrescue -o $(obj)/image.iso $(obj)/isoimage; \
 		else \
 			bootprep=$(obj)/bootprep/boot/grub/$$model-$$platform; \
 			p_dir=/usr/lib/grub/$$model-$$platform; \
