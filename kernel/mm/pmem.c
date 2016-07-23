@@ -246,7 +246,7 @@ __pmem_del(const struct pmem_region *update)
 	if (!region_is_known(update))
 		return -ENOENT;
 
-	list_for_each_entry_safe(entry, next,&pmem_list, link) {
+	list_for_each_entry_safe(entry, next, &pmem_list, link) {
 		if (!calc_overlap(update, &entry->rgn, &overlap))
 			continue;
 
@@ -284,6 +284,9 @@ __pmem_del(const struct pmem_region *update)
 			tail->rgn.start = overlap.end;
 			list_add(&tail->link, &entry->link);
 		}
+
+		/* Unmap the pmem region from the kernel */
+		arch_aspace_unmap_pmem_from_kernel(entry->rgn.start, entry->rgn.end);
 
 		list_del(&entry->link); 
 		free_pmem_list_entry(entry);

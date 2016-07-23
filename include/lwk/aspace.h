@@ -448,6 +448,13 @@ arch_aspace_map_pmem_into_kernel(
 	paddr_t			end
 );
 
+extern int
+arch_aspace_unmap_pmem_from_kernel(
+	paddr_t			start,
+	paddr_t			end
+);
+
+
 // End architecture specific address space functions
 
 
