@@ -317,7 +317,7 @@ CPPFLAGS        := -D__KERNEL__ $(LWKINCLUDE) -D__LWK__
 
 CFLAGS 		:= -std=gnu99 \
 		   -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-		   -fno-strict-aliasing -fno-common
+		   -fno-strict-aliasing -fno-strict-overflow -fno-common
 
 ifeq ($(call cc-option-yn, -fstack-protector),y)
 CFLAGS		+= -fno-stack-protector
