@@ -196,7 +196,12 @@ do_page_fault(struct pt_regs *regs, unsigned int vector)
 	printk(">> PAGE FAULT! Sent signal %d: CR2 is %p\n", i, s.si_addr);
 	show_registers(regs);
 
-	while (1) {}
+	if (current->aspace->id == INIT_ASPACE_ID) {
+		local_irq_disable();
+		halt();
+	}
+
+	/* If this is not the init_task, we don't really need to go down */
 }
 
 void
