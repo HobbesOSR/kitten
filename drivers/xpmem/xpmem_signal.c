@@ -136,7 +136,7 @@ signal_poll(struct file              * filp,
     poll_wait(filp, &(seg->signalled_wq), poll);
     irqs = atomic_read(&(seg->irq_count));
     if (irqs > 0) 
-        mask = POLLIN | POLLRDNORM;
+        mask |= POLLIN | POLLRDNORM;
 
     xpmem_seg_deref(seg);
     xpmem_tg_deref(seg_tg);
