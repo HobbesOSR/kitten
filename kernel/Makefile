@@ -41,7 +41,6 @@ obj-y := \
 	device.o \
 	cpu.o
 
-
 obj-$(CONFIG_SCHED_EDF) += sched_edf.o
 obj-$(CONFIG_KGDB) += kgdb.o
 obj-$(CONFIG_KGDB_SERIAL_CONSOLE) += kgdboc.o
@@ -56,6 +55,9 @@ obj-$(CONFIG_PALACIOS_GDB) += \
 obj-y += mm/
 obj-y += lwk_syscalls/
 obj-y += linux_syscalls/
+
+obj-$(CONFIG_HIO_SYSCALL) += hio/ \
+
 obj-y += pci/
 
 # additional files to be removed upon make clean

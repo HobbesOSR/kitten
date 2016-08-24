@@ -194,6 +194,7 @@ SYSCALL1(aspace_dump2console, id_t);
 SYSCALL2(aspace_update_user_cpumask, id_t, user_cpumask_t *);
 SYSCALL2(aspace_get_rank, id_t, id_t *);
 SYSCALL2(aspace_set_rank, id_t, id_t);
+SYSCALL2(aspace_update_user_hio_syscall_mask, id_t, user_syscall_mask_t *);
 
 /**
  * Task management.

@@ -289,6 +289,8 @@ aspace_create(id_t id_request, const char *name, id_t *id)
 	aspace->cpu_mask = cpu_present_map;
 	aspace->next_cpu_id = first_cpu(aspace->cpu_mask);
 
+	syscalls_clear(aspace->hio_syscall_mask);
+
 	list_head_init(&aspace->sigpending.list);
 
 	aspace->parent = current->aspace;
@@ -1153,6 +1155,26 @@ aspace_get_rank(id_t   id,
 	}
 	
 	*rank = aspace->rank;
+
+	spin_unlock(&aspace->lock);
+	local_irq_restore(irqstate);
+	return 0;
+}
+
+int 
+aspace_update_hio_syscall_mask(id_t		id, 
+			       syscall_mask_t * syscall_mask) 
+{
+	struct aspace *aspace;
+	unsigned long irqstate;
+
+	local_irq_save(irqstate);
+	if ((aspace = lookup_and_lock(id)) == NULL) {
+		local_irq_restore(irqstate);
+		return -EINVAL;
+	}
+
+	aspace->hio_syscall_mask = *syscall_mask;
 
 	spin_unlock(&aspace->lock);
 	local_irq_restore(irqstate);

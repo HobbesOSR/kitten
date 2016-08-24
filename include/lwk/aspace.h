@@ -7,6 +7,7 @@
 #include <lwk/idspace.h>
 #include <lwk/futex.h>
 #include <lwk/cpumask.h>
+#include <lwk/hio.h>
 #include <arch/aspace.h>
 
 
@@ -162,6 +163,12 @@ aspace_get_rank(
                 id_t * rank
 );
 
+extern int
+aspace_update_user_hio_syscall_mask(
+		id_t			id,
+		user_syscall_mask_t *	user_syscall_mask
+);
+
 // End core address space management API
 
 
@@ -207,6 +214,7 @@ aspace_unmap_region(
 #include <lwk/init.h>
 #include <lwk/signal.h>
 #include <lwk/waitq.h>
+#include <lwk/hio.h>
 #include <arch/aspace.h>
 
 
@@ -239,6 +247,8 @@ struct aspace {
 
 	cpumask_t		cpu_mask;	// CPUs this aspace is available on
 	id_t			next_cpu_id;	// CPU ID for next task created in aspace
+
+	syscall_mask_t		hio_syscall_mask; // Syscalls this aspace is delegating via HIO
 
 	int			exit_status;	// Value to return to waitpid() and friends
 
@@ -382,6 +392,13 @@ aspace_wait4_child_exit(
 	id_t *			exit_id,
 	int *			exit_status
 );
+
+extern int
+aspace_update_hio_syscall_mask(
+		id_t		  id,
+		syscall_mask_t	* syscall_mask
+);
+
 
 // End kernel-only address space management API
 
@@ -561,6 +578,12 @@ extern int
 sys_set_rank(
 	id_t aspace_id,
 	id_t rank
+);
+
+extern int
+sys_aspace_update_hio_syscall_mask(
+	id_t				aspace_id,
+	user_syscall_mask_t __user *	user_syscall_mask
 );
 // End aspace system call handler prototypes
 

@@ -27,6 +27,7 @@
 #include <lwk/random.h>
 #include <lwk/linux_compat.h>
 #include <lwk/workq.h>
+#include <lwk/hio.h>
 #include <arch/mce.h>
 
 
@@ -215,6 +216,13 @@ start_kernel()
 	/* Measure noise/interference in the underlying hardware/VMM */
 	extern void measure_noise(int, uint64_t);
 	measure_noise(0, 0);
+#endif
+
+#ifdef CONFIG_HIO_SYSCALL
+	/*
+	 * Initialize the HIO system call subsystem
+	 */
+	hio_syscall_init();
 #endif
 
 	/*

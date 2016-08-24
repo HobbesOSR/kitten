@@ -750,4 +750,7 @@ __SYSCALL(__NR_aspace_get_rank, sys_get_rank)
 #define __NR_aspace_set_rank 533
 __SYSCALL(__NR_aspace_set_rank, sys_set_rank)
 
+#define __NR_aspace_update_user_hio_syscall_mask 534
+__SYSCALL(__NR_aspace_update_user_hio_syscall_mask, sys_aspace_update_user_hio_syscall_mask)
+
 #endif /* _ARCH_X86_64_UNISTD_H */

@@ -20,6 +20,7 @@ obj-y := \
 	aspace_update_user_cpumask.o \
 	aspace_get_rank.o \
 	aspace_set_rank.o \
+	aspace_hio.o \
 	task_create.o \
 	task_switch_cpus.o \
 	elf_hwcap.o \
