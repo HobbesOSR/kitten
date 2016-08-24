@@ -61,7 +61,7 @@ xpmem_try_get_remote(struct xpmem_thread_group * seg_tg,
     if (status != 0)
         return status;
 
-    if (apid == -1)
+    if (apid <= 0)
         return -1;
 
     if (sigid != 0)

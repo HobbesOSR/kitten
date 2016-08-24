@@ -456,7 +456,7 @@ xpmem_cmd_wait(struct xpmem_domain_state  * state,
 {
     struct xpmem_request_struct * req = &(state->requests[reqid]);
 
-    wait_event_interruptible(req->waitq, req->serviced > 0);
+    wait_event(req->waitq, req->serviced > 0);
     mb();
 
     if (req->serviced == 0) {
