@@ -48,7 +48,7 @@ static inline struct fdTable* fdTableClone( struct fdTable* tbl )
 
 static inline struct file* fdTableFile( struct fdTable* tbl, int fd )
 {
-        if( fd < 0 || fd > MAX_FILES )
+        if( fd < 0 || fd >= MAX_FILES )
                 return NULL;
 
         struct file* file;
