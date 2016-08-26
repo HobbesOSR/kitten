@@ -169,6 +169,9 @@ extern int
 hio_listen(int, int);
 
 extern int
+hio_connect(int, const struct sockaddr *, socklen_t);
+
+extern int
 hio_getsockopt(int, int, int, void *, socklen_t *);
 
 extern int

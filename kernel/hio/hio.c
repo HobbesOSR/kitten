@@ -305,6 +305,7 @@ hio_syscall_init(void)
 	syscall_register(__NR_accept, (syscall_ptr_t) hio_accept);
 	syscall_register(__NR_bind, (syscall_ptr_t) hio_bind);
 	syscall_register(__NR_listen, (syscall_ptr_t) hio_listen);
+	syscall_register(__NR_connect, (syscall_ptr_t) hio_connect);
 	syscall_register(__NR_getsockopt, (syscall_ptr_t) hio_getsockopt);
 	syscall_register(__NR_setsockopt, (syscall_ptr_t) hio_setsockopt);
 	syscall_register(__NR_getsockname, (syscall_ptr_t) hio_getsockname);
