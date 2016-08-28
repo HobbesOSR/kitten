@@ -8,6 +8,7 @@ obj-$(CONFIG_HIO_SYSCALL) := \
 	hio_ioctl.o \
 	hio_openat.o \
 	hio_getdents.o \
+	hio_getdents64.o \
 	hio_stat.o \
 	hio_socket.o \
 	hio_accept.o \
@@ -20,5 +21,9 @@ obj-$(CONFIG_HIO_SYSCALL) := \
 	hio_sendto.o \
 	hio_recvmsg.o \
 	hio_lseek.o \
-	hio_fcntl.o
+	hio_fcntl.o \
+	hio_uname.o \
+	hio_getpid.o \
+	hio_gettid.o \
+	hio_newfstatat.o
 

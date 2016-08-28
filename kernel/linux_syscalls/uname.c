@@ -1,7 +1,7 @@
 #include <lwk/kernel.h>
 #include <arch/uaccess.h>
 
-long
+int
 sys_uname(struct utsname __user *name)
 {
 	int err = copy_to_user(name, &linux_utsname, sizeof(*name));

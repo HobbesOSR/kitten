@@ -143,6 +143,15 @@ hio_lseek( int fd, off_t offset, int whence );
 extern int
 hio_fcntl( unsigned int fd, unsigned int cmd, unsigned long arg );
 
+int
+hio_uname(struct utsname __user *name);
+
+int
+hio_getpid(void);
+
+int
+hio_gettid(void);
+
 extern long
 hio_mmap(unsigned long, unsigned long, unsigned long,
 	 unsigned long, unsigned long, unsigned long);
@@ -160,7 +169,13 @@ extern int
 hio_getdents(unsigned int, uaddr_t, unsigned int);
 
 extern int
+hio_getdents64(unsigned int, uaddr_t, unsigned int);
+
+extern int
 hio_stat(const char *, uaddr_t);
+
+extern int
+hio_newfstatat(int, uaddr_t, uaddr_t, int);
 
 extern int
 hio_socket(int, int, int);

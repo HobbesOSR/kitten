@@ -1,8 +1,8 @@
 #include <lwk/task.h>
 
 // Returns the callers thread ID
-long
+int
 sys_gettid(void)
 {
-	return current->id;
+	return (int)current->id;
 }

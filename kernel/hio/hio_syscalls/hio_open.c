@@ -34,11 +34,17 @@ hio_open(uaddr_t u_pathname,
 	if (strncpy_from_user(pathname, (void *)u_pathname, sizeof(pathname)) < 0)
 		return -EFAULT;
 
+#if 0
 	if ( (flags & O_CREAT) ||
 	     (!syscall_isset(__NR_open, current->aspace->hio_syscall_mask)) ||
 	     (hio_is_local_pathname(pathname))
 	   )
+#endif
+	if ( (!syscall_isset(__NR_open, current->aspace->hio_syscall_mask)) ||
+	     (hio_is_local_pathname(pathname))
+	   ) {
 		return sys_open(u_pathname, flags, mode);
+	}
 
 	return hio_format_and_exec_syscall(__NR_open, 3, u_pathname, flags, mode); 
 }

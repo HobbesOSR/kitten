@@ -300,6 +300,7 @@ hio_syscall_init(void)
 	syscall_register(__NR_ioctl, (syscall_ptr_t) hio_ioctl);
 	syscall_register(__NR_openat, (syscall_ptr_t) hio_openat);
 	syscall_register(__NR_getdents, (syscall_ptr_t) hio_getdents);
+	syscall_register(__NR_getdents64, (syscall_ptr_t) hio_getdents64);
 	syscall_register(__NR_stat, (syscall_ptr_t) hio_stat);
 	syscall_register(__NR_socket, (syscall_ptr_t) hio_socket);
 	syscall_register(__NR_accept, (syscall_ptr_t) hio_accept);
@@ -313,4 +314,8 @@ hio_syscall_init(void)
 	syscall_register(__NR_recvmsg, (syscall_ptr_t) hio_recvmsg);
 	syscall_register(__NR_lseek, (syscall_ptr_t) hio_lseek);
 	syscall_register(__NR_fcntl, (syscall_ptr_t) hio_fcntl);
+	syscall_register(__NR_uname, (syscall_ptr_t) hio_uname);
+	syscall_register(__NR_getpid, (syscall_ptr_t) hio_getpid);
+	syscall_register(__NR_gettid, (syscall_ptr_t) hio_gettid);
+	syscall_register(__NR_newfstatat, (syscall_ptr_t) hio_newfstatat);
 }

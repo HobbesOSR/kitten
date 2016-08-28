@@ -11,7 +11,6 @@ extern int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
 int
 hio_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
 {
-	printk("In kitten hi_fcntl(fd=%u, cmd=%u, arg=0x%lx\n", fd, cmd, arg);
 	if ( (!syscall_isset(__NR_fcntl, current->aspace->hio_syscall_mask)) ||
 	     (fdTableFile(current->fdTable, fd))
 	   )
