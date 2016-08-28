@@ -311,4 +311,6 @@ hio_syscall_init(void)
 	syscall_register(__NR_getsockname, (syscall_ptr_t) hio_getsockname);
 	syscall_register(__NR_sendto, (syscall_ptr_t) hio_sendto);
 	syscall_register(__NR_recvmsg, (syscall_ptr_t) hio_recvmsg);
+	syscall_register(__NR_lseek, (syscall_ptr_t) hio_lseek);
+	syscall_register(__NR_fcntl, (syscall_ptr_t) hio_fcntl);
 }

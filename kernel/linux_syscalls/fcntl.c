@@ -57,12 +57,10 @@ sys_fcntl(int fd, int cmd, long arg)
 #include <arch-generic/fcntl.h>
 
 int
-sys_fcntl(int fd, int cmd, long arg)
+sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
 {
 	int ret = -EBADF;
 	struct file * const file = get_current_file( fd );
-
-	dbg( "%d %x %lx\n", fd, cmd, arg );
 
 	if(NULL == file)
 		goto out;

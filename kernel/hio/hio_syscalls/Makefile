@@ -18,5 +18,7 @@ obj-$(CONFIG_HIO_SYSCALL) := \
 	hio_setsockopt.o \
 	hio_getsockname.o \
 	hio_sendto.o \
-	hio_recvmsg.o
+	hio_recvmsg.o \
+	hio_lseek.o \
+	hio_fcntl.o
 

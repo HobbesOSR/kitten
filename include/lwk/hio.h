@@ -137,6 +137,12 @@ hio_read(int, char __user *, size_t);
 extern ssize_t
 hio_write(int, uaddr_t, size_t);
 
+extern off_t
+hio_lseek( int fd, off_t offset, int whence );
+
+extern int
+hio_fcntl( unsigned int fd, unsigned int cmd, unsigned long arg );
+
 extern long
 hio_mmap(unsigned long, unsigned long, unsigned long,
 	 unsigned long, unsigned long, unsigned long);
