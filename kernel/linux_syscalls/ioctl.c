@@ -1,9 +1,9 @@
 #include <lwk/kfs.h>
 
 int
-sys_ioctl(int fd,
-	  int request,
-	  uaddr_t arg)
+sys_ioctl(unsigned int  fd,
+	  unsigned int  request,
+	  unsigned long arg)
 {
 	int ret = -EBADF;
 	struct file * const file = get_current_file( fd );

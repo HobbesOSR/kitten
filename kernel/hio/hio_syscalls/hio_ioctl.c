@@ -7,13 +7,13 @@
 #include <lwk/aspace.h>
 
 extern int
-sys_ioctl(int, int, uaddr_t);
+sys_ioctl(unsigned int, unsigned int, unsigned long);
 
 
 int
-hio_ioctl(int	  fd,
-	  int     request,
-	  uaddr_t arg)
+hio_ioctl(unsigned int  fd,
+	  unsigned int  request,
+	  unsigned long arg)
 {
 	if ( (!syscall_isset(__NR_ioctl, current->aspace->hio_syscall_mask)) ||
 	     (fdTableFile(current->fdTable, fd))

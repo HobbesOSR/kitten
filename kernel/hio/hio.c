@@ -317,5 +317,10 @@ hio_syscall_init(void)
 	syscall_register(__NR_uname, (syscall_ptr_t) hio_uname);
 	syscall_register(__NR_getpid, (syscall_ptr_t) hio_getpid);
 	syscall_register(__NR_gettid, (syscall_ptr_t) hio_gettid);
+	syscall_register(__NR_set_tid_address, (syscall_ptr_t) hio_set_tid_address);
 	syscall_register(__NR_newfstatat, (syscall_ptr_t) hio_newfstatat);
+	syscall_register(__NR_ftruncate, (syscall_ptr_t) hio_ftruncate);
+	syscall_register(__NR_poll, (syscall_ptr_t) hio_poll);
+	syscall_register(__NR_recvfrom, (syscall_ptr_t) hio_recvfrom);
+	syscall_register(__NR_statfs, (syscall_ptr_t) hio_statfs);
 }

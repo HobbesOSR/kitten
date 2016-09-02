@@ -556,7 +556,8 @@ __aspace_add_region(struct aspace *aspace,
 	list_for_each_entry(cur, &aspace->region_list, link) {
 		if ((start < cur->end) && (end > cur->start)) {
 			printk(KERN_WARNING
-			       "Region overlaps with existing region.\n");
+			       "Region overlaps with existing region (0x%lx--0x%lx overlaps with existing 0x%lx--0x%lx).\n",
+			       start, end, cur->start, cur->end);
 			return -ENOTUNIQ;
 		}
 	}

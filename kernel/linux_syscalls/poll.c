@@ -20,7 +20,7 @@ struct poll_table_page {
 	struct poll_table_entry entries[0];
 };
 
-typedef unsigned long int nfds_t;
+typedef unsigned int nfds_t;
 #define POLLFD_PER_PAGE  ((PAGE_SIZE-sizeof(struct poll_list)) / \
 				sizeof(struct pollfd))
 #define N_STACK_PPS ((sizeof(stack_pps) - sizeof(struct poll_list))  /	\

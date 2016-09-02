@@ -140,6 +140,12 @@ hio_write(int, uaddr_t, size_t);
 extern off_t
 hio_lseek( int fd, off_t offset, int whence );
 
+extern long
+hio_ftruncate( unsigned int fd, unsigned long length );
+
+int
+hio_poll( void *fds, unsigned int nfds, int timeout );
+
 extern int
 hio_fcntl( unsigned int fd, unsigned int cmd, unsigned long arg );
 
@@ -152,6 +158,9 @@ hio_getpid(void);
 int
 hio_gettid(void);
 
+long
+hio_set_tid_address(int *tidptr);
+
 extern long
 hio_mmap(unsigned long, unsigned long, unsigned long,
 	 unsigned long, unsigned long, unsigned long);
@@ -160,7 +169,7 @@ extern int
 hio_munmap(unsigned long, size_t);
 
 extern int
-hio_ioctl(int, int, uaddr_t);
+hio_ioctl(unsigned int, unsigned int, unsigned long);
 
 extern int
 hio_openat(int, uaddr_t, int, mode_t);
@@ -175,13 +184,19 @@ extern int
 hio_stat(const char *, uaddr_t);
 
 extern int
+hio_statfs(const char *, void *);
+
+extern int
 hio_newfstatat(int, uaddr_t, uaddr_t, int);
 
 extern int
 hio_socket(int, int, int);
 
 extern int
-hio_accept(int, struct sockaddr *, socklen_t);
+hio_accept(int, struct sockaddr *, socklen_t *);
+
+ssize_t
+hio_recvfrom(int sockfd, void *buf, size_t len, int flags, void *src_addr, void *addrlen);
 
 extern int
 hio_bind(int, const struct sockaddr *, socklen_t);

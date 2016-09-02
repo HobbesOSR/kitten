@@ -25,5 +25,10 @@ obj-$(CONFIG_HIO_SYSCALL) := \
 	hio_uname.o \
 	hio_getpid.o \
 	hio_gettid.o \
-	hio_newfstatat.o
+	hio_newfstatat.o \
+	hio_ftruncate.o \
+	hio_poll.o \
+	hio_recvfrom.o \
+	hio_statfs.o \
+	hio_set_tid_address.o
 
