@@ -94,7 +94,7 @@ extern void identify_cpu(void);
 #define X86_CR4_PCE		0x0100	/* enable performance counters at ipl 3 */
 #define X86_CR4_OSFXSR		0x0200	/* enable fast FPU save and restore */
 #define X86_CR4_OSXMMEXCPT	0x0400	/* enable unmasked SSE exceptions */
-
+#define X86_CR4_OSXSAVE        0x40000  /* enable xsave and xrestore */
 #ifdef CONFIG_VM86
 #define X86_VM_MASK X86_EFLAGS_VM
 #else
