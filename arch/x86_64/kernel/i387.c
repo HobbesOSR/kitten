@@ -37,6 +37,7 @@ void mxcsr_feature_mask_init(void)
 	stts();
 }
 
+#define bit_AVX (1UL<<28)
 /*
  * Called at bootup to set up the initial FPU state that is later cloned
  * into all processes.
@@ -44,7 +45,7 @@ void mxcsr_feature_mask_init(void)
 void __cpuinit fpu_init(void)
 {
 	unsigned long oldcr0 = read_cr0();
-	unsigned int avx_support;
+	unsigned long avx_support;
 	extern void __bad_fxsave_alignment(void);
 		
 	if (offsetof(struct task_struct, arch.thread.i387.fxsave) & 15)
@@ -53,8 +54,8 @@ void __cpuinit fpu_init(void)
 	set_in_cr4(X86_CR4_OSXMMEXCPT); /* enable unmasked SSE exceptions */
 
 	write_cr0(oldcr0 & ~((1UL<<3)|(1UL<<2))); /* clear TS and EM */
-	avx_support = cpuid_ecx(0x80000001);
-	if((avx_support & 0x18001000UL) == 0x18001000UL) {
+	avx_support = cpuid_ecx(0x1);
+	if((avx_support & bit_AVX) == bit_AVX) {
 		set_in_cr4(X86_CR4_OSXSAVE);
 		xsetbv(XCR_XFEATURE_ENABLED_MASK, XSTATE_YMM|XSTATE_SSE|XSTATE_FP);
 	}
