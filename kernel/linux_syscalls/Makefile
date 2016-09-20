@@ -65,4 +65,5 @@ obj-y := \
 	connect.o \
 	sendto.o \
 	clock_getres.o \
+	alarm.o \
 	reboot.o

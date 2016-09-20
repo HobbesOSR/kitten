@@ -89,7 +89,7 @@ __SYSCALL(__NR_nanosleep, sys_nanosleep)
 #define __NR_getitimer                          36
 __SYSCALL(__NR_getitimer, syscall_not_implemented)
 #define __NR_alarm                              37
-__SYSCALL(__NR_alarm, syscall_not_implemented)
+__SYSCALL(__NR_alarm, sys_alarm)
 #define __NR_setitimer                          38
 __SYSCALL(__NR_setitimer, syscall_not_implemented)
 #define __NR_getpid                             39
