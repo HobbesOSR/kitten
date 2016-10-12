@@ -2,6 +2,7 @@
 #define _LWK_HIO_H
 
 #include <lwk/init.h>
+#include <lwk/xpmem/xpmem.h>
 
 #include <arch/bitops.h>
 
@@ -20,18 +21,31 @@ typedef struct {
 
 
 #define HIO_MAX_ARGC	16
+#define HIO_MAX_SEGC	16
+
 
 typedef struct {
-	id_t	    aspace_id;
-	id_t	    thread_id;
-	id_t	    rank_id;
+	xpmem_segid_t segid;
+	uint64_t      size;
+	uint64_t      page_size;
+	void        * target_vaddr;
+} hio_segment_t;
 
-	uint32_t    syscall_nr;
-	uint32_t    argc;
-	uintptr_t   args[HIO_MAX_ARGC];
-	uintptr_t   ret_val;
+typedef struct {
+	uint32_t  uniq_id;
 
-	uint32_t    uniq_id;
+	id_t	  aspace_id;
+	id_t	  thread_id;
+	id_t	  rank_id;
+
+	uint32_t  syscall_nr;
+	uint32_t  argc;
+	uintptr_t args[HIO_MAX_ARGC];
+
+	/* Output parameters */
+	uintptr_t     ret_val;
+	uint32_t      segc;
+	hio_segment_t segs[HIO_MAX_SEGC];
 } hio_syscall_t;
 
 

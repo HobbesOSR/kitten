@@ -4,10 +4,13 @@
 #include <lwk/aspace.h>
 #include <lwk/waitq.h>
 #include <lwk/spinlock.h>
+#include <lwk/spinlock.h>
+#include <lwk/xpmem/xpmem.h>
 
 #include <arch/vsyscall.h>
 #include <arch/atomic.h>
 #include <arch/bug.h>
+#include <arch-generic/fcntl.h>
 
 #define MAX_OUTSTANDING_SYSCALLS 128
 
@@ -138,6 +141,9 @@ hio_return_syscall(hio_syscall_t * syscall)
 	    return;
 	}
 
+	/* copy in ret_val and hio segs */
+	memcpy(&(entry->syscall->segs), &(syscall->segs), syscall->segc * sizeof(hio_syscall_t));
+	entry->syscall->segc    = syscall->segc;
 	entry->syscall->ret_val = syscall->ret_val;
 	entry->state            = HIO_COMPLETE;
 
@@ -207,6 +213,7 @@ hio_format_and_exec_syscall(uint32_t syscall_nr,
 	int       status;
 	uintptr_t ret_val;
 	hio_syscall_t * syscall;
+	struct file   * xpmem_f;
 
 	if (argc > HIO_MAX_ARGC)
 		return -EINVAL;
@@ -235,11 +242,64 @@ hio_format_and_exec_syscall(uint32_t syscall_nr,
 
 	/* Wait for response */
 	status  = hio_wait_syscall(syscall, &ret_val);
-	kmem_free(syscall);
 
-	if (status)
+	if (status) {
+		kmem_free(syscall);
 		return status;
+	}
 
+	/* Open /dev/xpmem, so the xpmem driver initializes this process */
+	if (kfs_open_path("/dev/xpmem", O_RDWR, 0666, &xpmem_f)) {
+		printk(KERN_ERR "Could not open /dev/xpmem\n");
+		kmem_free(syscall);
+		return -ENODEV;
+	}
+
+	/* Attach each of the xpmem segments */
+	for (i = 0; i < syscall->segc; i++) {
+		xpmem_apid_t apid;
+		vaddr_t      target_vaddr, at_vaddr;
+
+		/* Get it */ 
+		status = xpmem_get(
+			syscall->segs[i].segid,
+			XPMEM_RDWR,
+			XPMEM_GLOBAL_MODE,
+			NULL,
+			&apid);
+
+		if (status) {
+			printk(KERN_ERR "Failed to get HIO segid: %lli (status: %d)\n", 
+				    syscall->segs[i].segid, status);
+			ret_val = (uintptr_t)status;
+			goto out;
+		}
+
+		target_vaddr = (vaddr_t)syscall->segs[i].target_vaddr;
+
+		/* Attach it */
+		status = xpmem_attach(
+			apid,
+			0,
+			syscall->segs[i].size,
+			target_vaddr,
+			0,
+			&at_vaddr);
+
+		if (status) {
+			printk(KERN_ERR "Failed to attach to HIO apid (status: %d)\n", status);
+			xpmem_release(apid);
+			ret_val = (uintptr_t)status;
+			goto out;
+		}
+
+		BUG_ON(target_vaddr != at_vaddr);
+	}
+
+out:
+	/* This is going to be an issue if the process is actually using xpmem/xemem at user level ... */
+	kfs_close(xpmem_f);
+	kmem_free(syscall);
 	return ret_val;
 }
 

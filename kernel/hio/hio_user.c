@@ -85,6 +85,11 @@ hio_write_fop(struct file	* filp,
 	if (copy_from_user(&syscall, buffer, sizeof(hio_syscall_t)))
 		return -EFAULT;
 
+	if (syscall.segc > HIO_MAX_SEGC) {
+		printk(KERN_ERR "User returned syscall with invalid segcount (%d, max is %d)\n",
+			syscall.segc, HIO_MAX_SEGC);
+	}
+
 	hio_return_syscall(&syscall);
 	return sizeof(hio_syscall_t);
 }
