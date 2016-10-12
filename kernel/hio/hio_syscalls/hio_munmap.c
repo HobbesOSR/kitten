@@ -11,8 +11,10 @@ sys_munmap(unsigned long, size_t);
 
 int
 hio_munmap(unsigned long addr,
-	 size_t        len)
+  	   size_t        len)
 {
+	int ret;
+
 	/* This is a bit of a hack, but the clearest way to tell what
 	 * to do with this is just look at the addr.
 	 * If it is less than SMARTMAP_ALIGN, it was locally created.
@@ -23,5 +25,10 @@ hio_munmap(unsigned long addr,
 	   )
 		return sys_munmap(addr, len);
 
-	return hio_format_and_exec_syscall(__NR_munmap, 2, addr, len); 
+	ret = hio_format_and_exec_syscall(__NR_munmap, 2, addr, len); 
+
+	/* Remove the locally-created mapping for this region as well */
+	if (ret == 0)
+		sys_munmap(addr, len);
+	return ret;
 }
