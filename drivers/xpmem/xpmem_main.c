@@ -280,13 +280,9 @@ xpmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                        sizeof(struct xpmem_cmd_attach)))
                 return -EFAULT;
 
-	    if (attach_info.vaddr) {
-		XPMEM_ERR("Kitten does not support user supplied vaddr attachments\n");
-		return -EINVAL;
-	    }
-
             ret = xpmem_attach(attach_info.apid, attach_info.offset,
                        attach_info.size, 
+		       attach_info.vaddr,
 		       attach_info.flags,
                        &at_vaddr);
             if (ret != 0)

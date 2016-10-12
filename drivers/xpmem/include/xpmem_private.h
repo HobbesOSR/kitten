@@ -225,7 +225,7 @@ extern int xpmem_signal(xpmem_apid_t);
 
 /* found in xpmem_attach.c */
 extern struct vm_operations_struct xpmem_vm_ops;
-extern int xpmem_attach(xpmem_apid_t, off_t, size_t, int, vaddr_t *);
+extern int xpmem_attach(xpmem_apid_t, off_t, size_t, vaddr_t, int, vaddr_t *);
 extern int xpmem_detach(vaddr_t);
 extern void xpmem_detach_att(struct xpmem_access_permit *,
                  struct xpmem_attachment *);

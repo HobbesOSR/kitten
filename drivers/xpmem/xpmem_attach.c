@@ -12,26 +12,35 @@
  * Attach a remote XPMEM address segment
  */
 static int
-xpmem_try_attach_remote(xpmem_segid_t segid, 
-                        xpmem_apid_t  apid,
-                        off_t         offset,
-                        size_t        size,
-			vmflags_t     pgflags,
-                        vaddr_t     * vaddr)
+xpmem_try_attach_remote(struct xpmem_thread_group * ap_tg,
+			xpmem_segid_t		    segid, 
+                        xpmem_apid_t		    apid,
+                        off_t			    offset,
+                        size_t			    size,
+			vaddr_t			    vaddr,
+			vmflags_t		    pgflags,
+                        vaddr_t			  * at_vaddr_p)
 {
-    int       status   = 0;
-    vaddr_t   at_vaddr = 0;
+    int     status   = 0;
+    vaddr_t at_vaddr = 0;
 
-    /* Find free address space */
-    status = aspace_find_hole(current->aspace->id, 0, size, PAGE_SIZE, &at_vaddr);
+    *at_vaddr_p = 0;
+
+    /* Find free address space and add new region here */
+    status = aspace_find_hole(ap_tg->aspace->id, vaddr, size, PAGE_SIZE, &at_vaddr);
     if (status != 0) {
 	XPMEM_ERR("aspace_find_hole() failed (%d)", status);
 	return status;
     }
 
+    if ((vaddr) && (vaddr != at_vaddr)) {
+	XPMEM_ERR("aspace_find_hole() did not return the vaddr requested (%p, requested %p)", 
+	    (void *)at_vaddr, (void *)vaddr);
+	return -EFAULT;
+    }
+
     /* Add region to aspace */
-    status = aspace_add_region(current->aspace->id, at_vaddr, size, 
-	pgflags, PAGE_SIZE, "xpmem");
+    status = aspace_add_region(ap_tg->aspace->id, at_vaddr, size, pgflags, PAGE_SIZE, "xpmem");
     if (status != 0) {
 	XPMEM_ERR("aspace_add_region() failed (%d)", status);
 	return status;
@@ -41,12 +50,12 @@ xpmem_try_attach_remote(xpmem_segid_t segid,
     status = xpmem_attach_remote(xpmem_my_part->domain_link, segid, apid, offset, size, (u64)at_vaddr);
     if (status != 0) {
 	XPMEM_ERR("xpmem_attach_remote() failed (%d)", status);
-	aspace_del_region(current->aspace->id, at_vaddr, size);
-	return status;
+	aspace_del_region(ap_tg->aspace->id, at_vaddr, size);
+    } else {
+	*at_vaddr_p = at_vaddr;
     }
 
-    *vaddr = at_vaddr;
-    return 0;
+    return status;
 }
 
 
@@ -90,6 +99,7 @@ int
 xpmem_attach(xpmem_apid_t apid, 
              off_t        offset, 
 	     size_t       size,
+	     vaddr_t      vaddr,
 	     int          att_flags, 
 	     vaddr_t    * at_vaddr_p)
 {
@@ -102,13 +112,23 @@ xpmem_attach(xpmem_apid_t apid,
     struct xpmem_attachment *att;
     unsigned long flags, flags2;
 
-    if (apid <= 0)
+    if (apid <= 0) {
+	printk("EINVAL 1\n");
         return -EINVAL;
+    }
+
+    /* The start of the attachment must be page aligned */
+    if (offset_in_page(vaddr) != 0 || offset_in_page(offset) != 0) {
+	printk("EINVAL 3\n");
+	return -EINVAL;
+    }
 
     /* Only one flag at this point */
     if ((att_flags) &&
-	(att_flags != XPMEM_NOCACHE_MODE))
+	(att_flags != XPMEM_NOCACHE_MODE)) {
+	printk("EINVAL 4\n");
 	return -EINVAL;
+    }
 
     /* If the size is not page aligned, fix it */
     if (offset_in_page(size) != 0) 
@@ -138,6 +158,23 @@ xpmem_attach(xpmem_apid_t apid,
     /* size needs to reflect page offset to start of segment */
     size += offset_in_page(seg_vaddr);
 
+    /*
+     * Ensure thread is not attempting to attach itw own memory on top of
+     * itself (i.e. ensure the destination vaddr range doesn't overlap the
+     * source vaddr range)
+     *
+     * BJK: only make check for local segs
+     */
+    if ( (vaddr != 0) &&
+	!(seg->flags & XPMEM_FLAG_SHADOW) &&
+	 (current->aspace->id == seg_tg->tgid)) {
+	if ((vaddr + size > seg_vaddr) && (vaddr < seg_vaddr + size)) {
+	    printk("EINVAL 5\n");
+	    ret = -EINVAL;
+	    goto out_1;
+	}
+    }
+
     pgflags = VM_READ | VM_WRITE | VM_USER;
 
     if (seg->flags & XPMEM_FLAG_SHADOW) {
@@ -147,8 +184,8 @@ xpmem_attach(xpmem_apid_t apid,
 	    pgflags |= VM_NOCACHE | VM_WRITETHRU;
 
 	/* remote - load pfns in now */
-	ret = xpmem_try_attach_remote(seg->segid, seg->remote_apid, 
-		offset, size, pgflags, &at_vaddr);
+	ret = xpmem_try_attach_remote(ap_tg, seg->segid, seg->remote_apid, 
+		offset, size, vaddr, pgflags, &at_vaddr);
 	if (ret != 0)
             goto out_1;
     } else {
