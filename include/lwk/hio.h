@@ -154,6 +154,15 @@ hio_write(int, uaddr_t, size_t);
 extern off_t
 hio_lseek( int fd, off_t offset, int whence );
 
+extern int
+hio_unlink(const char *pathname);
+
+extern ssize_t
+hio_readlink(const char *path, char *buf, size_t bufsiz);
+
+extern int
+hio_faccessat(int dirfd, const char *pathname, int mode, int flags);
+
 extern long
 hio_ftruncate( unsigned int fd, unsigned long length );
 
@@ -198,6 +207,9 @@ extern int
 hio_stat(const char *, uaddr_t);
 
 extern int
+hio_fstat(int, uaddr_t);
+
+extern int
 hio_statfs(const char *, void *);
 
 extern int
@@ -237,6 +249,14 @@ hio_sendto(int, const void *, size_t, int, const struct sockaddr *,
 extern ssize_t
 hio_recvmsg(int, struct msghdr *, int);
 
+extern int
+hio_shmget(key_t, size_t, int);
+
+extern void *
+hio_shmat(int, const void *, int);
+
+extern int
+hio_shmctl(int, int, void *);
 
 #endif /* __KERNEL__ */
 #endif /* _LWK_HIO_H */

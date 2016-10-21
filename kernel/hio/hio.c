@@ -362,6 +362,7 @@ hio_syscall_init(void)
 	syscall_register(__NR_getdents, (syscall_ptr_t) hio_getdents);
 	syscall_register(__NR_getdents64, (syscall_ptr_t) hio_getdents64);
 	syscall_register(__NR_stat, (syscall_ptr_t) hio_stat);
+	syscall_register(__NR_fstat, (syscall_ptr_t) hio_fstat);
 	syscall_register(__NR_socket, (syscall_ptr_t) hio_socket);
 	syscall_register(__NR_accept, (syscall_ptr_t) hio_accept);
 	syscall_register(__NR_bind, (syscall_ptr_t) hio_bind);
@@ -383,4 +384,10 @@ hio_syscall_init(void)
 	syscall_register(__NR_poll, (syscall_ptr_t) hio_poll);
 	syscall_register(__NR_recvfrom, (syscall_ptr_t) hio_recvfrom);
 	syscall_register(__NR_statfs, (syscall_ptr_t) hio_statfs);
+	syscall_register(__NR_readlink, (syscall_ptr_t) hio_readlink);
+	syscall_register(__NR_faccessat, (syscall_ptr_t) hio_faccessat);
+	syscall_register(__NR_unlink, (syscall_ptr_t) hio_unlink);
+	syscall_register(__NR_shmget, (syscall_ptr_t) hio_shmget);
+	syscall_register(__NR_shmat, (syscall_ptr_t) hio_shmat);
+	syscall_register(__NR_shmctl, (syscall_ptr_t) hio_shmctl);
 }

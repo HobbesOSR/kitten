@@ -2,7 +2,7 @@
 #include <lwk/stat.h>
 #include <arch/uaccess.h>
 
-int
+ssize_t
 sys_readlink(const char __user *path, char __user *buf, size_t bufsiz)
 {
 	char p[2048];

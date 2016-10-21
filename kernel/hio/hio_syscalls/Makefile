@@ -30,5 +30,12 @@ obj-$(CONFIG_HIO_SYSCALL) := \
 	hio_poll.o \
 	hio_recvfrom.o \
 	hio_statfs.o \
-	hio_set_tid_address.o
+	hio_set_tid_address.o \
+	hio_readlink.o \
+	hio_faccessat.o \
+	hio_fstat.o \
+	hio_unlink.o \
+	hio_shmget.o \
+	hio_shmat.o \
+	hio_shmctl.o \
 
