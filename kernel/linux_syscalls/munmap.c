@@ -7,12 +7,13 @@
 long
 sys_munmap(
 	unsigned long addr,
-	size_t len
+	size_t        len
 )
 {
-	struct aspace *as = current->aspace;
+	struct aspace *as  = current->aspace;
+	size_t len_aligned = round_up(len, PAGE_SIZE);
 
-	/* printk("[%s] SYS_MUNMAP: addr=%lx, len=%lu\n", current->name, addr, len); */
+	/* printk("[%s] IN  SYS_MUNMAP: addr=%lx, len=%lx, len_aligned=%lx\n", current->name, addr, len, len_aligned); */
 
 	/* TODO: add a million checks here that we'll simply ignore now */
 
@@ -20,7 +21,7 @@ sys_munmap(
 	   of those, too, otherwise we leak memory. */
 
 	spin_lock(&as->lock);
-	__aspace_del_region(as, addr, len);
+	__aspace_del_region(as, addr, len_aligned);
 	spin_unlock(&as->lock);
 
 	return 0;

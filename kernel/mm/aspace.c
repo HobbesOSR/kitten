@@ -759,11 +759,19 @@ __aspace_unmap_pmem(struct aspace *aspace, vaddr_t start, size_t extent)
 			return -EINVAL;
 		}
 
-		/* address must be aligned to region's page size */
+		/* start address must be aligned to region's page size */
 		if (start & (rgn->pagesz-1)) {
 			printk(KERN_WARNING
-				"Misalignment (start=0x%lx, pagesz=0x%lx).\n",
-				start, rgn->pagesz);
+				"Start address misalignment (start=0x%lx, extent=0x%lx, pagesz=0x%lx).\n",
+				start, extent, rgn->pagesz);
+			return -EINVAL;
+		}
+
+		/* extent must be a multiple of region's page size */
+		if (extent & (rgn->pagesz-1)) {
+			printk(KERN_WARNING
+				"Extent misalignment (start=0x%lx, extent=0x%lx, pagesz=0x%lx).\n",
+				start, extent, rgn->pagesz);
 			return -EINVAL;
 		}
 
