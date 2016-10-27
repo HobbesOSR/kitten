@@ -55,6 +55,47 @@ config PISCES
 endchoice
 
 
+config HIO_SYSCALL
+	bool "Hobbes I/O system call forwarding"
+	depends on PISCES || PALACIOS
+	default n
+	help
+	  Enables the forwarding of system calls via HIO (Hobbes I/O)
+
+choice
+	prompt "HIO forwarding implementation"
+	depends on HIO_SYSCALL
+
+config HIO_SYSCALL_USER
+	bool "User-level (/dev/hio) forwarding channel"
+	depends on HIO_SYSCALL
+	help
+		Select this if you want to forward into a user-space process via /dev/hio
+
+config HIO_SYSCALL_PALACIOS
+	bool "Palacios virtual forwarding channel"
+	depends on HIO_SYSCALL && PALACIOS
+	help
+		Select this if you want to forward into a Palacios virtual machine
+
+config HIO_SYSCALL_PISCES
+	bool "Pisces co-kernel forwarding channel"
+	depends on HIO_SYSCALL && PISCES
+	help
+		Select this if you want to forward into the Linux host kernel
+
+endchoice
+
+config HIO_SYSCALL_FORWARD_STDIO
+	bool "Forward stdin/stdout/stderr"
+	depends on HIO_SYSCALL
+	default "y"
+	help
+	  Forwards stdandard I/O stdin/stdout/stderr via HIO for all processes except
+          for the init_task.  If this option is disabled, stdin/stdout/stderr will
+          appear on the LWK console.  If this option is enabled, stdin/stdout/stderr
+          will be forwarded via HIO and appear on the HIO stub's stdin/stdout/stderr.
+
 choice
 	prompt "Processor Family"
 	default GENERIC_CPU

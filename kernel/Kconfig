@@ -28,34 +28,3 @@ config PCI_DEVICE_DB
 	  Include PCI device database in kernel image.  This is used
 	  to convert PCI device IDs to human readable strings.
 	  Enabling this option adds about 400 KB to the kernel image.
-
-config HIO_SYSCALL
-	bool "Hobbes I/O system call forwarding"
-	default "n"
-	depends on PISCES || PALACIOS
-	help
-	  Enables the forwarding of system calls via HIO (Hobbes I/O)
-
-choice
-	prompt "HIO forwarding implementation"
-	depends on HIO_SYSCALL
-
-config HIO_SYSCALL_USER
-	bool "User-level (/dev/hio) forwarding channel"
-	depends on HIO_SYSCALL
-	help
-		Select this if you want to forward into a user-space process via /dev/hio
-
-config HIO_SYSCALL_PALACIOS
-	bool "Palacios virtual forwarding channel"
-	depends on HIO_SYSCALL && PALACIOS
-	help
-		Select this if you want to forward into a Palacios virtual machine
-
-config HIO_SYSCALL_PISCES
-	bool "Pisces co-kernel forwarding channel"
-	depends on HIO_SYSCALL && PISCES
-	help
-		Select this if you want to forward into the Linux host kernel
-
-endchoice
