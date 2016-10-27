@@ -24,7 +24,6 @@ typedef __kernel_dev_t		dev_t;
 typedef __kernel_ino_t		ino_t;
 typedef __kernel_mode_t		mode_t;
 typedef __kernel_nlink_t	nlink_t;
-typedef __kernel_off_t		off_t;
 typedef __kernel_pid_t		pid_t;
 typedef __kernel_daddr_t	daddr_t;
 typedef __kernel_key_t		key_t;
@@ -46,6 +45,11 @@ typedef __kernel_loff_t		loff_t;
 #ifndef _SIZE_T
 #define _SIZE_T
 typedef __kernel_size_t		size_t;
+#endif
+
+#ifndef _OFF_T
+#define _OFF_T
+typedef __kernel_off_t		off_t;
 #endif
 
 #ifndef _SSIZE_T
