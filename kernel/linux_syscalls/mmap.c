@@ -20,7 +20,7 @@ sys_mmap(
 	unsigned long mmap_brk;
 	int rv;
 
-	/* printk("[%s] SYS_MMAP: addr=%lx, len=%lu\n", current->name, addr, len); */
+	/* printk("[%s] SYS_MMAP: fd=%lu, addr=%lx, len=%lu\n", current->name, fd, addr, len); */
 
 	if (len != round_up(len, PAGE_SIZE))
 		return -EINVAL;
@@ -44,8 +44,8 @@ sys_mmap(
 		   or becoming negative (which wraps around to large addr) */
 		if ((mmap_brk <= as->brk) || (mmap_brk >= as->mmap_brk)) {
 			spin_unlock(&as->lock);
-			printk("[%s] SYS_MMAP: ENOMEM (len=%lu, heap_brk=%lx, mmap_brk=%lx)\n",
-			       current->name, len, as->brk, as->mmap_brk);
+			printk("[%s] SYS_MMAP: ENOMEM (len=%lu, heap_brk=0x%lx, mmap_brk=0x%lx)\n",
+				current->name, len, as->brk, as->mmap_brk);
 			return -ENOMEM;
 		}
 
@@ -58,7 +58,7 @@ sys_mmap(
 			panic("sys_mmap() failed to get physical address\n");
 		memset(__va(phys), 0, len);
 
-		/* printk("[%s] SYS_MMAP: returning mmap_brk=%lx, heap_brk=%lx\n", current->name, mmap_brk, as->brk); */
+		/* printk("[%s] SYS_MMAP: len=%lu returning mmap_brk=0x%lx, heap_brk=0x%lx\n", current->name, len, mmap_brk, as->brk); */
 		return mmap_brk;
 	}
 
