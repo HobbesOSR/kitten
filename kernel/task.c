@@ -181,7 +181,10 @@ __task_create(
 	if (tsk->aspace->id !=  KERNEL_ASPACE_ID ) {
 		if ( tsk->aspace->id == tsk->id ) {
         		tsk->fdTable = fdTableAlloc();
-			kfs_init_stdio(tsk);
+#ifdef CONFIG_HIO_SYSCALL_FORWARD_STDIO
+			if (tsk->aspace->id == INIT_ASPACE_ID)
+#endif
+				kfs_init_stdio(tsk);
 		} else {
         		tsk->fdTable = fdTableClone(current->fdTable);
 		}
