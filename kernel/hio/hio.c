@@ -142,7 +142,7 @@ hio_return_syscall(hio_syscall_t * syscall)
 	}
 
 	/* copy in ret_val and hio segs */
-	memcpy(&(entry->syscall->segs), &(syscall->segs), syscall->segc * sizeof(hio_syscall_t));
+	memcpy(entry->syscall->segs, syscall->segs, syscall->segc * sizeof(hio_segment_t));
 	entry->syscall->segc    = syscall->segc;
 	entry->syscall->ret_val = syscall->ret_val;
 	entry->state            = HIO_COMPLETE;
@@ -283,7 +283,7 @@ hio_format_and_exec_syscall(uint32_t syscall_nr,
 			0,
 			syscall->segs[i].size,
 			target_vaddr,
-			0,
+			XPMEM_NOCACHE_MODE,
 			&at_vaddr);
 
 		if (status) {
