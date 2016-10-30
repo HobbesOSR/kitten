@@ -36,6 +36,7 @@ xpmem_try_attach_remote(struct xpmem_thread_group * ap_tg,
     if ((vaddr) && (vaddr != at_vaddr)) {
 	XPMEM_ERR("aspace_find_hole() did not return the vaddr requested (%p, requested %p)", 
 	    (void *)at_vaddr, (void *)vaddr);
+	BUG();
 	return -EFAULT;
     }
 
