@@ -6,6 +6,7 @@
 #include <lwk/spinlock.h>
 #include <lwk/spinlock.h>
 #include <lwk/xpmem/xpmem.h>
+#include <lwk/smp.h>
 
 #include <arch/vsyscall.h>
 #include <arch/atomic.h>
@@ -215,6 +216,8 @@ hio_format_and_exec_syscall(uint32_t syscall_nr,
 	hio_syscall_t * syscall;
 	struct file   * xpmem_f;
 
+	//printk("%d cpu %d: in syscall %d\n", current->id, this_cpu, syscall_nr);
+
 	if (argc > HIO_MAX_ARGC)
 		return -EINVAL;
 
@@ -300,6 +303,7 @@ out:
 	/* This is going to be an issue if the process is actually using xpmem/xemem at user level ... */
 	kfs_close(xpmem_f);
 	kmem_free(syscall);
+	//printk("%d cpu %d: out syscall %d, ret_val = %lu (0x%lx)\n", current->id, this_cpu, syscall_nr, (unsigned long)ret_val, (unsigned long)ret_val);
 	return ret_val;
 }
 
