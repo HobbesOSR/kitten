@@ -167,7 +167,7 @@ do_stack_segment(struct pt_regs *regs, unsigned int vector)
 void
 do_general_protection(struct pt_regs *regs, unsigned int vector)
 {
-	printk("General Protection Exception\n");
+	printk("General Protection Exception, cpu %d\n", this_cpu);
 	show_registers(regs);
 	while (1) {}
 }
@@ -193,7 +193,7 @@ do_page_fault(struct pt_regs *regs, unsigned int vector)
 	s.si_code  = SEGV_ACCERR; // SEGV_MAPERR;
 
 	int i = sigsend(current->aspace->id, ANY_ID, SIGSEGV, &s);
-	printk(">> PAGE FAULT! Sent signal %d: CR2 is %p\n", i, s.si_addr);
+	printk(">> PAGE FAULT! Sent signal %d. CR2 is %p, cpu %d\n", i, (void *)cr2, this_cpu);
 	show_registers(regs);
 
 	if (current->aspace->id == INIT_ASPACE_ID) {
