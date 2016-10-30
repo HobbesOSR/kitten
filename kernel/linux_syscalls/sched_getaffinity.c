@@ -13,8 +13,8 @@ sys_sched_getaffinity(
 	if (task_id == 0)
 		task_id = current->id;
 
-	if (task_id != current->id)
-		return -EINVAL;
+	//if (task_id != current->id)
+	//	return -EINVAL;
 
 	if (cpumask_len < sizeof(cpumask_t))
 		return -EINVAL;
