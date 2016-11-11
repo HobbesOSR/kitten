@@ -338,10 +338,17 @@ write_pte(
 		_pte.dirty    = 1;
 	}
 
-    if (flags & VM_NOCACHE) {
-        _pte.pcd      = 1;
-        _pte.pwt      = 1;
-    }
+	if (flags & VM_NOCACHE) {
+		printk("VM_NOCACHE mapping: paddr=0x%lx, pagesz=0x%lx\n", paddr, pagesz);
+		_pte.pcd      = 1;
+		_pte.pwt      = 1;
+	}
+
+	/* Fixup for Cray Gemini device memory, map as uncached */
+	if ((paddr >= 0x4800000000ul) && (paddr < 0x8000000000ul)) {
+		printk("Fixup Cray Gemini mapping: setting paddr=0x%lx, pagesz=0x%lx UNCACHED\n", paddr, pagesz);
+		_pte.pcd      = 1;
+	}
 
 	_pte.base_paddr = paddr >> 12;
 	if ((pagesz == VM_PAGE_2MB) || (pagesz == VM_PAGE_1GB))

@@ -286,7 +286,7 @@ hio_format_and_exec_syscall(uint32_t syscall_nr,
 			0,
 			syscall->segs[i].size,
 			target_vaddr,
-			XPMEM_NOCACHE_MODE,
+			0,
 			&at_vaddr);
 
 		if (status) {
