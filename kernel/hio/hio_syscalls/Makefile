@@ -38,4 +38,6 @@ obj-$(CONFIG_HIO_SYSCALL) := \
 	hio_shmget.o \
 	hio_shmat.o \
 	hio_shmctl.o \
+	hio_writev.o \
+	hio_readv.o \
 

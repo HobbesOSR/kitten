@@ -151,6 +151,12 @@ hio_read(int, char __user *, size_t);
 extern ssize_t
 hio_write(int, uaddr_t, size_t);
 
+extern ssize_t
+hio_readv(int, const uaddr_t, int);
+
+extern ssize_t
+hio_writev(int, const uaddr_t, int);
+
 extern off_t
 hio_lseek( int fd, off_t offset, int whence );
 

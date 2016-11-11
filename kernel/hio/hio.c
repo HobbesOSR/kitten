@@ -359,6 +359,8 @@ hio_syscall_init(void)
 	syscall_register(__NR_close, (syscall_ptr_t) hio_close);
 	syscall_register(__NR_read, (syscall_ptr_t) hio_read);
 	syscall_register(__NR_write, (syscall_ptr_t) hio_write);
+	syscall_register(__NR_readv, (syscall_ptr_t) hio_readv);
+	syscall_register(__NR_writev, (syscall_ptr_t) hio_writev);
 	syscall_register(__NR_mmap, (syscall_ptr_t) hio_mmap);
 	syscall_register(__NR_munmap, (syscall_ptr_t) hio_munmap);
 	syscall_register(__NR_ioctl, (syscall_ptr_t) hio_ioctl);
