@@ -24,16 +24,13 @@
  * with the slab allocator.
  */
 
-#ifndef TEST                        // to test in user space...
-#include <linux/slab.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#endif
-#include <linux/err.h>
-#include <linux/string.h>
-#include <linux/idr.h>
 
-static struct kmem_cache *idr_layer_cache;
+
+#include <lwk/string.h>
+#include <lwk/idr.h>
+
+#include <lwk/show.h>
+
 
 static struct idr_layer *alloc_layer(struct idr *idp)
 {
@@ -106,14 +103,13 @@ int idr_pre_get(struct idr *idp, gfp_t gfp_mask)
 {
 	while (idp->id_free_cnt < IDR_FREE_MAX) {
 		struct idr_layer *new;
-		new = kmem_cache_alloc(idr_layer_cache, gfp_mask);
+		new = kmem_alloc(sizeof(struct idr_layer));
 		if (new == NULL)
 			return (0);
 		free_layer(idp, new);
 	}
 	return 1;
 }
-EXPORT_SYMBOL(idr_pre_get);
 
 static int sub_alloc(struct idr *idp, int *starting_id, struct idr_layer **pa)
 {
@@ -286,7 +282,6 @@ int idr_get_new_above(struct idr *idp, void *ptr, int starting_id, int *id)
 	*id = rv;
 	return 0;
 }
-EXPORT_SYMBOL(idr_get_new_above);
 
 /**
  * idr_get_new - allocate new idr entry
@@ -321,12 +316,11 @@ int idr_get_new(struct idr *idp, void *ptr, int *id)
 	*id = rv;
 	return 0;
 }
-EXPORT_SYMBOL(idr_get_new);
 
 static void idr_remove_warning(int id)
 {
 	printk("idr_remove called for id=%d which is not allocated.\n", id);
-	dump_stack();
+	show_kstack();
 }
 
 static void sub_remove(struct idr *idp, int shift, int id)
@@ -384,11 +378,10 @@ void idr_remove(struct idr *idp, int id)
 	}
 	while (idp->id_free_cnt >= IDR_FREE_MAX) {
 		p = alloc_layer(idp);
-		kmem_cache_free(idr_layer_cache, p);
+		kmem_free(p);
 		return;
 	}
 }
-EXPORT_SYMBOL(idr_remove);
 
 /**
  * idr_remove_all - remove all ids from the given idr tree
@@ -435,7 +428,6 @@ void idr_remove_all(struct idr *idp)
 	idp->top = NULL;
 	idp->layers = 0;
 }
-EXPORT_SYMBOL(idr_remove_all);
 
 /**
  * idr_destroy - release all cached layers within an idr tree
@@ -445,10 +437,9 @@ void idr_destroy(struct idr *idp)
 {
 	while (idp->id_free_cnt) {
 		struct idr_layer *p = alloc_layer(idp);
-		kmem_cache_free(idr_layer_cache, p);
+		kmem_free(p);
 	}
 }
-EXPORT_SYMBOL(idr_destroy);
 
 /**
  * idr_find - return pointer for given id
@@ -481,7 +472,6 @@ void *idr_find(struct idr *idp, int id)
 	}
 	return((void *)p);
 }
-EXPORT_SYMBOL(idr_find);
 
 /**
  * idr_for_each - iterate through all stored pointers
@@ -536,7 +526,6 @@ int idr_for_each(struct idr *idp,
 
 	return error;
 }
-EXPORT_SYMBOL(idr_for_each);
 
 /**
  * idr_replace - replace pointer for given id
@@ -561,7 +550,7 @@ void *idr_replace(struct idr *idp, void *ptr, int id)
 	id &= MAX_ID_MASK;
 
 	if (id >= (1 << n))
-		return ERR_PTR(-EINVAL);
+	    return (void *)-EINVAL;
 
 	n -= IDR_BITS;
 	while ((n > 0) && p) {
@@ -571,27 +560,15 @@ void *idr_replace(struct idr *idp, void *ptr, int id)
 
 	n = id & IDR_MASK;
 	if (unlikely(p == NULL || !test_bit(n, &p->bitmap)))
-		return ERR_PTR(-ENOENT);
+	    return (void *)-ENOENT;
 
 	old_p = p->ary[n];
 	p->ary[n] = ptr;
 
 	return old_p;
 }
-EXPORT_SYMBOL(idr_replace);
 
-static void idr_cache_ctor(void * idr_layer)
-{
-	memset(idr_layer, 0, sizeof(struct idr_layer));
-}
 
-static  int init_id_cache(void)
-{
-	if (!idr_layer_cache)
-		idr_layer_cache = kmem_cache_create("idr_layer_cache",
-			sizeof(struct idr_layer), 0, 0, idr_cache_ctor);
-	return 0;
-}
 
 /**
  * idr_init - initialize idr handle
@@ -602,11 +579,9 @@ static  int init_id_cache(void)
  */
 void idr_init(struct idr *idp)
 {
-	init_id_cache();
 	memset(idp, 0, sizeof(struct idr));
 	spin_lock_init(&idp->lock);
 }
-EXPORT_SYMBOL(idr_init);
 
 
 /*
@@ -633,7 +608,7 @@ static void free_bitmap(struct ida *ida, struct ida_bitmap *bitmap)
 		spin_unlock_irqrestore(&ida->idr.lock, flags);
 	}
 
-	kfree(bitmap);
+	kmem_free(bitmap);
 }
 
 /**
@@ -658,7 +633,7 @@ int ida_pre_get(struct ida *ida, gfp_t gfp_mask)
 	if (!ida->free_bitmap) {
 		struct ida_bitmap *bitmap;
 
-		bitmap = kmalloc(sizeof(struct ida_bitmap), gfp_mask);
+		bitmap = kmem_alloc(sizeof(struct ida_bitmap));
 		if (!bitmap)
 			return 0;
 
@@ -667,7 +642,6 @@ int ida_pre_get(struct ida *ida, gfp_t gfp_mask)
 
 	return 1;
 }
-EXPORT_SYMBOL(ida_pre_get);
 
 /**
  * ida_get_new_above - allocate new ID above or equal to a start id
@@ -753,12 +727,11 @@ int ida_get_new_above(struct ida *ida, int starting_id, int *p_id)
 	if (ida->idr.id_free_cnt || ida->free_bitmap) {
 		struct idr_layer *p = alloc_layer(&ida->idr);
 		if (p)
-			kmem_cache_free(idr_layer_cache, p);
+			kmem_free(p);
 	}
 
 	return 0;
 }
-EXPORT_SYMBOL(ida_get_new_above);
 
 /**
  * ida_get_new - allocate new ID
@@ -777,7 +750,6 @@ int ida_get_new(struct ida *ida, int *p_id)
 {
 	return ida_get_new_above(ida, 0, p_id);
 }
-EXPORT_SYMBOL(ida_get_new);
 
 /**
  * ida_remove - remove the given ID
@@ -825,7 +797,6 @@ void ida_remove(struct ida *ida, int id)
 	printk(KERN_WARNING
 	       "ida_remove called for id=%d which is not allocated.\n", id);
 }
-EXPORT_SYMBOL(ida_remove);
 
 /**
  * ida_destroy - release all cached layers within an ida tree
@@ -834,9 +805,8 @@ EXPORT_SYMBOL(ida_remove);
 void ida_destroy(struct ida *ida)
 {
 	idr_destroy(&ida->idr);
-	kfree(ida->free_bitmap);
+	kmem_free(ida->free_bitmap);
 }
-EXPORT_SYMBOL(ida_destroy);
 
 /**
  * ida_init - initialize ida handle
@@ -851,4 +821,3 @@ void ida_init(struct ida *ida)
 	idr_init(&ida->idr);
 
 }
-EXPORT_SYMBOL(ida_init);

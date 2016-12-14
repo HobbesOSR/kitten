@@ -5,4 +5,3 @@ obj-y := \
 	sysfs.o \
 	sysfs-stubs.o \
 	scatterlist.o \
-	idr.o \
