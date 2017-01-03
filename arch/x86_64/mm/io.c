@@ -12,7 +12,7 @@ void __iomem *
 ioremap_nocache(unsigned long offset, unsigned long size)
 {
 	paddr_t paddr;
-	int ret;
+	int ret=0;
 
 	for (paddr = offset; paddr < offset + size; paddr += VM_PAGE_4KB) {
 		if (arch_aspace_virt_to_phys(&bootstrap_aspace, (vaddr_t)__va(paddr), NULL) == -ENOENT) {
