@@ -69,12 +69,11 @@
  *        is *always* zero and therefore they will
  *        never print -kbf
  */
-int MPI_Finalize( void )
-{
-        int rank, srank, rc = MPI_SUCCESS, dest, my_rank;
+{{ fn fname MPI_Finalize }}
+        int rank, srank, dest, my_rank;
 
-        MPI_CHECK( rc = PMPI_Comm_rank( MPI_COMM_WORLD, &my_rank ) );
-        MPI_CHECK( rc = PMPI_Comm_rank( split_comm, &srank ) );
+        MPI_CHECK( PMPI_Comm_rank( MPI_COMM_WORLD, &my_rank ) );
+        MPI_CHECK( PMPI_Comm_rank( split_comm, &srank ) );
 
         if( _libego_verbose ){
                 fprintf( stderr, "[ %d ] : About to start finalize\n",
@@ -87,7 +86,7 @@ int MPI_Finalize( void )
                                 fprintf( stderr, "[ %d ] : Send the done\n",
                                                 my_rank );
                         }
-                        MPI_CHECK( rc = PMPI_Send( NULL, 0, MPI_INT, 0,
+                        MPI_CHECK( PMPI_Send( NULL, 0, MPI_INT, 0,
                                                    DONE_TAG, ego_comm ) );
                         if( _libego_verbose ){
                                 fprintf( stderr, "[ %d ] : Done sent\n",
@@ -96,20 +95,20 @@ int MPI_Finalize( void )
                 }
         }
 
-        MPI_CHECK( rc = PMPI_Comm_free( &socket_comm ) );
-        MPI_CHECK( rc = PMPI_Comm_free( &split_comm ) );
-        MPI_CHECK( rc = PMPI_Comm_free( &ego_comm ) );
+        MPI_CHECK( PMPI_Comm_free( &socket_comm ) );
+        MPI_CHECK( PMPI_Comm_free( &split_comm ) );
+        MPI_CHECK( PMPI_Comm_free( &ego_comm ) );
 
         if( _libego_verbose ){
                 fprintf( stderr, "[ %d ] : Call finalize\n",
                                  my_rank );
         }
 
-        MPI_CHECK( rc = PMPI_Finalize() );
+        MPI_CHECK( {{ ret_val }}  = P{{ fname }}( {{ args }} ) );
 
         if( _libego_verbose ){
                 fprintf( stderr, "[ %d ] : Finalize done\n",
                                  my_rank );
         }
-        return rc;
-}
+
+{{ endfn }}
