@@ -1,0 +1,8 @@
+# configure and build instructions
+NOTE: Only very light testing ... still risky
+
+$ mkdir build
+$ cd build
+$ cmake .. ## Add -DCMAKE_SYSTEM_NAME=CrayLinuxEnvironment to cmdline for Cray's
+$ make
+

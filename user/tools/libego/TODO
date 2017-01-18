@@ -1,0 +1,12 @@
+
+o This library currently is space-sharing only
+
+o Some more pretty printing is needed
+
+o Strange intermittent MPI_COMM_ERR appears in some MPI_Comm_rank call?  Not sure
+  which.  It started appearing after I added a PMPI_Comm_rank( split_comm, srank )
+  call inside the MPI_Init stanza in wrapper.w.  Not seen in a while, but keep your
+  eyes open
+
+o Verbose is not *ever* set in applications ranks, even if it is set in the
+  environment
