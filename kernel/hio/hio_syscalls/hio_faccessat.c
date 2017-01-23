@@ -6,16 +6,11 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-//extern int sys_faccessat(int dirfd, const char *pathname, int mode, int flags);
-
-int
-hio_faccessat(int dirfd, const char *pathname, int mode, int flags)
+long
+hio_faccessat(int dfd, const char __user *filename, int mode)
 {
-	if (!syscall_isset(__NR_faccessat, current->aspace->hio_syscall_mask)) {
-		//return sys_faccessat(dirfd, pathname, mode, flags);
-		printk("faccessat system call not supported.\n");
+	if (!syscall_isset(__NR_faccessat, current->aspace->hio_syscall_mask))
 		return -ENOSYS;
-	}
 
-	return hio_format_and_exec_syscall(__NR_faccessat, 4, dirfd, pathname, mode, flags);
+	return hio_format_and_exec_syscall(__NR_faccessat, 3, dfd, filename, mode);
 }

@@ -6,19 +6,16 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern ssize_t
-sys_write(int, uaddr_t, size_t);
+extern long
+sys_write(unsigned int fd, const char __user *buf, size_t count);
 
-
-ssize_t
-hio_write(int	  fd,
-	  uaddr_t buf,
-	  size_t  len)
+long
+hio_write(unsigned int fd, const char __user *buf, size_t count)
 {
 	if ( (!syscall_isset(__NR_write, current->aspace->hio_syscall_mask)) ||
 	     (fdTableFile(current->fdTable, fd))
 	   )
-		return sys_write(fd, buf, len);
+		return sys_write(fd, buf, count);
 
-	return hio_format_and_exec_syscall(__NR_write, 3, fd, buf, len);
+	return hio_format_and_exec_syscall(__NR_write, 3, fd, buf, count);
 }

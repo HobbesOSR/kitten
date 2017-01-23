@@ -6,19 +6,16 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern ssize_t
-sys_read(int, char __user *, size_t);
+extern long
+sys_read(unsigned int fd, char __user *buf, size_t count);
 
-
-ssize_t
-hio_read(int	       fd,
-	 char __user * buf,
-	 size_t	       len)
+extern long
+hio_read(unsigned int fd, char __user *buf, size_t count)
 {
 	if ( (!syscall_isset(__NR_read, current->aspace->hio_syscall_mask)) ||
 	     (fdTableFile(current->fdTable, fd))
 	   )
-		return sys_read(fd, buf, len);
+		return sys_read(fd, buf, count);
 
-	return hio_format_and_exec_syscall(__NR_read, 3, fd, buf, len);
+	return hio_format_and_exec_syscall(__NR_read, 3, fd, buf, count);
 }

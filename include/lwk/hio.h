@@ -134,135 +134,61 @@ int
 hio_get_pending_syscall(hio_syscall_t ** pending_syscall);
 
 
-typedef uint32_t socklen_t;
+struct iovec;
+struct pollfd;
+struct old_utsname;
+struct linux_dirent;
+struct linux_dirent64;
+struct __old_kernel_stat;
+struct statfs;
+struct stat;
 struct sockaddr;
 struct msghdr;
+struct shmid_ds;
 
 /* Declarations of HIO system calls */
-extern int
-hio_open(uaddr_t, int, mode_t);
-
-extern int
-hio_close(int);
-
-extern ssize_t
-hio_read(int, char __user *, size_t);
-
-extern ssize_t
-hio_write(int, uaddr_t, size_t);
-
-extern ssize_t
-hio_readv(int, const uaddr_t, int);
-
-extern ssize_t
-hio_writev(int, const uaddr_t, int);
-
-extern off_t
-hio_lseek( int fd, off_t offset, int whence );
-
-extern int
-hio_unlink(const char *pathname);
-
-extern ssize_t
-hio_readlink(const char *path, char *buf, size_t bufsiz);
-
-extern int
-hio_faccessat(int dirfd, const char *pathname, int mode, int flags);
-
-extern long
-hio_ftruncate( unsigned int fd, unsigned long length );
-
-int
-hio_poll( void *fds, unsigned int nfds, int timeout );
-
-extern int
-hio_fcntl( unsigned int fd, unsigned int cmd, unsigned long arg );
-
-int
-hio_uname(struct utsname __user *name);
-
-int
-hio_getpid(void);
-
-int
-hio_gettid(void);
-
-long
-hio_set_tid_address(int *tidptr);
-
-extern long
-hio_mmap(unsigned long, unsigned long, unsigned long,
-	 unsigned long, unsigned long, unsigned long);
-
-extern int
-hio_munmap(unsigned long, size_t);
-
-extern int
-hio_ioctl(unsigned int, unsigned int, unsigned long);
-
-extern int
-hio_openat(int, uaddr_t, int, mode_t);
-
-extern int
-hio_getdents(unsigned int, uaddr_t, unsigned int);
-
-extern int
-hio_getdents64(unsigned int, uaddr_t, unsigned int);
-
-extern int
-hio_stat(const char *, uaddr_t);
-
-extern int
-hio_fstat(int, uaddr_t);
-
-extern int
-hio_statfs(const char *, void *);
-
-extern int
-hio_newfstatat(int, uaddr_t, uaddr_t, int);
-
-extern int
-hio_socket(int, int, int);
-
-extern int
-hio_accept(int, struct sockaddr *, socklen_t *);
-
-ssize_t
-hio_recvfrom(int sockfd, void *buf, size_t len, int flags, void *src_addr, void *addrlen);
-
-extern int
-hio_bind(int, const struct sockaddr *, socklen_t);
-
-extern int
-hio_listen(int, int);
-
-extern int
-hio_connect(int, const struct sockaddr *, socklen_t);
-
-extern int
-hio_getsockopt(int, int, int, void *, socklen_t *);
-
-extern int
-hio_setsockopt(int, int, int, const void *, socklen_t);
-
-extern int
-hio_getsockname(int, struct sockaddr *, socklen_t *);
-
-extern ssize_t
-hio_sendto(int, const void *, size_t, int, const struct sockaddr *, 
-	socklen_t);
-
-extern ssize_t
-hio_recvmsg(int, struct msghdr *, int);
-
-extern int
-hio_shmget(key_t, size_t, int);
-
-extern void *
-hio_shmat(int, const void *, int);
-
-extern int
-hio_shmctl(int, int, void *);
+/* Generally these match the Linux defintions in Linux source code include/linux/syscalls.h */
+extern long hio_open(const char __user *filename, int flags, int mode);
+extern long hio_close(unsigned int fd);
+extern long hio_read(unsigned int fd, char __user *buf, size_t count);
+extern long hio_write(unsigned int fd, const char __user *buf, size_t count);
+extern long hio_readv(unsigned long fd, const struct iovec __user *vec, unsigned long vlen); 
+extern long hio_writev(unsigned long fd, const struct iovec __user *vec, unsigned long vlen);
+extern long hio_lseek(unsigned int fd, off_t offset, unsigned int origin);
+extern long hio_unlink(const char __user *pathname);
+extern long hio_readlink(const char __user *path, char __user *buf, int bufsiz);
+extern long hio_faccessat(int dfd, const char __user *filename, int mode);
+extern long hio_ftruncate(unsigned int fd, unsigned long length);
+extern long hio_poll(struct pollfd __user *ufds, unsigned int nfds, int timeout);
+extern long hio_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
+extern long hio_uname(struct old_utsname __user *);
+extern long hio_getpid(void);
+extern long hio_gettid(void);
+extern long hio_set_tid_address(int __user *tidptr);
+extern long hio_mmap(unsigned long addr, unsigned long len, unsigned long prot, unsigned long flags, unsigned long fd, unsigned long pgoff); 
+extern long hio_munmap(unsigned long addr, size_t len);
+extern long hio_ioctl(unsigned int fd, unsigned int cmd, unsigned long arg);
+extern long hio_openat(int dfd, const char __user *filename, int flags, int mode);
+extern long hio_getdents(unsigned int fd, struct linux_dirent __user *dirent, unsigned int count);
+extern long hio_getdents64(unsigned int fd, struct linux_dirent64 __user *dirent, unsigned int count);
+extern long hio_stat(const char __user *filename, struct __old_kernel_stat __user *statbuf);
+extern long hio_statfs(const char __user * path, struct statfs __user *buf);
+extern long hio_fstat(unsigned int fd, struct __old_kernel_stat __user *statbuf);
+extern long hio_newfstatat(int dfd, const char __user *filename, struct stat __user *statbuf, int flag);
+extern long hio_socket(int, int, int);
+extern long hio_accept(int, struct sockaddr __user *, int __user *);
+extern long hio_sendto(int, void __user *, size_t, unsigned, struct sockaddr __user *, int);
+extern long hio_recvfrom(int, void __user *, size_t, unsigned, struct sockaddr __user *, int __user *);
+extern long hio_bind(int, struct sockaddr __user *, int);
+extern long hio_listen(int, int);
+extern long hio_connect(int, struct sockaddr __user *, int);
+extern long hio_getsockopt(int fd, int level, int optname, char __user *optval, int __user *optlen);
+extern long hio_setsockopt(int fd, int level, int optname, char __user *optval, int optlen);
+extern long hio_getsockname(int, struct sockaddr __user *, int __user *);
+extern long hio_recvmsg(int fd, struct msghdr __user *msg, unsigned flags);
+extern long hio_shmat(int shmid, char __user *shmaddr, int shmflg);
+extern long hio_shmget(key_t key, size_t size, int flag);
+extern long hio_shmctl(int shmid, int cmd, struct shmid_ds __user *buf);
 
 #endif /* __KERNEL__ */
 #endif /* _LWK_HIO_H */

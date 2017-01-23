@@ -6,11 +6,11 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int
-sys_close(int fd);
+extern long
+sys_close(unsigned int fd);
 
-int
-hio_close(int fd)
+long
+hio_close(unsigned int fd)
 {
 	if ( (!syscall_isset(__NR_close, current->aspace->hio_syscall_mask)) ||
 	     (fdTableFile(current->fdTable, fd))

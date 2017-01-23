@@ -6,10 +6,10 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int
+extern long
 sys_socket(int, int, int);
 
-int
+long
 hio_socket(int domain, 
 	   int type, 
 	   int protocol)
@@ -17,6 +17,5 @@ hio_socket(int domain,
 	if ( (!syscall_isset(__NR_socket, current->aspace->hio_syscall_mask)) )
 		return sys_socket(domain, type, protocol);
 
-	return hio_format_and_exec_syscall(__NR_socket, 3,
-		domain, type, protocol);
+	return hio_format_and_exec_syscall(__NR_socket, 3, domain, type, protocol);
 }

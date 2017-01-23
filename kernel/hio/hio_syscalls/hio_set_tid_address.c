@@ -6,10 +6,10 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern long sys_set_tid_address(int *tidptr);
+extern long sys_set_tid_address(int __user *tidptr);
 
 long
-hio_set_tid_address(int *tidptr)
+hio_set_tid_address(int __user *tidptr)
 {
 	if (!syscall_isset(__NR_set_tid_address, current->aspace->hio_syscall_mask))
 		return sys_set_tid_address(tidptr);

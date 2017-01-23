@@ -5,11 +5,11 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-int
-hio_shmget(key_t key, size_t size, int shmflg)
+long
+hio_shmget(key_t key, size_t size, int flag)
 {
 	if (!syscall_isset(__NR_shmget, current->aspace->hio_syscall_mask))
-		return -1;
+		return -ENOSYS;
 
-	return hio_format_and_exec_syscall(__NR_shmget, 3, key, size, shmflg);
+	return hio_format_and_exec_syscall(__NR_shmget, 3, key, size, flag);
 }

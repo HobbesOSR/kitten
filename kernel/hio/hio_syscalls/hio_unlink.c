@@ -6,10 +6,10 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int sys_unlink(const char *pathname);
+extern long sys_unlink(const char __user *pathname);
 
-int
-hio_unlink(const char *pathname)
+long
+hio_unlink(const char __user *pathname)
 {
 	if (!syscall_isset(__NR_unlink, current->aspace->hio_syscall_mask))
 		return sys_unlink(pathname);

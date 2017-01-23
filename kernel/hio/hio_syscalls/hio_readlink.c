@@ -6,10 +6,10 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern ssize_t sys_readlink(const char *path, char *buf, size_t bufsiz);
+extern long sys_readlink(const char __user *path, char __user *buf, int bufsiz);
 
-ssize_t
-hio_readlink(const char *path, char *buf, size_t bufsiz)
+long
+hio_readlink(const char __user *path, char __user *buf, int bufsiz)
 {
 	if (!syscall_isset(__NR_readlink, current->aspace->hio_syscall_mask))
 		return sys_readlink(path, buf, bufsiz);

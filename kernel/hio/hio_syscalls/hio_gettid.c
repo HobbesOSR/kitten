@@ -6,10 +6,9 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int
-sys_gettid(void);
+extern long sys_gettid(void);
 
-int
+long
 hio_gettid(void)
 {
 	if (!syscall_isset(__NR_gettid, current->aspace->hio_syscall_mask))

@@ -6,9 +6,9 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
+extern long sys_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
 
-int
+long
 hio_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg)
 {
 	if ( (!syscall_isset(__NR_fcntl, current->aspace->hio_syscall_mask)) ||

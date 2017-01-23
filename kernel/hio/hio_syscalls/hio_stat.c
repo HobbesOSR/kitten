@@ -6,8 +6,8 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int
-sys_stat(const char *, uaddr_t);
+extern long
+sys_stat(const char __user *filename, struct __old_kernel_stat __user *statbuf);
 
 static int
 hio_is_local_pathname(char * pathname)
@@ -24,19 +24,18 @@ hio_is_local_pathname(char * pathname)
 	return false;
 }
 
-int
-hio_stat(const char * u_pathname,
-	 uaddr_t      buf)
+long
+hio_stat(const char __user *filename, struct __old_kernel_stat __user *statbuf)
 {
 	char pathname[MAX_PATHLEN];
 
-	if (strncpy_from_user(pathname, (void *)u_pathname, sizeof(pathname)) < 0)
+	if (strncpy_from_user(pathname, (void *)filename, sizeof(pathname)) < 0)
 		return -EFAULT;
 
 	if ( (!syscall_isset(__NR_stat, current->aspace->hio_syscall_mask)) ||
 	     (hio_is_local_pathname(pathname))
 	   )
-		return sys_stat(u_pathname, buf);
+		return sys_stat(filename, statbuf);
 
-	return hio_format_and_exec_syscall(__NR_stat, 2, u_pathname, buf); 
+	return hio_format_and_exec_syscall(__NR_stat, 2, filename, statbuf); 
 }

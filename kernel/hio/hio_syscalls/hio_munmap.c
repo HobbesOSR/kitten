@@ -6,14 +6,13 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int 
-sys_munmap(unsigned long, size_t);
+extern long
+sys_munmap(unsigned long addr, size_t len);
 
-int
-hio_munmap(unsigned long addr,
-  	   size_t        len)
+long
+hio_munmap(unsigned long addr, size_t len)
 {
-	int ret;
+	long ret;
 
 	/* This is a bit of a hack, but the clearest way to tell what
 	 * to do with this is just look at the addr.
@@ -30,5 +29,6 @@ hio_munmap(unsigned long addr,
 	/* Remove the locally-created mapping for this region as well */
 	if (ret == 0)
 		sys_munmap(addr, len);
+
 	return ret;
 }

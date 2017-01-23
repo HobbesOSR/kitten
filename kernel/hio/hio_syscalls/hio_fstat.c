@@ -6,19 +6,16 @@
 #include <lwk/hio.h>
 #include <lwk/aspace.h>
 
-extern int sys_fstat(int, uaddr_t);
+extern long sys_fstat(unsigned int fd, struct __old_kernel_stat __user *statbuf);
 
-int
-hio_fstat(int     fd,
-          uaddr_t buf)
+long
+hio_fstat(unsigned int fd, struct __old_kernel_stat __user *statbuf)
 {
-	int ret;
 	if ((!syscall_isset(__NR_fstat, current->aspace->hio_syscall_mask)) ||
 	     (fdTableFile(current->fdTable, fd))
 	   ) {
-		return sys_fstat(fd, buf);
+		return sys_fstat(fd, statbuf);
 	}
 
-	ret = hio_format_and_exec_syscall(__NR_fstat, 2, fd, buf);
-	return ret;
+	return hio_format_and_exec_syscall(__NR_fstat, 2, fd, statbuf);
 }

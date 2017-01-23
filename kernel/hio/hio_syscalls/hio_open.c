@@ -7,7 +7,7 @@
 #include <lwk/aspace.h>
 
 extern int
-sys_open(uaddr_t, int, mode_t);
+sys_open(const char __user *filename, int flags, int mode);
 
 static int
 hio_is_local_pathname(char * pathname)
@@ -24,14 +24,12 @@ hio_is_local_pathname(char * pathname)
 	return false;
 }
 
-int
-hio_open(uaddr_t u_pathname,
-	 int	 flags,
-	 mode_t  mode)
+long
+hio_open(const char __user *filename, int flags, int mode)
 {
 	char pathname[MAX_PATHLEN];
 
-	if (strncpy_from_user(pathname, (void *)u_pathname, sizeof(pathname)) < 0)
+	if (strncpy_from_user(pathname, (void *)filename, sizeof(pathname)) < 0)
 		return -EFAULT;
 
 #if 0
@@ -43,8 +41,8 @@ hio_open(uaddr_t u_pathname,
 	if ( (!syscall_isset(__NR_open, current->aspace->hio_syscall_mask)) ||
 	     (hio_is_local_pathname(pathname))
 	   ) {
-		return sys_open(u_pathname, flags, mode);
+		return sys_open(filename, flags, mode);
 	}
 
-	return hio_format_and_exec_syscall(__NR_open, 3, u_pathname, flags, mode); 
+	return hio_format_and_exec_syscall(__NR_open, 3, filename, flags, mode); 
 }
