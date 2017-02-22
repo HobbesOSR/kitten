@@ -350,6 +350,12 @@ write_pte(
 		_pte.pcd      = 1;
 	}
 
+	/* Fixup for Cray Aries device memory, map as uncached */
+	if ((paddr >= 0x380000000000ul) && (paddr < 0x382000006000ul)) {
+		printk("Fixup Cray Aries mapping: setting paddr=0x%lx, pagesz=0x%lx UNCACHED\n", paddr, pagesz);
+		_pte.pcd      = 1;
+	}
+
 	_pte.base_paddr = paddr >> 12;
 	if ((pagesz == VM_PAGE_2MB) || (pagesz == VM_PAGE_1GB))
 		_pte.pagesize = 1;

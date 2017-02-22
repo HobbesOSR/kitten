@@ -431,6 +431,15 @@ xpmem_map_pfn_range(u64   at_vaddr,
 	vaddr_t addr  = at_vaddr + (i * PAGE_SIZE);
 	paddr_t paddr = (addr_t)pfns[i] << PAGE_SHIFT;
 
+	// FIXME: Bad hack for Cray Aries.
+	// u32 pfns array truncates the aries physical address range.
+	// probably should change pfns array to be u64.
+	if ((paddr >> 32) == 0x800) {
+		paddr_t new_paddr = (paddr | 0x300000000000ul);
+		printk("FIXUP paddr 0x%lx to 0x%lx\n", paddr, new_paddr);
+		paddr = new_paddr;
+	}
+
 	//printk("map pmem from va %p to pa %p\n", (void *)addr, (void *)paddr);
 
 	if (aspace_map_pmem(current->aspace->id, paddr, addr, PAGE_SIZE)) {
