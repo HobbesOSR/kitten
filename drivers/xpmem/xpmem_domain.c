@@ -250,8 +250,8 @@ xpmem_get_pages(struct xpmem_attachment * att,
 
     u64   seg_vaddr = 0;
     u64   i         = 0;
-    u32   pfn       = 0;
-    u32 * pfns      = 0;
+    u64   pfn       = 0;
+    u64 * pfns      = 0;
 
     int ret = 0;
 
@@ -282,7 +282,7 @@ xpmem_get_pages(struct xpmem_attachment * att,
      * by 'pfn_pa'. We assume all memory is already mapped by Linux, so a simple __va
      * gives us the kernel mapping
      */
-    pfns = (u32 *)__va(pfn_pa);
+    pfns = (u64 *)__va(pfn_pa);
 
     for (i = 0; i < num_pfns; i++) {
 	vaddr_t vaddr = 0;
@@ -296,7 +296,7 @@ xpmem_get_pages(struct xpmem_attachment * att,
 	    goto out;
 	}
 
-	pfn     = paddr >> PAGE_SHIFT;
+        pfn     = paddr >> PAGE_SHIFT;
         pfns[i] = pfn;
     }
 
@@ -423,22 +423,13 @@ xpmem_detach_domain(struct xpmem_cmd_detach_ex * detach_ex)
 static unsigned long 
 xpmem_map_pfn_range(u64   at_vaddr,
 		    u64   num_pfns,
-		    u32 * pfns) 
+		    u64 * pfns) 
 {
     int i = 0;
 
     for (i = 0; i < num_pfns; i++) {
 	vaddr_t addr  = at_vaddr + (i * PAGE_SIZE);
 	paddr_t paddr = (addr_t)pfns[i] << PAGE_SHIFT;
-
-	// FIXME: Bad hack for Cray Aries.
-	// u32 pfns array truncates the aries physical address range.
-	// probably should change pfns array to be u64.
-	if ((paddr >> 32) == 0x800) {
-		paddr_t new_paddr = (paddr | 0x300000000000ul);
-		printk("FIXUP paddr 0x%lx to 0x%lx\n", paddr, new_paddr);
-		paddr = new_paddr;
-	}
 
 	//printk("map pmem from va %p to pa %p\n", (void *)addr, (void *)paddr);
 
@@ -850,7 +841,7 @@ xpmem_attach_remote(xpmem_link_t  link,
     cmd.attach.num_pfns = size / PAGE_SIZE;
 
     /* Allocate buffer for pfn list */
-    pfns = kmem_alloc(cmd.attach.num_pfns * sizeof(u32));
+    pfns = kmem_alloc(cmd.attach.num_pfns * sizeof(u64));
     if (pfns == NULL) {
 	free_request_id(state, reqid);
 	xpmem_put_link_data(link);
