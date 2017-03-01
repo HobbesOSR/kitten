@@ -289,7 +289,7 @@ xpmem_thread_fn(void * private)
 	atomic_dec(&(buf->active_entries));
 
 	if (cmd.type == XPMEM_ATTACH) {
-	    if (map_domain_region(cmd.attach.pfn_pa, (cmd.attach.num_pfns * sizeof(u32))) != 0) {
+	    if (map_domain_region(cmd.attach.pfn_pa, (cmd.attach.num_pfns * sizeof(u64))) != 0) {
 		printk(KERN_ERR "Cannot map domain pfn list into kernel\n");
 		continue;
 	    }
