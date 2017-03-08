@@ -79,6 +79,7 @@ struct xpmem_segment {
     atomic_t                    irq_count;
     waitq_t                     signalled_wq;
     struct file               * kfs_file;
+    int                         kfs_fd;
 
     /* other misc */
     volatile int                flags;
@@ -309,7 +310,7 @@ extern int xpmem_get_host_apic_id(int);
 
 /* found in xpmem_signal.c */
 extern int xpmem_alloc_seg_signal(struct xpmem_segment *); 
-extern void xpmem_free_seg_signal(struct xpmem_segment *); 
+extern int xpmem_free_seg_signal(struct xpmem_segment *); 
 extern void xpmem_signal_seg(struct xpmem_segment *); 
 extern int xpmem_segid_signal(xpmem_segid_t);
 extern int xpmem_signal(xpmem_apid_t);

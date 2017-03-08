@@ -226,7 +226,7 @@ xpmem_alloc_seg_signal(struct xpmem_segment * seg)
     /* Get hardware IDT vector from host */
     host_vector = xpmem_request_host_vector(vector);
 
-    /* Get hardware apic ID for logical cpu 0*/
+    /* Get hardware apic ID for logical cpu 0 */
     apic_id = xpmem_get_host_apic_id(0);
     if (apic_id < 0) {
         xpmem_release_host_vector(host_vector);
@@ -242,26 +242,29 @@ xpmem_alloc_seg_signal(struct xpmem_segment * seg)
     return 0;
 }
 
-void
+int
 xpmem_free_seg_signal(struct xpmem_segment * seg)
 {
-    int status = 0;
+    int status = -1;
     unsigned long flags;
 
     spin_lock_irqsave(&(seg->lock), flags);
     if (seg->flags & XPMEM_FLAG_SIGNALLABLE) {
-        status = 1;
+        status = 0;
         seg->flags &= ~XPMEM_FLAG_SIGNALLABLE;
     } 
     spin_unlock_irqrestore(&(seg->lock), flags);
 
-    if (status) {
-        /* Release host IDT vector */
-        xpmem_release_host_vector(seg->sig.vector);
+    if (status)
+	return status;
 
-        /* Release the irq */
-        xpmem_release_irq(seg->sig.irq, (void *)seg->segid);
-    }
+    /* Release host IDT vector */
+    xpmem_release_host_vector(seg->sig.vector);
+
+    /* Release the irq */
+    xpmem_release_irq(seg->sig.irq, (void *)seg->segid);
+
+    return 0;
 }
 
 void

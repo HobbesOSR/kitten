@@ -109,6 +109,7 @@ xpmem_make_segment(vaddr_t                     vaddr,
 
 	    /* Save kfs ptr */
 	    seg->kfs_file = get_current_file(fd);
+	    seg->kfs_fd   = fd;
 
             *fd_p = fd;
         }
@@ -277,7 +278,11 @@ xpmem_remove_seg(struct xpmem_thread_group * seg_tg,
         xpmem_release_remote(xpmem_my_part->domain_link, seg->segid, seg->remote_apid);
     } else {
 	/* Remove signal and free from name server if this is a real segment */
-        xpmem_free_seg_signal(seg);
+        if (xpmem_free_seg_signal(seg) == 0) {
+	    kfs_close(seg->kfs_file);
+	    fdTableInstallFd(current->fdTable, seg->kfs_fd, NULL);
+	}
+
         xpmem_remove_remote(xpmem_my_part->domain_link, seg->segid);
     }
 
