@@ -725,8 +725,8 @@ kfs_open_anon(const struct kfs_fops * fops, void * priv_data)
 
     __lock(&_lock);
     {
-	fd = fdTableGetUnused( current->fdTable );
-	fdTableInstallFd( current->fdTable, fd, file );
+	if ((fd = fdTableGetUnused( current->fdTable )) > 0)
+	    fdTableInstallFd( current->fdTable, fd, file );
     }
     __unlock(&_lock);
 
