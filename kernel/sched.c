@@ -21,7 +21,7 @@
  * Kernel threads are not preemptively scheduled and must call schedule()
  * themselves.
  */
-unsigned int sched_hz = 10;  /* default to 10 Hz */
+unsigned int sched_hz = 1;  /* default to 1 Hz timer tick */
 param(sched_hz, uint);
 
 /**
