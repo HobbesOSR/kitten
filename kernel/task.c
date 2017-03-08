@@ -196,6 +196,8 @@ __task_create(
 	// End critical section
 	spin_unlock_irqrestore(&aspace->lock, irqstate);
 
+	//printk("[Kitten] Created new task: aspace_id=%u, task_id=%u, name=%s, cpu=%d\n", aspace->id, tsk->id, tsk->name, tsk->cpu_id);
+
 	// Success
 	return tsk;
 
