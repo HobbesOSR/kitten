@@ -329,6 +329,8 @@ static inline unsigned int cpuid_edx(unsigned int op)
 #define MSR_IA32_LASTINTFROMIP		0x1dd
 #define MSR_IA32_LASTINTTOIP		0x1de
 
+#define MSR_POWER_CTL			0x1fc
+
 #define MSR_IA32_MC0_CTL		0x400
 #define MSR_IA32_MC0_STATUS		0x401
 #define MSR_IA32_MC0_ADDR		0x402

@@ -264,6 +264,9 @@ intel_turbo_debug(void)
 	rdmsrl(MSR_IA32_ENERGY_PERF_BIAS, val);
 	printk("CPU#%u: MSR_IA32_ENERGY_PERF_BIAS = 0x%lx\n", this_cpu, val);
 
+	rdmsrl(MSR_POWER_CTL, val);
+	printk("CPU#%u: MSR_POWER_CTL             = 0x%lx\n", this_cpu, val);
+
 #if 0
 	// Disable turbo
 	printk("Disabling turbo:\n");
@@ -304,7 +307,7 @@ cpu_init(void)
 	time_init();		/* detects CPU frequency, udelay(), etc. */
 	barrier();		/* compiler memory barrier, avoids reordering */
 
-	//intel_turbo_debug();
+	intel_turbo_debug();
 }
 
 
