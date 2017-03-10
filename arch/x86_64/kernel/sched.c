@@ -78,7 +78,8 @@ arch_idle_task_loop_body(int irqenable)
 	if (irqenable) {
 		__monitor((void *)get_current(), 0, 0);
 		smp_mb();
-		__sti_mwait(0x10, 0);
+		// mwait arg1: 0x00 = C1, 0x10 = C2, 0x20 = C3
+		__sti_mwait(0x20, 0);
 	} else {
 		__monitor((void *)get_current(), 0, 0);
 		smp_mb();
