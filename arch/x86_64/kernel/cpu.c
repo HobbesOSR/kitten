@@ -247,6 +247,35 @@ dbg_init(void)
 }
 
 void __init
+intel_turbo_debug(void)
+{
+	unsigned long val;
+	
+
+	rdmsrl(MSR_IA32_MISC_ENABLE, val);
+	printk("CPU#%u: MSR_IA32_MISC_ENABLE      = 0x%lx\n", this_cpu, val);
+
+	rdmsrl(MSR_IA32_PERF_CTL, val);
+	printk("CPU#%u: MSR_IA32_PERF_CTL         = 0x%lx\n", this_cpu, val);
+
+	rdmsrl(MSR_IA32_PERF_STATUS, val);
+	printk("CPU#%u: MSR_IA32_PERF_STATUS      = 0x%lx\n", this_cpu, val);
+
+	rdmsrl(MSR_IA32_ENERGY_PERF_BIAS, val);
+	printk("CPU#%u: MSR_IA32_ENERGY_PERF_BIAS = 0x%lx\n", this_cpu, val);
+
+#if 0
+	// Disable turbo
+	printk("Disabling turbo:\n");
+	rdmsrl(MSR_IA32_PERF_CTL, val);
+	val |= (1ul << 32);
+	wrmsrl(MSR_IA32_PERF_CTL, val);
+	rdmsrl(MSR_IA32_PERF_CTL, val);
+	printk("CPU#%u: MSR_IA32_PERF_CTL    = 0x%lx\n", this_cpu, val);
+#endif
+}
+
+void __init
 cpu_init(void)
 {
 	/*
@@ -274,6 +303,8 @@ cpu_init(void)
 	lapic_init();		/* local advanced prog. interrupt controller */
 	time_init();		/* detects CPU frequency, udelay(), etc. */
 	barrier();		/* compiler memory barrier, avoids reordering */
+
+	//intel_turbo_debug();
 }
 
 

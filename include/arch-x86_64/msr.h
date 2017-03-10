@@ -316,6 +316,7 @@ static inline unsigned int cpuid_edx(unsigned int op)
 
 #define MSR_IA32_PERF_STATUS		0x198
 #define MSR_IA32_PERF_CTL		0x199
+#define MSR_IA32_ENERGY_PERF_BIAS	0x1b0
 
 #define MSR_IA32_THERM_CONTROL		0x19a
 #define MSR_IA32_THERM_INTERRUPT	0x19b
