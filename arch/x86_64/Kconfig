@@ -150,6 +150,20 @@ config TIMER_ONESHOT
 
 endchoice
 
+
+choice
+	prompt "Idle loop method"
+	default HALT
+
+config IDLE_HALT
+	bool "Call HALT instruction in idle loop"
+
+config IDLE_MONITOR_MWAIT
+	bool "Call MONITOR/MWAIT instructions in idle loop"
+
+endchoice
+
+
 config TASK_MEAS
 	bool "Kitten Task Based Power Measurements"
 	help
