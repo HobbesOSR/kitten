@@ -274,16 +274,15 @@ setup_pisces_arch(void)
 
 	cpu_init();
 
-
 	//	ioapic_init();
 	printk(KERN_INFO "No I/O APIC in Pisces guest\n");
 
+#ifdef CONFIG_TIMER_PERIODIC
+	printk(KERN_INFO "PISCES: Setting lapic timer freq to %u Hz\n", sched_hz);
 	lapic_set_timer_freq(sched_hz);
-
-
+#endif
 
 	/* Signal Linux boot loader that we are up */
 	pisces_boot_params->initialized = 1;
-
 }
 
