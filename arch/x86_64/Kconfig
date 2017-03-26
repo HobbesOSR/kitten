@@ -57,7 +57,7 @@ endchoice
 
 config HIO_SYSCALL
 	bool "Hobbes I/O system call forwarding"
-	depends on PISCES || PALACIOS
+	depends on XPMEM
 	default n
 	help
 	  Enables the forwarding of system calls via HIO (Hobbes I/O)
