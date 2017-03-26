@@ -196,12 +196,13 @@ do_page_fault(struct pt_regs *regs, unsigned int vector)
 	printk(">> PAGE FAULT! Sent signal %d. CR2 is %p, cpu %d\n", i, (void *)cr2, this_cpu);
 	show_registers(regs);
 
-	if (current->aspace->id == INIT_ASPACE_ID) {
+	/* If the fault occurred in kernel space, or the init_task, go down */
+	if ( (regs->rip >= PAGE_OFFSET) ||
+	     (current->aspace->id == INIT_ASPACE_ID)) 
+	{
 		local_irq_disable();
 		halt();
 	}
-
-	/* If this is not the init_task, we don't really need to go down */
 }
 
 void
