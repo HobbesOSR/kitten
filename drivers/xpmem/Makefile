@@ -9,6 +9,7 @@ obj-y += xpmem_main.o \
 	 xpmem_hashtable.o \
 	 xpmem_ns.o \
 	 xpmem_fwd.o \
-	 xpmem_irq.o
+	 xpmem_irq.o \
+	 xpmem_palacios.o
 
 EXTRA_CFLAGS = -I$(obj)/include -I$(obj)/../../include/lwk/xpmem

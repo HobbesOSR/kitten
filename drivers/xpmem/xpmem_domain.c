@@ -808,14 +808,14 @@ xpmem_attach_remote(xpmem_link_t  link,
 		    xpmem_apid_t  apid,
 		    off_t	  offset,
 		    size_t	  size,
-		    u64		  at_vaddr)
+		    u64		  at_vaddr,
+		    u64         * pfns)
 {
     struct xpmem_domain_state * state  = NULL;
     struct xpmem_cmd_ex       * resp   = NULL;
     struct xpmem_cmd_ex		cmd;
     uint32_t			reqid  = 0;
     int				status = 0;
-    void                      * pfns   = NULL;
 
     /* Take a reference */
     state = xpmem_get_link_data(link);
@@ -839,14 +839,6 @@ xpmem_attach_remote(xpmem_link_t  link,
     cmd.attach.off      = offset;
     cmd.attach.size     = size;
     cmd.attach.num_pfns = size / PAGE_SIZE;
-
-    /* Allocate buffer for pfn list */
-    pfns = kmem_alloc(cmd.attach.num_pfns * sizeof(u64));
-    if (pfns == NULL) {
-	free_request_id(state, reqid);
-	xpmem_put_link_data(link);
-	return -ENOMEM;
-    }
 
     /* Save paddr of pfn list */
     cmd.attach.pfn_pa = (u64)__pa(pfns);
@@ -875,9 +867,6 @@ xpmem_attach_remote(xpmem_link_t  link,
     } else {
 	status = -1;
     }
-
-    /* Free pfn list */
-    kmem_free(pfns);
 
 out:
     free_request_id(state, reqid);

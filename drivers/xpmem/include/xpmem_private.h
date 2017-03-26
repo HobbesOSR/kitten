@@ -125,6 +125,7 @@ struct xpmem_attachment {
     /* the local thread's attached region */
     vaddr_t                      at_vaddr;
     size_t                       at_size;
+    u64                        * pfns;
 
     /* other misc */
     volatile int                 flags;
@@ -267,7 +268,7 @@ extern int xpmem_get_remote(xpmem_link_t, xpmem_segid_t, int, int, u64,
         xpmem_apid_t *, u64 *, xpmem_domid_t *, xpmem_sigid_t *); 
 extern int xpmem_release_remote(xpmem_link_t, xpmem_segid_t, xpmem_apid_t);
 extern int xpmem_attach_remote(xpmem_link_t, xpmem_segid_t, xpmem_apid_t,
-        off_t, size_t, u64);
+        off_t, size_t, u64, u64 *);
 extern int xpmem_detach_remote(xpmem_link_t, xpmem_segid_t, xpmem_apid_t, u64);
 
 /* foind in xpmem_partition.c */
@@ -302,11 +303,17 @@ extern int xpmem_fwd_deliver_cmd(struct xpmem_partition_state *, xpmem_link_t, s
 extern xpmem_domid_t xpmem_fwd_get_domid(struct xpmem_partition_state *, xpmem_link_t);
 extern int xpmem_fwd_ensure_valid_domid(struct xpmem_partition_state *);
 
-/* found in xpmem_irq.c */
-extern void xpmem_send_ipi_to_apic(unsigned int, unsigned int);
+/* found in xpmem_palacios.c */
+extern int xpmem_palacios_init(void);
+extern int xpmem_palacios_deinit(void);
 extern int xpmem_request_host_vector(int);
 extern void xpmem_release_host_vector(int);
 extern int xpmem_get_host_apic_id(int);
+extern int xpmem_detach_host_paddr(u64);
+
+
+/* found in xpmem_irq.c */
+extern void xpmem_send_ipi_to_apic(unsigned int, unsigned int);
 
 /* found in xpmem_signal.c */
 extern int xpmem_alloc_seg_signal(struct xpmem_segment *); 

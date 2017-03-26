@@ -19,15 +19,27 @@ xpmem_try_attach_remote(struct xpmem_thread_group * ap_tg,
                         size_t			    size,
 			vaddr_t			    vaddr,
 			vmflags_t		    pgflags,
-                        vaddr_t			  * at_vaddr_p)
+                        vaddr_t			  * at_vaddr_p,
+			u64                      ** pfns)
 {
-    int     status   = 0;
-    vaddr_t at_vaddr = 0;
+    int           status   = 0;
+    vaddr_t       at_vaddr = 0;
+    vmpagesize_t  align    = 0;
+    unsigned long nr_pages = 0;
 
     *at_vaddr_p = 0;
 
+    /* Note: we want the physical address to be large-page aligned, even if the 
+     * mapping uses 4KB pages, unless the user specifies a target address
+     */
+ 
+    if (vaddr)
+	align = VM_PAGE_4KB;
+    else
+	align = VM_PAGE_2MB;
+
     /* Find free address space and add new region here */
-    status = aspace_find_hole(ap_tg->aspace->id, vaddr, size, PAGE_SIZE, &at_vaddr);
+    status = aspace_find_hole(ap_tg->aspace->id, vaddr, size, align, &at_vaddr);
     if (status != 0) {
 	XPMEM_ERR("aspace_find_hole() failed (%d)", status);
 	return status;
@@ -40,6 +52,12 @@ xpmem_try_attach_remote(struct xpmem_thread_group * ap_tg,
 	return -EFAULT;
     }
 
+    if (vaddr & (align - 1)) {
+	XPMEM_ERR("aspace_find_hole() returned non-page-aligned address\n");
+	BUG();
+	return -EFAULT;
+    }
+
     /* Add region to aspace */
     status = aspace_add_region(ap_tg->aspace->id, at_vaddr, size, pgflags, PAGE_SIZE, "xpmem");
     if (status != 0) {
@@ -47,8 +65,16 @@ xpmem_try_attach_remote(struct xpmem_thread_group * ap_tg,
 	return status;
     }
 
+    /* Allocate buffer for pfn list */
+    nr_pages = size / PAGE_SIZE;
+    *pfns = kmem_alloc(sizeof(u64) * nr_pages);
+    if (*pfns == NULL) {
+	aspace_del_region(ap_tg->aspace->id, at_vaddr, size);
+	return -ENOMEM;
+    }
+
     /* Attach to remote memory */
-    status = xpmem_attach_remote(xpmem_my_part->domain_link, segid, apid, offset, size, (u64)at_vaddr);
+    status = xpmem_attach_remote(xpmem_my_part->domain_link, segid, apid, offset, size, (u64)at_vaddr, *pfns);
     if (status != 0) {
 	XPMEM_ERR("xpmem_attach_remote() failed (%d)", status);
 	aspace_del_region(ap_tg->aspace->id, at_vaddr, size);
@@ -112,6 +138,7 @@ xpmem_attach(xpmem_apid_t apid,
     struct xpmem_segment *seg;
     struct xpmem_attachment *att;
     unsigned long flags, flags2;
+    u64 * pfns = NULL;
 
     if (apid <= 0) {
 	printk("EINVAL 1\n");
@@ -186,7 +213,7 @@ xpmem_attach(xpmem_apid_t apid,
 
 	/* remote - load pfns in now */
 	ret = xpmem_try_attach_remote(ap_tg, seg->segid, seg->remote_apid, 
-		offset, size, vaddr, pgflags, &at_vaddr);
+		offset, size, vaddr, pgflags, &at_vaddr, &pfns);
 	if (ret != 0)
             goto out_1;
     } else {
@@ -214,6 +241,7 @@ xpmem_attach(xpmem_apid_t apid,
     att->at_size  = size;
     att->ap       = ap;
     att->flags    = 0;
+    att->pfns     = pfns;
     INIT_LIST_HEAD(&att->att_node);
 
     xpmem_att_not_destroyable(att);
@@ -261,6 +289,15 @@ out_1:
     return ret;
 }
 
+static inline u64
+xpmem_shadow_vaddr_to_PFN(struct xpmem_attachment * att,
+                          u64                       vaddr)
+{
+    //int pg_off = PAGE_ALIGN(vaddr - att->at_vaddr) >> PAGE_SHIFT;
+    int pg_off = ((vaddr - att->at_vaddr) & PAGE_MASK) >> PAGE_SHIFT;
+    return att->pfns[pg_off];
+}
+
 /* BJK: note that this function can be called with ap->tg->aspace already locked. This
  * happens if the task calls exit() with attachments still open, in which case the 
  * kernel locks the aspace and then closes all open files with the aspace locked.
@@ -292,6 +329,8 @@ __xpmem_detach_att(struct xpmem_access_permit * ap,
 
 	    /* On shadow attachments, we added a new aspace region. Remove it now */
 	    if (ap->seg->flags & XPMEM_FLAG_SHADOW) {
+		u64 pa;
+
 		BUG_ON(mapping.flags & VM_SMARTMAP);
 
 		/* Remove aspace mapping */
@@ -303,6 +342,13 @@ __xpmem_detach_att(struct xpmem_access_permit * ap,
 
 		/* Perform remote detachment */
 		xpmem_detach_remote(xpmem_my_part->domain_link, ap->seg->segid, ap->seg->remote_apid, att->at_vaddr);
+
+		/* Free from Palacios, if we're in a VM */
+		pa = xpmem_shadow_vaddr_to_PFN(att, att->at_vaddr) << PAGE_SHIFT;
+		BUG_ON(pa == 0);
+		xpmem_detach_host_paddr(pa);
+
+		kmem_free(att->pfns);
 	    }
 	    else {
 		/* If this was a real attachment, it should be using SMARTMAP */

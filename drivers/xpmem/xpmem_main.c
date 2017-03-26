@@ -368,6 +368,10 @@ xpmem_init(void)
     }
 #endif
 
+    ret = xpmem_palacios_init();
+    if (ret < 0)
+	goto out_4;
+
     kfs_create(XPMEM_DEV_PATH,
         NULL,
         &xpmem_fops,
@@ -379,7 +383,9 @@ xpmem_init(void)
            XPMEM_CURRENT_VERSION_STRING);
     return 0;
 
+out_4:
 #ifdef CONFIG_PISCES
+    pisces_xpmem_deinit(xpmem_my_part->pisces_link);
 out_3:
     xpmem_domain_deinit(xpmem_my_part->domain_link);
 #endif
@@ -400,6 +406,7 @@ xpmem_exit(void)
     /* Free partition resources */
     xpmem_domain_deinit(xpmem_my_part->domain_link);
     xpmem_partition_deinit();
+    xpmem_palacios_deinit();
 
 #ifdef CONFIG_PISCES
     pisces_xpmem_deinit(xpmem_my_part->pisces_link);
@@ -413,5 +420,5 @@ xpmem_exit(void)
 }
 
 
-DRIVER_INIT("kfs", xpmem_init);
+DRIVER_INIT("late", xpmem_init);
 DRIVER_EXIT(xpmem_exit);
