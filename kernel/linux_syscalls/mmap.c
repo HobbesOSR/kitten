@@ -53,10 +53,14 @@ sys_mmap(
 		spin_unlock(&as->lock);
 
 		/* Zero the memory */
+		/* BJK: why were we using the kernel page tables to do this?? */
+#if 0
 		paddr_t phys;
 		if (__aspace_virt_to_phys(as, mmap_brk, & phys))
 			panic("sys_mmap() failed to get physical address\n");
 		memset(__va(phys), 0, len);
+#endif
+		memset((void *)mmap_brk, 0, len);
 
 		/* printk("[%s] SYS_MMAP: len=%lu returning mmap_brk=0x%lx, heap_brk=0x%lx\n", current->name, len, mmap_brk, as->brk); */
 		return mmap_brk;
