@@ -131,8 +131,6 @@ start_kernel()
 	 */
 	rand_init();
 
-	workq_init();
-
 	/*
 	 * Boot all of the other CPUs in the system, one at a time.
 	 */
@@ -157,6 +155,8 @@ start_kernel()
 		if (!cpu_isset(cpu, cpu_online_map))
 			panic("Failed to boot CPU %d.\n", cpu);
 	}
+
+	workq_init();
 
 	/*
 	 * Initialize the device layer and PCI subsystem.
