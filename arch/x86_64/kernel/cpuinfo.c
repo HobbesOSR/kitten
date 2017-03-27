@@ -238,6 +238,7 @@ intel_cpu(struct cpuinfo *c)
 {
 	struct arch_cpuinfo *a = &c->arch;
 	unsigned int eax, t;
+	unsigned int regs[4];
 
 	if (a->cpuid_level > 9) {
 		unsigned eax = cpuid_eax(10);
@@ -271,7 +272,6 @@ intel_cpu(struct cpuinfo *c)
 	if ( a->cpuid_level > 1) {
 		/* supports eax=2  call */
 		int i, j, n;
-		unsigned int regs[4];
 		unsigned char *dp = (unsigned char *)regs;
 
 		/* Number of times to iterate */
@@ -396,6 +396,13 @@ intel_cpu(struct cpuinfo *c)
 		}
 	}
 
+	/* Determine whether CPU supports IA32_ENERGY_PERF_BIAS */
+        if (a->cpuid_level > 5) {
+		cpuid_count(6, 0, &regs[0], &regs[1], &regs[2], &regs[3]);
+		if (regs[2] & (1 << 3)) {
+			set_bit(X86_FEATURE_EPB, &a->x86_capability);
+		}
+	}
 }
 
 /*

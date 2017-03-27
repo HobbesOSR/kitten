@@ -8,6 +8,7 @@
 #include <lwk/sched.h>
 #include <lwk/aspace.h>
 #include <lwk/xcall.h>
+#include <lwk/cpuinfo.h>
 
 #include <arch/processor.h>
 #include <arch/desc.h>
@@ -260,9 +261,16 @@ intel_turbo_debug(void)
 
 	rdmsrl(MSR_IA32_PERF_STATUS, val);
 	printk("CPU#%u: MSR_IA32_PERF_STATUS      = 0x%lx\n", this_cpu, val);
-
-	rdmsrl(MSR_IA32_ENERGY_PERF_BIAS, val);
-	printk("CPU#%u: MSR_IA32_ENERGY_PERF_BIAS = 0x%lx\n", this_cpu, val);
+	
+	/* Determine if the CPU supports ENERGY_PERF_BIAS */
+	{
+	    extern struct cpuinfo cpu_info[NR_CPUS];
+	    struct cpuinfo * c = &cpu_info[this_cpu];
+	    if (cpu_has(c, X86_FEATURE_EPB)) {
+		rdmsrl(MSR_IA32_ENERGY_PERF_BIAS, val);
+		printk("CPU#%u: MSR_IA32_ENERGY_PERF_BIAS = 0x%lx\n", this_cpu, val);
+	    }
+	}
 
 	rdmsrl(MSR_POWER_CTL, val);
 	printk("CPU#%u: MSR_POWER_CTL             = 0x%lx\n", this_cpu, val);
