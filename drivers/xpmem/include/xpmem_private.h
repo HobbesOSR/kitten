@@ -310,6 +310,7 @@ extern int xpmem_request_host_vector(int);
 extern void xpmem_release_host_vector(int);
 extern int xpmem_get_host_apic_id(int);
 extern int xpmem_detach_host_paddr(u64);
+extern uint32_t xpmem_get_and_clear_host_sig_count(int);
 
 
 /* found in xpmem_irq.c */

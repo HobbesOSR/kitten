@@ -199,9 +199,16 @@ static irqreturn_t
 xpmem_irq_fn(int    irq,
              void * priv_data)
 {
-    xpmem_segid_t segid = (xpmem_segid_t)priv_data;
+    xpmem_segid_t segid        = (xpmem_segid_t)priv_data;
+    uint32_t      sigs         = xpmem_get_and_clear_host_sig_count(xpmem_irq_to_vector(irq));
+    uint32_t      sigs_handled = 0; 
+    uint32_t      sig          = 0;
 
-    return (xpmem_segid_signal(segid) == 0) ? IRQ_HANDLED : IRQ_NONE;
+    for (sig = 0; sig < sigs; sig++) {
+	sigs_handled += (xpmem_segid_signal(segid) == 0) ? 1 : 0;
+    }
+
+    return (sigs_handled) ? IRQ_HANDLED : IRQ_NONE;
 }
 
 int
