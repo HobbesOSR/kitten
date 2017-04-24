@@ -735,8 +735,12 @@ debug_kallsyms: .tmp_map$(last_kallsyms)
 
 endif # ifdef CONFIG_KALLSYMS
 
+
 # vmlwk image - including updated kernel symbols
 vmlwk: $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) $(kallsyms.o) FORCE
+ifdef CONFIG_PALACIOS
+	make -C $(CONFIG_PALACIOS_PATH) 
+endif
 	$(call if_changed_rule,vmlwk__)
 	$(Q)rm -f .old_version
 
