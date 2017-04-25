@@ -571,7 +571,7 @@ libs-y		:= $(libs-y1) $(libs-y2)
 ofed-y          := $(patsubst %/, %/built-in.o, $(ofed-y))
 
 # Link the LWK with the Palacios virtual machine monitor
-libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
+#libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
 
 # Build vmlwk
 # ---------------------------------------------------------------------------
@@ -600,6 +600,18 @@ libs-$(CONFIG_PALACIOS) += $(shell echo $(CONFIG_PALACIOS_PATH)/libv3vee.a)
 #
 # System.map is generated to document addresses of all kernel symbols
 
+
+v3vee-objs :=
+
+ifdef CONFIG_PALACIOS
+v3vee-objs += $(CONFIG_PALACIOS_PATH)/libv3vee.a
+endif
+
+v3vee: FORCE
+ifdef CONFIG_PALACIOS
+	make -C $(CONFIG_PALACIOS_PATH)
+endif
+
 vmlwk-init := $(head-y) $(init-y)
 vmlwk-main := $(core-y) $(libs-y) $(drivers-y) $(net-y) $(block-y) $(ofed-y)
 vmlwk-all  := $(vmlwk-init) $(vmlwk-main)
@@ -610,8 +622,8 @@ vmlwk-lds  := arch/$(SRCARCH)/kernel/vmlwk.lds
 quiet_cmd_vmlwk__ ?= LD      $@
       cmd_vmlwk__ ?= $(LD) $(LDFLAGS) $(LDFLAGS_vmlwk) -o $@   \
       -T $(vmlwk-lds) $(vmlwk-init)                            \
-      --start-group $(vmlwk-main) --end-group                  \
-      $(filter-out $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) FORCE ,$^)
+      --start-group $(vmlwk-main) $(v3vee-objs) --end-group                  \
+      $(filter-out $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) v3vee FORCE ,$^)
 
 # Generate new vmlwk version
 quiet_cmd_vmlwk_version = GEN     .version
@@ -737,10 +749,7 @@ endif # ifdef CONFIG_KALLSYMS
 
 
 # vmlwk image - including updated kernel symbols
-vmlwk: $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) $(kallsyms.o) FORCE
-ifdef CONFIG_PALACIOS
-	make -C $(CONFIG_PALACIOS_PATH) 
-endif
+vmlwk: $(vmlwk-lds) $(vmlwk-init) $(vmlwk-main) v3vee $(kallsyms.o) FORCE
 	$(call if_changed_rule,vmlwk__)
 	$(Q)rm -f .old_version
 
