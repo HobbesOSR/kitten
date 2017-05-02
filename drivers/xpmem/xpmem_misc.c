@@ -246,6 +246,13 @@ xpmem_att_deref(struct xpmem_attachment *att)
          * longer being referenced so it is safe to remove it.
          */
         BUG_ON(!(att->flags & XPMEM_FLAG_DESTROYING));
+
+	if (att->flags & XPMEM_FLAG_SHADOW) {
+	    if (att->pfn_range) {
+		kmem_free(att->pfn_range);
+	    }
+	}
+
         kmem_free(att);
     }
 }

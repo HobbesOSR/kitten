@@ -325,7 +325,7 @@ __xpmem_work_fn(struct xpmem_palacios_state * state)
 
     /* Save pointer to pfn list */
     if (pfn_size > 0) {
-        cmd.attach.pfn_pa = (u64)__pa(pfn_buf);
+        cmd.attach.pfn_list_pa = (u64)__pa(pfn_buf);
     }
 
     /* Clear device interrupt flag */
@@ -380,14 +380,14 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
              void                * priv_data)
 {
     struct xpmem_palacios_state * state = (struct xpmem_palacios_state *)priv_data;
-    u64                         * pfns  = NULL;
+    xpmem_pfn_range_t           * range = NULL;
 
     /* Invoke hypercall */
     xpmem_cmd_hcall(state, cmd);
 
     if (cmd->type == XPMEM_ATTACH_COMPLETE) {
-        pfns = __va(cmd->attach.pfn_pa);
-        kmem_free(pfns);
+        range = __va(cmd->attach.pfn_list_pa);
+        kmem_free(range);
     }
 
     return 0;

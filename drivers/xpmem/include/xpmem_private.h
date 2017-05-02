@@ -125,7 +125,7 @@ struct xpmem_attachment {
     /* the local thread's attached region */
     vaddr_t                      at_vaddr;
     size_t                       at_size;
-    u64                        * pfns;
+    xpmem_pfn_range_t          * pfn_range;
 
     /* other misc */
     volatile int                 flags;
@@ -268,7 +268,7 @@ extern int xpmem_get_remote(xpmem_link_t, xpmem_segid_t, int, int, u64,
         xpmem_apid_t *, u64 *, xpmem_domid_t *, xpmem_sigid_t *); 
 extern int xpmem_release_remote(xpmem_link_t, xpmem_segid_t, xpmem_apid_t);
 extern int xpmem_attach_remote(xpmem_link_t, xpmem_segid_t, xpmem_apid_t,
-        off_t, size_t, u64, u64 *);
+        off_t, size_t, xpmem_pfn_range_t **);
 extern int xpmem_detach_remote(xpmem_link_t, xpmem_segid_t, xpmem_apid_t, u64);
 
 /* foind in xpmem_partition.c */

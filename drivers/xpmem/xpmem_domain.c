@@ -238,9 +238,52 @@ xpmem_release_domain(struct xpmem_cmd_release_ex * release_ex)
 }
 
 
+static void
+xpmem_init_pfn_range(xpmem_pfn_range_t ** pfn_range,
+		     u64		  pfn_pa)
+{
+    *pfn_range = __va(pfn_pa);
+    (*pfn_range)->total_size = 0;
+    (*pfn_range)->nr_regions = 0;
+}
+
+static void
+xpmem_add_pfn_to_pfn_range(xpmem_pfn_range_t * pfn_range,
+			   u64		       pfn)
+{
+    xpmem_pfn_region_t * pfn_list = NULL;
+    xpmem_pfn_region_t * last_reg = NULL;
+    xpmem_pfn_region_t * new_reg  = NULL;
+    u64			 next_pfn = 0;
+
+    pfn_list = pfn_range->pfn_list;
+
+    /* Update total size */
+    pfn_range->total_size += PAGE_SIZE;
+
+    if (pfn_range->nr_regions == 0) {
+	pfn_list[0].first_pfn = pfn;
+	pfn_list[0].nr_pfns   = 1;
+	pfn_range->nr_regions = 1;
+	return;
+    }
+
+    last_reg = &(pfn_list[pfn_range->nr_regions - 1]);
+    next_pfn = last_reg->first_pfn + last_reg->nr_pfns;
+
+    /* Check if we can extend the previous region */
+    if (pfn == next_pfn) {
+	last_reg->nr_pfns++;
+	return;
+    }
+
+    new_reg = &(pfn_list[pfn_range->nr_regions++]);
+    new_reg->first_pfn = pfn;
+    new_reg->nr_pfns   = 1;
+}
+
 static int
 xpmem_get_pages(struct xpmem_attachment * att,
-                u64                       num_pfns,
                 u64                       pfn_pa)
 {
     struct xpmem_segment       * seg    = NULL;
@@ -251,7 +294,7 @@ xpmem_get_pages(struct xpmem_attachment * att,
     u64   seg_vaddr = 0;
     u64   i         = 0;
     u64   pfn       = 0;
-    u64 * pfns      = 0;
+    u64   num_pfns  = att->at_size / PAGE_SIZE;
 
     int ret = 0;
 
@@ -278,11 +321,8 @@ xpmem_get_pages(struct xpmem_attachment * att,
     /* Grab the segment vaddr */
     seg_vaddr = ((u64)att->vaddr & PAGE_MASK);
 
-    /* The list is preallocated by the remote domain, the address of which is given
-     * by 'pfn_pa'. We assume all memory is already mapped by Linux, so a simple __va
-     * gives us the kernel mapping
-     */
-    pfns = (u64 *)__va(pfn_pa);
+    /* The list is preallocated by the remote domain */
+    xpmem_init_pfn_range(&(att->pfn_range), pfn_pa);
 
     for (i = 0; i < num_pfns; i++) {
 	vaddr_t vaddr = 0;
@@ -296,9 +336,11 @@ xpmem_get_pages(struct xpmem_attachment * att,
 	    goto out;
 	}
 
-        pfn     = paddr >> PAGE_SHIFT;
-        pfns[i] = pfn;
+        pfn = paddr >> PAGE_SHIFT;
+	xpmem_add_pfn_to_pfn_range(att->pfn_range, pfn);
     }
+
+    /* TODO: set flags for pfn range (grab them from the PTE?) */
 
 out:
     xpmem_att_deref(att);
@@ -379,7 +421,7 @@ xpmem_attach_domain(struct xpmem_cmd_attach_ex * attach_ex)
     xpmem_att_ref(att);
 
     /* get pages from the seg, copy to remote domain list */
-    ret = xpmem_get_pages(att, attach_ex->num_pfns, attach_ex->pfn_pa);
+    ret = xpmem_get_pages(att, attach_ex->pfn_list_pa);
     if (ret != 0)
         goto out_2;
 
@@ -418,37 +460,6 @@ xpmem_detach_domain(struct xpmem_cmd_detach_ex * detach_ex)
 {
     return 0;
 }
-
-
-static unsigned long 
-xpmem_map_pfn_range(u64   at_vaddr,
-		    u64   num_pfns,
-		    u64 * pfns) 
-{
-    int i = 0;
-
-    for (i = 0; i < num_pfns; i++) {
-	vaddr_t addr  = at_vaddr + (i * PAGE_SIZE);
-	paddr_t paddr = (addr_t)pfns[i] << PAGE_SHIFT;
-
-	//printk("map pmem from va %p to pa %p\n", (void *)addr, (void *)paddr);
-
-	if (aspace_map_pmem(current->aspace->id, paddr, addr, PAGE_SIZE)) {
-	    XPMEM_ERR("aspace_map_pmem() failed");
-
-	    while (--i >= 0) {
-		addr = at_vaddr + (i * PAGE_SIZE);
-		aspace_unmap_pmem(current->aspace->id, addr, PAGE_SIZE);
-	    }
-
-	    return -1;
-	}
-    }
-
-    return 0;
-}
-
-
 
 static struct xpmem_cmd_ex *
 xpmem_cmd_wait(struct xpmem_domain_state  * state,
@@ -517,10 +528,6 @@ xpmem_cmd_fn(struct xpmem_cmd_ex * cmd,
 
 	case XPMEM_ATTACH:
 	    ret = xpmem_attach_domain(&(cmd->attach));
-
-	    if (ret != 0) {
-		cmd->attach.num_pfns = 0;
-	    }
 
 	    cmd->type	 = XPMEM_ATTACH_COMPLETE;
 	    cmd->dst_dom = XPMEM_NS_DOMID;
@@ -803,19 +810,23 @@ out:
 }
 
 int
-xpmem_attach_remote(xpmem_link_t  link,
-		    xpmem_segid_t segid,
-		    xpmem_apid_t  apid,
-		    off_t	  offset,
-		    size_t	  size,
-		    u64		  at_vaddr,
-		    u64         * pfns)
+xpmem_attach_remote(xpmem_link_t	 link,
+		    xpmem_segid_t	 segid,
+		    xpmem_apid_t	 apid,
+		    off_t		 offset,
+		    size_t		 size,
+		    xpmem_pfn_range_t ** pfn_range)
 {
-    struct xpmem_domain_state * state  = NULL;
-    struct xpmem_cmd_ex       * resp   = NULL;
+    struct xpmem_domain_state * state      = NULL;
+    struct xpmem_cmd_ex       * resp       = NULL;
+    xpmem_pfn_range_t         * new_range  = NULL;
+    uint32_t			reqid      = 0;
+    uint64_t                    max_pfns   = 0;
+    uint64_t                    range_size = 0;
+    int				status     = 0;
     struct xpmem_cmd_ex		cmd;
-    uint32_t			reqid  = 0;
-    int				status = 0;
+
+    *pfn_range = NULL;
 
     /* Take a reference */
     state = xpmem_get_link_data(link);
@@ -838,45 +849,55 @@ xpmem_attach_remote(xpmem_link_t  link,
     cmd.attach.apid     = apid;
     cmd.attach.off      = offset;
     cmd.attach.size     = size;
-    cmd.attach.num_pfns = size / PAGE_SIZE;
 
-    /* Save paddr of pfn list */
-    cmd.attach.pfn_pa = (u64)__pa(pfns);
+    /* Allocate memory for the pfn list. We don't know exactly how 
+     * much of the list will be filled, but we know the max
+     * possible size
+     */
+    max_pfns   = size / PAGE_SIZE;
+    range_size = sizeof(xpmem_pfn_range_t) +
+	    (max_pfns * sizeof(xpmem_pfn_region_t));
+    new_range = kmem_alloc(range_size);
+    if (new_range == NULL) {
+	XPMEM_ERR("Out of memory\n");
+	status = -ENOMEM;
+	goto out;
+    }
+    memset(new_range, 0, sizeof(xpmem_pfn_range_t));
+
+    cmd.attach.pfn_list_pa   = (u64)__pa(new_range);
+    cmd.attach.pfn_list_size = range_size;
 
     /* Deliver command */
     status = xpmem_cmd_deliver(state->link, &cmd);
 
     if (status != 0) {
-	goto out;
+	goto out_free;
     }
 
     /* Wait for completion */
     resp = xpmem_cmd_wait(state, reqid);
 
     /* Check command completion  */
-    if (resp == NULL) {
-	goto out;
+    if ((resp == NULL) ||
+        (new_range->nr_regions == 0))
+    {
+	status = -EFAULT;
+	goto out_free;
     }
 
-    /* Map pfn list */
-    if (resp->attach.num_pfns > 0) {
-	status = xpmem_map_pfn_range(
-	    at_vaddr,
-	    resp->attach.num_pfns,
-	    pfns);
-    } else {
-	status = -1;
-    }
+    *pfn_range = new_range;
 
+out_free:
+    if (status) {
+	kmem_free(new_range);
+    }
 out:
     free_request_id(state, reqid);
     xpmem_put_link_data(link);
 
     return status;
-
 }
-
-
 
 int
 xpmem_detach_remote(xpmem_link_t  link,
