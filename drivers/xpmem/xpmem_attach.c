@@ -3,6 +3,8 @@
  */
 
 #include <lwk/aspace.h>
+#include <lwk/cpuinfo.h>
+#include <lwk/smp.h>
 
 #include <xpmem.h>
 #include <xpmem_private.h>
@@ -163,11 +165,16 @@ static vmpagesize_t
 get_max_page_size(xpmem_pfn_range_t * range,
 		  vaddr_t             target_vaddr)
 {
-    vmpagesize_t         page_size = VM_PAGE_1GB;
-    xpmem_pfn_region_t * rgn;
-    uint64_t             rgn_idx;
-    uint64_t             rgn_len;
-    paddr_t              paddr;
+    vmpagesize_t          page_size;
+    xpmem_pfn_region_t  * rgn;
+    uint64_t              rgn_idx;
+    uint64_t              rgn_len;
+    paddr_t               paddr;
+
+    if (cpu_info[0].pagesz_mask & VM_PAGE_1GB)
+	page_size = VM_PAGE_1GB;
+    else
+	page_size = VM_PAGE_2MB;
 
     for (rgn_idx = 0; rgn_idx < range->nr_regions; rgn_idx++) {
 	rgn     = &(range->pfn_list[rgn_idx]);
@@ -370,20 +377,17 @@ xpmem_attach(xpmem_apid_t apid,
     unsigned long flags, flags2;
 
     if (apid <= 0) {
-	printk("EINVAL 1\n");
         return -EINVAL;
     }
 
     /* The start of the attachment must be page aligned */
     if (offset_in_page(vaddr) != 0 || offset_in_page(offset) != 0) {
-	printk("EINVAL 3\n");
 	return -EINVAL;
     }
 
     /* Only one flag at this point */
     if ((att_flags) &&
 	(att_flags != XPMEM_NOCACHE_MODE)) {
-	printk("EINVAL 4\n");
 	return -EINVAL;
     }
 
@@ -426,7 +430,6 @@ xpmem_attach(xpmem_apid_t apid,
 	!(seg->flags & XPMEM_FLAG_SHADOW) &&
 	 (current->aspace->id == seg_tg->tgid)) {
 	if ((vaddr + size > seg_vaddr) && (vaddr < seg_vaddr + size)) {
-	    printk("EINVAL 5\n");
 	    ret = -EINVAL;
 	    goto out_1;
 	}
@@ -456,14 +459,19 @@ xpmem_attach(xpmem_apid_t apid,
 
 	/* fetch pfns now */ 
 	ret = xpmem_attach_shadow_pages(seg, att, offset);
-	if (ret != 0)
+	if (ret != 0) {
+	    XPMEM_ERR("Failed to attach shadow pages");
 	    goto out_2;
+	}
+
+	att->flags = XPMEM_FLAG_SHADOW;
 
 	/* map them in */
 	ret = xpmem_map_shadow_pages(ap_tg, att, vaddr, &at_vaddr); 
-	if (ret != 0)
+	if (ret != 0) {
+	    XPMEM_ERR("Failed to map shadow pages");
             goto out_3;
-
+	}
     } else {
 	/* not remote - simply figure out where we are smartmapped to this process */
 	if (att_flags & XPMEM_NOCACHE_MODE) {
