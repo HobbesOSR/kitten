@@ -491,7 +491,6 @@ early_identify_cpu(struct cpuinfo *c)
 	 */
 	a->initial_lapic_id = (misc >> 24) & 0xff;
 
-	/* TODO: determine page sizes supported via CPUID */
 	c->pagesz_mask = (VM_PAGE_4KB | VM_PAGE_2MB);
 }
 
@@ -529,6 +528,18 @@ identify_cpu(void)
 			strcpy(a->x86_model_id, "Unknown x86-64 Model");
 		}
 	}
+
+	/* Determine if we support 1GB pages. Intel and AMD both set bit 26 in
+	 * cpuid(0x80000001):edx, which we've already queried in
+	 * identify_cpu()
+	 */
+	if (a->x86_capability[1] & (0x1 << 26)) {
+	    printk(KERN_DEBUG "  CPU %d supports 1-GB pages\n", c->logical_id); 
+	    c->pagesz_mask |= VM_PAGE_1GB;
+	} else {
+	    printk(KERN_DEBUG "  CPU %d does NOT support 1-GB pages\n", c->logical_id); 
+	}
+
 
 	/*
 	 * Vendor-specific initialization.  In this section we
