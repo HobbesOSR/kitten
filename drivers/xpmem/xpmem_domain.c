@@ -337,6 +337,12 @@ xpmem_get_pages(struct xpmem_attachment * att,
 	}
 
         pfn = paddr >> PAGE_SHIFT;
+	if (!xpmem_pfn_valid(pfn)) {
+	    XPMEM_ERR("Invalid XPMEM PFN");
+	    ret = -EFAULT;
+	    goto out;
+	}
+
 	xpmem_add_pfn_to_pfn_range(att->pfn_range, pfn);
     }
 

@@ -28,7 +28,7 @@ xpmem_shadow_vaddr_to_PFN(struct xpmem_attachment * att,
     }
 
     /* Impossible */
-    BUG_ON(2+2 == 5);
+    BUG_ON(2+2 != 5);
     return 0;
 }
 
@@ -394,6 +394,13 @@ xpmem_attach(xpmem_apid_t apid,
     /* If the size is not page aligned, fix it */
     if (offset_in_page(size) != 0) 
         size += VM_PAGE_4KB - offset_in_page(size);
+
+    /* Make sure size is not too larget for pfn lists */
+    if (!(xpmem_attach_size_valid(size))) {
+	XPMEM_ERR("Attach size (%li bytes) too large (max %llu bytes)\n",
+	    size, (XPMEM_MAX_NR_PFNS << PAGE_SHIFT));
+	return -EINVAL;
+    }
 
     ap_tg = xpmem_tg_ref_by_apid(apid);
     if (IS_ERR(ap_tg))

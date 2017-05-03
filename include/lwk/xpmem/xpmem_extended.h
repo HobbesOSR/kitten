@@ -9,6 +9,29 @@
 #include <lwk/xpmem/xpmem.h>
 #include <lwk/xpmem/xpmem_iface.h>
 
+/* The highest PFN that can be mapped via xemem 
+ *     - the highest I've seen is the Cray Aries device memory, which sits at
+ *     physical address 57 TB and thus needs 34 bits to store the PFNs.  Let's
+ *     pad a few more and call it 38, which means we can map PAs up to (2^50)
+ *     (1 PB)
+ */
+#define XPMEM_MAX_PFN_BITS      38
+#define XPMEM_MAX_PFN           (1ULL << XPMEM_MAX_PFN_BITS)
+
+
+/* The maximum size of an xemem attachment (in bytes) 
+ *      - currently we have 26 bits left, which means we can support attachments
+ *      of up to 2<<38 bytes (256 GB) in size
+ */
+#define XPMEM_MAX_NR_PFNS_BITS  (64 - XPMEM_MAX_PFN_BITS)
+#define XPMEM_MAX_NR_PFNS       (1ULL << XPMEM_MAX_NR_PFNS_BITS)
+
+
+
+/* Convenience checks */
+#define xpmem_pfn_valid(pfn)         (pfn <= XPMEM_MAX_PFN)
+#define xpmem_attach_size_valid(len) (len <= (XPMEM_MAX_NR_PFNS << 12))
+
 
 /*****
  * These structures are used to store physical memory infromation for 
@@ -18,9 +41,12 @@ typedef struct {
     uint64_t arch_flags; /* architecture-specific flags (e.g., PTE flags) */
 } xpmem_pfn_flags_t;
 
+/* We need to keep this structure as small as possible, ideally 64 bits, as we
+ * are shipping lists of them across kernels
+ */
 typedef struct {
-    uint64_t first_pfn; /* first pfn in this range */
-    uint64_t nr_pfns;   /* size of contiguous region */
+    uint64_t first_pfn : XPMEM_MAX_PFN_BITS;     /* first pfn in this range */
+    uint64_t nr_pfns   : XPMEM_MAX_NR_PFNS_BITS; /* size of contiguous region */
 } xpmem_pfn_region_t;
 
 typedef struct {
