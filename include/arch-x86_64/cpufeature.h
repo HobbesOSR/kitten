@@ -276,10 +276,10 @@
 #define cpu_has_ds             boot_cpu_has(X86_FEATURE_DS)
 #define cpu_has_bts            boot_cpu_has(X86_FEATURE_BTS)
 
-#ifndef CONFIG_PISCES
-#define cpu_has_x2apic         boot_cpu_has(X86_FEATURE_X2APIC)
-#else
+#ifdef CONFIG_PISCES_NOX2APIC
 #define cpu_has_x2apic	       0
+#else
+#define cpu_has_x2apic         boot_cpu_has(X86_FEATURE_X2APIC)
 #endif
 
 #endif /* _X86_64_CPUFEATURE_H */

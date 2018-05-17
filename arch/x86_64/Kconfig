@@ -54,6 +54,12 @@ config PISCES
 
 endchoice
 
+config PISCES_NOX2APIC
+	bool "Disable X2APIC addressing"
+	depends on PISCES
+	default n
+	help
+	  Needed if nox2apic is passed to the host Linux kernel command line
 
 config HIO_SYSCALL
 	bool "Hobbes I/O system call forwarding"
