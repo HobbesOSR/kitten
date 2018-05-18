@@ -58,6 +58,7 @@
 extern char ignore_irq13;
 
 extern void identify_cpu(void);
+extern void intel_turbo_debug(void);
 
 /*
  * EFLAGS bits
