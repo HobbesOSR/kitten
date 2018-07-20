@@ -64,12 +64,6 @@ struct xpmem_cmd_bar_state {
 
     /* size of xpmem gpa region */
     u64 xpmem_gpa_size;
-
-    /* Running in a hobbes environment */
-    u8 hobbes_enabled;
-
-    /* Hobbes Enclave ID */
-    u64 hobbes_enclave_id;
 } __attribute__((packed));
 
 struct xpmem_palacios_state {
@@ -114,8 +108,7 @@ xpmem_dump_bar(struct xpmem_cmd_bar_state * bar)
 	"\txpmem_cmd_size:              %llu\n"
 	"\txpmem_pfn_size:              %llu\n"
 	"\txpmem_gpa_base:              0x%llx\n"
-	"\txpmem_gpa_size:              %llu\n"
-	"\thobbes_enabled:              %u\n",
+	"\txpmem_gpa_size:              %llu\n",
 	bar->xpmem_hcall_id,
 	bar->xpmem_detach_hcall_id,
 	bar->xpmem_irq_clear_hcall_id,
@@ -131,8 +124,7 @@ xpmem_dump_bar(struct xpmem_cmd_bar_state * bar)
 	bar->xpmem_cmd_size,
 	bar->xpmem_pfn_size,
 	bar->xpmem_gpa_base,
-	bar->xpmem_gpa_size,
-	bar->hobbes_enabled);
+	bar->xpmem_gpa_size);
 }
 */
 
