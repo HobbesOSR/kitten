@@ -13,7 +13,6 @@
 #include <arch/pisces/pisces_boot_params.h>
 #include <arch/pisces/pisces_xbuf.h>
 #include <arch/pisces/pisces_lcall.h>
-#include <arch/pisces/pisces_pagemap.h>
 
 #include <lwk/xpmem/xpmem.h>
 #include <lwk/xpmem/xpmem_iface.h>
