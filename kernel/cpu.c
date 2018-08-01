@@ -1,5 +1,6 @@
 #include <lwk/kernel.h>
 #include <lwk/xcall.h>
+#include <lwk/smp.h>
 
 
 extern void arch_shutdown_cpu(void);
@@ -7,7 +8,7 @@ extern void arch_shutdown_cpu(void);
 static void
 shutdown_cpu(void * info)
 {
-    arch_shutdown_cpu();
+	arch_shutdown_cpu();
 }
 
 /*
@@ -16,5 +17,6 @@ shutdown_cpu(void * info)
 void
 shutdown_cpus(void)
 {
-    xcall_function(cpu_online_map, shutdown_cpu, NULL, 0);
+	printk("CPU #%u: shutting down all CPUs\n", this_cpu);
+	on_each_cpu(shutdown_cpu, NULL, 0);
 }

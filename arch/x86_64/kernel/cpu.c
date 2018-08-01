@@ -9,6 +9,7 @@
 #include <lwk/aspace.h>
 #include <lwk/xcall.h>
 #include <lwk/cpuinfo.h>
+#include <lwk/interrupt.h>
 
 #include <arch/processor.h>
 #include <arch/desc.h>
@@ -453,6 +454,17 @@ phys_cpu_remove(unsigned int phys_cpu_id,
 void
 arch_shutdown_cpu(void)
 {
-    local_irq_disable();
-    halt();
+	/* The LAPIC can end up in a weird state if we go into sti/hlt without
+	 * acking the EOI first. Of course, this is only the case if we are in
+	 * interrupt
+	 */
+	if (in_interrupt())
+		lapic_ack_interrupt();
+
+	local_irq_disable();
+
+	while (1) {
+	    halt();
+	    cpu_relax();
+	}
 }
