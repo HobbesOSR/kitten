@@ -136,11 +136,18 @@ struct xpmem_cmd_domid {
 
 #ifdef __KERNEL__
 
+#include <lwk/kfs.h>
+
 /* Export the xpmem interface in kernel */
+/*
+extern int kernel_xpmem_init(void);
+extern int kernel_xpmem_finish(void);
+*/
 extern int xpmem_make(vaddr_t, size_t, int, void *, int, xpmem_segid_t, xpmem_segid_t *, int *);
 extern int xpmem_remove(xpmem_segid_t);
 extern int xpmem_get(xpmem_segid_t, int, int, void *, xpmem_apid_t *);
 extern int xpmem_release(xpmem_apid_t);
+extern int xpmem_signal(xpmem_apid_t);
 extern int xpmem_attach(xpmem_apid_t, off_t, size_t, vaddr_t, int, vaddr_t *);
 extern int xpmem_detach(vaddr_t);
 

@@ -27,6 +27,7 @@
 
 #include <arch/uaccess.h>
 #include <arch/pisces/pisces_xpmem.h>
+#include <arch-generic/fcntl.h>
 
 #include <lwk/kfs.h>
 #include <lwk/driver.h>
@@ -41,21 +42,15 @@ static int is_ns = 1;
 static int is_ns = 0;
 #endif
 
-
-/*
- * User open of the XPMEM driver. Called whenever /dev/xpmem is opened.
- * Create a struct xpmem_thread_group structure for the specified thread group.
- * And add the structure to the tg hash table.
- */
 static int
-xpmem_open(struct inode *inode, struct file *file)
+xpmem_init_aspace(struct aspace * aspace)
 {
     struct xpmem_thread_group *tg;
     int index;
     unsigned long flags;
 
     /* if this has already been done, just return silently */
-    tg = xpmem_tg_ref_by_tgid(current->aspace->id);
+    tg = xpmem_tg_ref_by_tgid(aspace->id);
     if (!IS_ERR(tg)) {
         xpmem_tg_deref(tg);
         return 0;
@@ -67,12 +62,12 @@ xpmem_open(struct inode *inode, struct file *file)
         return -ENOMEM;
 
     spin_lock_init(&(tg->lock));
-    tg->tgid = current->aspace->id;
+    tg->tgid = aspace->id;
     atomic_set(&tg->uniq_apid, 0);
     rwlock_init(&(tg->seg_list_lock));
     INIT_LIST_HEAD(&tg->seg_list);
     INIT_LIST_HEAD(&tg->tg_hashnode);
-    tg->aspace = current->aspace;
+    tg->aspace = aspace;
 
     /* create and initialize struct xpmem_access_permit hashtable */
     tg->ap_hashtable = kmem_alloc(sizeof(struct xpmem_hashlist) * XPMEM_AP_HASHTABLE_SIZE);
@@ -111,6 +106,19 @@ xpmem_open(struct inode *inode, struct file *file)
     return 0;
 }
 
+
+
+/*
+ * User open of the XPMEM driver. Called whenever /dev/xpmem is opened.
+ * Create a struct xpmem_thread_group structure for the specified thread group.
+ * And add the structure to the tg hash table.
+ */
+static int
+xpmem_open(struct inode *inode, struct file *file)
+{
+    return xpmem_init_aspace(current->aspace);
+}
+
 static int
 xpmem_flush_tg(struct xpmem_thread_group * tg)
 {
@@ -141,17 +149,12 @@ xpmem_flush_tg(struct xpmem_thread_group * tg)
     return 0;
 }
 
-/*
- * The following function gets called whenever a thread group that has opened
- * /dev/xpmem closes it.
- */
 static int
-xpmem_release_op(struct inode * inodep,
-                 struct file  * filp)
+xpmem_release_aspace(struct aspace * aspace)
 {
     struct xpmem_thread_group *tg;
 
-    tg = xpmem_tg_ref_by_tgid(current->aspace->id);
+    tg = xpmem_tg_ref_by_tgid(aspace->id);
     if (tg == NULL) {
         /*
          * xpmem_flush() can get called twice for thread groups
@@ -164,6 +167,25 @@ xpmem_release_op(struct inode * inodep,
     }
 
     return xpmem_flush_tg(tg);
+}
+
+
+static int
+xpmem_close(struct file * filp)
+{
+    return xpmem_release_aspace(current->aspace);
+}
+
+
+/*
+ * The following function gets called whenever a thread group that has opened
+ * /dev/xpmem closes it.
+ */
+static int
+xpmem_release_op(struct inode * inodep,
+                 struct file  * filp)
+{
+    return xpmem_release_aspace(current->aspace);
 }
 
 /*
@@ -311,15 +333,61 @@ xpmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     return -ENOIOCTLCMD;
 }
 
+
 static struct kfs_fops 
 xpmem_fops = 
 {
     .open           = xpmem_open,
+    .close          = xpmem_close,
     .release        = xpmem_release_op,
     .unlocked_ioctl = xpmem_ioctl,
     .compat_ioctl   = xpmem_ioctl
 };
 
+
+
+/* This allows kitten kernel threads (or anything running with
+ * KERNEL_ASPACE_ID) use xpmem 
+ */
+static int
+kernel_xpmem_init(void)
+{
+    struct aspace * aspace;
+    int status;
+
+    if (current->aspace->id != KERNEL_ASPACE_ID)
+	return -EFAULT;
+
+    aspace = aspace_acquire(KERNEL_ASPACE_ID);
+    BUG_ON(aspace == NULL);
+
+    status = xpmem_init_aspace(aspace);
+    if (status != 0)
+	aspace_release(aspace);
+
+    return status;
+}
+
+static int
+kernel_xpmem_finish(void)
+{
+    struct aspace * aspace;
+    int status;
+
+    if (current->aspace->id != KERNEL_ASPACE_ID)
+	return -EFAULT;
+
+    aspace = aspace_acquire(KERNEL_ASPACE_ID);
+    BUG_ON(aspace == NULL);
+
+    status = xpmem_release_aspace(aspace);
+    aspace_release(aspace);
+
+    if (status == 0)
+	aspace_release(aspace);
+
+    return status;
+}
 
 /*
  * Initialize the XPMEM driver.
@@ -345,6 +413,10 @@ xpmem_init(void)
     for (i = 0; i < XPMEM_TG_HASHTABLE_SIZE; i++) {
         rwlock_init(&(xpmem_my_part->tg_hashtable[i].lock));
         INIT_LIST_HEAD(&xpmem_my_part->tg_hashtable[i].list);
+    }
+
+    for (i = 0; i <= XPMEM_MAX_WK_SEGID; i++) {
+	xpmem_my_part->wk_segid_to_tgid[i] = -1;
     }
 
     rwlock_init(&(xpmem_my_part->wk_segid_to_tgid_lock));
@@ -379,6 +451,8 @@ xpmem_init(void)
         NULL,
         0);
 
+    kernel_xpmem_init();
+
     printk("XPMEM v%s loaded\n",
            XPMEM_CURRENT_VERSION_STRING);
     return 0;
@@ -403,6 +477,8 @@ out_1:
 static void
 xpmem_exit(void)
 {
+    kernel_xpmem_finish();
+
     /* Free partition resources */
     xpmem_domain_deinit(xpmem_my_part->domain_link);
     xpmem_partition_deinit();
@@ -418,7 +494,6 @@ xpmem_exit(void)
     printk("XPMEM v%s unloaded\n",
            XPMEM_CURRENT_VERSION_STRING);
 }
-
 
 DRIVER_INIT("late", xpmem_init);
 DRIVER_EXIT(xpmem_exit);

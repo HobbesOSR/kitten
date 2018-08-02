@@ -46,7 +46,11 @@ xpmem_tg_ref_by_tgid(gid_t tgid)
 struct xpmem_thread_group *
 xpmem_tg_ref_by_segid(xpmem_segid_t segid)
 {
-    return xpmem_tg_ref_by_tgid(xpmem_segid_to_tgid(segid));
+    gid_t tgid = xpmem_segid_to_tgid(segid);
+    if (tgid < 0)
+	return ERR_PTR(-ENOENT);
+
+    return xpmem_tg_ref_by_tgid(tgid);
 }
 
 /*
@@ -104,13 +108,14 @@ xpmem_seg_ref_by_segid(struct xpmem_thread_group *seg_tg, xpmem_segid_t segid)
             if (seg->flags & XPMEM_FLAG_DESTROYING)
                 continue; /* could be others with this segid */
 
-	    /* Shadow segments may only be lookeup up via segid by the process
+	    /* Shadow segments may only be looked up via segid by the process
 	     * that created them. This is to force all xpmem_gets() of remote
 	     * segids to issue independent get requests to the source domain
 	     */
 	    if ((seg->flags & XPMEM_FLAG_SHADOW) &&
-		(current->aspace->id != seg_tg->tgid))
+		(current->aspace->id != seg_tg->tgid)) {
 		continue;
+	    }
 
             xpmem_seg_ref(seg);
             read_unlock_irqrestore(&seg_tg->seg_list_lock, flags);
@@ -280,7 +285,7 @@ xpmem_validate_access(struct xpmem_thread_group * tg, struct xpmem_access_permit
 gid_t
 xpmem_segid_to_tgid(xpmem_segid_t segid)
 {
-    gid_t tgid;
+    gid_t tgid = -1;
 
     BUG_ON(segid <= 0);
 
@@ -292,7 +297,10 @@ xpmem_segid_to_tgid(xpmem_segid_t segid)
     } else {
 	unsigned long flags;
         read_lock_irqsave(&xpmem_my_part->wk_segid_to_tgid_lock, flags);
-        tgid = xpmem_my_part->wk_segid_to_tgid[segid];
+
+	if (xpmem_my_part->wk_segid_to_tgid[segid] > -1)
+	    tgid = xpmem_my_part->wk_segid_to_tgid[segid];
+
         read_unlock_irqrestore(&xpmem_my_part->wk_segid_to_tgid_lock, flags);
     }
 
