@@ -65,9 +65,6 @@ Overview
     and a virtual machine monitor capability via Palacios that allows
     full-featured guest operating systems to be loaded on-demand.
 
-    Please see our wiki at http://software.sandia.gov/trac/kitten for more
-    information.
-
 
 Supported Host (Build) Platforms
 ================================
