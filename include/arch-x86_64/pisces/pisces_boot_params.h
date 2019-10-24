@@ -69,10 +69,7 @@ struct pisces_boot_params {
 	/* cmd_line */
 	char cmd_line[1024];
 
-	// covirt launch code
-	u64 covirt_loader_addr;
-	u64 covirt_loader_size;
-	
+
 	/* kernel */
 	u64 kernel_addr;
 	u64 kernel_size;
