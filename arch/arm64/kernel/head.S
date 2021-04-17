@@ -80,6 +80,10 @@
 .macro serial_write, tmp64, tmp32, num
 	// wait
 	1:
+    // JRL: START debugging loop
+        ldr \tmp64, =2
+    b 1b
+    // JRL: END debuggng 
 		ldr \tmp64, =UART_PHYS_ADDR
 		// read LSR
 		ldrb \tmp32, [\tmp64, #0x14]
@@ -174,7 +178,7 @@
 	.quad	0				// reserved
 
 ENTRY(stext)
-	//serial_write x0, w1, x2
+	serial_write x0, w1, x2
 	mov	x21, x0				// x21=FDT
 	bl	el2_setup			// Drop to EL1
 
