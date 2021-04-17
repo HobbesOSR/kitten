@@ -10,9 +10,9 @@ obj-y		:= setup.o memblock.o cpuinfo.o resource.o \
 		   # i387.o
 obj-$(CONFIG_KGDB) += kgdb.o
 
-obj-$(CONFIG_CRAY_XT) += rca/
+#obj-$(CONFIG_CRAY_XT) += rca/
 
-obj-$(CONFIG_PALACIOS) += palacios/
+#obj-$(CONFIG_PALACIOS) += palacios/
 
 #obj-$(CONFIG_ARM_MCE) += mcheck/
 

@@ -664,3 +664,28 @@ arch_aspace_map_pmem_into_kernel(paddr_t start, paddr_t end)
 	return 0;
 }
 
+/**
+ * This unmaps a region of physical memory from the kernel virtual address
+ * space.  It assumes start and end are aligned to a 2 MB boundary and that the
+ * kernel is using 2 MB pages to map physical memory into the kernel virtual
+ * address space.
+ */
+
+int
+arch_aspace_unmap_pmem_from_kernel(paddr_t start, paddr_t end)
+{
+	paddr_t paddr;
+
+	for (paddr = start; paddr < end; paddr += VM_PAGE_2MB) {
+		/* If the page is mapped, we need to unmap it */
+		if (arch_aspace_virt_to_phys(&bootstrap_aspace, (vaddr_t)__va(paddr), NULL) == 0) {
+			arch_aspace_unmap_page(
+				&bootstrap_aspace,
+				(vaddr_t)__va(paddr),
+				VM_PAGE_2MB
+			);
+		}
+	}
+
+	return 0;
+}

@@ -1,6 +1,7 @@
 #ifndef _ASM_GENERIC_BITOPS_FFS_H_
 #define _ASM_GENERIC_BITOPS_FFS_H_
 
+#ifdef __KERNEL__
 /**
  * ffs - find first bit set
  * @x: the word to search
@@ -44,5 +45,7 @@ static inline unsigned long ffs(unsigned long x)
 	}
 	return r;
 }
+
+#endif
 
 #endif /* _ASM_GENERIC_BITOPS_FFS_H_ */

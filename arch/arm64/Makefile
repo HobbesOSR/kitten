@@ -38,8 +38,7 @@ cflags-y	:= -D__KERNEL__
 
 
 
-cflags-$(CONFIG_MK8) += $(call cc-option,-march=k8)
-cflags-$(CONFIG_MPSC) += $(call cc-option,-march=nocona)
+
 cflags-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=generic)
 
 # TODO Ignore warnings, remove this later

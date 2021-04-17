@@ -19,7 +19,7 @@
  */
 
 #include <linux/init.h>
-#include <linux/linkage.h>
+#include <lwk/linkage.h>
 
 #include <arch/assembler.h>
 #include <arch/asm-offsets.h>

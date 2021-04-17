@@ -408,3 +408,26 @@ phys_cpu_remove(unsigned int phys_cpu_id,
 #endif
         return 0;
 }
+
+
+
+void
+arch_shutdown_cpu(void)
+{
+	/* The LAPIC can end up in a weird state if we go into cli/hlt without
+	 * acking the EOI first. Of course, this is only the case if we are in
+	 * interrupt
+	 */
+
+#if 0
+	if (in_interrupt())
+		lapic_ack_interrupt();
+#endif
+
+	local_irq_disable();
+
+	while (1) {
+	    halt();
+	    cpu_relax();
+	}
+}
