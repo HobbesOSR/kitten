@@ -77,13 +77,10 @@
 // 	b0100 b0001
 //
 
+/* JRL: Note this is an infinite loop that doesn't do anything */
 .macro serial_write, tmp64, tmp32, num
 	// wait
 	1:
-    // JRL: START debugging loop
-        ldr \tmp64, =2
-    b 1b
-    // JRL: END debuggng 
 		ldr \tmp64, =UART_PHYS_ADDR
 		// read LSR
 		ldrb \tmp32, [\tmp64, #0x14]
@@ -93,6 +90,28 @@
 
 	lsr \tmp64, \num, #4
 	// num / 16 (2^4) right shift by 4
+.endm
+
+.macro serial_write_byte_fuck_the_stack, val
+
+    ldr x1, =UART_PHYS_ADDR
+
+
+    ldr x0, =\val
+    str x0, [x1]
+
+    ldr x0, =0x0d
+    str x0, [x1]
+
+    ldr x0, =0x0a
+    str x0, [x1]
+
+2:
+    ldr x3, =0x50
+    b 2b
+
+	// num / 16 (2^4) right shift by 4
+
 .endm
 
 /*
@@ -178,7 +197,14 @@
 	.quad	0				// reserved
 
 ENTRY(stext)
-	serial_write x0, w1, x2
+	serial_write_byte_fuck_the_stack 'a'
+
+    // JRL: START debugging loop
+30:
+        ldr x0, =4
+    b 30b
+    // JRL: END debuggng 
+
 	mov	x21, x0				// x21=FDT
 	bl	el2_setup			// Drop to EL1
 
