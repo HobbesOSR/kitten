@@ -92,26 +92,73 @@
 	// num / 16 (2^4) right shift by 4
 .endm
 
-.macro serial_write_byte_fuck_the_stack, val
+.macro serial_write_bytes, val, more:vararg
+    ldr x14, =UART_PHYS_ADDR
 
-    ldr x1, =UART_PHYS_ADDR
+    ldr x15, =\val
+    str x15, [x14]
 
-
-    ldr x0, =\val
-    str x0, [x1]
-
-    ldr x0, =0x0d
-    str x0, [x1]
-
-    ldr x0, =0x0a
-    str x0, [x1]
-
-2:
-    ldr x3, =0x50
-    b 2b
-
+    .ifnb \more
+    serial_write_bytes \more
+    .endif
 	// num / 16 (2^4) right shift by 4
 
+.endm
+
+.macro serial_write_str, byte:req, more:vararg
+    serial_write_bytes \byte, \more
+
+    ldr x14, =UART_PHYS_ADDR
+
+    ldr x15, =0x0d
+    str x15, [x14]
+
+    ldr x15, =0x0a
+    str x15, [x14]
+
+
+.endm
+
+
+.macro serial_write_reg, reg
+    ldr x14, =UART_PHYS_ADDR
+    ldr x11, =64
+    mov x15, \reg
+
+1:
+    sub x11, x11, 4
+
+    mov x15, \reg
+    lsr x15, x15, x11
+    and x15, x15, 0xf
+
+
+    cmp x15, #9
+    bgt 2f
+
+    add x15, x15, #48
+    b 3f
+2:
+    add x15, x15,  #55
+3:
+
+    str x15, [x14]
+
+    cmp x11, #0
+    bne 1b
+
+    ldr x15, =0x0d
+    str x15, [x14]
+
+    ldr x15, =0x0a
+    str x15, [x14]
+
+.endm
+
+.macro HALT
+1:
+    ldr x14, =0xdeadbeef
+    b 1b
 .endm
 
 /*
