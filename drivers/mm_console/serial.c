@@ -129,9 +129,9 @@ put_char(u8 ch)
  */
 static void serial_putc(struct console *con, unsigned char c)
 {
-	// Wait until the TX buffer is empty
+// Wait until the TX buffer is empty
 	// TODO Brian temporarily commented out next line while to solve slow serial issue.
-	wait_for_xmitr(BOTH_EMPTY);
+//	wait_for_xmitr(BOTH_EMPTY);
 	// Slam the 8 bits down the 1 bit pipe... meeeooowwwy!
 	outb(c, port);
 }
@@ -142,6 +142,7 @@ static void serial_putc(struct console *con, unsigned char c)
 void serial_write(struct console *con, const char *str)
 {
 	unsigned char c;
+
 	while ((c = *str++) != '\0') {
 		serial_putc(con, c);
 		if (c == '\n')	// new line
