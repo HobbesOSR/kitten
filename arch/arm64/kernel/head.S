@@ -605,9 +605,15 @@ __create_page_tables:
 	.endm
 
 #endif
+
+/*  JRL: WTF is this???
+
 	ldr x6, =0x10007d000
 	ldr x5, =0x10007e003
 	str x5, [x6]
+*/
+
+
 	ret
 ENDPROC(__create_page_tables)
 	.ltorg
