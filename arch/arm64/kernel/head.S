@@ -92,23 +92,33 @@
 	// num / 16 (2^4) right shift by 4
 .endm
 
-.macro serial_write_bytes, val, more:vararg
-    ldr x14, =UART_PHYS_ADDR
+.macro _serial_write_bytes port, val, more:vararg
+    ldr x14, =\port
 
     ldr x15, =\val
     str x15, [x14]
 
     .ifnb \more
-    serial_write_bytes \more
+    _serial_write_bytes \port, \more
     .endif
-	// num / 16 (2^4) right shift by 4
+
 
 .endm
 
-.macro serial_write_str, byte:req, more:vararg
-    serial_write_bytes \byte, \more
 
-    ldr x14, =UART_PHYS_ADDR
+.macro serial_write_bytes, byte, args:vararg
+    _serial_write_bytes UART_PHYS_ADDR, \byte, \args
+.endm
+
+.macro vserial_write_bytes, byte, args:vararg
+    _serial_write_bytes EARLYCON_IOBASE, \byte, \args
+.endm
+
+
+.macro _serial_write_str, port:req, byte:req, more:vararg
+    _serial_write_bytes \port, \byte, \more
+
+    ldr x14, =\port
 
     ldr x15, =0x0d
     str x15, [x14]
@@ -119,13 +129,20 @@
 
 .endm
 
+.macro serial_write_str, byte, args:vararg  
+    _serial_write_str UART_PHYS_ADDR, \byte, \args
+.endm
 
-.macro serial_write_reg, reg
-    ldr x14, =UART_PHYS_ADDR
+.macro vserial_write_str, byte, args:vararg  
+    _serial_write_str EARLYCON_IOBASE, \byte, \args
+.endm
+
+.macro _serial_write_reg, port, reg
+    ldr x14, =\port
     ldr x11, =64
     mov x15, \reg
 
-1:
+1000:
     sub x11, x11, 4
 
     mov x15, \reg
@@ -134,18 +151,18 @@
 
 
     cmp x15, #9
-    bgt 2f
+    bgt 2000f
 
     add x15, x15, #48
-    b 3f
-2:
+    b 3000f
+2000:
     add x15, x15,  #55
-3:
+3000:
 
     str x15, [x14]
 
     cmp x11, #0
-    bne 1b
+    bne 1000b
 
     ldr x15, =0x0d
     str x15, [x14]
@@ -155,10 +172,18 @@
 
 .endm
 
+.macro serial_write_reg reg
+    _serial_write_reg UART_PHYS_ADDR, \reg
+.endm
+
+.macro vserial_write_reg reg
+    _serial_write_reg EARLYCON_IOBASE, \reg
+.endm
+
 .macro HALT
-1:
+999:
     ldr x14, =0xdeadbeef
-    b 1b
+    b 999b
 .endm
 
 /*
