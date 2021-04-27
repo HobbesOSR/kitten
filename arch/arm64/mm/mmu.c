@@ -24,6 +24,8 @@
 #include <lwk/aspace.h>
 #include <lwk/pfn.h>
 
+#include <lwk/types.h>
+
 struct aspace init_mm;
 #if 0
 #include <linux/export.h>
@@ -62,10 +64,11 @@ static pmdval_t prot_sect_kernel;
 void
 print_tables_arm64(void* addr)
 {
-	uint64_t ttbr1=get_ttbr1_el1();
-	uint64_t phys = ttbr1 & ((-1ull) << 12);
-	uint64_t *gig = __va(phys);
-	uint64_t *meg2= NULL;
+	u64   ttbr1 = get_ttbr1_el1();
+	u64   phys  = ttbr1 & ((-1ull) << 12);
+	u64 * gig   = __va(phys);
+	u64 * meg2  = NULL;
+
 	int x = 0;
 	int y = 0;
 

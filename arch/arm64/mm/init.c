@@ -332,18 +332,25 @@ param(init_task_size, ulong);
 void __init
 arch_memsys_init(size_t kmem_size)
 {
-	struct pmem_region query, result;
-	size_t initrd_size, umem_size;
-	paddr_t new_initrd_start, new_initrd_end;
+	struct pmem_region query;
+	struct pmem_region result;
 
-	if (init_task_start!=0 && init_task_size!=0)
-	{
+	paddr_t new_initrd_start = 0;
+	paddr_t new_initrd_end   = 0;
+	size_t  initrd_size      = 0;
+	size_t  umem_size        = 0;
+
+	if ((init_task_start != 0) && 
+	    (init_task_size  != 0) ) {
 		initrd_start = init_task_start;
-		initrd_end = init_task_start + init_task_size;
+		initrd_end   = init_task_start + init_task_size;
 	}
-	printk("initrd_start %llx\n",initrd_start);
-	if (!initrd_start)
+
+	printk("initrd_start %llx\n", initrd_start);
+
+	if (initrd_start == 0) {
 		return;
+	}
 
 	initrd_size = initrd_end - initrd_start;
 	umem_size   = round_up(initrd_size, PAGE_SIZE);
@@ -356,12 +363,13 @@ arch_memsys_init(size_t kmem_size)
 	 */
 	pmem_region_unset_all(&query);
 	query.start = round_down( initrd_start, PAGE_SIZE );
-	query.end   = round_up(   initrd_end,   PAGE_SIZE );
+	query.end   = round_up  ( initrd_end,   PAGE_SIZE );
 	while (pmem_query(&query, &result) == 0) {
 		/* Only umem needs to be marked free at this point */
 		if (result.start >= kmem_size) {
 			result.type      = PMEM_TYPE_UMEM;
 			result.allocated = false;
+
 			BUG_ON(pmem_update(&result));
 		}
 		query.start = result.end;
@@ -371,14 +379,18 @@ arch_memsys_init(size_t kmem_size)
 	 *         NOTE: At this point, no umem should be allocated...
 	 *               we are the first users of umem.
 	 */
-	if (pmem_alloc_umem(umem_size, PAGE_SIZE, &result))
+
+	if (pmem_alloc_umem(umem_size, PAGE_SIZE, &result)) {
 		panic("Failed to allocate umem for initrd image.");
+    }
+
 	result.type = PMEM_TYPE_INITRD;
 	pmem_update(&result);
 	new_initrd_start = result.start;
 	new_initrd_end   = result.start + initrd_size;
-	memmove(__va(new_initrd_start), __va(initrd_start), initrd_size);
 
+
+	memmove(__va(new_initrd_start), __va(initrd_start), initrd_size);
 	/* Step 3: Mark any kmem that the original initrd image (before
 	 *         being moved) was occupying as free and add it to the
 	 *         kmem pool.
@@ -388,12 +400,14 @@ arch_memsys_init(size_t kmem_size)
 	 */
 	pmem_region_unset_all(&query);
 	query.start = round_down( initrd_start, PAGE_SIZE );
-	query.end   = round_up(   initrd_end,   PAGE_SIZE );
+	query.end   = round_up  ( initrd_end,   PAGE_SIZE );
 	while (pmem_query(&query, &result) == 0) {
 		if (result.start < kmem_size) {
 			result.type      = PMEM_TYPE_KMEM;
 			result.allocated = false;
+
 			BUG_ON(pmem_update(&result));
+
 			kmem_add_memory((unsigned long)__va(result.start),
 			                result.end - result.start);
 		}
@@ -406,7 +420,7 @@ arch_memsys_init(size_t kmem_size)
 
 	/* Assume the initrd image is the init_task ELF executable */
 	init_elf_image = initrd_start;
-	printk("init_elf_image %llx\n",init_elf_image);
+	printk("init_elf_image %llx\n", init_elf_image);
 }
 
 #ifndef INIT_MM_CONTEXT
