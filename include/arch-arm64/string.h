@@ -4,26 +4,8 @@
 #ifdef __KERNEL__
 /* Written 2002 by Andi Kleen */ 
 
-/* Only used for special circumstances. Stolen from i386/string.h */ 
-static inline void * __inline_memcpy(void * to, const void * from, size_t n)
-{
-unsigned long d0, d1, d2;
-#if 0
-__asm__ __volatile__(
-	"rep ; movsl\n\t"
-	"testb $2,%b4\n\t"
-	"je 1f\n\t"
-	"movsw\n"
-	"1:\ttestb $1,%b4\n\t"
-	"je 2f\n\t"
-	"movsb\n"
-	"2:"
-	: "=&c" (d0), "=&D" (d1), "=&S" (d2)
-	:"0" (n/4), "q" (n),"1" ((long) to),"2" ((long) from)
-	: "memory");
-#endif
-return (to);
-}
+
+
 /* Even with __builtin_ the compiler may decide to use the out of line
    function. */
 

@@ -1,21 +1,18 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (C) 2012 ARM Ltd.
+ * Copyright (C) 2013 ARM Ltd.
+ * Copyright (C) 2013 Linaro.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * This code is based on glibc cortex strings work originally authored by Linaro
+ * be found @
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * http://bazaar.launchpad.net/~linaro-toolchain-dev/cortex-strings/trunk/
+ * files/head:/src/aarch64/
  */
 
-#include <lwk/linkage.h>
-//#include <asm/assembler.h>
+#include <linux/linkage.h>
+#include <asm/assembler.h>
+#include <asm/cache.h>
 
 /*
  * Copy a buffer from src to dest (alignment handled by the hardware)
@@ -27,27 +24,39 @@
  * Returns:
  *	x0 - dest
  */
-ENTRY(memcpy)
-	mov	x4, x0
-	subs	x2, x2, #8
-	b.mi	2f
-1:	ldr	x3, [x1], #8
-	subs	x2, x2, #8
-	str	x3, [x4], #8
-	b.pl	1b
-2:	adds	x2, x2, #4
-	b.mi	3f
-	ldr	w3, [x1], #4
-	sub	x2, x2, #4
-	str	w3, [x4], #4
-3:	adds	x2, x2, #2
-	b.mi	4f
-	ldrh	w3, [x1], #2
-	sub	x2, x2, #2
-	strh	w3, [x4], #2
-4:	adds	x2, x2, #1
-	b.mi	5f
-	ldrb	w3, [x1]
-	strb	w3, [x4]
-5:	ret
-ENDPROC(memcpy)
+	.macro ldrb1 reg, ptr, val
+	ldrb  \reg, [\ptr], \val
+	.endm
+
+	.macro strb1 reg, ptr, val
+	strb \reg, [\ptr], \val
+	.endm
+
+	.macro ldrh1 reg, ptr, val
+	ldrh  \reg, [\ptr], \val
+	.endm
+
+	.macro strh1 reg, ptr, val
+	strh \reg, [\ptr], \val
+	.endm
+
+	.macro ldr1 reg, ptr, val
+	ldr \reg, [\ptr], \val
+	.endm
+
+	.macro str1 reg, ptr, val
+	str \reg, [\ptr], \val
+	.endm
+
+	.macro ldp1 reg1, reg2, ptr, val
+	ldp \reg1, \reg2, [\ptr], \val
+	.endm
+
+	.macro stp1 reg1, reg2, ptr, val
+	stp \reg1, \reg2, [\ptr], \val
+	.endm
+
+ENTRY(__memcpy)
+#include "copy_template.S"
+	ret
+ENDPROC(__memcpy)
