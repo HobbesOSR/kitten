@@ -45,23 +45,33 @@ endchoice
 
 choice
 	prompt "Processor Family"
-	default GENERIC_CPU
+	default ARM_V8_3_A
 
 config GENERIC_CPU
 	bool "Generic-ARM64 V8"
 	help
 	  Generic ARM64 V8 CPU.
 
+config ARM_V8_3_A
+    bool "ARM V8.3-a"
+    help 
+        CPU has ARM v8.3-a features
+
+
 endchoice
 
+config BLK_DEV_INITRD
+       bool "INITRD support"
+       help
+	"JRL: This is needed if you have an initrd from the bootloader...."
 
 config ARM64_L1_CACHE_BYTES
         int
-        default "64" if GENERIC_CPU
+        default "64" if GENERIC_CPU || ARM_V8_3_A
 
 config ARM64_L1_CACHE_SHIFT
         int
-        default "6" if GENERIC_CPU
+        default "6" if GENERIC_CPU || ARM_V8_3_A
 
 config ARM64_INTERNODE_CACHE_BYTES
 	int

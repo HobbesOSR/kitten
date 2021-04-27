@@ -40,6 +40,7 @@ cflags-y	:= -D__KERNEL__
 
 
 cflags-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=generic)
+cflags-$(CONFIG_ARM_V8_3_A)  += $(call cc-option,-march=armv8.3-a)
 
 # TODO Ignore warnings, remove this later
 cflags-y += -w
@@ -59,11 +60,15 @@ cflags-y += $(call cc-option,-funit-at-a-time)
 # prevent gcc from generating any FP code by mistake
 cflags-y += $(call cc-option,-mno-sse -mno-mmx -mno-sse2 -mno-3dnow,)
 
+
+aflags-$(CONFIG_ARM_V8_3_A) += $(call cc-option,-march=armv8.3-a)
+
+
 CFLAGS += $(cflags-y) -DTEXT_OFFSET=$(TEXT_OFFSET) -g
 
 AFLAGS += $(call as-option,-Wa$(comma)--divide)
 
-AFLAGS += -DTEXT_OFFSET=$(TEXT_OFFSET)
+AFLAGS += $(aflags-y) -DTEXT_OFFSET=$(TEXT_OFFSET) 
 
 #-m64 $(call as-option,-Wa$(comma)--divide)
 
