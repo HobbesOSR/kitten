@@ -17,3 +17,15 @@ unhandled_signal(struct task_struct *tsk, int sig)
 		(tsk->sighand->action[sig-1].sa.sa_handler == SIG_DFL);
 }
 
+
+void 
+do_mem_abort(unsigned long    addr, 
+	     unsigned int     esr, 
+	     struct pt_regs * regs)
+{
+	printk("do_mem_abort\n");
+
+
+	printk("Addr: %p\n", (void *) addr);
+
+}

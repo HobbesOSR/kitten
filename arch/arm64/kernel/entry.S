@@ -437,7 +437,9 @@ el0_da:
 	enable_irq
 	mov	x1, x25
 	mov	x2, sp
-	b	. //do_mem_abort
+	bl do_mem_abort
+	b ret_to_user
+//	b	. //do_mem_abort
 el0_ia:
 	/*
 	 * Instruction abort handling
