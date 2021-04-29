@@ -51,7 +51,33 @@ size_t  __initdata ebda_size;
 #define EBDA_ADDR_POINTER 0x40E
 
 
-static void __init setup_machine_fdt(phys_addr_t dt_phys)
+
+static void print_ptr(uint64_t ptr) {
+    uint8_t nib = 0;
+    uint8_t ch  = 0;
+    int     i  = 0;
+
+    for (i = 60; i >= 0; i -= 4) {
+        nib = ptr >> i;
+        nib &= 0xf;
+
+        if (nib <= 9) {
+            ch = nib + 48;
+        } else {
+            ch = nib + 55;
+        }
+
+        *(volatile uint8_t *)(EARLYCON_IOBASE) = ch;
+    }
+
+    *(volatile uint8_t *)(EARLYCON_IOBASE) = '\r';
+    *(volatile uint8_t *)(EARLYCON_IOBASE) = '\n';
+
+    return;
+}
+
+static void __init 
+setup_machine_fdt(phys_addr_t dt_phys)
 {
 	struct boot_param_header *devtree;
 	unsigned long dt_root;
@@ -428,6 +454,7 @@ void enable_APIC_timer(void)
               "CPU %d: enabled APIC timer.\n", this_cpu);
 #endif
 }
+
 
 //extern unsigned char* __START_KERNEL;
 //extern unsigned char* _end;

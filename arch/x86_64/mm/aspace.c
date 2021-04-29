@@ -114,7 +114,7 @@ alloc_page_table(
 		_pte.present     = 1;
 		_pte.write       = 1;
 		_pte.user        = 1;
-		_pte.base_paddr  = __pa(new_table) >> 12;
+		_pte.base_paddr  = __pa(new_table) >> PAGE_SHIFT;
 
 		*parent_pte = _pte;
 	}
