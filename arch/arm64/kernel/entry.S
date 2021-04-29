@@ -247,7 +247,6 @@ ENDPROC(el1_error_invalid)
  */
 	.align	6
 el1_sync:
-	b .
 	kernel_entry 1
 	mrs	x1, esr_el1			// read the syndrome register
 	lsr	x24, x1, #26			// exception class
@@ -265,7 +264,6 @@ el1_sync:
 	b.ge	el1_dbg
 	b	el1_inv
 el1_da:
-	b .
 	/*
 	 * Data abort handling
 	 */
@@ -276,7 +274,7 @@ el1_da:
 	enable_irq
 1:
 	mov	x2, sp				// struct pt_regs
-	bl	. //do_mem_abort
+	bl	do_mem_abort
 
 	// disable interrupts before pulling preserved data off the stack
 	disable_irq
@@ -437,8 +435,7 @@ el0_da:
 	enable_irq
 	mov	x1, x25
 	mov	x2, sp
-	bl do_mem_abort
-	b ret_to_user
+	b do_mem_abort
 //	b	. //do_mem_abort
 el0_ia:
 	/*

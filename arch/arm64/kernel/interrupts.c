@@ -35,27 +35,37 @@ do_unhandled_exception(struct pt_regs * regs, unsigned int vector)
 
 
 
-
+static inline u64 get_mair_el1()
+{
+	u64 mair;
+	__asm__ __volatile__("mrs %0, mair_el1\n":"=r"(mair));
+	return mair;
+}
 
 void
 do_mem_abort(unsigned long    addr, 
 	     unsigned int     esr,
 	     struct pt_regs * regs)
 {
+	u64 mair_el1 = get_mair_el1();
+
 	printk("do_mem_abort: addr=%p, esr=%x\n", (void *)addr, esr);
+	printk("MAIR_EL1: %p\n", (void *)mair_el1);
 
-
+	print_pgtable_arm64((void *)addr);
 
 	struct siginfo s;
 	memset(&s, 0, sizeof(struct siginfo));
 	s.si_signo = SIGSEGV;
 	s.si_errno = 0;
-	s.si_addr  = (void *)NULL; // JRL: TODO FIXME
+	s.si_addr  = (void *)addr;
 	s.si_code  = SEGV_ACCERR; // SEGV_MAPERR;
 
 	int i = sigsend(current->aspace->id, ANY_ID, SIGSEGV, &s);
-	printk(">> PAGE FAULT! Sent signal %d: CR2 is %p\n", i, s.si_addr);
+	printk(">> PAGE FAULT! Sent signal %d: Addr is %p\n", i, s.si_addr);
 	show_registers(regs);
+
+	panic("Page faults are a no-no\n");
 }
 
 
