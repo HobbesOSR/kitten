@@ -7,7 +7,7 @@
 struct aspace bootstrap_aspace = {
 	BOOTSTRAP_ASPACE(bootstrap_aspace)
 	.arch = {
-		.upt = 0
+		.pgd = 0
 	}
 };
 

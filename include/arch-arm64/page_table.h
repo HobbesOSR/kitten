@@ -1,93 +1,255 @@
 #ifndef _ARCH_ARM64_PAGE_TABLE_H
 #define _ARCH_ARM64_PAGE_TABLE_H
 
+/*
+	In the VMSAv8-64 translation table format, the AttrIndx[2:0] field in a block or page translation table descriptor
+	for a stage 1 translation indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding
+	memory region. 
+*/
+
+
+
+
+#ifndef CONFIG_ARM64_64K_PAGES
+
+
 typedef struct {
-	uint64_t            /* x86-64 descriptions */
-		valid      :1,  /* Is there a physical page? */
-		type       :1,  /* Is the page writable? */
-		attrIndx0  :1,  /* Is the page accessible to user-space? */
-		attrIndx1  :1,  /* Is the page write-through cached? */
-		attrIndx2  :1,  /* Is the page uncached? */
-		NS         :1,  /* Has the page been read? */
-		AP1        :1,  /* Has the page been written to? */
-		AP2        :1,  /* 0 == 4KB, 1 == (2 MB || 1 GB) */
-		SH0        :1,  /* Is the page mapped in all address spaces? */
-		SH1        :1,
-		AF         :1,  /* Available for us! */
-		nG         :1,
-		base_paddr :40, /* Bits [51,12] of base address. */
-		contiguous :1,
-		PXN        :1,
-		XN         :1,
-		os_bits_4  :4, /* Available for us! */
-		ignored    :5;  /* Is the page executable? */
+	uint64_t            /* ARM64 descriptions */
+		valid      :1,  /* Is the descriptor valid? */
+		type       :1,  /* 0 = block entry, 1 = table entry */
+		ignored1   :10,
+		base_paddr :36, /* Bits [47,12] of base address. */
+		res0       :4,
+		ignored2   :7,
+		PXNTable   :1,  /* Max PXN value of next pgtable level */
+		XNTable    :1,  /* Max XN value of next pgtable level */
+		APTable1   :1,  /* Max AP1 of next pgtable level */
+		APTable2   :1,  /* Max AP2 of next pgtable level */
+		NSTable    :1;  /* next pgtable level is Not Secure */
 } xpte_t;
 
-typedef struct {
-	uint64_t
-		valid      :1,  /* Is there a physical page? */
-		type       :1,  /* Is the page writable? */
-		attrIndx0  :1,  /* Is the page accessible to user-space? */
-		attrIndx1  :1,  /* Is the page write-through cached? */
-		attrIndx2  :1,  /* Is the page uncached? */
-		NS         :1,  /* Has the page been read? */
-		AP1        :1,  /* Has the page been written to? */
-		AP2        :1,  /* Page attribute table bit. */
-		SH0        :1,  /* Is the page mapped in all address spaces? */
-		SH1        :1,  /* Available for us! */
-		AF         :1,
-		nG         :1,
-		base_paddr :40, /* Bits [51,12] of page's base physical addr. */
-		contiguous :1,
-		PXN        :1,
-		XN         :1,
-		os_bits_4  :4, /* Available for us! */
-		ignored    :5;  /* Is the page executable? */
-} xpte_4KB_t;
 
 typedef struct {
 	uint64_t
-		valid      :1,  /* 0 Is there a physical page? */
-		type       :1,  /* 1 Is the page writable? */
-		attrIndx0  :1,  /* 2 Is the page accessible to user-space? */
-		attrIndx1  :1,  /* 3 Is the page write-through cached? */
-		attrIndx2  :1,  /* 4 Is the page uncached? */
-		NS         :1,  /* 5 Has the page been read? */
-		AP1        :1,  /* 6 Has the page been written to? */
-		AP2        :1,  /* 7 Must be 1 to indicate a 2 MB page. */
-		SH0        :1,  /* 8 Is the page mapped in all address spaces? */
-		SH1        :1,  /* 9 Available for us! */
-		AF         :1,  /* 10 */
-		nG         :1,  /* 11 */
-		must_be_0  :9,  /* 12 - 20 Reserved, must be zero. */
-		base_paddr :31, /* 21 - 51 Bits [51,21] of page's base physical addr. */
-		contiguous :1,  /* 52 */
-		PXN        :1,  /* 53 */
-		XN         :1,  /* 54 */
-		os_bits_4  :4,  /* 55 - 58 Available for us! */
-		ignored    :5;  /* 59 - 63 Is the page executable? */
+		valid      :1, /* Is the descriptor valid? */
+		type       :1, /* 0 = block entry, 1 = table entry */
+		attrIndx   :3, /* indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding	memory region. */
+		NS         :1, /* 0 = Secure, 1 = Not Secure?? */
+		AP1        :1, /* 0 = system, 1 = user */
+		AP2        :1, /* 0 = writable, 1 = read only  */
+		SH0        :1, /* 0 = outer shareable, 1 = inner shareable */
+		SH1        :1, /* Shareable  */
+		AF         :1, /* Accessed Flag */
+		nG         :1, /* not Global */
+		rsvd       :38, /* Page address will go somewhere in here */
+		GP         :1, /* Guarded Page  (If ARMv8.5-BTI) */
+		DBM        :1, /* Dirty Bit Modifier */
+		contiguous :1, /* Part of a contigous run of pages */
+		PXN        :1, /* Privilege No Execute */
+		XN         :1, /* No Execute */
+		os_bits_4  :4, /* Available for us! */
+		pbha       :4, /* Page based HW attributes */
+		ignored    :1;  
+} xpte_leaf_t;
+
+typedef struct {
+	uint64_t
+		valid      :1, /* Is the descriptor valid? */
+		type       :1, /* 0 = block entry, 1 = table entry */
+		attrIndx   :3, /* indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding	memory region. */
+		NS         :1, /* 0 = Secure, 1 = Not Secure?? */
+		AP1        :1, /* 0 = system, 1 = user */
+		AP2        :1, /* 0 = writable, 1 = read only  */
+		SH0        :1, /* 0 = outer shareable, 1 = inner shareable */
+		SH1        :1, /* Shareable  */
+		AF         :1, /* Accessed Flag */
+		nG         :1, /* not Global */
+		base_paddr :36, /* Bits [47,12] of page's base physical addr. */
+		res0       :2,
+		GP         :1, /* Guarded Page  (If ARMv8.5-BTI) */
+		DBM        :1, /* Dirty Bit Modifier */
+		contiguous :1, /* Part of a contigous run of pages */
+		PXN        :1, /* Privilege No Execute */
+		XN         :1, /* No Execute */
+		os_bits_4  :4, /* Available for us! */
+		pbha       :4, /* Page based HW attributes */
+		ignored    :1;  
+} xpte_4KB_t;
+
+
+
+typedef struct {
+	uint64_t
+		valid      :1,  /* Is the descriptor valid? */
+		type       :1,  /* 0 = block entry, 1 = table entry */
+		attrIndx   :3, /* indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding	memory region. */
+		NS         :1,  /* 0 = Secure, 1 = Not Secure?? */
+		AP1        :1,  /* 0 = system, 1 = user */
+		AP2        :1,  /* 0 = writable, 1 = read only  */
+		SH0        :1,  /* 0 = outer shareable, 1 = inner shareable */
+		SH1        :1,  /* Shareable  */
+		AF         :1,  /* Accessed Flag */
+		nG         :1,  /* not Global */
+		OA         :4,  /* bits[51:48] of the output  address. (if ARMv8.2-LPA) */
+		nT         :1,  /* Block Translation Entry  - This looks sketchy*/
+		must_be_0  :4,  /* 17 - 20 Reserved, must be zero. */
+		base_paddr :27, /* 21 - 47 Bits [47,21] of page's base physical addr. */
+		res0       :2,
+		GP         :1,  /* Guarded Page  (If ARMv8.5-BTI) */
+		DBM        :1,  /* Dirty Bit Modifier */
+		contiguous :1,  /* Part of a contigous run of pages */
+		PXN        :1,  /* Privilege No Execute */
+		XN         :1,  /* No Execute */
+		os_bits_4  :4,  /* Available for us! */
+		pbha       :4,  /* Page based HW attributes */
+		ignored    :1;  
 } xpte_2MB_t;
 
 typedef struct {
 	uint64_t
-		valid      :1,  /* Is there a physical page? */
-		type       :1,  /* Is the page writable? */
-		attrIndx0  :1,  /* Is the page accessible to user-space? */
-		attrIndx1  :1,  /* Is the page write-through cached? */
-		attrIndx2  :1,  /* Is the page uncached? */
-		NS         :1,  /* Has the page been read? */
-		dirty      :1,  /* Has the page been written to? */
-		must_be_1  :1,  /* Must be 1 to indicate a 1GB page. */
-		global     :1,  /* Is the page mapped in all address spaces? */
-		os_bits_1  :3,  /* Available for us! */
-		pat        :1,  /* Page attribute table bit. */
-		must_be_0  :17, /* Reserved, must be zero. */
-		base_paddr :22, /* Bits [51,30] of page's base physical addr. */
-		contiguous :1,
-		PXN        :1,
-		XN         :1,
-		os_bits_4  :4, /* Available for us! */
-		ignored    :5;  /* Is the page executable? */
+		valid      :1,  /* Is the descriptor valid? */
+		type       :1,  /* 0 = block entry, 1 = table entry */
+		attrIndx   :3, /* indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding	memory region. */		NS         :1,  /* 0 = Secure, 1 = Not Secure?? */
+		AP1        :1,  /* 0 = system, 1 = user */
+		AP2        :1,  /* 0 = writable, 1 = read only  */
+		SH0        :1,  /* 0 = outer shareable, 1 = inner shareable */
+		SH1        :1,  /* Shareable  */
+		AF         :1,  /* Accessed Flag */
+		nG         :1,  /* not Global */
+		OA         :4,  /* bits[51:48] of the output  address. (if ARMv8.2-LPA) */
+		nT         :1,  /* Block Translation Entry  - This looks sketchy*/
+ 		must_be_0  :13, /* 17 - 29 Reserved, must be zero. */
+		base_paddr :18, /* Bits [47,30] of page's base physical addr. */
+		res0       :2,
+		GP         :1,  /* Guarded Page  (If ARMv8.5-BTI) */
+		DBM        :1,  /* Dirty Bit Modifier */
+		contiguous :1,  /* Part of a contigous run of pages */
+		PXN        :1,  /* Privilege No Execute */
+		XN         :1,  /* No Execute */
+		os_bits_4  :4,  /* Available for us! */
+		pbha       :4,  /* Page based HW attributes */
+		ignored    :1;  
 } xpte_1GB_t;
+
+
+
+#else
+
+
+
+typedef struct {
+	uint64_t            /* ARM64 descriptions */
+		valid      :1,  /* Is the descriptor valid? */
+		type       :1,  /* 0 = block entry, 1 = table entry */
+		ignored1   :10,
+		TA         :4,  /* bits[51:48] of the next-level table address. (if ARMv8.2-LPA) */
+		base_paddr :32, /* Bits [47,16] of base address. */
+		res0       :4,
+		ignored2   :6,
+		PXNTable   :1, /* Max PXN value of next pgtable level */
+		XNTable    :1, /* Max XN value of next pgtable level */
+		APTable1   :1, /* Max AP1 of next pgtable level */
+		APTable2   :1, /* Max AP2 of next pgtable level */
+		NSTable    :1; /* next pgtable level is Not Secure */
+} xpte_t;
+
+
+
+typedef struct {
+	uint64_t
+		valid      :1, /* Is the descriptor valid? */
+		type       :1, /* 0 = block entry, 1 = table entry */
+		attrIndx   :3, /* indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding	memory region. */
+		NS         :1, /* 0 = Secure, 1 = Not Secure?? */
+		AP1        :1, /* 0 = system, 1 = user */
+		AP2        :1, /* 0 = writable, 1 = read only  */
+		SH0        :1, /* 0 = outer shareable, 1 = inner shareable */
+		SH1        :1, /* Shareable  */
+		AF         :1, /* Accessed Flag */
+		nG         :1, /* not Global */
+		rsvd       :38, /* Page address will go somewhere in here */
+		GP         :1, /* Guarded Page  (If ARMv8.5-BTI) */
+		DBM        :1, /* Dirty Bit Modifier */
+		contiguous :1, /* Part of a contigous run of pages */
+		PXN        :1, /* Privilege No Execute */
+		XN         :1, /* No Execute */
+		os_bits_4  :4, /* Available for us! */
+		pbha       :4, /* Page based HW attributes */
+		ignored    :1;  
+} xpte_leaf_t;
+
+
+
+typedef struct {
+	uint64_t
+		valid      :1, /* Is the descriptor valid? */
+		type       :1, /* 0 = block entry, 1 = table entry */
+		attrIndx   :3, /* indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding	memory region. */		NS         :1, /* 0 = Secure, 1 = Not Secure?? */
+		AP1        :1, /* 0 = system, 1 = user */
+		AP2        :1, /* 0 = writable, 1 = read only  */
+		SH0        :1, /* 0 = outer shareable, 1 = inner shareable */
+		SH1        :1, /* Shareable  */
+		AF         :1, /* Accessed Flag */
+		nG         :1, /* not Global */
+		TA         :4,  /* bits[51:48] of the page address. (if ARMv8.2-LPA) */
+		base_paddr :32, /* Bits [47,16] of page's base physical addr. */
+		res0_2     :2,
+		GP         :1, /* Guarded Page */
+		DBM        :1, /* Dirty Bit Modifier */
+		contiguous :1, /* Part of a contigous run of pages */
+		PXN        :1, /* Privilege No Execute */
+		XN         :1, /* No Execute */
+		os_bits_4  :4, /* Available for us! */
+		pbha       :4, /* Page based HW attributes */
+		ignored    :1;  
+} xpte_64KB_t;
+
+typedef struct {
+	uint64_t
+		valid      :1, /* Is the descriptor valid? */
+		type       :1, /* 0 = block entry, 1 = table entry */
+		attrIndx   :3, /* indicates the 8-bit field in the MAIR_ELx that specifies the attributes for the corresponding	memory region. */		NS         :1, /* 0 = Secure, 1 = Not Secure?? */
+		AP1        :1, /* 0 = system, 1 = user */
+		AP2        :1, /* 0 = writable, 1 = read only  */
+		SH0        :1, /* 0 = outer shareable, 1 = inner shareable */
+		SH1        :1, /* Shareable  */
+		AF         :1, /* Accessed Flag */
+		nG         :1, /* not Global */
+		OA         :4, /* bits[51:48] of the output  address. (if ARMv8.2-LPA) */
+		nT         :1, /* Block Translation Entry  - This looks sketchy*/
+		res0_2     :12
+		base_paddr :19, /* Bits [47,29] of page's base physical addr. */
+		res0_3     :2,
+		GP         :1, /* Guarded Page */
+		DBM        :1, /* Dirty Bit Modifier */
+		contiguous :1, /* Part of a contigous run of pages */
+		PXN        :1, /* Privilege No Execute */
+		XN         :1, /* No Execute */
+		os_bits_4  :4, /* Available for us! */
+		pbha       :4, /* Page based HW attributes */
+		ignored    :1;  
+} xpte_512MB_t;
+
+
+
+
+#endif
+
+
+static inline paddr_t xpte_paddr(xpte_t  *pte)       { return ((paddr_t)(pte->base_paddr)) << PAGE_SHIFT; }
+
+#ifndef CONFIG_ARM64_64K_PAGES
+
+static inline paddr_t xpte_4KB_paddr (xpte_4KB_t  *pte)       { return ((paddr_t)(pte->base_paddr)) << PAGE_SHIFT_4KB; }
+static inline paddr_t xpte_2MB_paddr (xpte_2MB_t  *pte)       { return ((paddr_t)(pte->base_paddr)) << PAGE_SHIFT_2MB; }
+static inline paddr_t xpte_1GB_paddr (xpte_1GB_t  *pte)       { return ((paddr_t)(pte->base_paddr)) << PAGE_SHIFT_1GB; }
+
+#else
+
+static inline paddr_t xpte_64KB_paddr (xpte_64KB_t  *pte)       { return ((paddr_t)(pte->base_paddr)) << PAGE_SHIFT_64KB; }
+static inline paddr_t xpte_512MB_paddr(xpte_512MB_t *pte)       { return ((paddr_t)(pte->base_paddr)) << PAGE_SHIFT_512MB; }
+
+#endif
+
 
 #endif

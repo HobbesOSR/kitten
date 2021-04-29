@@ -29,6 +29,26 @@
 #define PAGE_SIZE		(_AC(1,UL) << PAGE_SHIFT)
 #define PAGE_MASK		(~(PAGE_SIZE-1))
 
+#define PAGE_SHIFT_4KB 		12
+#define PAGE_SHIFT_64KB		16
+#define PAGE_SHIFT_2MB		21
+#define PAGE_SHIFT_512MB	29
+#define PAGE_SHIFT_1GB		30
+
+
+#define PAGE_SIZE_4KB 		(_AC(1,UL) << PAGE_SHIFT_4KB 	)
+#define PAGE_SIZE_64KB		(_AC(1,UL) << PAGE_SHIFT_64KB	)
+#define PAGE_SIZE_2MB		(_AC(1,UL) << PAGE_SHIFT_2MB	)
+#define PAGE_SIZE_512MB		(_AC(1,UL) << PAGE_SHIFT_512MB	)
+#define PAGE_SIZE_1GB		(_AC(1,UL) << PAGE_SHIFT_1GB	)
+
+#define PAGE_MASK_4KB 		(~(PAGE_SIZE_4KB   -1))
+#define PAGE_MASK_64KB		(~(PAGE_SIZE_64KB  -1))
+#define PAGE_MASK_2MB		(~(PAGE_SIZE_2MB   -1))
+#define PAGE_MASK_512MB		(~(PAGE_SIZE_512MB -1))
+#define PAGE_MASK_1GB		(~(PAGE_SIZE_1GB   -1))
+
+
 /* We do define AT_SYSINFO_EHDR but don't use the gate mechanism */
 #define __HAVE_ARCH_GATE_AREA		1
 
@@ -75,7 +95,7 @@ extern void clear_page(void *to);
 #define clear_user_page(addr,vaddr,pg)  __cpu_clear_user_page(addr, vaddr)
 #define copy_user_page(to,from,vaddr,pg) __cpu_copy_user_page(to, from, vaddr)
 
-typedef struct page *pgtable_t;
+typedef struct page * pgtable_t;
 
 #ifdef CONFIG_HAVE_ARCH_PFN_VALID
 extern int pfn_valid(unsigned long);

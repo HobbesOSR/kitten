@@ -61,58 +61,176 @@ pgprot_t pgprot_default;
 
 static pmdval_t prot_sect_kernel;
 
+
 void
-print_tables_arm64(void* addr)
+dump_pgtable_arm64()
 {
-	u64   ttbr1 = get_ttbr1_el1();
-	u64   phys  = ttbr1 & ((-1ull) << 12);
-	u64 * gig   = __va(phys);
-	u64 * meg2  = NULL;
 
-	int x = 0;
-	int y = 0;
-
-
-	// Gig pages
-	printk("TTBR1 Tables %p %p\n",gig,addr);
-	printk("Entry %llx\n",*gig);
-	for(x = 0; x < 512; x++) {
-		if (((((unsigned long)addr >> 30) & 0x1fful) == x) || addr == NULL)
-			printk("%03x: %016llx\n",x,gig[x]);
-		if (((gig[x] & 3u) == 3u) && (((((unsigned long)addr >> 30) & 0x1ff) == x) || addr == NULL)) {
-			meg2 = __va(gig[x] & (-1ull << 12));
-			for (y = 0; y < 512; y++) {
-				if (((meg2[y] & 3u) != 0) && (((((unsigned long)addr >> 21) & 0x1ff) == y) || addr == NULL)) {
-					printk("\t%03x: %016llx\n",y,meg2[y]);
-				}
-			}
-		}
-	}
-	printk("done\n");
-	ttbr1 = get_ttbr0_el1();
-	phys = ttbr1 & ((-1ull) << 12);
-	gig = __va(phys);
-	meg2= NULL;
-	x = 0;
-	y = 0;
-
-
-	// Gig pages
-	printk("TTBR0 Tables %p\n",gig);
-	for(x = 0; x < 512; x++) {
-		if ((gig[x] & 3u) == 3u && ((((unsigned long)addr >> 30) & 0x1ff == x) || addr == NULL)) {
-			printk("%03x: %016llx\n",x,gig[x]);
-			meg2 = __va(gig[x] & (-1ull << 12));
-			for (y = 0; y < 512; y++) {
-				if ((meg2[y] & 3u && ((((unsigned long)addr >> 21) & 0x1ff == y) || addr == NULL)) != 0) {
-					printk("\t%03x: %016llx\n",y,meg2[y]);
-				}
-			}
-		}
-	}
-	printk("done\n");
 }
-//EXPORT_SYMBOL_GPL(print_tables_arm64);
+
+
+static void
+__walk_3lvl_pgtable(vaddr_t vaddr)
+{
+	u64   ttbr0 = get_ttbr0_el1();
+	u64   ttbr1 = get_ttbr1_el1();
+
+	xpte_t * pgd_array[2] = {NULL, NULL};
+
+	int i = 0;
+
+
+
+	pgd_array[0] = __va(ttbr0 & PAGE_MASK);
+	pgd_array[1] = __va(ttbr1 & PAGE_MASK);
+
+	for (i = 0; i < 2; i++) {
+
+		xpte_t * pgd = pgd_array[i];
+		xpte_t * pmd = NULL;
+		xpte_t * ptd = NULL;
+
+		xpte_t * pge = NULL;
+		xpte_t * pme = NULL;
+		xpte_t * pte = NULL;
+
+
+		const unsigned int pgd_index = (vaddr >> 30) & 0x1ff;
+		const unsigned int pmd_index = (vaddr >> 21) & 0x1ff;
+		const unsigned int ptd_index = (vaddr >> 12) & 0x1ff;
+
+
+		pge = &pgd[pgd_index];
+
+		printk("TTBR%d Tables at %p (probe addr %p)\n", 
+			i, pgd, vaddr);
+
+		if (!pge->valid) {
+			printk("Invalid PGD entry (index=%d)\n", pgd_index);
+			continue;
+		}
+
+		printk("PGD [%d]: %llx\n", pgd_index, *(u64 *)pge);
+
+		if (pge->type == 0) {
+			// 1GB page
+			xpte_1GB_t * pge_1GB = (xpte_1GB_t *)pge;
+
+			printk("\t%s, %s, AttrIdx=%d, been_read=%d, been_written=%d, NS=%d, PXN=%d, XN=%d\n", 
+					pge_1GB->AP1 ? "user"      : "system",
+					pge_1GB->AP2 ? "read-only" : "writable",
+					pge_1GB->attrIndx,
+					pge_1GB->AF,
+					pge_1GB->DBM,
+					pge_1GB->NS,
+					pge_1GB->PXN, 
+					pge_1GB->XN);
+			printk("\t --> %p\n", xpte_1GB_paddr(pge_1GB));
+			continue;
+		}
+
+		pmd = __va(xpte_4KB_paddr(pge));
+		pme = &pmd[pmd_index];
+
+		if (!pme->valid) {
+			printk("Invalid PMD entry (index=%d)\n", pmd_index);
+			continue;		
+		} 
+
+		printk("PMD [%d]: %llx\n", pmd_index, *(u64 *)pme);
+
+
+		if (pme->type == 0) {
+			// 2MB page;
+			xpte_2MB_t * pme_2MB = (xpte_2MB_t *)pme;
+
+			printk("\t%s, %s, AttrIdx=%d, been_read=%d, been_written=%d, NS=%d, PXN=%d, XN=%d\n", 
+					pme_2MB->AP1 ? "user"      : "system",
+					pme_2MB->AP2 ? "read-only" : "writable",
+					pme_2MB->attrIndx,
+					pme_2MB->AF,
+					pme_2MB->DBM,
+					pme_2MB->NS,
+					pme_2MB->PXN, 
+					pme_2MB->XN);
+			printk("\t --> %p\n", xpte_2MB_paddr(pme_2MB));
+			continue;
+		}
+
+		ptd = __va(xpte_4KB_paddr(pme));
+		pte = &ptd[ptd_index];
+
+		if (!pte->valid) {
+			printk("Invalid PTD entry (index=%d)\n", ptd_index);
+			continue;
+		} else {
+			xpte_4KB_t * pte_4KB = (xpte_4KB_t *)pte;
+
+			printk("PTD [%d]: %llx\n", ptd_index, *(u64 *)pte);
+			printk("\t%s, %s, AttrIdx=%d, been_read=%d, been_written=%d, NS=%d, PXN=%d, XN=%d\n", 
+					pte_4KB->AP1 ? "user"      : "system",
+					pte_4KB->AP2 ? "read-only" : "writable",
+					pte_4KB->attrIndx,
+					pte_4KB->AF,
+					pte_4KB->DBM,
+					pte_4KB->NS,
+					pte_4KB->PXN, 
+					pte_4KB->XN);
+
+
+			printk("\t --> %p\n", xpte_4KB_paddr(pte_4KB));
+		}
+	}
+
+	return;
+#if 0
+	for(i = 0; i < 512; i++) {
+		if ( (addr == NULL) || (i == pgd_idx) ) {
+			printk("PGD [%d]: %016llx\n", i, pgd[i]);
+		}
+
+		if (((pgd[i] & 3u) == 3u) && (((((unsigned long)addr >> 30) & 0x1ff) == i) || addr == NULL)) {
+			pmd = __va(pgd[i] & (-1ull << 12));
+			for (j = 0; j < 512; j++) {
+				if (((pmd[j] & 3u) != 0) && (((((unsigned long)addr >> 21) & 0x1ff) == j) || addr == NULL)) {
+					printk("PMD [%d]: %016llx\n", j, pmd[j]);
+				}
+			}
+		}
+	}
+	printk("done\n");
+
+
+	phys = ttbr0 & ((-1ull) << 12);
+	pgd = __va(phys);
+	pmd = NULL;
+
+
+	// pgd pages
+	printk("TTBR0 Tables %p\n", pgd);
+	for(i = 0; i < 512; i++) {
+		if ((pgd[i] & 3u) == 3u && ((((unsigned long)addr >> 30) & 0x1ff == i) || addr == NULL)) {
+			printk("%03x: %016llx\n",i,pgd[i]);
+			pmd = __va(pgd[i] & (-1ull << 12));
+			for (j = 0; j < 512; j++) {
+				if ((pmd[j] & 3u && ((((unsigned long)addr >> 21) & 0x1ff == j) || addr == NULL)) != 0) {
+					printk("\t%03x: %016llx\n",j,pmd[j]);
+				}
+			}
+		}
+	}
+	printk("done\n");	
+
+#endif
+
+}
+
+void
+print_pgtable_arm64(vaddr_t vaddr)
+{
+	__walk_3lvl_pgtable(vaddr);
+}
+
 
 #if 0
 struct cachepolicy {
@@ -429,7 +547,7 @@ void __init paging_init(void)
 
 	//(xpte_t *) __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);
 	// Setup user page tables for the kernel, zeroed out
-	bootstrap_aspace.arch.upt = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);//early_alloc(PAGE_SIZE);
+	bootstrap_aspace.arch.pgd = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);//early_alloc(PAGE_SIZE);
 
 	init_mem_pgprot(); // Not sure we need this for aspaces later on
 	map_mem();

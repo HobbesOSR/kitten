@@ -112,16 +112,16 @@ extern pgprot_t pgprot_default;
  * for zero-mapped memory areas etc..
  */
 extern struct page *empty_zero_page;
-#define ZERO_PAGE(vaddr)	(empty_zero_page)
+#define ZERO_PAGE(vaddr)		(empty_zero_page)
 
-#define pte_pfn(pte)		((pte_val(pte) & PHYS_MASK) >> PAGE_SHIFT)
+#define pte_pfn(pte)			((pte_val(pte) & PHYS_MASK) >> PAGE_SHIFT)
 
-#define pfn_pte(pfn,prot)	(__pte(((phys_addr_t)(pfn) << PAGE_SHIFT) | pgprot_val(prot)))
+#define pfn_pte(pfn,prot)		(__pte(((phys_addr_t)(pfn) << PAGE_SHIFT) | pgprot_val(prot)))
 
-#define pte_none(pte)		(!pte_val(pte))
-#define pte_clear(mm,addr,ptep)	set_pte(ptep, __pte(0))
-#define pte_page(pte)		(pfn_to_page(pte_pfn(pte)))
-#define pte_offset_kernel(dir,addr)	(pmd_page_vaddr(*(dir)) + __pte_index(addr))
+#define pte_none(pte)			(!pte_val(pte))
+#define pte_clear(mm, addr, ptep)	set_pte(ptep, __pte(0))
+#define pte_page(pte)			(pfn_to_page(pte_pfn(pte)))
+#define pte_offset_kernel(dir, addr)	(pmd_page_vaddr(*(dir)) + pte_index(addr))
 
 #define pte_offset_map(dir,addr)	pte_offset_kernel((dir), (addr))
 #define pte_offset_map_nested(dir,addr)	pte_offset_kernel((dir), (addr))
@@ -131,12 +131,12 @@ extern struct page *empty_zero_page;
 /*
  * The following only work if pte_present(). Undefined behaviour otherwise.
  */
-#define pte_present(pte)	(pte_val(pte) & PTE_VALID)
-#define pte_dirty(pte)		(pte_val(pte) & PTE_DIRTY)
-#define pte_young(pte)		(pte_val(pte) & PTE_AF)
-#define pte_special(pte)	(pte_val(pte) & PTE_SPECIAL)
-#define pte_write(pte)		(!(pte_val(pte) & PTE_RDONLY))
-#define pte_exec(pte)		(!(pte_val(pte) & PTE_UXN))
+#define pte_present(pte)		(pte_val(pte) & PTE_VALID)
+#define pte_dirty(pte)			(pte_val(pte) & PTE_DIRTY)
+#define pte_young(pte)			(pte_val(pte) & PTE_AF)
+#define pte_special(pte)		(pte_val(pte) & PTE_SPECIAL)
+#define pte_write(pte)			(!(pte_val(pte) & PTE_RDONLY))
+#define pte_exec(pte)			(!(pte_val(pte) & PTE_UXN))
 
 #define pte_present_exec_user(pte) \
 	((pte_val(pte) & (PTE_VALID | PTE_USER | PTE_UXN)) == \
@@ -262,7 +262,7 @@ static inline pmd_t *pud_page_vaddr(pud_t pud)
 /* to find an entry in a page-table-directory */
 #define pgd_index(addr)		(((addr) >> PGDIR_SHIFT) & (PTRS_PER_PGD - 1))
 
-#define pgd_offset(mm, addr)	((mm)->arch.upt+pgd_index(addr))
+#define pgd_offset(mm, addr)	((mm)->arch.pgd + pgd_index(addr))
 
 /* to find an entry in a kernel page-table-directory */
 #define pgd_offset_k(addr)	pgd_offset(&init_mm, addr)
@@ -270,14 +270,14 @@ static inline pmd_t *pud_page_vaddr(pud_t pud)
 /* Find an entry in the second-level page table.. */
 #ifndef CONFIG_ARM64_64K_PAGES
 #define pmd_index(addr)		(((addr) >> PMD_SHIFT) & (PTRS_PER_PMD - 1))
-static inline pmd_t *pmd_offset(pud_t *pud, unsigned long addr)
+static inline pmd_t * pmd_offset(pud_t * pud, unsigned long addr)
 {
 	return (pmd_t *)pud_page_vaddr(*pud) + pmd_index(addr);
 }
 #endif
 
 /* Find an entry in the third-level page table.. */
-#define __pte_index(addr)	(((addr) >> PAGE_SHIFT) & (PTRS_PER_PTE - 1))
+#define pte_index(addr)	(((addr) >> PAGE_SHIFT) & (PTRS_PER_PTE - 1))
 
 #if 0
 static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)

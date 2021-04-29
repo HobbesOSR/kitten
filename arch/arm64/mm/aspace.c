@@ -9,6 +9,11 @@
 #include <arch/page_table.h>
 #include <arch/tlbflush.h>
 
+
+#ifdef CONFIG_ARM64_64K_PAGES
+#error "64KB pages not supported. Aspace needs to be fully re-designed to work."
+#endif
+
 extern bool _can_print;
 /**
  * Architecture specific address space initialization. This allocates a new
@@ -21,7 +26,7 @@ arch_aspace_create(
 {
 	// Creates only a new user page table
 	printk("Kernel page tables do not need to be copied on ARM\n");
-	if ((aspace->arch.upt = kmem_get_pages(0)) == NULL)
+	if ((aspace->arch.pgd = kmem_get_pages(0)) == NULL)
 		return -ENOMEM;
 	return 0;
 }
@@ -85,14 +90,14 @@ arch_aspace_activate(
 	struct aspace *	aspace
 )
 {
-	printk("activate aspace %p\n",aspace->arch.upt);
+	printk("activate aspace %p\n",aspace->arch.pgd);
 	//printk("aspace->child_list %p\n",aspace->child_list);
 	//printk("&aspace->child_list %p\n",&aspace->child_list);
 	//printk("(&aspace->child_list)->prev %p\n",(&aspace->child_list)->prev);
 	asm volatile(
 			"dsb #0\n"
 			"msr TTBR0_EL1, %0\n"
-			"isb\n":: "r" (__pa(aspace->arch.upt)) : "memory");
+			"isb\n":: "r" (__pa(aspace->arch.pgd)) : "memory");
 }
 
 
@@ -101,8 +106,7 @@ arch_aspace_activate(
  */
 static xpte_t *
 alloc_page_table(
-	xpte_t *	parent_pte,
-	bool		set_type
+	xpte_t *	parent_pte
 )
 {
 	xpte_t *new_table;
@@ -116,15 +120,19 @@ alloc_page_table(
 
 		memset(&_pte, 0, sizeof(_pte));
 		_pte.valid     = 1;
+		_pte.type      = 1;
+
+
+#if 0
 		_pte.AF        = 1;
 		// NOTE: original code set write to be 1 for x86-64 on ARM64 AP2 should be 0
 		_pte.AP2         = 0;
 		// NOTE: original code set user to be 1 for x86-64 on ARM64 AP1 should also be set to 1
 		_pte.AP1        = 1;
-		_pte.base_paddr  = __pa(new_table) >> 12;
+#endif
 
-		if (set_type)
-			_pte.type = 1;
+		_pte.base_paddr  = __pa(new_table) >> PAGE_SHIFT;
+
 		*parent_pte = _pte;
 	}
 
@@ -135,89 +143,68 @@ alloc_page_table(
  * Locates an existing page table entry or creates a new one if none exists.
  * Returns a pointer to the page table entry.
  */
-static xpte_t *
+static xpte_leaf_t *
 find_or_create_pte(
 	struct aspace *	aspace,
 	vaddr_t		vaddr,
 	vmpagesize_t	pagesz
 )
 {
-	xpte_t *pgd = NULL;	/* Page Global Directory: level 0 (root of tree) */
-	xpte_t *pud = NULL;	/* Page Upper Directory:  level 1 */
+
+	xpte_t *pgd = NULL;	/* Page Global Directory: level 1 (root of tree) */
 	xpte_t *pmd = NULL;	/* Page Middle Directory: level 2 */
 	xpte_t *ptd = NULL;	/* Page Table Directory:  level 3 */
 
-	xpte_t *pge;	/* Page Global Directory Entry */
-	xpte_t *pue;	/* Page Upper Directory Entry */
-	xpte_t *pme;	/* Page Middle Directory Entry */
+	xpte_t *pge = NULL;	/* Page Global Directory Entry */
+	xpte_t *pue = NULL;	/* Page Upper Directory Entry */
+	xpte_t *pme = NULL;	/* Page Middle Directory Entry */
 	xpte_t *pte = NULL;	/* Page Table Directory Entry */
 
 	/* Calculate indices into above directories based on vaddr specified */
-	unsigned int pgd_index = 0;
-	unsigned int pud_index = 0;
-	unsigned int pmd_index = 0;
-	unsigned int ptd_index = 0;
+	unsigned int pgd_index =  (vaddr >> 30) & 0x1FF;
+	unsigned int pmd_index =  (vaddr >> 21) & 0x1FF;
+	unsigned int ptd_index =  (vaddr >> 12) & 0x1FF;
 
-	tcr_el1 tcr;
-	if (vaddr >= 0xffffff8000000000ull) {
-		panic("Unable to handle Kernel page translations\n");
-	}
 
-	tcr = get_tcr_el1();
 
-	if (tcr.t0sz >= 25 && tcr.t0sz <= 33) {
-		// Start at level 1
-		pud = aspace->arch.upt;
-	} else {
-		panic("Unable to handle this starting level\n");
-	}
+	/* JRL: These should either be handled OK here, or be moved to initialization time checks */
+	{
+		tcr_el1 tcr = get_tcr_el1();
 
-	if (tcr.tg0 == 0 && tcr.tg1 == 2) {
-		// 4k granule
-		pgd_index = (vaddr >> 39) & 0x1FF;
-		pud_index = (vaddr >> 30) & 0x1FF;
-		pmd_index = (vaddr >> 21) & 0x1FF;
-		ptd_index = (vaddr >> 12) & 0x1FF;
-	} else {
-		panic("Unable to handle non-4k granule sizes\n");
+		if (vaddr >= 0xffffff8000000000ull) {
+			panic("Unable to handle Kernel page translations\n");
+		} else if ((tcr.t0sz < 25) || (tcr.t0sz > 33)) {
+			panic("Unable to handle this starting level\n");
+		} else if (aspace->arch.pgd == NULL) {
+			panic("Aspace has NULL PGD\n");
+		}
 	}
 
 	/* Traverse the Page Global Directory */
-	if (pgd != NULL) {
-		print("shouldn't be here\n");
-		/* Traverse the Page Global Directory */
-		//pgd = aspace->arch.pgd;
-		pge = &pgd[pgd_index];
-		if (!pge->valid && !alloc_page_table(pge,true))
-			return NULL;
-		pud = __va(pge->base_paddr << 12);
+	pgd = aspace->arch.pgd;
+	pge = &pgd[pgd_index];
+	if (pagesz == VM_PAGE_1GB) {
+		return pge;
+	} else if (!pge->valid && !alloc_page_table(pge)) {
+		return NULL;
+	} else if (!pge->type) {
+		panic("BUG: Can't follow PGD entry, type is Block.");
 	}
-	/* Traverse the Page Upper Directory */
-	if (pud != NULL) {
-		pue = &pud[pud_index];
-		if (pagesz == VM_PAGE_1GB)
-			return pue;
-		else if (!pue->valid && !alloc_page_table(pue,true))
-			return NULL;
-		else if (!pue->type)
-			panic("BUG: Can't follow PUD entry, pagesize bit set. ARMv8");
-		pmd = __va(pue->base_paddr << 12);
-	}
+
 	/* Traverse the Page Middle Directory */
-	if (pmd != NULL) {
-		pme = &pmd[pmd_index];
-		if (pagesz == VM_PAGE_2MB)
-			return pme;
-		else if (!pme->valid && !alloc_page_table(pme,true))
-			return NULL;
-		else if (!pme->type)
-			panic("BUG: Can't follow PMD entry, pagesize bit set.");
-		ptd = __va(pme->base_paddr << 12);
+	pmd = __va(xpte_paddr(pge));
+	pme = &pmd[pmd_index];
+	if (pagesz == VM_PAGE_2MB) {
+		return pme;
+	} else if (!pme->valid && !alloc_page_table(pme)) {
+		return NULL;
+	} else if (!pme->type) {
+		panic("BUG: Can't follow PMD entry, type is Block.");
 	}
-	/* Traverse the Page Table Entry Directory */
-	if (ptd != NULL) {
-		pte = &ptd[ptd_index];
-	}
+	
+
+	ptd = __va(xpte_paddr(pme));
+	pte = &ptd[ptd_index];
 out:
 	return pte;
 }
@@ -266,116 +253,92 @@ find_and_delete_pte(
 	vmpagesize_t	pagesz
 )
 {
-	xpte_t *pgd = 0;	/* Page Global Directory: level 0 (root of tree) */
-	xpte_t *pud = 0;	/* Page Upper Directory:  level 1 */
-	xpte_t *pmd = 0;	/* Page Middle Directory: level 2 */
-	xpte_t *ptd = 0;	/* Page Table Directory:  level 3 */
+	xpte_t *pgd = NULL;	/* Page Global Directory: level 1 (root of tree) */
+	xpte_t *pmd = NULL;	/* Page Middle Directory: level 2 */
+	xpte_t *ptd = NULL;	/* Page Table Directory:  level 3 */
 
-	xpte_t *pge;	/* Page Global Directory Entry */
-	xpte_t *pue;	/* Page Upper Directory Entry */
-	xpte_t *pme;	/* Page Middle Directory Entry */
-	xpte_t *pte = 0;	/* Page Table Directory Entry */
-	unsigned int pgd_index = 0;
-	unsigned int pud_index = 0;
-	unsigned int pmd_index = 0;
-	unsigned int ptd_index = 0;
-	tcr_el1 tcr;
+	xpte_t *pge = NULL;	/* Page Global Directory Entry */
+	xpte_t *pme = NULL;	/* Page Middle Directory Entry */
+	xpte_t *pte = NULL;	/* Page Table Directory Entry */
 
-	//printk("Delete me %p %llx %x\n",aspace, vaddr, pagesz);
-	tcr = get_tcr_el1();
 
-	if (tcr.t0sz >= 25 && tcr.t0sz <= 33) {
-		// Start at level 1
-		pud = aspace->arch.upt;
-	} else {
-		panic("Unable to handle this starting level\n");
+	/* Calculated Assuming a 4KB granule */
+	unsigned int pgd_index = (vaddr >> 30) & 0x1FF;
+	unsigned int pmd_index = (vaddr >> 21) & 0x1FF;
+	unsigned int ptd_index = (vaddr >> 12) & 0x1FF;
+
+
+
+	/* JRL: These should either be handled OK here, or be moved to initialization time checks */
+	{
+		tcr_el1 tcr = get_tcr_el1();
+
+		if (vaddr >= 0xffffff8000000000ull) {
+			panic("Unable to handle Kernel page translations\n");
+		} else if ((tcr.t0sz < 25) || (tcr.t0sz > 33)) {
+			panic("Unable to handle this starting level\n");
+		} else if (aspace->arch.pgd == NULL) {
+			panic("Aspace has NULL PGD\n");
+		}
+
 	}
 
-	//printk("1\n");
-	if (tcr.tg0 == 0 && tcr.tg1 == 2) {
-		// 4k granule
-		/* Calculate indices into above directories based on vaddr specified */
-		pgd_index = (vaddr >> 39) & 0x1FF;
-		pud_index = (vaddr >> 30) & 0x1FF;
-		pmd_index = (vaddr >> 21) & 0x1FF;
-		ptd_index = (vaddr >> 12) & 0x1FF;
-	} else {
-		panic("Unable to handle non-4k granule sizes\n");
-	}
-	//printk("2\n");
-	if (pgd != NULL) {
+
+	pgd = aspace->arch.pgd;
+	pge = &pgd[pgd_index];
+
 	/* Traverse the Page Global Directory */
-		pge = &pgd[pgd_index];
-		if (!pge->valid)
-			return;
-		pud = __va(pge->base_paddr << 12);
-	}
-	//printk("3\n");
-	if (pud != NULL) {
-		/* Traverse the Page Upper Directory */
-		pue = &pud[pud_index];
-		if (!pue->valid) {
-			return;
-		} else if (pagesz == VM_PAGE_1GB) {
-			if (pue->type)
-				panic("BUG: 1GB PTE has child page table attached.\n");
-
-			/* Unmap the 1GB page that this PTE was mapping */
-			memset(pue, 0, sizeof(xpte_t));
-
-			/* Try to free PUD that the PTE was in */
-			try_to_free_table(pud, pge);
-			return;
+	if (!pge->valid) {
+		return;
+	} else if (pagesz == VM_PAGE_1GB) {
+		if (pge->type) {
+			panic("BUG: 1GB PTE has child page table attached.\n");
 		}
-		pmd = __va(pue->base_paddr << 12);
+
+		/* Unmap the 1GB page that this PTE was mapping */
+		memset(pge, 0, sizeof(xpte_t));
+
+		return;
 	}
-	//printk("4\n");
-	if (pmd != NULL) {
-		/* Traverse the Page Middle Directory */
-		pme = &pmd[pmd_index];
-		if (!pme->valid) {
-			return;
-		} else if (pagesz == VM_PAGE_2MB) {
-			if (pme->type)
-				panic("BUG: 2MB PTE has child page table attached.\n");
 
-			/* Unmap the 2MB page that this PTE was mapping */
-			memset(pme, 0, sizeof(xpte_t));
 
-			/* Try to free the PMD that the PTE was in */
-			if (try_to_free_table(pmd, pue))
-				return;  /* nope, couldn't free it */
 
-			/* Try to free the PUD that contained the PMD just freed */
-			try_to_free_table(pud, pge);
-			return;
+	/* Traverse the Page Middle Directory */
+	pmd = __va(xpte_paddr(pge));
+	pme = &pmd[pmd_index];
+	if (!pme->valid) {
+		return;
+	} else if (pagesz == VM_PAGE_2MB) {
+		if (pme->type) {
+			panic("BUG: 2MB PTE has child page table attached.\n");
 		}
-		ptd = __va(pme->base_paddr << 12);
+
+		/* Unmap the 2MB page that this PTE was mapping */
+		memset(pme, 0, sizeof(xpte_t));
+
+		/* Try to free the PUD that contained the PMD just freed */
+		try_to_free_table(pmd, pge);
+		return;
 	}
-	//printk("5\n");
-	if (ptd != NULL) {
-		/* Traverse the Page Table Entry Directory */
-		pte = &ptd[ptd_index];
-		if (!pte->valid) {
-			return;
-		} else {
-			/* Unmap the 4KB page that this PTE was mapping */
-			memset(pte, 0, sizeof(xpte_t));
 
-			/* Try to free the PTD that the PTE was in */
-			if (try_to_free_table(ptd, pme))
-				return;  /* nope, couldn't free it */
+	/* Traverse the Page Table Entry Directory */
+	ptd = __va(xpte_paddr(pme));
+	pte = &ptd[ptd_index];
+	if (!pte->valid) {
+		return;
+	} else {
+		/* Unmap the 4KB page that this PTE was mapping */
+		memset(pte, 0, sizeof(xpte_t));
 
-			/* Try to free the PMD that contained the PTD just freed */
-			if (try_to_free_table(pmd, pue))
-				return;  /* nope, couldn't free it */
+		/* Try to free the PTD that the PTE was in */
+		if (try_to_free_table(ptd, pme))
+			return;  /* nope, couldn't free it */
 
-			/* Try to free the PUD that contained the PMD just freed */
-			try_to_free_table(pud, pge);
-			return;
-		}
+		/* Try to free the PGD that contained the PMD just freed */
+		try_to_free_table(pmd, pge);
+		return;
 	}
-	//printk("6\n");
+	printk("6\n");
 }
 
 
@@ -385,35 +348,53 @@ find_and_delete_pte(
  */
 static void
 write_pte(
-	xpte_t *	pte,
+	xpte_leaf_t *	pte,
 	paddr_t		paddr,
 	vmflags_t	flags,
 	vmpagesize_t	pagesz
 )
 {
-	xpte_t _pte;
+	xpte_leaf_t _pte;  
 	memset(&_pte, 0, sizeof(_pte));
 
 	_pte.valid = 1;
-	_pte.AF = 1;
-	if (flags & VM_WRITE)
+	_pte.AF    = 1;
+	
+	if (flags & VM_WRITE) {
 		_pte.AP2 = 0;
-	else
-		_pte.AP1 = 1;
-	if (flags & VM_USER)
-		_pte.AP1 = 1;
-	if (flags & VM_GLOBAL)
-		_pte.nG = 0;
-	else
-		_pte.nG = 1;
-	if ((flags & VM_EXEC) == 0) {
-		_pte.PXN = 1;
-		_pte.XN = 1;
+	} else {
+		_pte.AP2 = 1;
 	}
 
-	_pte.base_paddr = paddr >> 12;
-	if ((pagesz != VM_PAGE_2MB) && (pagesz != VM_PAGE_1GB))
-		_pte.type = 1;
+	if (flags & VM_USER) {
+		_pte.AP1 = 1;
+	}
+
+	if (flags & VM_GLOBAL) {
+		_pte.nG = 0;
+	} else {
+		_pte.nG = 1;
+	}
+
+	if ((flags & VM_EXEC) == 0) {
+		_pte.PXN = 1;
+		_pte.XN  = 1;
+	}
+
+	if (pagesz == VM_PAGE_4KB) {
+		xpte_4KB_t * _pte_4kb = &_pte;
+		_pte_4kb->base_paddr  = paddr >> PAGE_SHIFT_4KB;
+		_pte_4kb->type        = 1;
+	} else if (pagesz == VM_PAGE_2MB) {
+		xpte_2MB_t * _pte_2mb = &_pte;
+		_pte_2mb->base_paddr  = paddr >> PAGE_SHIFT_2MB;
+		_pte_2mb->type        = 0;
+	} else if (pagesz == VM_PAGE_1GB) {
+		xpte_1GB_t * _pte_1gb = &_pte;
+		_pte_1gb->base_paddr  = paddr >> PAGE_SHIFT_1GB;
+		_pte_1gb->type        = 0;
+
+	}
 
 	*pte = _pte;
 }
@@ -443,6 +424,8 @@ arch_aspace_map_page(
 )
 {
 	xpte_t *pte;
+
+	printk("Mapping Page (vaddr=%p) (paddr=%p) (pagesz=%d)\n", (void *)start, (void *)paddr, pagesz);
 
 	/* Locate page table entry that needs to be updated to map the page */
 	pte = find_or_create_pte(aspace, start, pagesz);
@@ -560,7 +543,7 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 		// Start at level 1
 		// TODO Brian
 		if (vaddr < 0xffffff8000000000ul)
-			pud = aspace->arch.upt;
+			pud = aspace->arch.pgd;
 		else
 			pud = __phys_to_virt(get_ttbr1_el1());
 	} else {
