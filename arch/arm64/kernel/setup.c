@@ -447,7 +447,7 @@ arm64_start_kernel(char * real_mode_data) {
 
 	// TODO: finish initializing init_mm
 	//asm volatile("mrs	%0, ttbr1_el1\n":"=r"(ttbr1));
-	init_mm.arch.upt = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);
+	init_mm.arch.pgd = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);
 
 	arm64_memblock_init();
 
@@ -456,6 +456,9 @@ arm64_start_kernel(char * real_mode_data) {
 	for (i = 0; i < NR_CPUS; i++)
 		cpu_pda(i) = &boot_cpu_pda[i];
 	pda_init(0, &bootstrap_task_union.task_info);
+
+
+
 
 	start_kernel();
 }
