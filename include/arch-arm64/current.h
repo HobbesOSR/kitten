@@ -33,7 +33,16 @@ get_current(void)
 static inline struct task_struct *
 get_current_via_RSP(void)
 {
-	return get_current();
+	struct task_struct *tsk;
+	__asm__("mov x10, sp\r\n"
+		"and %0, x10, %1\r\n" 
+	: "=r"(tsk) 
+	: "ri"(~(TASK_SIZE - 1))
+	:"x10");
+
+//	printk("TaskPtr=%p\n", (void *)tsk);
+
+	return tsk;
 }
 
 #else

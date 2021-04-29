@@ -62,12 +62,18 @@ pda_init(unsigned int cpu, struct task_struct *task)
 {
 	struct ARM64_pda *pda = cpu_pda(cpu);
 
+	mb();
+	set_tpidr_el1((u64)pda);
+	mb();
+
+
 	pda->cpunumber     = cpu;
 	pda->pcurrent      = task;
 	pda->active_aspace = task->aspace;
 	pda->kernelstack   = (vaddr_t)task + TASK_SIZE - PDA_STACKOFFSET;
 	pda->mmu_state     = 0;
 	pda->irqcount      = -1;
+	mb();
 }
 
 /**

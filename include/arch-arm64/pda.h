@@ -1,5 +1,5 @@
-#ifndef _X86_64_PDA_H
-#define _X86_64_PDA_H
+#ifndef _ARM64_PDA_H
+#define _ARM64_PDA_H
 
 #ifndef __ASSEMBLY__
 #include <lwk/stddef.h>
@@ -7,6 +7,20 @@
 #include <lwk/cache.h>
 //#include <lwk/task.h>
 #include <arch/page.h>
+
+static inline void set_tpidr_el1(u64 val)
+{
+	__asm__ __volatile__("msr tpidr_el1, %0\n"::"r"(val));
+	return ;
+}
+
+static inline u64 get_tpidr_el1()
+{
+	u64 tpidr;
+	__asm__ __volatile__("mrs %0, tpidr_el1\n":"=r"(tpidr));
+	return tpidr;
+}
+
 
 /* Per processor datastructure. %gs points to it while the kernel runs */ 
 struct ARM64_pda {
@@ -44,67 +58,60 @@ void pda_init(unsigned int cpu, struct task_struct *task);
 
 extern void __bad_pda_field(void);
 
-#define pda_offset(field) offsetof(struct x8664_pda, field)
+#define pda_offset(field) offsetof(struct ARM64_pda, field)
 
-#define pda_to_op(op,field,val)
 
-#if 0
+#define pda_to_op(op,field,val) \
 do { \
-	typedef typeof_field(struct x8664_pda, field) T__; \
-       switch (sizeof_field(struct x8664_pda, field)) { 		\
+	typedef typeof_field(struct ARM64_pda, field) T__; \
+       u64 tpidr_el1 = get_tpidr_el1();                 \ 
+       switch (sizeof_field(struct ARM64_pda, field)) { 		\
+case 1: \
+asm volatile(op "b %w0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; \
 case 2: \
-asm volatile(op "w %0,%%gs:%P1"::"ri" ((T__)val),"i"(pda_offset(field)):"memory"); break; \
+asm volatile(op "h %w0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; \
 case 4: \
-asm volatile(op "l %0,%%gs:%P1"::"ri" ((T__)val),"i"(pda_offset(field)):"memory"); break; \
+asm volatile(op " %w0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; \
 case 8: \
-asm volatile(op "q %0,%%gs:%P1"::"ri" ((T__)val),"i"(pda_offset(field)):"memory"); break; \
+asm volatile(op "  %0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1), "i"(pda_offset(field)) : "memory"); break; \
        default: __bad_pda_field(); 					\
        } \
        } while (0)
-#endif
-/* 
- * AK: PDA read accesses should be neither volatile nor have an memory clobber.
- * Unfortunately removing them causes all hell to break lose currently.
- */
-#define pda_from_op(op,field)
 
-#if 0
-    	   ({ \
-       typeof_field(struct x8664_pda, field) ret__; \
-       switch (sizeof_field(struct x8664_pda, field)) { 		\
+
+#define pda_from_op(op,field) ({ \
+       typeof_field(struct ARM64_pda, field) ret__; \
+             u64 tpidr_el1 = get_tpidr_el1();      \
+       switch (sizeof_field(struct ARM64_pda, field)) { 		\
+case 1: \
+asm volatile(op "b %w0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;\
 case 2: \
-asm volatile(op "w %%gs:%P1,%0":"=r" (ret__):"i"(pda_offset(field)):"memory"); break;\
+asm volatile(op "h %w0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;\
 case 4: \
-asm volatile(op "l %%gs:%P1,%0":"=r" (ret__):"i"(pda_offset(field)):"memory"); break;\
+asm volatile(op " %w0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1),"i"(pda_offset(field)):"memory"); break;\
 case 8: \
-asm volatile(op "q %%gs:%P1,%0":"=r" (ret__):"i"(pda_offset(field)):"memory"); break;\
+asm volatile(op "  %0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1),"i"(pda_offset(field)):"memory"); break;\
        default: __bad_pda_field(); 					\
        } \
        ret__; })
-#endif
 
 
+#if 0
 #define read_pda(field) get_pda()->field
 
 static inline struct ARM64_pda* get_pda()
 {
-    // TODO Correct for SMP
-   /*
-    int cpu = 0;
-    register unsigned long sp asm ("sp");
-    struct task_struct* task = NULL;
-
-    task = (sp & ~(TASK_SIZE - 1));
-    cpu = task->cpu_id;*/
-
-    return cpu_pda(0);
+    return (struct ARM64_pda *)get_tpidr_el1();
 }
 
        //pda_from_op("mov",field)
-#define write_pda(field,val) pda_to_op("mov",field,val)
-#define add_pda(field,val) pda_to_op("add",field,val)
-#define sub_pda(field,val) pda_to_op("sub",field,val)
-#define or_pda(field,val) pda_to_op("or",field,val)
+#endif
+
+#define read_pda(field)      pda_from_op("ldr",field)
+#define write_pda(field,val) pda_to_op("str",field,val)
+#define add_pda(field,val)   pda_to_op("add",field,val)
+#define sub_pda(field,val)   pda_to_op("sub",field,val)
+#define or_pda(field,val)    pda_to_op("or",field,val)
 
 #endif
 
