@@ -56,7 +56,7 @@
 	stp \reg1, \reg2, [\ptr], \val
 	.endm
 
-ENTRY(__memcpy)
+ENTRY(memcpy)
 #include "copy_template.S"
 	ret
-ENDPROC(__memcpy)
+ENDPROC(memcpy)

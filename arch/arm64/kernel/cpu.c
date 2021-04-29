@@ -226,14 +226,18 @@ cpu_init(void)
  	 * since it relies on the PDA being initialized, which it isn't for all
  	 * CPUs other than the boot CPU (id=0). pda_init() is called below.
  	 */
+
 	struct task_struct *me = get_current_via_RSP();
 	unsigned int       cpu = me->cpu_id; /* logical ID */
 
+
 	if (cpu_test_and_set(cpu, cpu_initialized_map))
 		panic("CPU#%u already initialized!\n", cpu);
+
 	printk(KERN_DEBUG "Initializing CPU#%u\n", cpu);
 
 	pda_init(cpu, me);	/* per-cpu data area */
+
 	identify_cpu();		/* determine cpu features via CPUID */
 	//cr4_init();		/* control register 4 */
 	//gdt_init();		/* global descriptor table */
@@ -245,6 +249,9 @@ cpu_init(void)
 	//lapic_init();		/* local advanced prog. interrupt controller */
 	//time_init();		/* detects CPU frequency, udelay(), etc. */
 	//barrier();		/* compiler memory barrier, avoids reordering */
+
+	printk("cpu_init done\n");
+
 }
 
 
