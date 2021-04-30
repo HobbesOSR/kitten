@@ -339,6 +339,13 @@ asmlinkage long do_ni_syscall(struct pt_regs *regs)
  */
 asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 {
+
+	printk("Bad Mode (reason=%x) (esr=%x)\n", reason, esr);
+
+	show_registers(regs);
+	panic("Oops - undefined instruction");
+
+
 	asm volatile("b . \n");
 #if 0
 

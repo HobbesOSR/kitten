@@ -62,7 +62,7 @@ arch_task_create(
 	/* Initialize register state */
 	if (start_state->aspace_id == KERNEL_ASPACE_ID) {
 		regs->sp     = (vaddr_t)task + TASK_SIZE;
-		regs->pstate = 4;
+		regs->pstate = 5;
 	} else {
 		regs->sp     = start_state->stack_ptr;
 		regs->pstate = 0;

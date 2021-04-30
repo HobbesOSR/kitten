@@ -739,6 +739,9 @@ kickstart_new_task:
 	mov x1, x21
 	bl schedule_new_task_tail
 
+	/* JRL: This shouldn't be needed. 
+	 * The user level TLS is set in __arch_context_switch 
+	  */
 	// TODO PDA space setup
 	// test if returning to kernel
 	// b if kernel
