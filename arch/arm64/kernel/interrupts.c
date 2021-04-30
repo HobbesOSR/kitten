@@ -37,9 +37,16 @@ do_unhandled_exception(struct pt_regs * regs, unsigned int vector)
 
 static inline u64 get_mair_el1()
 {
-	u64 mair;
+	u64 mair = 0xdeadbeefULL;;
 	__asm__ __volatile__("mrs %0, mair_el1\n":"=r"(mair));
 	return mair;
+}
+
+static inline u64 get_spsr_el1()
+{
+	u64 spsr = 0xdeadbeefULL;
+	__asm__ __volatile__("mrs %0, spsr_el1\n":"=r"(spsr));
+	return spsr;
 }
 
 void
@@ -48,9 +55,12 @@ do_mem_abort(unsigned long    addr,
 	     struct pt_regs * regs)
 {
 	u64 mair_el1 = get_mair_el1();
+	u64 spsr_el1 = get_spsr_el1();
+
 
 	printk("do_mem_abort: addr=%p, esr=%x\n", (void *)addr, esr);
 	printk("MAIR_EL1: %p\n", (void *)mair_el1);
+	printk("SPSR_EL1: %p\n", (void *)spsr_el1);
 
 	print_pgtable_arm64((void *)addr);
 

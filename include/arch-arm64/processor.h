@@ -154,151 +154,8 @@ extern void identify_cpu(void);
 #define X86_EFLAGS_VIP	0x00100000 /* Virtual Interrupt Pending */
 #define X86_EFLAGS_ID	0x00200000 /* CPUID detection flag */
 
-/*
- * Intel CPU features in CR4
- */
-#define X86_CR4_VME		0x0001	/* enable vm86 extensions */
-#define X86_CR4_PVI		0x0002	/* virtual interrupts flag enable */
-#define X86_CR4_TSD		0x0004	/* disable time stamp at ipl 3 */
-#define X86_CR4_DE		0x0008	/* enable debugging extensions */
-#define X86_CR4_PSE		0x0010	/* enable page size extensions */
-#define X86_CR4_PAE		0x0020	/* enable physical address extensions */
-#define X86_CR4_MCE		0x0040	/* Machine check enable */
-#define X86_CR4_PGE		0x0080	/* enable global pages */
-#define X86_CR4_PCE		0x0100	/* enable performance counters at ipl 3 */
-#define X86_CR4_OSFXSR		0x0200	/* enable fast FPU save and restore */
-#define X86_CR4_OSXMMEXCPT	0x0400	/* enable unmasked SSE exceptions */
-
-#ifdef CONFIG_VM86
-#define X86_VM_MASK X86_EFLAGS_VM
-#else
-#define X86_VM_MASK 0 /* No VM86 support */
-#endif
 
 
-
-/*
- * Save the cr4 feature set we're using (ie
- * Pentium 4MB enable and PPro Global page
- * enable), so that any CPU's that boot up
- * after us can get the correct flags.
- */
-extern unsigned long mmu_cr4_features;
-
-static inline void set_in_cr4 (unsigned long mask)
-{
-	mmu_cr4_features |= mask;
-#if 0
-	__asm__("movq %%cr4,%%rax\n\t"
-		"orq %0,%%rax\n\t"
-		"movq %%rax,%%cr4\n"
-		: : "irg" (mask)
-		:"ax");
-#endif
-}
-
-static inline void clear_in_cr4 (unsigned long mask)
-{
-	mmu_cr4_features &= ~mask;
-
-#if 0
-	__asm__("movq %%cr4,%%rax\n\t"
-		"andq %0,%%rax\n\t"
-		"movq %%rax,%%cr4\n"
-		: : "irg" (~mask)
-		:"ax");
-#endif
-}
-
-
-/*
- * Size of io_bitmap.
- */
-#define IO_BITMAP_BITS  65536
-#define IO_BITMAP_BYTES (IO_BITMAP_BITS/8)
-#define IO_BITMAP_LONGS (IO_BITMAP_BYTES/sizeof(long))
-#define IO_BITMAP_OFFSET offsetof(struct tss_struct,io_bitmap)
-#define INVALID_IO_BITMAP_OFFSET 0x8000
-
-struct i387_fxsave_struct {
-	u16	cwd;
-	u16	swd;
-	u16	twd;
-	u16	fop;
-	u64	rip;
-	u64	rdp; 
-	u32	mxcsr;
-	u32	mxcsr_mask;
-	u32	st_space[32];	/* 8*16 bytes for each FP-reg = 128 bytes */
-	u32	xmm_space[64];	/* 16*16 bytes for each XMM-reg = 256 bytes */
-	u32	padding[24];
-} __attribute__ ((aligned (16)));
-
-union i387_union {
-	struct i387_fxsave_struct	fxsave;
-};
-
-struct tss_struct {
-	u32 reserved1;
-	u64 rsp0;	
-	u64 rsp1;
-	u64 rsp2;
-	u64 reserved2;
-	u64 ist[7];
-	u32 reserved3;
-	u32 reserved4;
-	u16 reserved5;
-	u16 io_bitmap_base;
-	/*
-	 * The extra 1 is there because the CPU will access an
-	 * additional byte beyond the end of the IO permission
-	 * bitmap. The extra byte must be all 1 bits, and must
-	 * be within the limit. Thus we have:
-	 *
-	 * 128 bytes, the bitmap itself, for ports 0..0x3ff
-	 * 8 bytes, for an extra "long" of ~0UL
-	 */
-	unsigned long io_bitmap[IO_BITMAP_LONGS + 1];
-} __attribute__((packed));// ____cacheline_aligned;
-
-DECLARE_PER_CPU(struct tss_struct,tss);
-
-#ifdef CONFIG_X86_VSMP
-#define ARCH_MIN_TASKALIGN	(1 << INTERNODE_CACHE_SHIFT)
-#define ARCH_MIN_MMSTRUCT_ALIGN	(1 << INTERNODE_CACHE_SHIFT)
-#else
-#define ARCH_MIN_TASKALIGN	16
-#define ARCH_MIN_MMSTRUCT_ALIGN	0
-#endif
-
-#if 0
-struct thread_struct {
-	unsigned long	rsp0;
-	unsigned long	rsp;
-	unsigned long 	userrsp;	/* Copy from PDA */ 
-	unsigned long	fs;
-	unsigned long	gs;
-	unsigned short	es, ds, fsindex, gsindex;	
-/* Hardware debugging registers */
-	unsigned long	debugreg0;  
-	unsigned long	debugreg1;  
-	unsigned long	debugreg2;  
-	unsigned long	debugreg3;  
-	unsigned long	debugreg6;  
-	unsigned long	debugreg7;  
-/* fault info */
-	unsigned long	cr2, trap_no, error_code;
-/* floating point info */
-	union i387_union	i387  __attribute__((aligned(16)));
-/* IO permissions. the bitmap could be moved into the GDT, that would make
-   switch faster for a limited number of ioperm using tasks. -AK */
-	int		ioperm;
-	unsigned long	*io_bitmap_ptr;
-	unsigned io_bitmap_max;
-/* cached TLS descriptors. */
-	u64 tls_array[GDT_ENTRY_TLS_ENTRIES];
-} __attribute__((aligned(16)));
-#endif
 
 #define BOOTSTRAP_THREAD  { \
 	.rsp0 = (unsigned long)&bootstrap_stack + sizeof(bootstrap_stack) \
@@ -388,25 +245,6 @@ struct extended_sigtable {
 };
 
 
-#define ASM_NOP1 K8_NOP1
-#define ASM_NOP2 K8_NOP2
-#define ASM_NOP3 K8_NOP3
-#define ASM_NOP4 K8_NOP4
-#define ASM_NOP5 K8_NOP5
-#define ASM_NOP6 K8_NOP6
-#define ASM_NOP7 K8_NOP7
-#define ASM_NOP8 K8_NOP8
-
-/* Opteron nops */
-#define K8_NOP1 ".byte 0x90\n"
-#define K8_NOP2	".byte 0x66,0x90\n" 
-#define K8_NOP3	".byte 0x66,0x66,0x90\n" 
-#define K8_NOP4	".byte 0x66,0x66,0x66,0x90\n" 
-#define K8_NOP5	K8_NOP3 K8_NOP2 
-#define K8_NOP6	K8_NOP3 K8_NOP3
-#define K8_NOP7	K8_NOP4 K8_NOP3
-#define K8_NOP8	K8_NOP4 K8_NOP4
-
 #define ASM_NOP_MAX 8
 
 /* REP NOP (PAUSE) is a good thing to insert into busy-wait loops. */
@@ -447,26 +285,6 @@ static inline void serialize_cpu(void)
 	//__asm__ __volatile__ ("cpuid" : : : "ax", "bx", "cx", "dx");
 }
 
-static inline void __monitor(const void *eax, unsigned long ecx,
-		unsigned long edx)
-{
-	/* "monitor %eax,%ecx,%edx;" */
-#if 0
-	asm volatile(
-		".byte 0x0f,0x01,0xc8;"
-		: :"a" (eax), "c" (ecx), "d"(edx));
-#endif
-}
-
-static inline void __mwait(unsigned long eax, unsigned long ecx)
-{
-	/* "mwait %eax,%ecx;" */
-#if 0
-	asm volatile(
-		".byte 0x0f,0x01,0xc9;"
-		: :"a" (eax), "c" (ecx));
-#endif
-}
 
 #define stack_current() \
 ({								\

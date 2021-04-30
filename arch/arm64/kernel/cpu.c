@@ -163,6 +163,7 @@ tss_init(void)
 static void __init
 msr_init(void)
 {
+#if 0
 	/*
 	 * Setup the MSRs needed to support the SYSCALL and SYSRET
 	 * instructions. Really, you should read the manual to understand these
@@ -194,6 +195,7 @@ msr_init(void)
  	 */
 	wrmsrl(MSR_FS_BASE, 0);
 	wrmsrl(MSR_KERNEL_GS_BASE, 0);
+#endif
 }
 
 /**
@@ -202,6 +204,7 @@ msr_init(void)
 static void __init
 dbg_init(void)
 {
+#if 0
 	/*
  	 * Clear the CPU's debug registers.
  	 * DR[0-3] are Address-Breakpoint Registers
@@ -215,6 +218,7 @@ dbg_init(void)
 	set_debugreg(0UL, 3);
 	set_debugreg(0UL, 6);
 	set_debugreg(0UL, 7);
+#endif
 }
 
 void __init
@@ -249,8 +253,6 @@ cpu_init(void)
 	//lapic_init();		/* local advanced prog. interrupt controller */
 	//time_init();		/* detects CPU frequency, udelay(), etc. */
 	//barrier();		/* compiler memory barrier, avoids reordering */
-
-	printk("cpu_init done\n");
 
 }
 

@@ -22,9 +22,9 @@ static inline u64 get_tpidr_el1()
 }
 
 
-/* Per processor datastructure. %gs points to it while the kernel runs */ 
+/* Per processor datastructure. Each core stores its own version in the tpidr_el1 register. */ 
 struct ARM64_pda {
-	struct task_struct *pcurrent;	/* Current process */
+	struct task_struct * pcurrent;	/* Current process */
 	unsigned long data_offset;	/* Per cpu data offset from linker address */
 	unsigned long kernelstack;  /* top of kernel stack for current */ 
 	unsigned long oldsp; 	    /* user rsp for system call */
@@ -40,7 +40,7 @@ struct ARM64_pda {
 	int mmu_state;     
 	struct aspace *active_aspace;
 	unsigned apic_timer_irqs;
-};// ____cacheline_aligned_in_smp;
+}; // ____cacheline_aligned_in_smp;
 
 extern struct ARM64_pda *_cpu_pda[];
 extern struct ARM64_pda boot_cpu_pda[];
@@ -61,51 +61,40 @@ extern void __bad_pda_field(void);
 #define pda_offset(field) offsetof(struct ARM64_pda, field)
 
 
-#define pda_to_op(op,field,val) \
-do { \
-	typedef typeof_field(struct ARM64_pda, field) T__; \
-       u64 tpidr_el1 = get_tpidr_el1();                 \ 
-       switch (sizeof_field(struct ARM64_pda, field)) { 		\
-case 1: \
-asm volatile(op "b %w0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; \
-case 2: \
-asm volatile(op "h %w0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; \
-case 4: \
-asm volatile(op " %w0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; \
-case 8: \
-asm volatile(op "  %0, [%1, %2"] :: "ri" ((T__)val), "r"(tpidr_el1), "i"(pda_offset(field)) : "memory"); break; \
-       default: __bad_pda_field(); 					\
-       } \
-       } while (0)
+#define pda_to_op(op,field,val)															\
+do {																		\
+	typedef typeof_field(struct ARM64_pda, field) T__;												\
+	u64 tpidr_el1 = get_tpidr_el1();													\
+	switch (sizeof_field(struct ARM64_pda, field)) {											\
+		case 1:																\
+			asm volatile(op "b %w0, [%1, %2]" :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; 	\
+		case 2:																\
+			asm volatile(op "h %w0, [%1, %2]" :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; 	\
+		case 4:																\
+			asm volatile(op "  %w0, [%1, %2]" :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; 	\
+		case 8:																\
+			asm volatile(op "   %0, [%1, %2]" :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; 	\
+		default: __bad_pda_field();													\
+       }																	\
+} while (0)
 
 
-#define pda_from_op(op,field) ({ \
-       typeof_field(struct ARM64_pda, field) ret__; \
-             u64 tpidr_el1 = get_tpidr_el1();      \
-       switch (sizeof_field(struct ARM64_pda, field)) { 		\
-case 1: \
-asm volatile(op "b %w0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;\
-case 2: \
-asm volatile(op "h %w0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;\
-case 4: \
-asm volatile(op " %w0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1),"i"(pda_offset(field)):"memory"); break;\
-case 8: \
-asm volatile(op "  %0, [%1, %2]":"=r" (ret__):"r"(tpidr_el1),"i"(pda_offset(field)):"memory"); break;\
-       default: __bad_pda_field(); 					\
-       } \
+#define pda_from_op(op,field) ({														\
+        typeof_field(struct ARM64_pda, field) ret__; 												\
+	u64 tpidr_el1 = get_tpidr_el1();      													\
+        switch (sizeof_field(struct ARM64_pda, field)) { 											\
+		case 1: 															\
+			asm volatile(op "b %w0, [%1, %2]" : "=r" (ret__) : "r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;		\
+		case 2: 															\
+			asm volatile(op "h %w0, [%1, %2]" : "=r" (ret__) : "r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;		\
+		case 4: 															\
+			asm volatile(op "  %w0, [%1, %2]" : "=r" (ret__) : "r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;		\
+		case 8: 															\
+			asm volatile(op "   %0, [%1, %2]" : "=r" (ret__) : "r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;		\
+		default: __bad_pda_field(); 													\
+       } 																	\
        ret__; })
 
-
-#if 0
-#define read_pda(field) get_pda()->field
-
-static inline struct ARM64_pda* get_pda()
-{
-    return (struct ARM64_pda *)get_tpidr_el1();
-}
-
-       //pda_from_op("mov",field)
-#endif
 
 #define read_pda(field)      pda_from_op("ldr",field)
 #define write_pda(field,val) pda_to_op("str",field,val)

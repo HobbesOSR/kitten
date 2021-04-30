@@ -134,9 +134,7 @@ static void dump_instr(const char *lvl, struct pt_regs *regs)
 	printk("EC : 0x%x\n",exception >> 26);
 	printk("ISS: 0x%x\n",exception & ((-1u) >> 7));
 	printk("PC: %08x\n",addr);
-	asm volatile("mrs %0, FAR_EL1\n":"=r"(addr));
-	printk("PC: %016lx\n",addr);
-	printk("Code: %08lx\n",*(unsigned int*)addr);
+
 }
 
 static void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
@@ -281,8 +279,7 @@ void arm64_notify_die(const char *str, struct pt_regs *regs,
 
 asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 {
-	//asm volatile("b . \n");
-//#if 0
+
 
 	siginfo_t info;
 	void __user *pc = (void __user *)instruction_pointer(regs);
@@ -303,8 +300,11 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	info.si_code  = ILL_ILLOPC;
 	info.si_addr  = pc;
 
+	printk("Undefined Instruction\n");
+
+	show_registers(regs);
+	panic("Oops - undefined instruction");
 	arm64_notify_die("Oops - undefined instruction", regs, &info, 0);
-//#endif
 }
 
 long compat_arm_syscall(struct pt_regs *regs);

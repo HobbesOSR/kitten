@@ -15,7 +15,6 @@
 #include <lwk/print.h>
 #include <lwk/kmem.h>
 #include <lwk/spinlock.h>
-#include <arch/desc.h>
 #include <arch/proto.h>
 
 struct irq_desc {

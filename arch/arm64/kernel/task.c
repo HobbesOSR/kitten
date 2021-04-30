@@ -61,9 +61,11 @@ arch_task_create(
 
 	/* Initialize register state */
 	if (start_state->aspace_id == KERNEL_ASPACE_ID) {
-		regs->sp    = (vaddr_t)task + TASK_SIZE;
+		regs->sp     = (vaddr_t)task + TASK_SIZE;
+		regs->pstate = 4;
 	} else {
-		regs->sp    = start_state->stack_ptr;
+		regs->sp     = start_state->stack_ptr;
+		regs->pstate = 0;
 	}
 //	regs->eflags = (1 << 9);  /* enable interrupts */
 	regs->pc    = is_clone ? parent_regs->pc : start_state->entry_point;

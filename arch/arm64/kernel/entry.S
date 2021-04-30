@@ -289,12 +289,11 @@ el1_sp_pc:
 	mov	x2, sp
 	b	. //do_sp_pc_abort
 el1_undef:
-	b .
 	/*
 	 * Undefined instruction
 	 */
 	mov	x0, sp
-	b	. //do_undefinstr
+	b	do_undefinstr
 el1_dbg:
 	b .
 	/*
@@ -709,6 +708,10 @@ ENTRY(arch_context_switch)
 	stp x25, x26, [sp, #64]
 	stp x27, x28, [sp, #80]
 
+// Move the parameters to safe register locations
+	mov x20, x0
+	mov x21, x1
+
 // Switch stacks
 	mov x19, sp
 	str x19, [x0, #TSK_ARCH_THREAD_CPU_CONTEXT_SP]
@@ -718,7 +721,7 @@ ENTRY(arch_context_switch)
 // call C code
 	bl __arch_context_switch
 
-	ldr x19, [x1, #TSK_ARCH_FLAGS]
+	ldr x19, [x21, #TSK_ARCH_FLAGS]
 	and x19, x19, #TF_NEW_TASK_MASK
 	cbnz x19, kickstart_new_task
 
@@ -732,6 +735,8 @@ ENTRY(arch_context_switch)
 
 	ret
 kickstart_new_task:
+	mov x0, x20
+	mov x1, x21
 	bl schedule_new_task_tail
 
 	// TODO PDA space setup

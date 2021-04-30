@@ -51,9 +51,17 @@ int main(void)
   //DEFINE(TI_CPU,		offsetof(struct thread_info, cpu));
   BLANK();
   //DEFINE(THREAD_CPU_CONTEXT,	offsetof(struct task_struct, arch.thread.cpu_context));
-  DEFINE(TSK_ARCH_THREAD_CPU_CONTEXT_SP,	offsetof(struct task_struct, arch.thread.cpu_context.sp));
-  DEFINE(TSK_ARCH_THREAD_CPU_CONTEXT_USERSP,	offsetof(struct task_struct, arch.thread.cpu_context.usersp));
-  DEFINE(TSK_ARCH_FLAGS,	offsetof(struct task_struct, arch.flags));
+
+#undef ENTRY
+#define ENTRY(sym, entry) DEFINE(sym, offsetof(struct task_struct, arch) + offsetof(struct arch_task, thread) + offsetof(struct thread_struct, cpu_context) + offsetof(struct cpu_context, entry))
+  ENTRY(TSK_ARCH_THREAD_CPU_CONTEXT_SP,	sp);
+  ENTRY(TSK_ARCH_THREAD_CPU_CONTEXT_USERSP,	usersp);
+
+#undef ENTRY
+#define ENTRY(sym, entry) DEFINE(sym, offsetof(struct task_struct, arch) + offsetof(struct arch_task, entry))
+  ENTRY(TSK_ARCH_FLAGS, flags);
+
+
   BLANK();
   DEFINE(S_X0,			offsetof(struct pt_regs, regs[0]));
   DEFINE(S_X1,			offsetof(struct pt_regs, regs[1]));

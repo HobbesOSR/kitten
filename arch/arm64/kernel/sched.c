@@ -6,6 +6,26 @@
 struct task_struct *
 __arch_context_switch(struct task_struct *prev_p, struct task_struct *next_p)
 {
+	struct thread_struct *prev = &prev_p->arch.thread;
+	struct thread_struct *next = &next_p->arch.thread;
+	id_t cpu = this_cpu;
+
+
+	printk("prev_p = %p, next_p = %p\n", prev_p, next_p);
+
+
+	/* Load the TPIDR_EL0 for User TLS */
+	{
+		__msr(tpidr_el0, next->tp_value);
+	}
+
+	/* Update the CPU's PDA (per-CPU data area) */
+	prev->cpu_context.usersp = read_pda(oldsp);
+	write_pda(oldsp, (next->cpu_context.usersp));
+	write_pda(pcurrent, next_p);
+	write_pda(kernelstack, (vaddr_t)next_p + TASK_SIZE - PDA_STACKOFFSET);
+
+
 #if 0
 	struct thread_struct *prev = &prev_p->arch.thread;
 	struct thread_struct *next = &next_p->arch.thread;
@@ -60,6 +80,7 @@ __arch_context_switch(struct task_struct *prev_p, struct task_struct *next_p)
 	fpu_restore_state(next_p);
 	return prev_p;
 #endif
+
 	return prev_p;
 }
 
