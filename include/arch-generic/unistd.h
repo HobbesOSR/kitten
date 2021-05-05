@@ -169,10 +169,10 @@ __SYSCALL(__NR_flock, syscall_not_implemented)
 /* fs/namei.c */
 #define __NR_mknodat 33
 //__SYSCALL(__NR_mknodat, sys_mknodat)
-__SYSCALL(__NR_mknodat, syscall_not_implemented)
+__SYSCALL(__NR_mknodat, sys_mknodat)
 #define __NR_mkdirat 34
 //__SYSCALL(__NR_mkdirat, sys_mkdirat)
-__SYSCALL(__NR_mkdirat, syscall_not_implemented)
+__SYSCALL(__NR_mkdirat, sys_mkdirat)
 #define __NR_unlinkat 35
 //__SYSCALL(__NR_unlinkat, sys_unlinkat)
 __SYSCALL(__NR_unlinkat, syscall_not_implemented)
@@ -261,7 +261,7 @@ __SYSCALL(__NR_vhangup, syscall_not_implemented)
 /* fs/pipe.c */
 #define __NR_pipe2 59
 //__SYSCALL(__NR_pipe2, sys_pipe2)
-__SYSCALL(__NR_pipe2, syscall_not_implemented)
+__SYSCALL(__NR_pipe2, sys_pipe2)
 
 /* fs/quota.c */
 #define __NR_quotactl 60
@@ -337,7 +337,7 @@ __SYSCALL(__NR_tee, syscall_not_implemented)
 /* fs/stat.c */
 #define __NR_readlinkat 78
 //__SYSCALL(__NR_readlinkat, sys_readlinkat)
-__SYSCALL(__NR_readlinkat, syscall_not_implemented)
+__SYSCALL(__NR_readlinkat, sys_readlinkat)
 #if defined(__ARCH_WANT_NEW_STAT) || defined(__ARCH_WANT_STAT64)
 #define __NR3264_fstatat 79
 //__SC_3264(__NR3264_fstatat, sys_fstatat64, sys_newfstatat)

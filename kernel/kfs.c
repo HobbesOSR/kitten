@@ -569,6 +569,22 @@ kfs_mkdir(char *   name,
 			  0);
 }
 
+struct inode * 
+kfs_mkdir_at(struct inode * root_inode, 
+	     char         * name,
+	     unsigned       mode)
+{
+	dbg("name=`%s`\n",name);
+	return kfs_create_at(root_inode,
+			     name,
+			     NULL,
+			     &kfs_default_fops,
+			     (mode & ~S_IFMT) | S_IFDIR,
+			     0,
+			     0);
+}
+
+
 static char*
 get_full_path2(struct inode *inode, char *buf, int flag )
 {

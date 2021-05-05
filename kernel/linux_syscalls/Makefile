@@ -48,15 +48,19 @@ obj-y := \
 	open.o	 \
 	openat.o \
 	mknod.o	 \
+	mknodat.o \
 	mkdir.o	 \
+	mkdirat.o \
 	unlink.o \
 	rmdir.o	 \
 	pipe.o	 \
+	pipe2.o  \
 	stat.o	 \
 	fstat.o	 \
 	getdents.o \
 	getdents64.o \
 	readlink.o \
+	readlinkat.o \
 	access.o \
 	socketpair.o \
 	eventfd2.o \

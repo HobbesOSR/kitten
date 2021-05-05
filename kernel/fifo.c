@@ -271,3 +271,13 @@ int mkfifo( const char* name, mode_t mode )
 	
 	return 0;
 }
+
+
+int mkfifo_at(struct inode * root_inode, const char* name, mode_t mode )
+{
+	dbg("\n");
+	if ( ! kfs_create_at(root_inode, name, &fifo_iops, &fifo_fops, mode, NULL, 0 ) )
+		 return -ENOMEM;
+	
+	return 0;
+}

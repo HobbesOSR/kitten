@@ -2,8 +2,6 @@
 #include <arch/uaccess.h>
 #include <arch-generic/fcntl.h>
 
-#define AT_FDCWD (-100)
-
 
 /** Openat system call
  *
@@ -20,13 +18,17 @@ sys_openat(int     dirfd,
 	struct file *file;
 	struct inode * root_inode = NULL;
 
-	if( strncpy_from_user( pathname, (void*) u_pathname,
-			       sizeof(pathname) ) < 0 )
+	printk("openat\n");
+
+	if( strncpy_from_user( pathname, (void*) u_pathname, sizeof(pathname) ) < 0 ) {
+		printk("bad copy from user\n");
+
 		return -EFAULT;
+	}
 
 	//printk("sys_openat(%s): %d %08x %03x\n", pathname, dirfd, flags, mode);
 
-	dbg( "name='%s' dirfd=%d flags %x mode %x\n", pathname, dirfd, flags, mode);
+	printk( "name='%s' dirfd=%d flags %x mode %x\n", pathname, dirfd, flags, mode);
 	//_KDBG( "name='%s' flags %x mode %x\n", pathname, flags, mode);
 
 	if ((pathname[0] == '/') ||
@@ -64,7 +66,7 @@ __lock(&_lock);
 
 	// TODO XXX - check to see if the file's path identifies it as a pipe, and set the pipe stuff
 
-        dbg("name=`%s` fd=%d \n", pathname, fd );
+        printk("name=`%s` fd=%d \n", pathname, fd );
 out:
 __unlock(&_lock);
 	return fd;

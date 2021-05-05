@@ -76,11 +76,24 @@ devfs_console_read(
 	return n;
 }
 
+static int
+devfs_console_ioctl(
+	struct file * file,
+	int           request, 
+	uaddr_t       buf
+) 
+{
+	printk("Console ioctl (request=%d\n", request);
+	return 0;
+
+}
+
 
 static struct kfs_fops
 console_fops = {
 	.write		= devfs_console_write,
 	.read		= devfs_console_read,
+	.ioctl		= devfs_console_ioctl
 };
 
 

@@ -230,6 +230,7 @@ extern int kfs_open_anon(const struct kfs_fops * fops, void * priv_data);
 
 extern struct inode * kfs_lookup(struct inode * root, const char * dirname, unsigned create_mode);
 
+extern struct inode * kfs_mkdir_at(struct inode * root_inode,  char* name, unsigned mode);
 extern struct inode * kfs_mkdir(char * name, unsigned mode);
 
 extern void kfs_destroy(struct inode *inode);
