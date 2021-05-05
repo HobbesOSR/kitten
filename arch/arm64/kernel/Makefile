@@ -5,7 +5,8 @@ obj-y		:= setup.o memblock.o cpuinfo.o resource.o \
 		   lapic.o trampoline.o interrupts.o mpboot.o \
 		   time.o sys_arch_prctl.o xcall.o \
 		   task.o sched.o maccess.o tlbflush.o signal.o acpi.o \
-		   compat.o bitops.o traps.o ptrace.o
+		   compat.o bitops.o traps.o ptrace.o \
+		   entry-fpsimd.o
 		   
 		   # i387.o
 obj-$(CONFIG_KGDB) += kgdb.o

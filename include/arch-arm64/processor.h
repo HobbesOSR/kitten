@@ -21,7 +21,7 @@
 /* #include <lwk/personality.h> */
 #include <lwk/cpumask.h>
 #include <lwk/cache.h>
-
+#include <arch/fpsimd.h>
 
 typedef struct {
 	uint64_t
@@ -89,7 +89,7 @@ struct cpu_context {
 struct thread_struct {
     struct cpu_context  cpu_context;    /* cpu context */
     unsigned long       tp_value;
-   // struct fpsimd_state fpsimd_state;
+    struct fpsimd_state fpsimd_state;
     unsigned long       fault_address;  /* fault info */
     //struct debug_info   debug;      /* debugging */
 };

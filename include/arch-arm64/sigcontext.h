@@ -4,52 +4,54 @@
 #include <arch/types.h>
 #include <lwk/compiler.h>
 
-/* FXSAVE frame */
-/* Note: reserved1/2 may someday contain valuable data. Always save/restore
-   them when you change signal frames. */
-struct _fpstate {
-	__u16	cwd;
-	__u16	swd;
-	__u16	twd;	/* Note this is not the same as the 32bit/x87/FSAVE twd */
-	__u16	fop;
-	__u64	rip;
-	__u64	rdp; 
-	__u32	mxcsr;
-	__u32	mxcsr_mask;
-	__u32	st_space[32];	/* 8*16 bytes for each FP-reg */
-	__u32	xmm_space[64];	/* 16*16 bytes for each XMM-reg  */
-	__u32	reserved2[24];
-};
+
+
 
 struct sigcontext { 
-	unsigned long r8;
-	unsigned long r9;
-	unsigned long r10;
-	unsigned long r11;
-	unsigned long r12;
-	unsigned long r13;
-	unsigned long r14;
-	unsigned long r15;
-	unsigned long rdi;
-	unsigned long rsi;
-	unsigned long rbp;
-	unsigned long rbx;
-	unsigned long rdx;
-	unsigned long rax;
-	unsigned long rcx;
-	unsigned long rsp;
-	unsigned long rip;
-	unsigned long eflags;		/* RFLAGS */
-	unsigned short cs;
-	unsigned short gs;
-	unsigned short fs;
-	unsigned short __pad0; 
-	unsigned long err;
-	unsigned long trapno;
-	unsigned long oldmask;
-	unsigned long cr2;
-	struct _fpstate __user *fpstate;	/* zero when no FPU context */
-	unsigned long reserved1[8];
+	__u64 fault_address;
+	/* AArch64 registers */
+	__u64 regs[31];
+	__u64 sp;
+	__u64 pc;
+	__u64 pstate;
+	/* 4K reserved for FP/SIMD state and future expansion */
+	__u8 __reserved[4096] __attribute__((__aligned__(16)));
 };
+
+
+/*
+ * Header to be used at the beginning of structures extending the user
+ * context. Such structures must be placed after the rt_sigframe on the stack
+ * and be 16-byte aligned. The last structure must be a dummy one with the
+ * magic and size set to 0.
+ */
+struct _aarch64_ctx {
+	__u32 magic;
+	__u32 size;
+};
+
+#define FPSIMD_MAGIC	0x46508001
+
+struct fpsimd_context {
+	struct _aarch64_ctx head;
+	__u32 fpsr;
+	__u32 fpcr;
+	__uint128_t vregs[32];
+};
+
+struct aux_context {
+	struct fpsimd_context fpsimd;
+	/* additional context to be added before "end" */
+	struct _aarch64_ctx end;
+};
+
+/* ESR_EL1 context */
+#define ESR_MAGIC	0x45535201
+
+struct esr_context {
+	struct _aarch64_ctx head;
+	__u64 esr;
+};
+
 
 #endif

@@ -85,4 +85,11 @@ struct sigaction {
 };
 
 
+typedef struct sigaltstack {
+	void __user *ss_sp;
+	int ss_flags;
+	size_t ss_size;
+} stack_t;
+
+
 #endif

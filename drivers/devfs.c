@@ -161,6 +161,11 @@ devfs_init(void)
 	if (!inode)
 		panic("Failed to create /dev/console.");
 
+
+	inode = kfs_create("/dev/tty", NULL, &console_fops, S_IFCHR|0666, NULL, 0);
+	if (!inode)
+		panic("Failed to create /dev/tty.");
+
 	/* Glibc depends on /dev/console being major 136 */
 	inode->i_rdev = MKDEV(136, 0);
 
