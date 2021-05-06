@@ -201,6 +201,9 @@ extern struct aspace bootstrap_aspace;
 
 extern int __init task_subsys_init(void);
 
+extern int
+arch_task_init_tls(struct task_struct   * task, 
+		   const struct pt_regs * parent_regs);
 
 extern int
 arch_task_create(

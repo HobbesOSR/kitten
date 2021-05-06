@@ -12,7 +12,7 @@
 #endif
 
 #ifndef UTS_LINUX_RELEASE
-#define UTS_LINUX_RELEASE "2.6.35"
+#define UTS_LINUX_RELEASE "4.4.1"
 #endif
 
 #ifndef UTS_NODENAME

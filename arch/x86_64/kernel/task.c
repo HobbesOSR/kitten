@@ -136,6 +136,13 @@ arch_task_meas(void)
 #endif
 
 int
+arch_task_init_tls(struct task_struct   * task, 
+		   const struct pt_regs * parent_regs)
+{
+	return do_arch_prctl(task, ARCH_SET_FS, parent_regs->r8);
+}
+
+int
 arch_task_create(
 	struct task_struct *	task,
 	const start_state_t *	start_state,
@@ -144,6 +151,7 @@ arch_task_create(
 {
 	/* Assume we entered via clone() syscall if parent_regs passed in */
 	bool is_clone = (parent_regs != NULL);
+
 
 	/*
 	 * Put a pt_regs structure at the top of the new task's kernel stack.
@@ -168,9 +176,11 @@ arch_task_create(
 		memset(regs, 0, sizeof(struct pt_regs));
 	}
 
+
 	task->arch.thread.rsp0    = (kaddr_t)(regs + 1);    /* kstack top */
 	task->arch.thread.rsp     = (kaddr_t)regs;          /* kstack ptr */
 	task->arch.thread.userrsp = start_state->stack_ptr; /* ustack ptr */
+
 
 	/* Mark this as a new-task... arch_context_switch() checks this flag */
 	task->arch.flags = TF_NEW_TASK_MASK;
@@ -180,10 +190,6 @@ arch_task_create(
 
 	/* Initialize FPU state */
 	reinit_fpu_state(task);
-
-	/* If this is a clone, initialize new task's thread local storage */
-	if (is_clone)
-		do_arch_prctl(task, ARCH_SET_FS, parent_regs->r8);
 
 	/* Initialize register state */
 	if (start_state->aspace_id == KERNEL_ASPACE_ID) {

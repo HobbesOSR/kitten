@@ -14,7 +14,7 @@ ifeq ($(TARGET), linux)
     PREFIX = $(OPREFIXLINUX)
 else
     PREFIX = $(OPREFIX)
-    CC_LDFLAGS += -static
+    CC_LDFLAGS += -static -pthread
 endif
 
 # Tack on default include paths

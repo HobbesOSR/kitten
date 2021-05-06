@@ -8,6 +8,14 @@
 #include <arch/string.h>
 #include <lwk/pmem.h>
 
+
+int
+arch_task_init_tls(struct task_struct   * task, 
+		   const struct pt_regs * parent_regs)
+{
+	return do_arch_prctl(task, ARCH_SET_TLS, parent_regs->user_regs.regs[5]);
+}
+
 int
 arch_task_create(
 	struct task_struct *	task,
@@ -53,11 +61,6 @@ arch_task_create(
 
 	/* Initialize FPU state */
 	//reinit_fpu_state(task);
-
-	/* If this is a clone, initialize new task's thread local storage */
-	if (is_clone)
-		panic("clone!\n");
-		//do_arch_prctl(task, ARCH_SET_FS, parent_regs->r8);
 
 	/* Initialize register state */
 	if (start_state->aspace_id == KERNEL_ASPACE_ID) {

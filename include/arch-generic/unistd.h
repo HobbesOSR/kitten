@@ -857,7 +857,7 @@ __SYSCALL(__NR_keyctl, syscall_not_implemented)
 
 /* arch/example/kernel/sys_example.c */
 #define __NR_clone 220
-__SYSCALL(__NR_clone, syscall_not_implemented)
+__SYSCALL(__NR_clone, asm_sys_clone)
 #define __NR_execve 221
 //__SC_COMP(__NR_execve, sys_execve, compat_sys_execve)
 __SYSCALL(__NR_execve, syscall_not_implemented)
@@ -1227,8 +1227,10 @@ __SYSCALL(__NR_task_switch_cpus, sys_task_switch_cpus)
 __SYSCALL(__NR_elf_hwcap, sys_elf_hwcap)
 #define __NR_v3_start_guest	521
 __SYSCALL(__NR_v3_start_guest, syscall_not_implemented)  /* registered later */
+/*
 #define __NR_getcpu		522
 __SYSCALL(__NR_getcpu, sys_getcpu)
+*/
 #define __NR_mce_inject		523
 __SYSCALL(__NR_mce_inject, syscall_not_implemented)
 

@@ -242,6 +242,17 @@ el1_error_invalid:
 	inv_entry 1, BAD_ERROR
 ENDPROC(el1_error_invalid)
 
+
+/* glibc is going to call the clone sys call with these params
+ * X0:flags, x1:newsp, x2:parenttidptr, x3:newtls, x4:childtid.  
+ */
+ENTRY(asm_sys_clone)
+	mov x3, x4
+	mov x4, sp
+	b sys_clone
+
+END(asm_sys_clone)
+
 /*
  * EL1 mode handlers.
  */
@@ -448,7 +459,8 @@ el0_ia:
 	enable_irq
 	orr	x1, x25, #1 << 24		// use reserved ISS bit for instruction aborts
 	mov	x2, sp
-	b	. //do_mem_abort
+	b	do_mem_abort
+//	b	. //do_mem_abort
 el0_fpsimd_acc:
 	/*
 	 * Floating Point or Advanced SIMD access
@@ -721,9 +733,20 @@ ENTRY(arch_context_switch)
 // call C code
 	bl __arch_context_switch
 
+/*
 	ldr x19, [x21, #TSK_ARCH_FLAGS]
 	and x19, x19, #TF_NEW_TASK_MASK
 	cbnz x19, kickstart_new_task
+*/
+	ldr x24, #0
+	add x22, x21, #TSK_ARCH_FLAGS
+255:	ldxr x19, [x22]
+	and x23, x19, #~TF_NEW_TASK_MASK
+	stxr w24, x23, [x22]
+	cbnz w24, 255b
+	and x19, x19, #TF_NEW_TASK_MASK
+	cbnz x19, kickstart_new_task
+
 
 // Restore registers
 	ldp x19, x20, [sp, #16]
@@ -733,6 +756,7 @@ ENTRY(arch_context_switch)
 	ldp x27, x28, [sp, #80]
 	ldp x29, x30, [sp], #96
 
+	mov x0, x20
 	ret
 kickstart_new_task:
 	mov x0, x20

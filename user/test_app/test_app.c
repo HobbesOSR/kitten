@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -5,9 +7,13 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sched.h>
+#include <stdint.h>
+#include <sys/syscall.h>
 
 char buf[512];
 
+int threadTest();
 int statsTest();
 int dirTest();
 int pipeTest();
@@ -15,8 +21,12 @@ int pipeTest();
 int main(int argc, char *argv[], char *envp[]) {
    int len = 32;
 
+   printf("Test app\n");
+
+   threadTest();
    statsTest();
    pipeTest();
+   dirTest();
  
    while(1) {
       printf("Please enter some text: ");
@@ -36,6 +46,43 @@ int main(int argc, char *argv[], char *envp[]) {
 
    return 0;
 }
+
+
+#include <pthread.h>
+
+void * thread_fn(void * arg) {
+
+	printf("New thread running (tid = %ld)\n", syscall(SYS_gettid));
+
+	return 0xffffeeaa;
+}
+
+
+
+int threadTest()
+{
+	pthread_t thread;
+	void * retval = NULL;
+
+	pthread_create(&thread, NULL, thread_fn, NULL);
+
+	pthread_join(thread, &retval);
+
+	printf("Joined (%p)\n", retval);
+
+	return 0;
+
+}
+
+uint8_t new_stack[8192];
+
+int new_fn(void * arg)
+{
+	printf("New task running (tid = %ld)\n", syscall(SYS_gettid));
+	return 0;
+}
+
+
 
 int statsTest() {
    printf("MY PROCESS ID IS: %d\n", getpid());

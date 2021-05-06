@@ -84,6 +84,10 @@ sys_clone(
 	if ((flags & CLONE_CHILD_SETTID))
 		put_user(tid, child_tid_ptr);
 
+
+	if ((flags & CLONE_SETTLS))
+		arch_task_init_tls(tsk, parent_regs);
+
 	/* Add the new task to the target CPU's run queue */
 	sched_wakeup_task(tsk, TASK_ALL);
 
