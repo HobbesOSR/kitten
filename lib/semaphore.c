@@ -16,7 +16,7 @@
  */
 #include <lwk/sched.h>
 #include <lwk/init.h>
-#include <arch/semaphore.h>
+#include <lwk/semaphore.h>
 
 /*
  * Semaphores are implemented using a two-way counter:

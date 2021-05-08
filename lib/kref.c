@@ -14,6 +14,7 @@
 #include <lwk/kref.h>
 #include <arch/bug.h>
 #include <arch/system.h>
+#include <arch/atomic.h>
 
 /**
  * kref_set - initialize object and set refcount to requested number.
@@ -42,8 +43,7 @@ void kref_init(struct kref *kref)
 void kref_get(struct kref *kref)
 {
 	WARN_ON(!atomic_read(&kref->refcount));
-	atomic_inc(&kref->refcount);
-	smp_mb__after_atomic_inc();
+	atomic_inc_return(&kref->refcount);
 }
 
 /**

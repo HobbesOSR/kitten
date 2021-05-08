@@ -1,470 +1,408 @@
-#ifndef _X86_64_ATOMIC_H
-#define _X86_64_ATOMIC_H
-
-/* atomic_t should be 32 bit signed type */
-
 /*
- * Atomic operations that C can't guarantee us.  Useful for
- * resource counting etc..
+ * Based on arch/arm/include/asm/atomic.h
+ *
+ * Copyright (C) 1996 Russell King.
+ * Copyright (C) 2002 Deep Blue Solutions Ltd.
+ * Copyright (C) 2012 ARM Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef __ASM_ATOMIC_H
+#define __ASM_ATOMIC_H
 
-/*
- * Make sure gcc doesn't try to be clever and move things around
- * on us. We need to use _exactly_ the address the user gave us,
- * not some alias that contains the same information.
- */
-typedef struct { volatile int counter; } atomic_t;
+#include <lwk/compiler.h>
+#include <lwk/types.h>
+
+#include <arch/barrier.h>
+#include <arch/cmpxchg.h>
 
 #define ATOMIC_INIT(i)	{ (i) }
 
-/**
- * atomic_read - read atomic variable
- * @v: pointer of type atomic_t
- * 
- * Atomically reads the value of @v.
- */ 
-#define atomic_read(v)		((v)->counter)
+#ifdef __KERNEL__
 
-/**
- * atomic_set - set atomic variable
- * @v: pointer of type atomic_t
- * @i: required value
- * 
- * Atomically sets the value of @v to @i.
- */ 
-#define atomic_set(v,i)		(((v)->counter) = (i))
+typedef struct {
+	int counter;
+} atomic_t;
 
-/**
- * atomic_add - add integer to atomic variable
- * @i: integer value to add
- * @v: pointer of type atomic_t
- * 
- * Atomically adds @i to @v.
+typedef struct {
+	long counter;
+} atomic64_t;
+
+
+/*
+ * On ARM, ordinary assignment (str instruction) doesn't clear the local
+ * strex/ldrex monitor on some implementations. The reason we can use it for
+ * atomic_set() is the clrex or dummy strex done on every exception return.
  */
-static __inline__ void atomic_add(int i, atomic_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; addl %1,%0"
-		:"=m" (v->counter)
-		:"ir" (i), "m" (v->counter));
-#endif
-}
+#define atomic_read(v)	ACCESS_ONCE((v)->counter)
+#define atomic_set(v,i)	(((v)->counter) = (i))
 
-/**
- * atomic_sub - subtract the atomic variable
- * @i: integer value to subtract
- * @v: pointer of type atomic_t
- * 
- * Atomically subtracts @i from @v.
+/*
+ * AArch64 UP and SMP safe atomic ops.  We use load exclusive and
+ * store exclusive to ensure that these are atomic.  We may loop
+ * to ensure that the update happens.
  */
-static __inline__ void atomic_sub(int i, atomic_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; subl %1,%0"
-		:"=m" (v->counter)
-		:"ir" (i), "m" (v->counter));
-#endif
+
+#define ATOMIC_OP(op, asm_op)						\
+static inline void atomic_##op(int i, atomic_t *v)			\
+{									\
+	unsigned long tmp;						\
+	int result;							\
+									\
+	asm volatile("// atomic_" #op "\n"				\
+"1:	ldxr	%w0, %2\n"						\
+"	" #asm_op "	%w0, %w0, %w3\n"				\
+"	stxr	%w1, %w0, %2\n"						\
+"	cbnz	%w1, 1b"						\
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)		\
+	: "Ir" (i));							\
+}									\
+
+#define ATOMIC_OP_RETURN(op, asm_op)					\
+static inline int atomic_##op##_return(int i, atomic_t *v)		\
+{									\
+	unsigned long tmp;						\
+	int result;							\
+									\
+	asm volatile("// atomic_" #op "_return\n"			\
+"1:	ldxr	%w0, %2\n"						\
+"	" #asm_op "	%w0, %w0, %w3\n"				\
+"	stlxr	%w1, %w0, %2\n"						\
+"	cbnz	%w1, 1b"						\
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)		\
+	: "Ir" (i)							\
+	: "memory");							\
+									\
+	smp_mb();							\
+	return result;							\
 }
 
-/**
- * atomic_sub_and_test - subtract value from variable and test result
- * @i: integer value to subtract
- * @v: pointer of type atomic_t
- * 
- * Atomically subtracts @i from @v and returns
- * true if the result is zero, or false for all
- * other cases.
- */
-static __inline__ int atomic_sub_and_test(int i, atomic_t *v)
+#define ATOMIC_OPS(op, asm_op)						\
+	ATOMIC_OP(op, asm_op)						\
+	ATOMIC_OP_RETURN(op, asm_op)
+
+ATOMIC_OPS(add, add)
+ATOMIC_OPS(sub, sub)
+
+#undef ATOMIC_OPS
+#undef ATOMIC_OP_RETURN
+#undef ATOMIC_OP
+
+static inline int atomic_cmpxchg(atomic_t *ptr, int old, int new)
 {
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; subl %2,%0; sete %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"ir" (i), "m" (v->counter) : "memory");
-#endif
-	return c;
+	unsigned long tmp;
+	int oldval;
+
+	smp_mb();
+
+	asm volatile("// atomic_cmpxchg\n"
+"1:	ldxr	%w1, %2\n"
+"	cmp	%w1, %w3\n"
+"	b.ne	2f\n"
+"	stxr	%w0, %w4, %2\n"
+"	cbnz	%w0, 1b\n"
+"2:"
+	: "=&r" (tmp), "=&r" (oldval), "+Q" (ptr->counter)
+	: "Ir" (old), "r" (new)
+	: "cc");
+
+	smp_mb();
+	return oldval;
 }
 
-/**
- * atomic_inc - increment atomic variable
- * @v: pointer of type atomic_t
- * 
- * Atomically increments @v by 1.
- */ 
-static __inline__ void atomic_inc(atomic_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; incl %0"
-		:"=m" (v->counter)
-		:"m" (v->counter));
-#endif
-}
-
-/**
- * atomic_dec - decrement atomic variable
- * @v: pointer of type atomic_t
- * 
- * Atomically decrements @v by 1.
- */ 
-static __inline__ void atomic_dec(atomic_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; decl %0"
-		:"=m" (v->counter)
-		:"m" (v->counter));
-#endif
-}
-
-/**
- * atomic_dec_and_test - decrement and test
- * @v: pointer of type atomic_t
- * 
- * Atomically decrements @v by 1 and
- * returns true if the result is 0, or false for all other
- * cases.
- */ 
-static __inline__ int atomic_dec_and_test(atomic_t *v)
-{
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; decl %0; sete %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"m" (v->counter) : "memory");
-#endif
-	return c != 0;
-}
-
-/**
- * atomic_inc_and_test - increment and test 
- * @v: pointer of type atomic_t
- * 
- * Atomically increments @v by 1
- * and returns true if the result is zero, or false for all
- * other cases.
- */ 
-static __inline__ int atomic_inc_and_test(atomic_t *v)
-{
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; incl %0; sete %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"m" (v->counter) : "memory");
-#endif
-	return c != 0;
-}
-
-/**
- * atomic_add_negative - add and test if negative
- * @i: integer value to add
- * @v: pointer of type atomic_t
- * 
- * Atomically adds @i to @v and returns true
- * if the result is negative, or false when
- * result is greater than or equal to zero.
- */ 
-static __inline__ int atomic_add_negative(int i, atomic_t *v)
-{
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; addl %2,%0; sets %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"ir" (i), "m" (v->counter) : "memory");
-#endif
-	return c;
-}
-
-/**
- * atomic_add_return - add and return
- * @i: integer value to add
- * @v: pointer of type atomic_t
- *
- * Atomically adds @i to @v and returns @i + @v
- */
-static __inline__ int atomic_add_return(int i, atomic_t *v)
-{
-	int __i = i;
-#if 0
-	__asm__ __volatile__(
-		"lock ; xaddl %0, %1;"
-		:"=r"(i)
-		:"m"(v->counter), "0"(i));
-#endif
-	return i + __i;
-}
-
-static __inline__ int atomic_sub_return(int i, atomic_t *v)
-{
-	return atomic_add_return(-i,v);
-}
-
-#define atomic_inc_return(v)  (atomic_add_return(1,v))
-#define atomic_dec_return(v)  (atomic_sub_return(1,v))
-
-/* An 64bit atomic type */
-
-typedef struct { volatile long counter; } atomic64_t;
-
-#define ATOMIC64_INIT(i)	{ (i) }
-
-/**
- * atomic64_read - read atomic64 variable
- * @v: pointer of type atomic64_t
- *
- * Atomically reads the value of @v.
- * Doesn't imply a read memory barrier.
- */
-#define atomic64_read(v)		((v)->counter)
-
-/**
- * atomic64_set - set atomic64 variable
- * @v: pointer to type atomic64_t
- * @i: required value
- *
- * Atomically sets the value of @v to @i.
- */
-#define atomic64_set(v,i)		(((v)->counter) = (i))
-
-/**
- * atomic64_add - add integer to atomic64 variable
- * @i: integer value to add
- * @v: pointer to type atomic64_t
- *
- * Atomically adds @i to @v.
- */
-static __inline__ void atomic64_add(long i, atomic64_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; addq %1,%0"
-		:"=m" (v->counter)
-		:"ir" (i), "m" (v->counter));
-#endif
-}
-
-/**
- * atomic64_sub - subtract the atomic64 variable
- * @i: integer value to subtract
- * @v: pointer to type atomic64_t
- *
- * Atomically subtracts @i from @v.
- */
-static __inline__ void atomic64_sub(long i, atomic64_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; subq %1,%0"
-		:"=m" (v->counter)
-		:"ir" (i), "m" (v->counter));
-#endif
-}
-
-/**
- * atomic64_sub_and_test - subtract value from variable and test result
- * @i: integer value to subtract
- * @v: pointer to type atomic64_t
- *
- * Atomically subtracts @i from @v and returns
- * true if the result is zero, or false for all
- * other cases.
- */
-static __inline__ int atomic64_sub_and_test(long i, atomic64_t *v)
-{
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; subq %2,%0; sete %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"ir" (i), "m" (v->counter) : "memory");
-#endif
-	return c;
-}
-
-/**
- * atomic64_inc - increment atomic64 variable
- * @v: pointer to type atomic64_t
- *
- * Atomically increments @v by 1.
- */
-static __inline__ void atomic64_inc(atomic64_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; incq %0"
-		:"=m" (v->counter)
-		:"m" (v->counter));
-#endif
-}
-
-/**
- * atomic64_dec - decrement atomic64 variable
- * @v: pointer to type atomic64_t
- *
- * Atomically decrements @v by 1.
- */
-static __inline__ void atomic64_dec(atomic64_t *v)
-{
-#if 0
-	__asm__ __volatile__(
-		"lock ; decq %0"
-		:"=m" (v->counter)
-		:"m" (v->counter));
-#endif
-}
-
-/**
- * atomic64_dec_and_test - decrement and test
- * @v: pointer to type atomic64_t
- *
- * Atomically decrements @v by 1 and
- * returns true if the result is 0, or false for all other
- * cases.
- */
-static __inline__ int atomic64_dec_and_test(atomic64_t *v)
-{
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; decq %0; sete %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"m" (v->counter) : "memory");
-#endif
-	return c != 0;
-}
-
-/**
- * atomic64_inc_and_test - increment and test
- * @v: pointer to type atomic64_t
- *
- * Atomically increments @v by 1
- * and returns true if the result is zero, or false for all
- * other cases.
- */
-static __inline__ int atomic64_inc_and_test(atomic64_t *v)
-{
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; incq %0; sete %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"m" (v->counter) : "memory");
-#endif
-	return c != 0;
-}
-
-/**
- * atomic64_add_negative - add and test if negative
- * @i: integer value to add
- * @v: pointer to type atomic64_t
- *
- * Atomically adds @i to @v and returns true
- * if the result is negative, or false when
- * result is greater than or equal to zero.
- */
-static __inline__ int atomic64_add_negative(long i, atomic64_t *v)
-{
-	unsigned char c;
-#if 0
-	__asm__ __volatile__(
-		"lock ; addq %2,%0; sets %1"
-		:"=m" (v->counter), "=qm" (c)
-		:"ir" (i), "m" (v->counter) : "memory");
-#endif
-	return c;
-}
-
-/**
- * atomic64_add_return - add and return
- * @i: integer value to add
- * @v: pointer to type atomic64_t
- *
- * Atomically adds @i to @v and returns @i + @v
- */
-static __inline__ long atomic64_add_return(long i, atomic64_t *v)
-{
-	long __i = i;
-#if 0
-	__asm__ __volatile__(
-		"lock ; xaddq %0, %1;"
-		:"=r"(i)
-		:"m"(v->counter), "0"(i));
-#endif
-	return i + __i;
-}
-
-static __inline__ long atomic64_sub_return(long i, atomic64_t *v)
-{
-	return atomic64_add_return(-i,v);
-}
-
-#define atomic64_inc_return(v)  (atomic64_add_return(1,v))
-#define atomic64_dec_return(v)  (atomic64_sub_return(1,v))
-
-#define atomic_cmpxchg(v, old, new) ((int)cmpxchg(&((v)->counter), old, new))
 #define atomic_xchg(v, new) (xchg(&((v)->counter), new))
 
-/**
- * atomic_add_unless - add unless the number is a given value
- * @v: pointer of type atomic_t
- * @a: the amount to add to v...
- * @u: ...unless v is equal to u.
- *
- * Atomically adds @a to @v, so long as it was not @u.
- * Returns non-zero if @v was not @u, and zero otherwise.
- */
-#define atomic_add_unless(v, a, u)				\
-({								\
-	int c, old;						\
-	c = atomic_read(v);					\
-	for (;;) {						\
-		if (unlikely(c == (u)))				\
-			break;					\
-		old = atomic_cmpxchg((v), c, c + (a));		\
-		if (likely(old == c))				\
-			break;					\
-		c = old;					\
-	}							\
-	c != (u);						\
-})
-#define atomic_inc_not_zero(v) atomic_add_unless((v), 1, 0)
+static inline int __atomic_add_unless(atomic_t *v, int a, int u)
+{
+	int c, old;
 
-/* These are x86-specific, used by some header files */
-#define atomic_clear_mask(mask, addr)
+	c = atomic_read(v);
+	while (c != u && (old = atomic_cmpxchg((v), c, c + a)) != c)
+		c = old;
+	return c;
+}
 
-#if 0
-\
-__asm__ __volatile__("lock ; andl %0,%1" \
-: : "r" (~(mask)),"m" (*addr) : "memory")
-#endif
+#define atomic_inc(v)		atomic_add(1, v)
+#define atomic_dec(v)		atomic_sub(1, v)
 
-#define atomic_set_mask(mask, addr)
+#define atomic_inc_and_test(v)	(atomic_add_return(1, v) == 0)
+#define atomic_dec_and_test(v)	(atomic_sub_return(1, v) == 0)
+#define atomic_inc_return(v)    (atomic_add_return(1, v))
+#define atomic_dec_return(v)    (atomic_sub_return(1, v))
+#define atomic_sub_and_test(i, v) (atomic_sub_return(i, v) == 0)
 
-#if 0
-\
-__asm__ __volatile__("lock ; orl %0,%1" \
-: : "r" ((unsigned)mask),"m" (*(addr)) : "memory")
-#endif
+#define atomic_add_negative(i,v) (atomic_add_return(i, v) < 0)
 
-/* Atomic operations are already serializing on x86 */
 #define smp_mb__before_atomic_dec()	barrier()
 #define smp_mb__after_atomic_dec()	barrier()
 #define smp_mb__before_atomic_inc()	barrier()
 #define smp_mb__after_atomic_inc()	barrier()
 
-#define LOCK_PREFIX \
-                ".section .smp_locks,\"a\"\n"   \
-                ".balign 8\n"                 \
-                ".quad 661f\n" /* address */ \
-                ".previous\n"                   \
-                "661:\n\tlock; "
 
-#include <arch-generic/atomic.h>
+/*
+ * 64-bit atomic operations.
+ */
+#define ATOMIC64_INIT(i) { (i) }
+
+#define atomic64_read(v)	ACCESS_ONCE((v)->counter)
+#define atomic64_set(v,i)	(((v)->counter) = (i))
+
+#define ATOMIC64_OP(op, asm_op)						\
+static inline void atomic64_##op(long i, atomic64_t *v)			\
+{									\
+	long result;							\
+	unsigned long tmp;						\
+									\
+	asm volatile("// atomic64_" #op "\n"				\
+"1:	ldxr	%0, %2\n"						\
+"	" #asm_op "	%0, %0, %3\n"					\
+"	stxr	%w1, %0, %2\n"						\
+"	cbnz	%w1, 1b"						\
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)		\
+	: "Ir" (i));							\
+}									\
+
+#define ATOMIC64_OP_RETURN(op, asm_op)					\
+static inline long atomic64_##op##_return(long i, atomic64_t *v)	\
+{									\
+	long result;							\
+	unsigned long tmp;						\
+									\
+	asm volatile("// atomic64_" #op "_return\n"			\
+"1:	ldxr	%0, %2\n"						\
+"	" #asm_op "	%0, %0, %3\n"					\
+"	stlxr	%w1, %0, %2\n"						\
+"	cbnz	%w1, 1b"						\
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)		\
+	: "Ir" (i)							\
+	: "memory");							\
+									\
+	smp_mb();							\
+	return result;							\
+}
+
+#define ATOMIC64_OPS(op, asm_op)					\
+	ATOMIC64_OP(op, asm_op)						\
+	ATOMIC64_OP_RETURN(op, asm_op)
+
+ATOMIC64_OPS(add, add)
+ATOMIC64_OPS(sub, sub)
+
+#undef ATOMIC64_OPS
+#undef ATOMIC64_OP_RETURN
+#undef ATOMIC64_OP
+
+static inline long atomic64_cmpxchg(atomic64_t *ptr, long old, long new)
+{
+	long oldval;
+	unsigned long res;
+
+	smp_mb();
+
+	asm volatile("// atomic64_cmpxchg\n"
+"1:	ldxr	%1, %2\n"
+"	cmp	%1, %3\n"
+"	b.ne	2f\n"
+"	stxr	%w0, %4, %2\n"
+"	cbnz	%w0, 1b\n"
+"2:"
+	: "=&r" (res), "=&r" (oldval), "+Q" (ptr->counter)
+	: "Ir" (old), "r" (new)
+	: "cc");
+
+	smp_mb();
+	return oldval;
+}
+
+#define atomic64_xchg(v, new) (xchg(&((v)->counter), new))
+
+static inline long atomic64_dec_if_positive(atomic64_t *v)
+{
+	long result;
+	unsigned long tmp;
+
+	asm volatile("// atomic64_dec_if_positive\n"
+"1:	ldxr	%0, %2\n"
+"	subs	%0, %0, #1\n"
+"	b.mi	2f\n"
+"	stlxr	%w1, %0, %2\n"
+"	cbnz	%w1, 1b\n"
+"	dmb	ish\n"
+"2:"
+	: "=&r" (result), "=&r" (tmp), "+Q" (v->counter)
+	:
+	: "cc", "memory");
+
+	return result;
+}
+
+static inline int atomic64_add_unless(atomic64_t *v, long a, long u)
+{
+	long c, old;
+
+	c = atomic64_read(v);
+	while (c != u && (old = atomic64_cmpxchg((v), c, c + a)) != c)
+		c = old;
+
+	return c != u;
+}
+
+#define atomic64_add_negative(a, v)	(atomic64_add_return((a), (v)) < 0)
+#define atomic64_inc(v)			atomic64_add(1LL, (v))
+#define atomic64_inc_return(v)		atomic64_add_return(1LL, (v))
+#define atomic64_inc_and_test(v)	(atomic64_inc_return(v) == 0)
+#define atomic64_sub_and_test(a, v)	(atomic64_sub_return((a), (v)) == 0)
+#define atomic64_dec(v)			atomic64_sub(1LL, (v))
+#define atomic64_dec_return(v)		atomic64_sub_return(1LL, (v))
+#define atomic64_dec_and_test(v)	(atomic64_dec_return((v)) == 0)
+#define atomic64_inc_not_zero(v)	atomic64_add_unless((v), 1LL, 0LL)
+
+
+/*
+ * Copyright (C) 2005 Silicon Graphics, Inc.
+ *	Christoph Lameter
+ *
+ * Allows to provide arch independent atomic definitions without the need to
+ * edit all arch specific atomic.h files.
+ */
+
+#include <asm/types.h>
+
+/*
+ * Suppport for atomic_long_t
+ *
+ * Casts for parameters are avoided for existing atomic functions in order to
+ * avoid issues with cast-as-lval under gcc 4.x and other limitations that the
+ * 
+ * macros of a platform may have.
+ */
+
+
+typedef atomic64_t atomic_long_t;
+
+#define ATOMIC_LONG_INIT(i)	ATOMIC64_INIT(i)
+
+static inline long atomic_long_read(atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return (long)atomic64_read(v);
+}
+
+static inline void atomic_long_set(atomic_long_t *l, long i)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	atomic64_set(v, i);
+}
+
+static inline void atomic_long_inc(atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	atomic64_inc(v);
+}
+
+static inline void atomic_long_dec(atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	atomic64_dec(v);
+}
+
+static inline void atomic_long_add(long i, atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	atomic64_add(i, v);
+}
+
+static inline void atomic_long_sub(long i, atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	atomic64_sub(i, v);
+}
+
+static inline int atomic_long_sub_and_test(long i, atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return atomic64_sub_and_test(i, v);
+}
+
+static inline int atomic_long_dec_and_test(atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return atomic64_dec_and_test(v);
+}
+
+static inline int atomic_long_inc_and_test(atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return atomic64_inc_and_test(v);
+}
+
+static inline int atomic_long_add_negative(long i, atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return atomic64_add_negative(i, v);
+}
+
+static inline long atomic_long_add_return(long i, atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return (long)atomic64_add_return(i, v);
+}
+
+static inline long atomic_long_sub_return(long i, atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return (long)atomic64_sub_return(i, v);
+}
+
+static inline long atomic_long_inc_return(atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return (long)atomic64_inc_return(v);
+}
+
+static inline long atomic_long_dec_return(atomic_long_t *l)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return (long)atomic64_dec_return(v);
+}
+
+static inline long atomic_long_add_unless(atomic_long_t *l, long a, long u)
+{
+	atomic64_t *v = (atomic64_t *)l;
+
+	return (long)atomic64_add_unless(v, a, u);
+}
+
+#define atomic_long_inc_not_zero(l) atomic64_inc_not_zero((atomic64_t *)(l))
+
+#define atomic_long_cmpxchg(l, old, new) \
+	(atomic64_cmpxchg((atomic64_t *)(l), (old), (new)))
+#define atomic_long_xchg(v, new) \
+	(atomic64_xchg((atomic64_t *)(v), (new)))
+
+#endif
 #endif

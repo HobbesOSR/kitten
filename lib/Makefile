@@ -17,7 +17,6 @@ lib-y := \
 	rbtree.o \
 	radix-tree.o \
 	mutex.o \
-	semaphore.o \
 	cmdline.o \
 	sha1.o \
 	sigset.o \
@@ -26,3 +25,5 @@ lib-y := \
 	find_next_bit.o \
 	kref.o \
 	idr.o 
+
+#	semaphore.o \

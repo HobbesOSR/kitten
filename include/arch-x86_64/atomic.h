@@ -369,6 +369,8 @@ static __inline__ long atomic64_add_return(long i, atomic64_t *v)
 		"lock ; xaddq %0, %1;"
 		:"=r"(i)
 		:"m"(v->counter), "0"(i));
+
+	barrier();
 	return i + __i;
 }
 
