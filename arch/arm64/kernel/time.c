@@ -5,7 +5,6 @@
 #include <lwk/smp.h>
 #include <lwk/time.h>
 #include <arch/io.h>
-#include <arch/apic.h>
 
 #ifdef CONFIG_PC
 /**
@@ -178,7 +177,9 @@ time_init(void)
 	 * Detect the Local APIC timer's base clock frequency
 	 */
 	if (this_cpu == 0) {
-		lapic_khz = lapic_calibrate_timer();
+//		lapic_khz = lapic_calibrate_timer();
+		printk("TODO: Calibrate the periodic Timer\n");
+
 	} else {
 		lapic_khz = cpu_info[0].arch.lapic_khz;
 	}

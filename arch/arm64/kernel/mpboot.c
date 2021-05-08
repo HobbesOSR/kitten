@@ -8,7 +8,6 @@
 #include <lwk/sched.h>
 #include <arch/atomic.h>
 #include <arch/apicdef.h>
-#include <arch/apic.h>
 //#include <arch/desc.h>
 
 /**
@@ -29,7 +28,11 @@ start_secondary(void)
 {
 	cpu_init();
 	cpu_set(this_cpu, cpu_online_map);
-	lapic_set_timer_freq(sched_hz);
+
+
+//	lapic_set_timer_freq(sched_hz);
+	printk("TODO: Set the periodic timer frequency\n");
+
 	schedule(); /* runs idle_task, since that's the only task
 	             * on the CPU's run queue at this point */
 }

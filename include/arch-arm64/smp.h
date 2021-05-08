@@ -8,14 +8,12 @@
 /* #include <linux/threads.h>s */
 #include <lwk/cpumask.h>
 #include <lwk/bitops.h>
-extern int disable_apic;
 #endif
 
 #ifndef __ASSEMBLY__
 #include <arch/fixmap.h>
 //#include <asm/mpspec.h>
 //#include <asm/io_apic.h>
-#include <arch/apic.h>
 //#include <asm/thread_info.h>
 #include <arch/pda.h>
 

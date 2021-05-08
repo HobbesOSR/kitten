@@ -29,7 +29,6 @@
 
 #include <arch/pgtable.h>
 //#include <arch/io_apic.h>
-#include <arch/apic.h>
 #include <arch/io.h>
 #include <arch/mpspec.h>
 #include <arch/smp.h>

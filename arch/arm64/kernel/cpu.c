@@ -9,7 +9,6 @@
 //#include <arch/desc.h>
 #include <arch/proto.h>
 //#include <arch/i387.h>
-#include <arch/apic.h>
 #include <arch/tsc.h>
 
 /**
@@ -47,6 +46,7 @@ __attribute__((section(".bss.page_aligned")));
 char mce_stack[NR_CPUS][PAGE_SIZE]
 __attribute__((section(".bss.page_aligned")));
 
+
 /**
  * Initializes the calling CPU's Per-CPU Data Area (PDA).
  * When in kernel mode, each CPU's GS.base is loaded with the address of the
@@ -74,6 +74,7 @@ pda_init(unsigned int cpu, struct task_struct *task)
 	pda->mmu_state     = 0;
 	pda->irqcount      = -1;
 	mb();
+
 }
 
 /**

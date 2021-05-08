@@ -3,7 +3,6 @@
 #include <lwk/xcall.h>
 #include <lwk/task.h>
 #include <lwk/smp.h>
-#include <arch/apic.h>
 #include <arch/idt_vectors.h>
 #include <arch/processor.h>
 
@@ -73,8 +72,10 @@ arch_xcall_function(
 	wmb();
 
 	/* Send inter-processor interrupts to the target CPUs */
-	for_each_cpu_mask(cpu, cpu_mask)
-		lapic_send_ipi(cpu, XCALL_FUNCTION_VECTOR);
+	for_each_cpu_mask(cpu, cpu_mask) {
+		//	lapic_send_ipi(cpu, XCALL_FUNCTION_VECTOR);
+		printk("TODO: Actually send the Hardware IPI\n");
+	}
 
 	/* Wait for initiation responses */
 	while (atomic_read(&data.started) != num_cpus)
@@ -123,8 +124,10 @@ arch_xcall_reschedule(id_t cpu)
 {
 	if (cpu == this_cpu)
 		set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);
-	else
-		lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
+	else {
+//		lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
+		printk("TODO: Actually send the Hardware IPI\n");
+	}
 }
 
 /**
