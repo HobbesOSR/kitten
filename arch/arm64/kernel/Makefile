@@ -8,7 +8,7 @@ obj-y		:= setup.o memblock.o cpuinfo.o resource.o \
 		   compat.o bitops.o traps.o ptrace.o \
 		   entry-fpsimd.o 
 		   
-		   # i387.o lapic.o
+		   # i387.o lapic.o ioapic.o
 
 obj-$(CONFIG_KGDB) += kgdb.o
 

@@ -21,7 +21,7 @@
 #include <arch/io.h>
 #include <arch/mpspec.h>
 #include <arch/proto.h>
-#include <arch/io_apic.h>
+
 
 #if 0
 /**
