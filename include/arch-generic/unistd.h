@@ -130,7 +130,7 @@ __SYSCALL(__NR_epoll_pwait, syscall_not_implemented)
 __SYSCALL(__NR_dup, sys_dup)
 #define __NR_dup3 24
 //__SYSCALL(__NR_dup3, sys_dup3)
-__SYSCALL(__NR_dup3, syscall_not_implemented)
+__SYSCALL(__NR_dup3, sys_dup3)
 #define __NR3264_fcntl 25
 //__SC_COMP_3264(__NR3264_fcntl, sys_fcntl64, sys_fcntl, compat_sys_fcntl64)
 __SYSCALL(__NR3264_fcntl, sys_fcntl)

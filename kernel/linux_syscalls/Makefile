@@ -37,6 +37,7 @@ obj-y := \
 	poll.o	 \
 	fork.o	 \
 	dup2.o	 \
+	dup3.o	 \
 	fcntl.o	 \
 	ioctl.o	 \
 	readv.o	 \
