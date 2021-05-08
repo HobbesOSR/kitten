@@ -4,7 +4,6 @@
 #include <arch/page.h>
 #include <arch/io.h>
 #include <arch/sections.h>
-#include <arch/e820.h>
 
 /**
  * Standard PC resources.

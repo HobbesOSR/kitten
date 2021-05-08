@@ -5,7 +5,6 @@
 #include <lwk/tlbflush.h>
 #include <arch/page.h>
 #include <arch/pgtable.h>
-#include <arch/e820.h> 
 #include <arch/proto.h>
 #include <arch/fixmap.h>
 

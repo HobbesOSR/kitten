@@ -6,7 +6,6 @@
 #include <lwk/sched.h>
 #include <lwk/acpi.h>
 #include <arch/bootsetup.h>
-#include <arch/e820.h>
 #include <arch/page.h>
 #include <arch/sections.h>
 #include <arch/proto.h>
