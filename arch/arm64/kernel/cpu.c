@@ -17,37 +17,6 @@
 static cpumask_t cpu_initialized_map;
 
 /**
- * Memory for STACKFAULT stacks, one for each CPU.
- */
-char stackfault_stack[NR_CPUS][PAGE_SIZE]
-__attribute__((section(".bss.page_aligned")));
-
-/**
- * Memory for DOUBLEFAULT stacks, one for each CPU.
- */
-char doublefault_stack[NR_CPUS][PAGE_SIZE]
-__attribute__((section(".bss.page_aligned")));
-
-/**
- * Memory for NMI stacks, one for each CPU.
- */
-char nmi_stack[NR_CPUS][PAGE_SIZE]
-__attribute__((section(".bss.page_aligned")));
-
-/**
- * Memory for DEBUG stacks, one for each CPU.
- */
-char debug_stack[NR_CPUS][PAGE_SIZE]
-__attribute__((section(".bss.page_aligned")));
-
-/**
- * Memory for MCE stacks, one for each CPU.
- */
-char mce_stack[NR_CPUS][PAGE_SIZE]
-__attribute__((section(".bss.page_aligned")));
-
-
-/**
  * Initializes the calling CPU's Per-CPU Data Area (PDA).
  * When in kernel mode, each CPU's GS.base is loaded with the address of the
  * CPU's PDA. This allows data in the PDA to be accessed using segment relative
@@ -77,31 +46,6 @@ pda_init(unsigned int cpu, struct task_struct *task)
 
 }
 
-/**
- * Initializes and installs the calling CPU's Global Descriptor Table (GDT).
- * Each CPU has its own GDT.
- */
-static void __init
-gdt_init(void)
-{
-#if 0
-	unsigned int cpu = this_cpu;
-
-	/* The bootstrap CPU's GDT has already been setup */
-	if (cpu != 0)
-		memcpy(cpu_gdt(cpu), cpu_gdt_table, GDT_SIZE);
-	cpu_gdt_descr[cpu].size = GDT_SIZE;
-
-	/* Install the CPU's GDT */
-	//asm volatile("lgdt %0" :: "m" (cpu_gdt_descr[cpu]));
-
-	/*
-	 * Install the CPU's LDT... Local Descriptor Table.
-	 * We have no need for a LDT, so we point it at the NULL descriptor.
-	 */
-	//asm volatile("lldt %w0":: "r" (0));
-#endif
-}
 
 /**
  * Installs the calling CPU's Local Descriptor Table (LDT).
@@ -118,86 +62,6 @@ idt_init(void)
 	//asm volatile("lidt %0" :: "m" (idt_descr));
 }
 
-/**
- * Initializes and installs the calling CPU's Task State Segment (TSS).
- */
-static void __init
-tss_init(void)
-{
-#if 0
-	unsigned int       cpu  = this_cpu;
-	struct tss_struct  *tss = &per_cpu(tss, cpu);
-	int i;
-
-	/*
-	 * Initialize the CPU's Interrupt Stack Table.
-	 * Certain exceptions and interrupts are handled with their own,
-	 * known good stack. The IST holds the address of these stacks.
-	 */
-	tss->ist[STACKFAULT_STACK-1]  = (unsigned long)&stackfault_stack[cpu][0];
-	tss->ist[DOUBLEFAULT_STACK-1] = (unsigned long)&doublefault_stack[cpu][0];
-	tss->ist[NMI_STACK-1]         = (unsigned long)&nmi_stack[cpu][0];
-	tss->ist[DEBUG_STACK-1]       = (unsigned long)&debug_stack[cpu][0];
-	tss->ist[MCE_STACK-1]         = (unsigned long)&mce_stack[cpu][0];
-
-	/*
-	 * Initialize the CPU's I/O permission bitmap.
-	 * The <= is required because the CPU will access up to 8 bits beyond
-	 * the end of the IO permission bitmap.
-	 */
-	tss->io_bitmap_base = offsetof(struct tss_struct, io_bitmap);
-	for (i = 0; i <= IO_BITMAP_LONGS; i++) 
-		tss->io_bitmap[i] = ~0UL;
-
-	/*
- 	 * Install the CPU's TSS and load the CPU's Task Register (TR).
- 	 * Each CPU has its own TSS.
- 	 */
-	set_tss_desc(cpu, tss);
-	//asm volatile("ltr %w0":: "r" (GDT_ENTRY_TSS*8));
-#endif
-}
-
-/**
- * Initializes various Model Specific Registers (MSRs) of the calling CPU.
- */
-static void __init
-msr_init(void)
-{
-#if 0
-	/*
-	 * Setup the MSRs needed to support the SYSCALL and SYSRET
-	 * instructions. Really, you should read the manual to understand these
-	 * gems. In summary, STAR and LSTAR specify the CS, SS, and RIP to
-	 * install when the SYSCALL instruction is issued. They also specify the
-	 * CS and SS to install on SYSRET.
-	 *
-	 * On SYSCALL, the x86_64 CPU control unit uses STAR to load CS and SS and
-	 * LSTAR to load RIP. The old RIP is saved in RCX.
-	 *
-	 * On SYSRET, the control unit uses STAR to restore CS and SS.
-	 * RIP is loaded from RCX.
-	 *
-	 * SYSCALL_MASK specifies the RFLAGS to clear on SYSCALL.
-	 */
-	wrmsrl(MSR_STAR,  ((u64)__USER32_CS)<<48 | /* SYSRET  CS+SS */
-	                  ((u64)__KERNEL_CS)<<32); /* SYSCALL CS+SS */
-	wrmsrl(MSR_LSTAR, asm_syscall);            /* SYSCALL RIP */
-	wrmsrl(MSR_CSTAR, asm_syscall_ignore);     /* RIP for compat. mode */
-	wrmsrl(MSR_SYSCALL_MASK, EF_TF|EF_DF|EF_IE|0x3000);
-
-	/*
-	 * Setup MSRs needed to support the PDA.
- 	 * pda_init() initialized MSR_GS_BASE already. When the SWAPGS
- 	 * instruction is issued, the x86_64 control unit atomically swaps
- 	 * MSR_GS_BASE and MSR_KERNEL_GS_BASE. So, when we call SWAPGS to
- 	 * exit the kernel, the value in MSR_KERNEL_GS_BASE will be loaded.
- 	 * User-space will see MSR_FS_BASE and MSR_GS_BASE both set to 0.
- 	 */
-	wrmsrl(MSR_FS_BASE, 0);
-	wrmsrl(MSR_KERNEL_GS_BASE, 0);
-#endif
-}
 
 /**
  * Initializes the calling CPU's debug registers.
@@ -244,11 +108,7 @@ cpu_init(void)
 	pda_init(cpu, me);	/* per-cpu data area */
 
 	identify_cpu();		/* determine cpu features via CPUID */
-	//cr4_init();		/* control register 4 */
-	//gdt_init();		/* global descriptor table */
 	//idt_init();		/* interrupt descriptor table */
-	//tss_init();		/* task state segment */
-	//msr_init();		/* misc. model specific registers */
 	//dbg_init();		/* debug registers */
 	//fpu_init();		/* floating point unit */
 	//lapic_init();		/* local advanced prog. interrupt controller */
