@@ -1,12 +1,5 @@
-/**
- * Portions derived from Linux include/asm-x86_64/processor.h
- * Copyright (C) 1994 Linus Torvalds
- */
-
-#ifndef _X86_64_CPUINFO_H
-#define _X86_64_CPUINFO_H
-
-#include <arch/cpufeature.h>
+#ifndef _ARM64_CPUINFO_H
+#define _ARM64_CPUINFO_H
 
 /**
  * arch_cpuinfo.x86_cache_size first dimension indicies.
@@ -25,6 +18,11 @@
 #define L1	0
 #define L2	1
 #define L3	2
+#define L4      3
+#define L5      4
+#define L6      5
+#define L7      6
+
 
 /**
  * arch_cpuinfo.x86_tlbsize third dimension indices.
@@ -38,32 +36,37 @@
  * CPU info is kept separately for each CPU.
  */
 struct arch_cpuinfo {
-    uint8_t  x86_vendor;            /* CPU vendor */
-    uint8_t  x86_family;            /* CPU family */
-    uint8_t  x86_model;             /* CPU model */
-    uint8_t  x86_stepping;          /* CPU stepping */
-    uint32_t x86_capability[NCAPINTS]; /* optional CPU features */
-    char     x86_vendor_id[16];     /* Vendor ID string */
-    char     x86_model_id[64];      /* Model/Brand ID string */
-    uint16_t x86_cache_size[3][3];  /* [I|D|U][LEVEL], in KB */
-    uint16_t x86_cache_line[3][3];  /* [I|D|U][LEVEL], in bytes */
+    uint8_t  arm64_vendor;          /* CPU vendor */
+    uint8_t  arm64_variant;         /* CPU variant */
+    uint8_t  arm64_arch;            /* CPU architecture */
+    uint8_t  arm64_partnum;         /* CPU part number */
+    uint8_t  arm64_revision;        /* CPU revision */
+    uint16_t arm64_cache_size[3][7];  /* [I|D|U][LEVEL], in KB */
+    uint16_t arm64_cache_line[3][7];  /* [I|D|U][LEVEL], in bytes */
+    uint32_t arm64_capability;
+
+#if 0
     int      x86_clflush_size;      /* In bytes */
     int      x86_cache_alignment;   /* In bytes */
     uint16_t x86_tlb_size[3][2][3]; /* [I|D|U][LEVEL][PAGE_SIZE], in #entries */
-    uint8_t  x86_virt_bits;         /* Bits of virt address space */
-    uint8_t  x86_phys_bits;         /* Bits of phys address space */
+    uint32_t x86_capability[NCAPINTS]; /* optional CPU features */
+#endif
+
+    uint8_t  arm64_virt_bits;       /* Bits of virt address space */
+    uint8_t  arm64_phys_bits;       /* Bits of phys address space */
     uint8_t  x86_pkg_cores;         /* Number of cores in this CPU's package */
-    uint32_t x86_power;             /* Power management features */
-    uint32_t cpuid_level;           /* Max supported CPUID level */
-    uint32_t extended_cpuid_level;  /* Max extended CPUID func supported */
+    uint32_t arm64_power;           /* Power management features */
     uint32_t cur_cpu_khz;           /* Current CPU freq. in KHz */
     uint32_t max_cpu_khz;           /* Maximum CPU freq. in KHz */
     uint32_t min_cpu_khz;           /* Minimum CPU freq. in KHz */
     uint32_t tsc_khz;               /* Time stamp counter freq. in KHz */
-    uint32_t lapic_khz;             /* Local APIC bus freq. in KHz */
-    uint8_t  apic_id;               /* Local APIC ID, phys CPU ID */
-    uint8_t  initial_lapic_id;      /* As reported by CPU ID */
-    uint16_t x86_max_cores;         /* CPUID max cores val */
+
+
+    uint32_t cpu_phys_id;           /* linear cpu id */
+    uint8_t  cpu_core_id;
+    uint8_t  cpu_cluster_id;
+    uint8_t  cpu_affinity_2;
+    uint8_t  cpu_affinity_3;
 };
 
 extern struct cpuinfo boot_cpu_data;

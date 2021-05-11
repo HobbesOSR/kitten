@@ -19,10 +19,17 @@
 	__val;								\
 })
 
+
 #define __msr(reg, val)	({						\
 	asm __volatile__ ("msr " #reg ", %0" : : "r"(val));		\
 })
 
+
+
+#define ICC_SRE_EL1 s3_0_c12_c12_5
+
+#define mrs(reg)      __mrs(reg)
+#define msr(reg, val) __msr(reg, val)
 
 
 static inline u64

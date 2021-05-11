@@ -146,7 +146,7 @@ do { \
    instruction set this CPU supports.  This could be done in user space,
    but it's not easy, and we've already done it here.  */
 
-#define ELF_HWCAP(cpu)	(cpu_info[cpu].arch.x86_capability[0])
+#define ELF_HWCAP(cpu)	(cpu_info[cpu].arch.arm64_capability)
 
 extern void set_personality_64bit(void);
 #define SET_PERSONALITY(ex, ibcs2) set_personality_64bit()

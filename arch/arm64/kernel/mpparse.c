@@ -468,7 +468,7 @@ get_mp_config(void)
 	physid_set(0, phys_cpu_present_map);
 	cpu_info[0].logical_id   = 0;
 	cpu_info[0].physical_id  = 0;
-	cpu_info[0].arch.apic_id = 0;
+	cpu_info[0].arch.cpu_phys_id  = 0;
 #if 0
 	struct intel_mp_floating *mpf = mpf_found;
 	if (!mpf) {

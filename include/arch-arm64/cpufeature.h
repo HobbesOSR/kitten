@@ -1,11 +1,13 @@
 /*
  * cpufeature.h
  *
- * Defines x86 CPU feature bits
+ * Defines ARM64 CPU feature bits
  */
 
-#ifndef _X86_64_CPUFEATURE_H
-#define _X86_64_CPUFEATURE_H
+#ifndef _ARM64_CPUFEATURE_H
+#define _ARM64_CPUFEATURE_H
+
+#if 0
 
 #define NCAPINTS	8	/* N 32-bit words worth of info */
 
@@ -138,4 +140,5 @@
 #define cpu_has_ds             boot_cpu_has(X86_FEATURE_DS)
 #define cpu_has_bts            boot_cpu_has(X86_FEATURE_BTS)
 
+#endif
 #endif /* _X86_64_CPUFEATURE_H */

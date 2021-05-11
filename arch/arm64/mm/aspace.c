@@ -169,7 +169,7 @@ find_or_create_pte(
 
 	/* JRL: These should either be handled OK here, or be moved to initialization time checks */
 	{
-		tcr_el1 tcr = get_tcr_el1();
+		struct tcr_el1 tcr = get_tcr_el1();
 
 		if (vaddr >= 0xffffff8000000000ull) {
 			panic("Unable to handle Kernel page translations\n");
@@ -271,7 +271,7 @@ find_and_delete_pte(
 
 	/* JRL: These should either be handled OK here, or be moved to initialization time checks */
 	{
-		tcr_el1 tcr = get_tcr_el1();
+		struct tcr_el1 tcr = get_tcr_el1();
 
 		if (vaddr >= 0xffffff8000000000ull) {
 			panic("Unable to handle Kernel page translations\n");
@@ -535,9 +535,7 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 	unsigned int pmd_index = (vaddr >> 21) & 0x1FF;
 	unsigned int ptd_index = (vaddr >> 12) & 0x1FF;
 
-	tcr_el1 tcr;
-
-	tcr = get_tcr_el1();
+	struct tcr_el1 tcr = {mrs(TCR_EL1)};
 
 	if (tcr.t0sz >= 25 && tcr.t0sz <= 33) {
 		// Start at level 1

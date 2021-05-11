@@ -436,10 +436,17 @@ pci_msi_setup(pci_dev_t * dev,
 {
     extern struct cpuinfo cpu_info[NR_CPUS];
     struct msi_msg msg;
+    int dest = 0;
 
-    int dest = cpu_info[0].arch.apic_id;
+#ifdef CONFIG_X86_64
+    dest = cpu_info[0].arch.apic_id;
+#elif defined(CONFIG_ARM64)
 
+    panic("MSI not yet supported on ARM");
+#endif
+    
     set_msi_msg_nr(dev, 1);
+
 
     compose_msi_msg(&msg, dest, vector);
     write_msi_msg(dev, &msg);
@@ -623,9 +630,15 @@ pci_msix_setup(pci_dev_t         * dev,
         struct msi_msg msg;
 
         void __iomem * base = NULL;
+	int dest = 0;
 
         /* use boot cpu as the destination */
-        int dest = cpu_info[0].arch.apic_id;
+#ifdef CONFIG_X86_64
+        dest = cpu_info[0].arch.apic_id;
+#elif defined(CONFIG_ARM64)
+   	panic("MSI not yet supported on ARM");
+#endif
+    
 
         for (i = 0; i < num_entries; i++) {
             compose_msi_msg(&msg, dest, entries[i].vector);
