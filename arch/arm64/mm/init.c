@@ -13,6 +13,26 @@
  */
 unsigned long __initdata table_start, table_end;  /* page frame numbers */
 
+
+
+#include <lwk/params.h>
+uint64_t init_task_start = 0;
+uint64_t init_task_size = 0;
+param(init_task_start, ulong);
+param(init_task_size, ulong);
+
+
+unsigned long fdt_initrd_start __initdata = 0;
+unsigned long fdt_initrd_size  __initdata = 0;
+
+void __init early_init_dt_setup_initrd_arch(unsigned long start,
+					    unsigned long end)
+{
+	fdt_initrd_start = start;
+	fdt_initrd_size = end - start;
+}
+
+
 static __init void *early_ioremap(unsigned long addr, unsigned long size)
 {
 #if 0
@@ -322,11 +342,6 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
  * called from the platform-independent memsys_init(). For x86_64, the only
  * thing that needs to be done is to relocate the initrd image to user memory.
  */
-#include <lwk/params.h>
-uint64_t init_task_start = 0;
-uint64_t init_task_size = 0;
-param(init_task_start, ulong);
-param(init_task_size, ulong);
 
 void __init
 arch_memsys_init(size_t kmem_size)
@@ -339,10 +354,15 @@ arch_memsys_init(size_t kmem_size)
 	size_t  initrd_size      = 0;
 	size_t  umem_size        = 0;
 
+
+	/* Command line init task location takes priority over FDT */
 	if ((init_task_start != 0) && 
 	    (init_task_size  != 0) ) {
 		initrd_start = init_task_start;
 		initrd_end   = init_task_start + init_task_size;
+	} else {
+		initrd_start = fdt_initrd_start;
+		initrd_end   = fdt_initrd_start + fdt_initrd_size;
 	}
 
 	printk("initrd_start %llx\n", initrd_start);
@@ -353,6 +373,8 @@ arch_memsys_init(size_t kmem_size)
 
 	initrd_size = initrd_end - initrd_start;
 	umem_size   = round_up(initrd_size, PAGE_SIZE);
+
+	printk("arch_memsys_init - Step 1\n");
 
 	/* Step 1: Mark any umem that the initrd image is currently occupying
 	 *         as free.

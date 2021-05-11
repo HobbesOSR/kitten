@@ -30,6 +30,8 @@
 
 #include <arch/page.h>
 
+extern int early_printk(const char * fmt, ...);
+
 char *of_fdt_get_string(struct boot_param_header *blob, u32 offset)
 {
 	return ((char *)blob) +
@@ -553,7 +555,7 @@ int __init of_flat_dt_match(unsigned long node, const char *const *compat)
 	return of_fdt_match(initial_boot_params, node, compat);
 }
 
-#ifdef CONFIG_BLK_DEV_INITRD
+
 /**
  * early_init_dt_check_for_initrd - Decode initrd location from flat tree
  * @node: reference to node containing initrd location ('chosen')
@@ -563,7 +565,7 @@ void __init early_init_dt_check_for_initrd(unsigned long node)
 	unsigned long start, end, len;
 	__be32 *prop;
 
-	pr_debug("Looking for initrd properties... ");
+	early_printk("Looking for initrd properties... ");
 
 	prop = of_get_flat_dt_prop(node, "linux,initrd-start", &len);
 	if (!prop)
@@ -576,13 +578,9 @@ void __init early_init_dt_check_for_initrd(unsigned long node)
 	end = of_read_ulong(prop, len/4);
 
 	early_init_dt_setup_initrd_arch(start, end);
-	pr_debug("initrd_start=0x%lx  initrd_end=0x%lx\n", start, end);
+	early_printk("initrd_start=0x%lx  initrd_end=0x%lx\n", start, end);
 }
-#else
-inline void early_init_dt_check_for_initrd(unsigned long node)
-{
-}
-#endif /* CONFIG_BLK_DEV_INITRD */
+
 
 /**
  * early_init_dt_scan_root - fetch the top level address and size cells
@@ -601,12 +599,14 @@ int __init early_init_dt_scan_root(unsigned long node, const char *uname,
 	prop = of_get_flat_dt_prop(node, "#size-cells", NULL);
 	if (prop)
 		dt_root_size_cells = be32_to_cpup(prop);
-	/*pr_debug("dt_root_size_cells = %x\n", dt_root_size_cells);*/
+
+	early_printk("dt_root_size_cells = %x\n", dt_root_size_cells);
 
 	prop = of_get_flat_dt_prop(node, "#address-cells", NULL);
 	if (prop)
 		dt_root_addr_cells = be32_to_cpup(prop);
-	/*pr_debug("dt_root_addr_cells = %x\n", dt_root_addr_cells);*/
+
+	early_printk("dt_root_addr_cells = %x\n", dt_root_addr_cells);
 
 	/* break now */
 	return 1;
@@ -641,6 +641,8 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	} else if (strcmp(type, "memory") != 0)
 		return 0;
 
+
+
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
 	if (reg == NULL)
 		reg = of_get_flat_dt_prop(node, "reg", &l);
@@ -649,8 +651,8 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 
 	endp = reg + (l / sizeof(__be32));
 
-	/*pr_debug("memory scan node %s, reg size %ld, data: %x %x %x %x,\n",
-	    uname, l, reg[0], reg[1], reg[2], reg[3]);*/
+	early_printk("memory scan node %s, reg size %ld, data: %x %x %x %x,\n",
+	   	 uname, l, reg[0], reg[1], reg[2], reg[3]);
 
 	while ((endp - reg) >= (dt_root_addr_cells + dt_root_size_cells)) {
 		u64 base, size;
@@ -660,13 +662,10 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 
 		if (size == 0)
 			continue;
-		/*pr_debug(" - %llx ,  %llx\n", (unsigned long long)base,
-		    (unsigned long long)size);*/
+		
+		early_printk(" - %llx ,  %llx\n", (unsigned long long)base, (unsigned long long)size);
 
-		//serial_write(NULL,"base: ");
-		//serial_num(base);
-		//serial_write(NULL,"size: ");
-		//serial_num(size);
+
 		early_init_dt_add_memory_arch(base, size);
 	}
 
@@ -679,7 +678,7 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 	unsigned long l;
 	char *p;
 
-	//pr_debug("search \"chosen\", depth: %d, uname: %s\n", depth, uname);
+	early_printk("search \"chosen\", depth: %d, uname: %s\n", depth, uname);
 
 	if (depth != 1 || !data ||
 	    (strcmp(uname, "chosen") != 0 && strcmp(uname, "chosen@0") != 0))
@@ -706,7 +705,7 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 		strlcpy(data, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
 #endif /* CONFIG_CMDLINE */
 #endif
-	//pr_debug("Command line is: %s\n", (char*)data);
+	early_printk("Command line is: %s\n", (char*)data);
 
 	/* break now */
 	return 1;

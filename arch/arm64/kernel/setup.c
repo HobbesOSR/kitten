@@ -18,6 +18,7 @@
 #include <arch/memory.h>
 #include <arch/memblock.h>
 
+extern int early_printk(const char * fmt, ...);
 
 static const char *cpu_name;
 static const char *machine_name;
@@ -81,28 +82,32 @@ setup_machine_fdt(phys_addr_t dt_phys)
 	struct boot_param_header *devtree;
 	unsigned long dt_root;
 
+	early_printk("setup_machine_fdt()\n");
+
 	/* Check we have a non-NULL DT pointer */
 	if (!dt_phys) {
-		/*early_print("\n"
+		early_printk("\n"
 			"Error: NULL or invalid device tree blob\n"
 			"The dtb must be 8-byte aligned and passed in the first 512MB of memory\n"
-			"\nPlease check your bootloader.\n");*/
+			"\nPlease check your bootloader.\n");
 
 		while (true)
 			cpu_relax();
 
 	}
 
+
+
 	devtree = phys_to_virt(dt_phys);
 
 	/* Check device tree validity */
 	if (be32_to_cpu(devtree->magic) != OF_DT_HEADER) {
-		/*early_print("\n"
+		early_printk("\n"
 			"Error: invalid device tree blob at physical address 0x%p (virtual address 0x%p)\n"
 			"Expected 0x%x, found 0x%x\n"
 			"\nPlease check your bootloader.\n",
 			dt_phys, devtree, OF_DT_HEADER,
-			be32_to_cpu(devtree->magic));*/
+			be32_to_cpu(devtree->magic));
 
 		while (true)
 			cpu_relax();
@@ -116,7 +121,7 @@ setup_machine_fdt(phys_addr_t dt_phys)
 		machine_name = of_get_flat_dt_prop(dt_root, "compatible", NULL);
 	if (!machine_name)
 		machine_name = "<unknown>";
-	pr_info("Machine: %s\n", machine_name);
+	early_printk("Machine: %s\n", machine_name);
 
 	/* Retrieve various information from the /chosen node */
 	of_scan_flat_dt(early_init_dt_scan_chosen, lwk_command_line);
@@ -141,7 +146,7 @@ void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 		size -= PHYS_OFFSET - base;
 		base = PHYS_OFFSET;
 	}
-	printk("Memblock add %08x%08x\n",(uint32_t)(base>>32),(uint32_t)base);
+	early_printk("Memblock add %08x%08x\n",(uint32_t)(base>>32),(uint32_t)base);
 	memblock_add(base, size);
 }
 /**

@@ -25,8 +25,6 @@
 #include <arch/memblock.h>
 #include <arch/io.h>
 
-static unsigned long phys_initrd_start __initdata = 0;
-static unsigned long phys_initrd_size  __initdata = 0;
 
 #if 0
 #include <linux/kernel.h>
@@ -52,12 +50,7 @@ static unsigned long phys_initrd_size  __initdata = 0;
 
 phys_addr_t memstart_addr __read_mostly = 0;
 
-void __init early_init_dt_setup_initrd_arch(unsigned long start,
-					    unsigned long end)
-{
-	phys_initrd_start = start;
-	phys_initrd_size = end - start;
-}
+
 
 static int __init early_initrd(char *p)
 {
