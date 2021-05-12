@@ -627,10 +627,10 @@ __switch_data:
 	.quad	__bss_start			// x6
 	.quad	_end				// x7
 	.quad	0 //processor_id			// x4
-	.quad	__fdt_pointer			// x5
+	.quad	fdt_start			// x5
 	.quad	memstart_addr			// x6
 	//.quad	_init_stack-16
-	.quad	bootstrap_task_union+TASK_SIZE-16 //init_thread_union + THREAD_START_SP // sp
+	.quad	bootstrap_task_union + TASK_SIZE - 16 //init_thread_union + THREAD_START_SP // sp
 
 /*
  * The following fragment of code is executed with the MMU on in MMU mode, and

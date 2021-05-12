@@ -18,19 +18,25 @@
 #include <arch/memory.h>
 #include <arch/memblock.h>
 
-extern int early_printk(const char * fmt, ...);
-
-static const char *cpu_name;
-static const char *machine_name;
-
-phys_addr_t __fdt_pointer __initdata;
-phys_addr_t memstart_addr __read_mostly = 0;
 
 /**
  * Bitmap of of PTE/PMD entry flags that are supported.
  * This is AND'ed with a PTE/PMD entry before it is installed.
  */
 unsigned long __supported_pte_mask __read_mostly = ~0UL;
+
+extern int early_printk(const char * fmt, ...);
+
+static const char * cpu_name;
+static const char * machine_name;
+
+
+phys_addr_t memstart_addr __read_mostly = 0;
+
+
+
+paddr_t __initdata fdt_start;
+paddr_t __initdata fdt_end;
 
 
 /**
@@ -96,6 +102,11 @@ setup_machine_fdt(phys_addr_t dt_phys)
 	}
 
 	initial_boot_params = devtree;
+
+	/* Update fdt_end based on size of devtree */
+	fdt_end = fdt_start + be32_to_cpu(initial_boot_params->totalsize);
+
+
 	dt_root = of_get_flat_dt_root();
 
 	machine_name = of_get_flat_dt_prop(dt_root, "model", NULL);
@@ -499,9 +510,9 @@ arm64_start_kernel( void ) {
 	      (unsigned long) __bss_stop - (unsigned long) __bss_start);
 
 
-	early_printk("FDT Located At %p\n", __fdt_pointer);
+	early_printk("FDT Located At %p\n", fdt_start);
 
-	setup_machine_fdt(__fdt_pointer);
+	setup_machine_fdt(fdt_start);
 
 
 	start_kernel();
