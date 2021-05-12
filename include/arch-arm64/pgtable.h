@@ -262,10 +262,10 @@ static inline pmd_t *pud_page_vaddr(pud_t pud)
 /* to find an entry in a page-table-directory */
 #define pgd_index(addr)		(((addr) >> PGDIR_SHIFT) & (PTRS_PER_PGD - 1))
 
-#define pgd_offset(mm, addr)	((mm)->arch.pgd + pgd_index(addr))
+#define pgd_offset(mm, addr)	((mm)->pgd + pgd_index(addr))
 
 /* to find an entry in a kernel page-table-directory */
-#define pgd_offset_k(addr)	pgd_offset(&init_mm, addr)
+#define pgd_offset_k(addr)	(swapper_pg_dir + pgd_index(addr))
 
 /* Find an entry in the second-level page table.. */
 #ifndef CONFIG_ARM64_64K_PAGES
