@@ -227,8 +227,6 @@ struct thread_struct {
 	.rsp0 = (unsigned long)&bootstrap_stack + sizeof(bootstrap_stack) \
 }
 
-#define INIT_MMAP \
-{ &init_mm, 0, 0, NULL, PAGE_SHARED, VM_READ | VM_WRITE | VM_EXEC, 1, NULL, NULL }
 
 #define get_debugreg(var, register)				\
 		__asm__("movq %%db" #register ", %0"		\

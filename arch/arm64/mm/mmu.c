@@ -26,7 +26,7 @@
 
 #include <lwk/types.h>
 
-struct aspace init_mm;
+
 #if 0
 #include <linux/export.h>
 #include <linux/kernel.h>
@@ -315,14 +315,14 @@ static void __init init_mem_pgprot(void)
 	pteval_t default_pgprot;
 	int i;
 
-	default_pgprot = PTE_ATTRINDX(MT_NORMAL);
+	default_pgprot   = PTE_ATTRINDX(MT_NORMAL);
 	prot_sect_kernel = PMD_TYPE_SECT | PMD_SECT_AF | PMD_ATTRINDX(MT_NORMAL);
 
 #ifdef CONFIG_SMP
 	/*
 	 * Mark memory with the "shared" attribute for SMP systems
 	 */
-	default_pgprot |= PTE_SHARED;
+	default_pgprot   |= PTE_SHARED;
 	prot_sect_kernel |= PMD_SECT_S;
 #endif
 
@@ -383,7 +383,7 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 	 */
 	if (pud_none(*pud) || pud_bad(*pud)) {
 		pmd = early_alloc(PTRS_PER_PMD * sizeof(pmd_t));
-		pud_populate(&init_mm, pud, pmd);
+		pud_populate(&(bootstrap_aspace.arch.pgd), pud, pmd);
 	}
 
 	pmd = pmd_offset(pud, addr);
@@ -545,9 +545,6 @@ void __init paging_init(void)
 	struct memblock_region *reg;
 	void *zero_page;
 
-	//(xpte_t *) __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);
-	// Setup user page tables for the kernel, zeroed out
-	bootstrap_aspace.arch.pgd = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);//early_alloc(PAGE_SIZE);
 
 	init_mem_pgprot(); // Not sure we need this for aspaces later on
 	map_mem();
@@ -562,6 +559,8 @@ void __init paging_init(void)
 	/* allocate the zero page. */
 	zero_page = early_alloc(PAGE_SIZE);
 
+
+
 	//bootmem_init();
 
 	//empty_zero_page = virt_to_page(zero_page);
@@ -575,6 +574,8 @@ void __init paging_init(void)
 	//flush_tlb_all();
 }
 #if 0
+
+struct aspace init_mm;
 
 /*
  * Enable the identity mapping to allow the MMU disabling.

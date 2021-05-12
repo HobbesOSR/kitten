@@ -7,7 +7,7 @@
 struct aspace bootstrap_aspace = {
 	BOOTSTRAP_ASPACE(bootstrap_aspace)
 	.arch = {
-		.pgd = 0
+		.pgd = (xpte_t *)swapper_pg_dir
 	}
 };
 
