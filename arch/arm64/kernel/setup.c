@@ -340,6 +340,10 @@ setup_arch(void)
 	}
 
 
+	// TODO: finish initializing init_mm
+	//asm volatile("mrs	%0, ttbr1_el1\n":"=r"(ttbr1));
+	init_mm.arch.pgd = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);
+
 	memblock_init();
 
 	paging_init();
@@ -487,6 +491,13 @@ void enable_APIC_timer(void)
 }
 
 
+
+
+
+//extern unsigned char* __START_KERNEL;
+//extern unsigned char* _end;
+#include <lwk/aspace.h>
+extern struct aspace init_mm;
 
 void __init
 arm64_start_kernel( void ) {

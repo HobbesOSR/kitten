@@ -15,6 +15,7 @@ typedef enum {
 	PMEM_TYPE_INIT_TASK   = 3,  /* memory used by the initial task */
 	PMEM_TYPE_KMEM        = 4,  /* memory managed by the kernel */
 	PMEM_TYPE_UMEM        = 5,  /* memory managed by user-space */
+	PMEM_TYPE_FDT         = 6,  /* DeviceTree provided by bootloader */
 } pmem_type_t;
 
 /**

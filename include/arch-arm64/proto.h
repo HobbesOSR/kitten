@@ -29,6 +29,7 @@ extern unsigned long __phys_addr(unsigned long virt_addr);
 
 void __init interrupts_init(void);
 
+extern paddr_t fdt_start, fdt_end;
 extern paddr_t initrd_start, initrd_end;
 
 /** Low-level interrupt handler type */
