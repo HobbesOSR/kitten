@@ -32,10 +32,6 @@ phys_addr_t memstart_addr __read_mostly = 0;
  */
 unsigned long __supported_pte_mask __read_mostly = ~0UL;
 
-/**
- * Bitmap of features enabled in the CR4 register.
- */
-unsigned long mmu_cr4_features;
 
 /**
  * Start and end addresses of the initrd image.
@@ -43,38 +39,24 @@ unsigned long mmu_cr4_features;
 paddr_t __initdata initrd_start;
 paddr_t __initdata initrd_end;
 
-/**
- * Base address and size of the Extended BIOS Data Area.
- */
-paddr_t __initdata ebda_addr;
-size_t  __initdata ebda_size;
-#define EBDA_ADDR_POINTER 0x40E
+
+uint64_t __initdata init_task_start;
+uint64_t __initdata init_task_size;
+#include <lwk/params.h>
+param(init_task_start, ulong);
+param(init_task_size, ulong);
 
 
 
-static void print_ptr(uint64_t ptr) {
-    uint8_t nib = 0;
-    uint8_t ch  = 0;
-    int     i  = 0;
 
-    for (i = 60; i >= 0; i -= 4) {
-        nib = ptr >> i;
-        nib &= 0xf;
 
-        if (nib <= 9) {
-            ch = nib + 48;
-        } else {
-            ch = nib + 55;
-        }
-
-        *(volatile uint8_t *)(EARLYCON_IOBASE) = ch;
-    }
-
-    *(volatile uint8_t *)(EARLYCON_IOBASE) = '\r';
-    *(volatile uint8_t *)(EARLYCON_IOBASE) = '\n';
-
-    return;
+void __init early_init_dt_setup_initrd_arch(unsigned long start,
+					    unsigned long end)
+{
+	initrd_start = start;
+	initrd_end   = end;
 }
+
 
 static void __init 
 setup_machine_fdt(phys_addr_t dt_phys)
@@ -146,34 +128,10 @@ void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 		size -= PHYS_OFFSET - base;
 		base = PHYS_OFFSET;
 	}
-	early_printk("Memblock add %08x%08x\n",(uint32_t)(base>>32),(uint32_t)base);
+	early_printk("Memblock add %p [size=%d MB]\n", base, size >> 20);
 	memblock_add(base, size);
 }
-/**
- * Finds the address and length of the Extended BIOS Data Area.
- */
-static void __init
-discover_ebda(void)
-{
-#if 0
-	/*
-	 * There is a real-mode segmented pointer pointing to the 
-	 * 4K EBDA area at 0x40E
-	 */
-	ebda_addr = *(unsigned short *)__va(EBDA_ADDR_POINTER);
-	ebda_addr <<= 4;
 
-	ebda_size = *(unsigned short *)__va(ebda_addr);
-
-	/* Round EBDA up to pages */
-	if (ebda_size == 0)
-		ebda_size = 1;
-	ebda_size <<= 10;
-	ebda_size = round_up(ebda_size + (ebda_addr & ~PAGE_MASK), PAGE_SIZE);
-	if (ebda_size > 64*1024)
-		ebda_size = 64*1024;
-#endif
-}
 
 /**
  * Checks to see if the "No Execute" memory protection bit is supported.
@@ -203,48 +161,40 @@ check_for_nx_bit(void)
  * freed before turning things over to the real memory allocator.
  */
 static void __init
-setup_bootmem_allocator(
-	unsigned long	start_pfn,
-	unsigned long	end_pfn
-)
+setup_bootmem_allocator(unsigned long	start_pfn,
+			unsigned long	end_pfn)
 {
-	unsigned long bootmap_size;
-	phys_addr_t phys;
-	bootmap_size = bootmem_bootmap_pages((end_pfn-start_pfn));
-	phys = memblock_alloc(bootmap_size*PAGE_SIZE,16);
-	bootmap_size = init_bootmem(phys>>PAGE_SHIFT,start_pfn, end_pfn);
-	reserve_bootmem(phys, bootmap_size);
-}
+	struct memblock_region * reg          = NULL;
+	unsigned long            bootmap_size = 0;
+	phys_addr_t              phys         = 0;
 
-/**
- * Mark in-use memory regions as reserved.
- * This prevents the bootmem allocator from allocating them.
- */
-extern uint64_t init_task_start;
-extern uint64_t init_task_size;
-static void __init
-reserve_memory(void)
-{
-	/* Reserve the kernel page table memory */
-	/*reserve_bootmem(table_start << PAGE_SHIFT,
-	                (table_end - table_start) << PAGE_SHIFT);*/
-	reserve_bootmem(virt_to_phys(PAGE_OFFSET + TEXT_OFFSET - (5 * PAGE_SIZE)),
-			(5 * PAGE_SIZE));
+	printk("Setting up bootmem allocator\n");
 
-	/* Reserve kernel memory */
-	printk("_text %p _end %p\n",_text,_end);
-	reserve_bootmem(__pa(_text),
-	                __pa(_end) - __pa(_text));
+	bootmap_size = bootmem_bootmap_pages((end_pfn - start_pfn));
+	phys         = memblock_alloc(bootmap_size * PAGE_SIZE, 16);
+	bootmap_size = init_bootmem(phys >> PAGE_SHIFT, start_pfn, end_pfn);
 
-	if (init_task_start != 0) {
-		printk("init_task_start %llx init_task_size %llx\n",init_task_start,init_task_size);
-		reserve_bootmem(init_task_start,init_task_size);
-	} else {
-		printk("Unable to allocate init_task memory\n");
+
+	for_each_memblock(memory, reg) {
+		if (reg->size == 0) {
+			continue;
+		}
+
+		printk("Freeing Bootmem at %p [%d bytes]\n", reg->base, reg->size);
+
+		free_bootmem(reg->base, reg->size);
 	}
 
-	/* Reserve FDT */
-	//reserve_bootmem();
+
+	reserve_bootmem(phys, bootmap_size);
+
+	for_each_memblock(reserved, reg) {
+		printk("Reserving Bootmem %p [%d bytes]\n", reg->base, reg->size);
+
+		reserve_bootmem(reg->base, reg->size);
+	}
+
+
 }
 
 /**
@@ -292,10 +242,64 @@ setup_per_cpu_areas(void)
 #endif
 } 
 
+static void __init
+memblock_init(void)
+{
+	u64 * reserve_map;
+	u64   base;
+	u64   size;
+
+	/* Register the kernel text, kernel data and initrd with memblock */
+	memblock_reserve(__pa(_text), _end - _text);
+	
+
+	if (initrd_start) {
+		paddr_t initrd_size = initrd_end - initrd_start;
+
+		memblock_reserve(initrd_start, initrd_size);
+
+	} else {
+		panic("No initrd (init_task) provided\n");
+	}
+
+
+	/*
+	 * Reserve the page tables.  These are already in use,
+	 * and can only be in node 0.
+	 */
+	memblock_reserve(__pa(swapper_pg_dir), SWAPPER_DIR_SIZE);
+	memblock_reserve(__pa(idmap_pg_dir), IDMAP_DIR_SIZE);
+
+	/* Reserve the dtb region */
+	memblock_reserve(virt_to_phys(initial_boot_params),
+			 be32_to_cpu(initial_boot_params->totalsize));
+
+	/*
+	 * Process the reserve map.  This will probably overlap the initrd
+	 * and dtb locations which are already reserved, but overlapping
+	 * doesn't hurt anything
+	 */
+	reserve_map = ((void*)initial_boot_params) +
+			be32_to_cpu(initial_boot_params->off_mem_rsvmap);
+	while (1) {
+		base = be64_to_cpup(reserve_map++);
+		size = be64_to_cpup(reserve_map++);
+		
+		if (!size) {
+			break;
+		}
+
+		memblock_reserve(base, size);
+	}
+
+	memblock_dump_all();
+}
+
+
 static inline int get_family(int cpuid)
 {       
-        int base = (cpuid>>8) & 0xf;
-        int extended = (cpuid>>20) &0xff;
+        int base     = (cpuid >> 8)  & 0x0f;
+        int extended = (cpuid >> 20) & 0xff;
                         
         return (0xf == base) ? base + extended : base;
 }
@@ -312,7 +316,30 @@ setup_arch(void)
 {
 	phys_addr_t start, end;
 	u64 i;
-	struct memblock_region *reg;
+
+
+
+	/* This is a bit convoluted...
+	 * Basically, the init_task can either be specified explicity
+	Command line init task location takes priority over FDT */
+	if ((init_task_start != 0) && 
+	    (init_task_size  != 0) ) {
+		initrd_start = init_task_start;
+		initrd_end   = init_task_start + init_task_size;
+	}
+
+
+	// TODO: finish initializing init_mm
+	//asm volatile("mrs	%0, ttbr1_el1\n":"=r"(ttbr1));
+	init_mm.arch.pgd = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);
+
+	memblock_init();
+
+	paging_init();
+
+
+
+
 
 	/*
 	 * Figure out which memory regions are usable and which are reserved.
@@ -332,12 +359,6 @@ setup_arch(void)
 	early_identify_cpu(&boot_cpu_data);
 
 	/*
-	 * Find the Extended BIOS Data Area.
-	 * (Not sure why exactly we need this, probably don't.)
-	 */ 
-	//discover_ebda();
-
-	/*
 	 * Initialize the kernel page tables.
 	 * The kernel page tables map an "identity" map of all physical memory
 	 * starting at virtual address PAGE_OFFSET.  When the kernel executes,
@@ -354,21 +375,14 @@ setup_arch(void)
 	//setup_bootmem_allocator(0, end_pfn);
 	// memblock to bootmem
 	start = memblock_start_of_DRAM();
-	end = memblock_end_of_DRAM();
+	end   = memblock_end_of_DRAM();
 
-	setup_bootmem_allocator(start>>PAGE_SHIFT,end>>PAGE_SHIFT);
-	printk("BOOT_MEM start: 0x%08x%08x\n",(uint32_t)(start>>32),(uint32_t)start);
-	printk("BOOT_MEM   end: 0x%08x%08x\n",(uint32_t)(end>>32),(uint32_t)end);
-
+	setup_bootmem_allocator(start >> PAGE_SHIFT, end >> PAGE_SHIFT);
+	printk("BOOT_MEM start: %p\n",  start);
+	printk("BOOT_MEM   end: %p\n",  end);
+ 
 	// Must free available memory
-	for_each_memblock(memory, reg) {
-		if (!(reg->size > 0))
-			continue;
-		free_bootmem(reg->base,reg->size);
-		printk("BOOT_MEM  base: 0x%08x%08x\n",(uint32_t)(reg->base>>32),(uint32_t)reg->base);
 
-	}
-	reserve_memory();
 
 	/*
 	 * Get the multiprocessor configuration...
@@ -398,6 +412,12 @@ setup_arch(void)
  	 * (e.g., get_cpu_var(foo)).
  	 */
 	printk("Per cpu areas\n");
+
+	for (i = 0; i < NR_CPUS; i++)
+		cpu_pda(i) = &boot_cpu_pda[i];
+	pda_init(0, &bootstrap_task_union.task_info);
+
+
 	setup_per_cpu_areas();
 
 	/*
@@ -460,35 +480,28 @@ void enable_APIC_timer(void)
 }
 
 
+
+
+
 //extern unsigned char* __START_KERNEL;
 //extern unsigned char* _end;
 #include <lwk/aspace.h>
 extern struct aspace init_mm;
 
 void __init
-arm64_start_kernel(char * real_mode_data) {
+arm64_start_kernel( void ) {
 	phys_addr_t ttbr1;
-	tcr_el1 tcr;
+	struct tcr_el1 tcr;
 	int32_t i;
 
+
 	memset(__bss_start, 0,
-			(unsigned long) __bss_stop - (unsigned long) __bss_start);
+	      (unsigned long) __bss_stop - (unsigned long) __bss_start);
+
+
+	early_printk("FDT Located At %p\n", __fdt_pointer);
 
 	setup_machine_fdt(__fdt_pointer);
-
-	// TODO: finish initializing init_mm
-	//asm volatile("mrs	%0, ttbr1_el1\n":"=r"(ttbr1));
-	init_mm.arch.pgd = __va(PHYS_OFFSET + TEXT_OFFSET - SWAPPER_DIR_SIZE);
-
-	arm64_memblock_init();
-
-	paging_init();
-
-	for (i = 0; i < NR_CPUS; i++)
-		cpu_pda(i) = &boot_cpu_pda[i];
-	pda_init(0, &bootstrap_task_union.task_info);
-
-
 
 
 	start_kernel();

@@ -136,51 +136,7 @@ static void arm64_memory_present(void)
 
 #endif
 
-void __init arm64_memblock_init(void)
-{
-	u64 *reserve_map, base, size;
 
-	/* Register the kernel text, kernel data and initrd with memblock */
-	memblock_reserve(__pa(_text), _end - _text);
-#ifdef CONFIG_BLK_DEV_INITRD
-	if (phys_initrd_size) {
-		memblock_reserve(phys_initrd_start, phys_initrd_size);
-
-		/* Now convert initrd to virtual addresses */
-		initrd_start = __phys_to_virt(phys_initrd_start);
-		initrd_end = initrd_start + phys_initrd_size;
-	}
-#endif
-
-	/*
-	 * Reserve the page tables.  These are already in use,
-	 * and can only be in node 0.
-	 */
-	memblock_reserve(__pa(swapper_pg_dir), SWAPPER_DIR_SIZE);
-	memblock_reserve(__pa(idmap_pg_dir), IDMAP_DIR_SIZE);
-
-	/* Reserve the dtb region */
-	memblock_reserve(virt_to_phys(initial_boot_params),
-			 be32_to_cpu(initial_boot_params->totalsize));
-
-	/*
-	 * Process the reserve map.  This will probably overlap the initrd
-	 * and dtb locations which are already reserved, but overlapping
-	 * doesn't hurt anything
-	 */
-	reserve_map = ((void*)initial_boot_params) +
-			be32_to_cpu(initial_boot_params->off_mem_rsvmap);
-	while (1) {
-		base = be64_to_cpup(reserve_map++);
-		size = be64_to_cpup(reserve_map++);
-		if (!size)
-			break;
-		memblock_reserve(base, size);
-	}
-
-	memblock_allow_resize();
-	memblock_dump_all();
-}
 #if 0
 
 #if !defined(CONFIG_NO_BOOTMEM)

@@ -1,11 +1,10 @@
-#ifndef _X86_64_PERCPU_H
-#define _X86_64_PERCPU_H
+#ifndef _ARM64_PERCPU_H
+#define _ARM64_PERCPU_H
 #include <lwk/compiler.h>
 
 /* Same as asm-generic/percpu.h, except that we store the per cpu offset
    in the PDA. Longer term the PDA and every per cpu variable
-   should be just put into a single section and referenced directly
-   from %gs */
+   should be just put into a single section and referenced directly*/
 
 #include <arch/pda.h>
 

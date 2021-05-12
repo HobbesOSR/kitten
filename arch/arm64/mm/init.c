@@ -15,22 +15,8 @@ unsigned long __initdata table_start, table_end;  /* page frame numbers */
 
 
 
-#include <lwk/params.h>
-uint64_t init_task_start = 0;
-uint64_t init_task_size = 0;
-param(init_task_start, ulong);
-param(init_task_size, ulong);
 
 
-unsigned long fdt_initrd_start __initdata = 0;
-unsigned long fdt_initrd_size  __initdata = 0;
-
-void __init early_init_dt_setup_initrd_arch(unsigned long start,
-					    unsigned long end)
-{
-	fdt_initrd_start = start;
-	fdt_initrd_size = end - start;
-}
 
 
 static __init void *early_ioremap(unsigned long addr, unsigned long size)
@@ -339,7 +325,7 @@ init_kernel_pgtables(unsigned long start, unsigned long end)
 
 /**
  * This performs architecture-specific memory subsystem initialization. It is
- * called from the platform-independent memsys_init(). For x86_64, the only
+ * called from the platform-independent memsys_init(). The only
  * thing that needs to be done is to relocate the initrd image to user memory.
  */
 
@@ -355,15 +341,7 @@ arch_memsys_init(size_t kmem_size)
 	size_t  umem_size        = 0;
 
 
-	/* Command line init task location takes priority over FDT */
-	if ((init_task_start != 0) && 
-	    (init_task_size  != 0) ) {
-		initrd_start = init_task_start;
-		initrd_end   = init_task_start + init_task_size;
-	} else {
-		initrd_start = fdt_initrd_start;
-		initrd_end   = fdt_initrd_start + fdt_initrd_size;
-	}
+
 
 	printk("initrd_start %llx\n", initrd_start);
 
@@ -373,8 +351,6 @@ arch_memsys_init(size_t kmem_size)
 
 	initrd_size = initrd_end - initrd_start;
 	umem_size   = round_up(initrd_size, PAGE_SIZE);
-
-	printk("arch_memsys_init - Step 1\n");
 
 	/* Step 1: Mark any umem that the initrd image is currently occupying
 	 *         as free.
@@ -403,15 +379,17 @@ arch_memsys_init(size_t kmem_size)
 
 	if (pmem_alloc_umem(umem_size, PAGE_SIZE, &result)) {
 		panic("Failed to allocate umem for initrd image.");
-    }
+	}
 
 	result.type = PMEM_TYPE_INITRD;
 	pmem_update(&result);
 	new_initrd_start = result.start;
 	new_initrd_end   = result.start + initrd_size;
 
+	printk("Moving initrd (%d bytes) from %p to %p\n", initrd_size, initrd_start, new_initrd_start);
 
 	memmove(__va(new_initrd_start), __va(initrd_start), initrd_size);
+
 	/* Step 3: Mark any kmem that the original initrd image (before
 	 *         being moved) was occupying as free and add it to the
 	 *         kmem pool.
@@ -441,7 +419,6 @@ arch_memsys_init(size_t kmem_size)
 
 	/* Assume the initrd image is the init_task ELF executable */
 	init_elf_image = initrd_start;
-	printk("init_elf_image %llx\n", init_elf_image);
 }
 
 #ifndef INIT_MM_CONTEXT
