@@ -219,7 +219,7 @@ setup_bootmem_allocator(unsigned long	start_pfn,
 static void __init
 setup_per_cpu_areas(void)
 { 
-#if 0
+
 	int i;
 	size_t size;
 
@@ -229,6 +229,10 @@ setup_per_cpu_areas(void)
  	 * We create a copy of this ELF section for each CPU.
  	 */
 	size = ALIGN(__per_cpu_end - __per_cpu_start, SMP_CACHE_BYTES);
+
+	printk("Setting up per-cpu areas (size=%d)\n", size);
+	printk("\t__per_cpu_start = %p, __per_cpu_end = %p\n", __per_cpu_start, __per_cpu_end);
+
 
 	for_each_cpu_mask (i, cpu_present_map) {
 		char *ptr;
@@ -250,7 +254,6 @@ setup_per_cpu_areas(void)
 
 		memcpy(ptr, __per_cpu_start, __per_cpu_end - __per_cpu_start);
 	}
-#endif
 } 
 
 static void __init

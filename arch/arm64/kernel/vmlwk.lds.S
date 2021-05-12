@@ -102,15 +102,6 @@ SECTIONS
     __stop___ex_table = .;
 
 
-
-
-/* 	PERCPU_SECTION(64) */
-  . = ALIGN(4096);
-  __per_cpu_start = .;
-  .data.percpu  : AT(ADDR(.data.percpu) - LOAD_OFFSET) { *(.data.percpu) }
-  __per_cpu_end = .;
-  . = ALIGN(4096);
-
 	__init_end = .;
 
 
