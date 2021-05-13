@@ -19,6 +19,13 @@
 #define _UL(x) _AC(x, UL)
 
 
+/*
+ * Size of the PCI I/O space. This must remain a power of two so that
+ * IO_SPACE_LIMIT acts as a mask for the low bits of I/O addresses.
+ */
+#define PCI_IO_SIZE		SZ_16M
+
+
 #define MODULES_END     	(PAGE_OFFSET)
 #define MODULES_VADDR       (MODULES_END - SZ_64M)
 #define EARLYCON_IOBASE     (MODULES_VADDR - SZ_4M)

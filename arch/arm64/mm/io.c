@@ -21,7 +21,7 @@ ioremap_nocache(unsigned long offset, unsigned long size)
                                   &bootstrap_aspace,
                                   (vaddr_t)__va(paddr),
                                   paddr,
-                                  PAGE_KERNEL,
+                                  PROT_DEVICE_nGnRE,
                                   VM_PAGE_4KB
                         );
 

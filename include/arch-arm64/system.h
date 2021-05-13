@@ -2,144 +2,14 @@
 #define __ASM_SYSTEM_H
 
 #include <lwk/kernel.h>
-#include <arch/segment.h>
 
 #ifdef __KERNEL__
 
 #define __STR(x) #x
 #define STR(x) __STR(x)
 
-#define __SAVE(reg,offset) "movq %%" #reg ",(14-" #offset ")*8(%%rsp)\n\t"
-#define __RESTORE(reg,offset) "movq (14-" #offset ")*8(%%rsp),%%" #reg "\n\t"
 
-/* frame pointer must be last for get_wchan */
-#define SAVE_CONTEXT    "pushq %%rbp ; movq %%rsi,%%rbp\n\t"
-#define RESTORE_CONTEXT "movq %%rbp,%%rsi ; popq %%rbp\n\t"
 
-#define __EXTRA_CLOBBER  \
-	,"rcx","rbx","rdx","r8","r9","r10","r11","r12","r13","r14","r15"
-
-#define switch_to(prev,next,last)
-
-#if 0
-\
-	asm volatile(SAVE_CONTEXT						    \
-		     "movq %%rsp,%P[threadrsp](%[prev])\n\t" /* save RSP */	  \
-		     "movq %P[threadrsp](%[next]),%%rsp\n\t" /* restore RSP */	  \
-		     "call __switch_to\n\t"					  \
-		     ".globl thread_return\n"					\
-		     "thread_return:\n\t"					    \
-		     "movq %%gs:%P[pda_pcurrent],%%rsi\n\t"			  \
-		     "movq %P[thread_info](%%rsi),%%r8\n\t"			  \
-		     "lock ; btr  %[tif_fork],%P[ti_flags](%%r8)\n\t"	  \
-		     "movq %%rax,%%rdi\n\t" 					  \
-		     "jc   ret_from_fork\n\t"					  \
-		     RESTORE_CONTEXT						    \
-		     : "=a" (last)					  	  \
-		     : [next] "S" (next), [prev] "D" (prev),			  \
-		       [threadrsp] "i" (offsetof(struct task_struct, thread.rsp)), \
-		       [ti_flags] "i" (offsetof(struct thread_info, flags)),\
-		       [tif_fork] "i" (TIF_FORK),			  \
-		       [thread_info] "i" (offsetof(struct task_struct, thread_info)), \
-		       [pda_pcurrent] "i" (offsetof(struct x8664_pda, pcurrent))   \
-		     : "memory", "cc" __EXTRA_CLOBBER)
-#endif
-    
-extern void load_gs_index(unsigned); 
-
-/*
- * Load a segment. Fall back on loading the zero
- * segment if something goes wrong..
- */
-#define loadsegment(seg,value)
-
-#if 0
-\
-	asm volatile("\n"			\
-		"1:\t"				\
-		"movl %k0,%%" #seg "\n"		\
-		"2:\n"				\
-		".section .fixup,\"ax\"\n"	\
-		"3:\t"				\
-		"movl %1,%%" #seg "\n\t" 	\
-		"jmp 2b\n"			\
-		".previous\n"			\
-		".section __ex_table,\"a\"\n\t"	\
-		".align 8\n\t"			\
-		".quad 1b,3b\n"			\
-		".previous"			\
-		: :"r" (value), "r" (0))
-#endif
-
-/*
- * Clear and set 'TS' bit respectively
- */
-#define clts()
-
-//__asm__ __volatile__ ("clts")
-
-static inline unsigned long read_cr0(void)
-{ 
-	unsigned long cr0;
-	//asm volatile("movq %%cr0,%0" : "=r" (cr0));
-	return cr0;
-} 
-
-static inline void write_cr0(unsigned long val) 
-{ 
-	//asm volatile("movq %0,%%cr0" :: "r" (val));
-} 
-
-static inline unsigned long read_cr2(void)
-{ 
-	unsigned long cr2;
-	//asm("movq %%cr2,%0" : "=r" (cr2));
-	return cr2;
-} 
-
-static inline unsigned long read_cr3(void)
-{ 
-	unsigned long cr3;
-	//asm("movq %%cr3,%0" : "=r" (cr3));
-	return cr3;
-} 
-
-static inline unsigned long read_cr4(void)
-{ 
-	unsigned long cr4;
-	//asm("movq %%cr4,%0" : "=r" (cr4));
-	return cr4;
-} 
-
-static inline void write_cr4(unsigned long val)
-{ 
-	//asm volatile("movq %0,%%cr4" :: "r" (val));
-} 
-
-#define stts() write_cr0(8 | read_cr0())
-
-#define wbinvd()
-
-#if 0
-\
-	__asm__ __volatile__ ("wbinvd": : :"memory");
-#endif
-
-static inline unsigned long read_eflags(void)
-{ 
-	unsigned long eflags;
-
-#if 0
-	__asm__ __volatile__(
-		"# __raw_save_flags\n\t"
-		"pushf ; pop %0"
-		: "=g" (eflags)
-		: /* no input */
-		: "memory"
-	);
-#endif
-	return eflags;
-} 
 
 /*
  * On SMP systems, when the scheduler does migration-cost autodetection,
@@ -155,20 +25,6 @@ static inline void sched_cacheflush(void)
 #define nop()
 
 //__asm__ __volatile__ ("nop")
-
-#define xchg(ptr,v) ((__typeof__(*(ptr)))__xchg((unsigned long)(v),(ptr),sizeof(*(ptr))))
-
-#define tas(ptr) (xchg((ptr),1))
-
-#define __xg(x) ((volatile long *)(x))
-
-static inline void set_64bit(volatile unsigned long *ptr, unsigned long val)
-{
-	*ptr = val;
-}
-
-#define _set_64bit set_64bit
-
 
 /*
  * Atomic compare and exchange.  Compare OLD with MEM, if identical,
@@ -186,18 +42,7 @@ static inline void set_64bit(volatile unsigned long *ptr, unsigned long val)
 #define smp_read_barrier_depends()	do {} while(0)
     
 
-/*
- * Force strict CPU ordering.
- * And yes, this is required on UP too when we're talking
- * to devices.
- */
-#define mb()
 
-//asm volatile("mfence":::"memory")
-#define rmb()
-
-//asm volatile("lfence":::"memory")
-#define wmb()
 
 //asm volatile("sfence" ::: "memory")
 #define read_barrier_depends()	do {} while(0)
@@ -206,27 +51,57 @@ static inline void set_64bit(volatile unsigned long *ptr, unsigned long val)
 #define warn_if_not_ulong(x) do { unsigned long foo; (void) (&(x) == &foo); } while (0)
 
 /* interrupt control.. */
-#define local_save_flags(x)
 
-//do { warn_if_not_ulong(x); __asm__ __volatile__("# save_flags \n\t pushfq ; popq %q0":"=g" (x): /* no input */ :"memory"); } while (0)
-#define local_irq_restore(x) \
-		do { warn_if_not_ulong(x); \
-		__asm__ __volatile__("# local_irq_save \n\t"\
-				/* Restore Flags */ \
-				"and %x0, %0, #0xf0000000\n" \
-				"msr NZCV, %x0\n" \
-				/* Unmask IRQ/FIQ */ \
-				"and %x0, %0, #0x3c0\n"\
-				"msr DAIF, %x0\n":"=r"(x)::"x0","w0");\
-			} while (0)
-//__asm__ __volatile__("# restore_flags \n\t pushq %0 ; popfq": /* no output */ :"g" (x):"memory", "cc")
 
-#define local_irq_disable()
+#define local_fiq_enable()	asm("msr	daifclr, #1" : : : "memory")
+#define local_fiq_disable()	asm("msr	daifset, #1" : : : "memory")
 
-//__asm__ __volatile__("cli": : :"memory")
-#define local_irq_enable()
+#define local_async_enable()	asm("msr	daifclr, #4" : : : "memory")
+#define local_async_disable()	asm("msr	daifset, #4" : : : "memory")
 
-//__asm__ __volatile__("sti": : :"memory")
+static inline unsigned long arch_local_save_flags(void)
+{
+	unsigned long flags;
+	asm volatile(
+		"mrs	%0, daif		// arch_local_save_flags"
+		: "=r" (flags)
+		:
+		: "memory");
+	return flags;
+}
+
+#define local_save_flags(flags)				\
+	do {						\
+		flags = arch_local_save_flags();	\
+	} while (0)
+
+
+static inline void local_irq_restore(unsigned long flags)
+{
+	asm volatile(
+		"msr	daif, %0		// arch_local_irq_restore"
+	:
+	: "r" (flags)
+	: "memory");
+}
+
+static inline void local_irq_disable(void)
+{
+	asm volatile(
+		"msr	daifset, #2		// arch_local_irq_disable"
+		:
+		:
+		: "memory");
+}
+
+static inline void local_irq_enable(void)
+{
+	asm volatile(
+		"msr	daifclr, #2		// arch_local_irq_enable"
+		:
+		:
+		: "memory");
+}
 
 #define irqs_disabled()			\
 ({					\
@@ -238,28 +113,34 @@ static inline void set_64bit(volatile unsigned long *ptr, unsigned long val)
 #define irqs_enabled() !irqs_disabled()
 
 /* For spinlocks etc */
-#define local_irq_save(x) \
-	do { warn_if_not_ulong(x); \
-	__asm__ __volatile__("# local_irq_save \n\t"\
-			/* Save Flags and IRQ/FIQ state */ \
-			"mrs %0, NZCV \n"\
-			"mrs %x0, DAIF \n"\
-			"orr %0, %0, %x0 \n"\
-			/* Mask IRQ/FIQ */ \
-			"orr %x0, %x0, #0xc0 \n"\
-			"msr DAIF, %x0\n":"=r"(x)::"x0","w0");\
+static inline unsigned long arch_local_irq_save(void)
+{
+	unsigned long flags;
+	asm volatile(
+		"mrs	%0, daif		// arch_local_irq_save\n"
+		"msr	daifset, #2"
+		: "=r" (flags)
+		:
+		: "memory");
+	return flags;
+}
+
+#define local_irq_save(flags)				\
+	do {						\
+		flags = arch_local_irq_save();		\
 	} while (0)
 
-//do { warn_if_not_ulong(x); __asm__ __volatile__("# local_irq_save \n\t pushfq ; popq %0 ; cli":"=g" (x): /* no input */ :"memory"); } while (0)
-
 /* used in the idle loop; sti takes one instruction cycle to complete */
-#define safe_halt()
-
+// #define safe_halt()
 //__asm__ __volatile__("sti; hlt": : :"memory")
-/* used when interrupts are already enabled or to shutdown the processor */
-#define halt()
 
-//__asm__ __volatile__("hlt": : :"memory")
+/* used when interrupts are already enabled or to shutdown the processor */
+#define halt() 							\
+	do {							\
+		printk("Halting\n");				\
+		__asm__ __volatile__ ("wfi" : : : "memory");	\
+	} while (0)
+
 
 void cpu_idle_wait(void);
 
