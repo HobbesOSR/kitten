@@ -24,11 +24,9 @@
 #include <lwk/errno.h>
 
 #include <lwk/init.h>  /* for COMMAND_LINE_SIZE */
-#ifdef CONFIG_PPC
-#include <asm/machdep.h>
-#endif /* CONFIG_PPC */
 
 #include <arch/page.h>
+#include <lwk/bootmem.h>
 
 extern int early_printk(const char * fmt, ...);
 
@@ -365,7 +363,6 @@ static void __unflatten_device_tree(struct boot_param_header *blob,
 			     struct device_node **mynodes,
 			     void * (*dt_alloc)(u64 size, u64 align))
 {
-#if 0
 	unsigned long start, mem, size;
 	struct device_node **allnextp = mynodes;
 
@@ -414,13 +411,12 @@ static void __unflatten_device_tree(struct boot_param_header *blob,
 	*allnextp = NULL;
 
 	//pr_debug(" <- unflatten_device_tree()\n");
-#endif
 }
-/*
+
 static void *kernel_tree_alloc(u64 size, u64 align)
 {
-	return kzalloc(size, GFP_KERNEL);
-}*/
+	return alloc_bootmem(size);
+}
 
 /**
  * of_fdt_unflatten_tree - create tree of device_nodes from flat blob
@@ -435,9 +431,9 @@ void of_fdt_unflatten_tree(unsigned long *blob,
 {
 	struct boot_param_header *device_tree =
 		(struct boot_param_header *)blob;
-	//__unflatten_device_tree(device_tree, mynodes, &kernel_tree_alloc);
+
+	__unflatten_device_tree(device_tree, mynodes, &kernel_tree_alloc);
 }
-EXPORT_SYMBOL_GPL(of_fdt_unflatten_tree);
 
 /* Everything below here references initial_boot_params directly. */
 int __initdata dt_root_addr_cells;
@@ -445,7 +441,7 @@ int __initdata dt_root_size_cells;
 
 struct boot_param_header *initial_boot_params;
 
-#ifdef CONFIG_OF_EARLY_FLATTREE
+
 /**
  * of_scan_flat_dt - scan flattened tree blob and call callback on each.
  * @it: callback function
@@ -721,12 +717,13 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
  */
 void __init unflatten_device_tree(void)
 {
-#if 0
+
+	printk("Unflatten device tree (ibp=%p)\n", initial_boot_params);
+
 	__unflatten_device_tree(initial_boot_params, &allnodes,
-				early_init_dt_alloc_memory_arch);
+				kernel_tree_alloc);
 
 	/* Get pointer to "/chosen" and "/aliasas" nodes for use everywhere */
-	of_alias_scan(early_init_dt_alloc_memory_arch);
-#endif
+	of_alias_scan(kernel_tree_alloc);
 }
-#endif /* CONFIG_OF_EARLY_FLATTREE */
+

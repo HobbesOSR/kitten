@@ -189,13 +189,10 @@ early_identify_cpu(struct cpuinfo *c)
 	}
 
 	{
-		uint32_t cpu_khz = (u32)mrs(CNTFRQ_EL0) / 1000;
+		a->timer_hz    = (u32)mrs(CNTFRQ_EL0);
+		a->cur_cpu_khz = a->timer_hz / 1000;
+		a->tsc_khz     = a->timer_hz / 1000;
 
-		a->cur_cpu_khz = cpu_khz;
-		a->max_cpu_khz = cpu_khz;
-		a->min_cpu_khz = cpu_khz;
-		a->min_cpu_khz = cpu_khz;
-		a->tsc_khz     = cpu_khz;
 	}
 
 
@@ -295,14 +292,12 @@ print_arch_cpuinfo(struct cpuinfo *c)
 
 
 
-	printk(KERN_DEBUG "  Vendor:         %s\n",      vendor_name);
-	printk(KERN_DEBUG "  Variant:        %u\n",      a->arm64_variant);
-	printk(KERN_DEBUG "  Architecture:   %u\n",      a->arm64_arch);
-	printk(KERN_DEBUG "  Model:          %u.%u\n",   a->arm64_partnum, a->arm64_revision);
-	printk(KERN_DEBUG "  Frequency:      %u.%03u MHz (max=%u.%03u, min=%u.%03u)\n",
-	                  a->cur_cpu_khz / 1000, (a->cur_cpu_khz % 1000),
-	                  a->max_cpu_khz / 1000, (a->max_cpu_khz % 1000),
-	                  a->min_cpu_khz / 1000, (a->min_cpu_khz % 1000));
+	printk(KERN_DEBUG "  Vendor:           %s\n",      vendor_name);
+	printk(KERN_DEBUG "  Variant:          %u\n",      a->arm64_variant);
+	printk(KERN_DEBUG "  Architecture:     %u\n",      a->arm64_arch);
+	printk(KERN_DEBUG "  Model:            %u.%u\n",   a->arm64_partnum, a->arm64_revision);
+	printk(KERN_DEBUG "  Timer Frequency:  %u.%03u MHz \n",
+	                  a->timer_hz / 1000000, (a->timer_hz % 1000000));
 
 
 

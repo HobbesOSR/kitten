@@ -14,12 +14,13 @@
 // Valid user-space address space IDs are in interval
 // [UASPACE_MIN_ID, UASPACE_MAX_ID]. This interval must
 // not include KERNEL_ASPACE_ID.
-#define UASPACE_MIN_ID		1
+#define UASPACE_MIN_ID		2
 #define UASPACE_MAX_ID		32767
 
 
 // IDs of well-known address spaces
-#define KERNEL_ASPACE_ID	0
+#define BOOTSTRAP_ASPACE_ID     0
+#define KERNEL_ASPACE_ID	1
 #define INIT_ASPACE_ID		UASPACE_MIN_ID
 
 

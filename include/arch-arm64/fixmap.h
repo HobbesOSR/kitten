@@ -12,7 +12,7 @@
 #define _ASM_FIXMAP_H
 
 #include <lwk/kernel.h>
-#include <arch/apicdef.h>
+#include <arch/gicdef.h>
 #include <arch/page.h>
 #include <arch/vsyscall.h>
 
@@ -34,9 +34,6 @@
 enum fixed_addresses {
 	VSYSCALL_LAST_PAGE,
 	VSYSCALL_FIRST_PAGE = VSYSCALL_LAST_PAGE + ((VSYSCALL_END-VSYSCALL_START) >> PAGE_SHIFT) - 1,
-	FIX_APIC_BASE,	/* local (CPU) APIC) */
-	FIX_IO_APIC_BASE_0,
-	FIX_IO_APIC_BASE_END = FIX_IO_APIC_BASE_0 + MAX_IO_APICS-1,
 	__end_of_fixed_addresses
 };
 

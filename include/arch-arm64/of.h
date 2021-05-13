@@ -42,9 +42,6 @@ struct property {
 	unsigned int unique_id;
 };
 
-#if defined(CONFIG_SPARC)
-struct of_irq_controller;
-#endif
 
 struct device_node {
 	const char *name;
@@ -63,11 +60,6 @@ struct device_node {
 	struct	kref kref;
 	unsigned long _flags;
 	void	*data;
-#if defined(CONFIG_SPARC)
-	char	*path_component_name;
-	unsigned int unique_id;
-	struct of_irq_controller *irq_trans;
-#endif
 };
 
 #define MAX_PHANDLE_ARGS 8
@@ -88,10 +80,6 @@ static inline struct device_node *of_node_get(struct device_node *node)
 }
 static inline void of_node_put(struct device_node *node) { }
 #endif /* !CONFIG_OF_DYNAMIC */
-
-// TODO: Brian correct config
-#define CONFIG_OF
-#ifdef CONFIG_OF
 
 /* Pointer for first entry in chain of all nodes. */
 extern struct device_node *allnodes;
@@ -316,140 +304,7 @@ const char *of_prop_next_string(struct property *prop, const char *cur);
 		s;						\
 		s = of_prop_next_string(prop, s))
 
-#else /* CONFIG_OF */
 
-static inline const char* of_node_full_name(struct device_node *np)
-{
-	return "<no-node>";
-}
-
-static inline struct device_node *of_find_node_by_name(struct device_node *from,
-	const char *name)
-{
-	return NULL;
-}
-
-static inline bool of_have_populated_dt(void)
-{
-	return false;
-}
-
-#define for_each_child_of_node(parent, child) \
-	while (0)
-
-static inline struct device_node *of_get_child_by_name(
-					const struct device_node *node,
-					const char *name)
-{
-	return NULL;
-}
-
-static inline int of_get_child_count(const struct device_node *np)
-{
-	return 0;
-}
-
-static inline int of_device_is_compatible(const struct device_node *device,
-					  const char *name)
-{
-	return 0;
-}
-
-static inline struct property *of_find_property(const struct device_node *np,
-						const char *name,
-						int *lenp)
-{
-	return NULL;
-}
-
-static inline struct device_node *of_find_compatible_node(
-						struct device_node *from,
-						const char *type,
-						const char *compat)
-{
-	return NULL;
-}
-
-static inline int of_property_read_u32_array(const struct device_node *np,
-					     const char *propname,
-					     u32 *out_values, size_t sz)
-{
-	return -ENOSYS;
-}
-
-static inline int of_property_read_string(struct device_node *np,
-					  const char *propname,
-					  const char **out_string)
-{
-	return -ENOSYS;
-}
-
-static inline int of_property_read_string_index(struct device_node *np,
-						const char *propname, int index,
-						const char **out_string)
-{
-	return -ENOSYS;
-}
-
-static inline int of_property_count_strings(struct device_node *np,
-					    const char *propname)
-{
-	return -ENOSYS;
-}
-
-static inline const void *of_get_property(const struct device_node *node,
-				const char *name,
-				int *lenp)
-{
-	return NULL;
-}
-
-static inline int of_property_read_u64(const struct device_node *np,
-				       const char *propname, u64 *out_value)
-{
-	return -ENOSYS;
-}
-
-static inline int of_property_match_string(struct device_node *np,
-					   const char *propname,
-					   const char *string)
-{
-	return -ENOSYS;
-}
-
-static inline struct device_node *of_parse_phandle(struct device_node *np,
-						   const char *phandle_name,
-						   int index)
-{
-	return NULL;
-}
-
-static inline int of_parse_phandle_with_args(struct device_node *np,
-					     const char *list_name,
-					     const char *cells_name,
-					     int index,
-					     struct of_phandle_args *out_args)
-{
-	return -ENOSYS;
-}
-
-static inline int of_alias_get_id(struct device_node *np, const char *stem)
-{
-	return -ENOSYS;
-}
-
-static inline int of_machine_is_compatible(const char *compat)
-{
-	return 0;
-}
-
-#define of_match_ptr(_ptr)	NULL
-#define of_match_node(_matches, _node)	NULL
-#define of_property_for_each_u32(np, propname, prop, p, u) \
-	while (0)
-#define of_property_for_each_string(np, propname, prop, s) \
-	while (0)
-#endif /* CONFIG_OF */
 
 #ifndef of_node_to_nid
 static inline int of_node_to_nid(struct device_node *np)

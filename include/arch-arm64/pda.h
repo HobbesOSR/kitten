@@ -39,6 +39,7 @@ struct ARM64_pda {
 	unsigned int __nmi_count;	/* number of NMI on this CPUs */
 	int mmu_state;     
 	struct aspace *active_aspace;
+	unsigned int timer_reload_value;
 	unsigned apic_timer_irqs;
 }; // ____cacheline_aligned_in_smp;
 

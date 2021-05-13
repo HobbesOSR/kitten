@@ -144,7 +144,7 @@ tsk	.req	x28		// current thread_info
  * Interrupt handling.
  */
 	.macro	irq_handler
-	ldr	x1, handle_arch_irq
+	ldr	x1, handle_irq
 	mov	x0, sp
 	blr	x1
 	.endm
@@ -317,7 +317,6 @@ el1_dbg:
 
 	kernel_exit 1
 el1_inv:
-	b .
 	// TODO: add support for undefined instructions in kernel mode
 	mov	x0, sp
 	mov	x1, #BAD_SYNC
@@ -327,7 +326,6 @@ ENDPROC(el1_sync)
 
 	.align	6
 el1_irq:
-	b .
 	kernel_entry 1
 	enable_dbg_if_not_stepping x0
 #ifdef CONFIG_TRACE_IRQFLAGS

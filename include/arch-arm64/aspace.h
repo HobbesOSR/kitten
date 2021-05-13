@@ -7,8 +7,8 @@
 #include <arch/page_table.h>
 
 struct arch_aspace {
-	xpte_t * pgd;	/* Page global directory... root page table */
-	unsigned int id;
+	xpte_t       * pgd;	/* Page global directory... root page table */
+	unsigned int   id;
 };
 #endif
 

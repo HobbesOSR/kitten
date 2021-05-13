@@ -24,7 +24,7 @@
 /**
  * Set to true once bootmem allocator has been destroyed.
  */
-static bool bootmem_destoyed = false;
+bool bootmem_destoyed = false;
 
 /**
  * Access to this subsystem has to be serialized externally.

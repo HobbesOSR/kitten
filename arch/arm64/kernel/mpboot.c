@@ -7,8 +7,6 @@
 #include <lwk/task.h>
 #include <lwk/sched.h>
 #include <arch/atomic.h>
-#include <arch/apicdef.h>
-//#include <arch/desc.h>
 
 /**
  * MP boot trampoline 80x86 program as an array.

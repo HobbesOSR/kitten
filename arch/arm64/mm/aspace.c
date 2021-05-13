@@ -8,7 +8,9 @@
 #include <arch/pgtable.h>   /* TODO: remove */
 #include <arch/page_table.h>
 #include <arch/tlbflush.h>
+#include <lwk/bootmem.h>
 
+extern bool bootmem_destoyed;
 
 #ifdef CONFIG_ARM64_64K_PAGES
 #error "64KB pages not supported. Aspace needs to be fully re-designed to work."
@@ -90,14 +92,19 @@ arch_aspace_activate(
 	struct aspace *	aspace
 )
 {
-	printk("activate aspace %p\n",aspace->arch.pgd);
+	printk("activate aspace [%d] at %p\n", aspace->id, aspace->arch.pgd);
 	//printk("aspace->child_list %p\n",aspace->child_list);
 	//printk("&aspace->child_list %p\n",&aspace->child_list);
 	//printk("(&aspace->child_list)->prev %p\n",(&aspace->child_list)->prev);
-	asm volatile(
-			"dsb #0\n"
-			"msr TTBR0_EL1, %0\n"
-			"isb\n":: "r" (__pa(aspace->arch.pgd)) : "memory");
+
+	if (aspace->id != BOOTSTRAP_ASPACE_ID) {
+		asm volatile(
+				"dsb #0\n"
+				"msr TTBR0_EL1, %0\n"
+				"isb\n":: "r" (__pa(aspace->arch.pgd)) : "memory");
+	} else {
+		// Nothing to do for the bootstrap aspace
+	}
 }
 
 
@@ -106,12 +113,17 @@ arch_aspace_activate(
  */
 static xpte_t *
 alloc_page_table(
-	xpte_t *	parent_pte
+	xpte_t        * parent_pte
 )
 {
 	xpte_t *new_table;
+	
+	if (bootmem_destoyed == true) {
+		new_table = kmem_get_pages(0);
+	} else {
+		new_table = alloc_bootmem_aligned(PAGE_SIZE_4KB, PAGE_SIZE_4KB);
+	}
 
-	new_table = kmem_get_pages(0);
 	if (!new_table)
 		return NULL;
 	
@@ -150,6 +162,7 @@ find_or_create_pte(
 	vmpagesize_t	pagesz
 )
 {
+	struct tcr_el1 tcr = get_tcr_el1();
 
 	xpte_t *pgd = NULL;	/* Page Global Directory: level 1 (root of tree) */
 	xpte_t *pmd = NULL;	/* Page Middle Directory: level 2 */
@@ -166,17 +179,26 @@ find_or_create_pte(
 	unsigned int ptd_index =  (vaddr >> 12) & 0x1FF;
 
 
-
 	/* JRL: These should either be handled OK here, or be moved to initialization time checks */
 	{
-		struct tcr_el1 tcr = get_tcr_el1();
-
-		if (vaddr >= 0xffffff8000000000ull) {
-			panic("Unable to handle Kernel page translations\n");
-		} else if ((tcr.t0sz < 25) || (tcr.t0sz > 33)) {
+		if ((tcr.t0sz < 25) || (tcr.t0sz > 33)) {
 			panic("Unable to handle this starting level\n");
 		} else if (aspace->arch.pgd == NULL) {
 			panic("Aspace has NULL PGD\n");
+		}
+	}
+
+	if (aspace->id == BOOTSTRAP_ASPACE_ID) {
+		u64 msb_mask = ~(0xffffffffffffffff >> tcr.t1sz);
+
+		if ((vaddr & msb_mask) != msb_mask) {
+			panic("Invalid Bootstrap Address [vaddr=%p]\n", vaddr);
+		}
+	} else {
+		u64 msb_mask = ~(0xffffffffffffffff >> tcr.t0sz);
+
+		if ((vaddr & msb_mask) != 0) {
+			panic("Invalid Kernel/Use Address [vaddr=%p]\n", vaddr);
 		}
 	}
 
@@ -253,6 +275,8 @@ find_and_delete_pte(
 	vmpagesize_t	pagesz
 )
 {
+	struct tcr_el1 tcr = get_tcr_el1();
+
 	xpte_t *pgd = NULL;	/* Page Global Directory: level 1 (root of tree) */
 	xpte_t *pmd = NULL;	/* Page Middle Directory: level 2 */
 	xpte_t *ptd = NULL;	/* Page Table Directory:  level 3 */
@@ -271,11 +295,7 @@ find_and_delete_pte(
 
 	/* JRL: These should either be handled OK here, or be moved to initialization time checks */
 	{
-		struct tcr_el1 tcr = get_tcr_el1();
-
-		if (vaddr >= 0xffffff8000000000ull) {
-			panic("Unable to handle Kernel page translations\n");
-		} else if ((tcr.t0sz < 25) || (tcr.t0sz > 33)) {
+		if ((tcr.t0sz < 25) || (tcr.t0sz > 33)) {
 			panic("Unable to handle this starting level\n");
 		} else if (aspace->arch.pgd == NULL) {
 			panic("Aspace has NULL PGD\n");
@@ -283,6 +303,19 @@ find_and_delete_pte(
 
 	}
 
+	if (aspace->id == BOOTSTRAP_ASPACE_ID) {
+		u64 msb_mask = ~(0xffffffffffffffff >> tcr.t1sz);
+
+		if ((vaddr & msb_mask) != msb_mask) {
+			panic("Invalid Bootstrap Address [vaddr=%p]\n", vaddr);
+		}
+	} else {
+		u64 msb_mask = ~(0xffffffffffffffff >> tcr.t0sz);
+
+		if ((vaddr & msb_mask) != 0) {
+			panic("Invalid Kernel/Use Address [vaddr=%p]\n", vaddr);
+		}
+	}
 
 	pgd = aspace->arch.pgd;
 	pge = &pgd[pgd_index];
@@ -396,6 +429,8 @@ write_pte(
 
 	}
 
+	// printk("Writing PTE [%p]\n", *(u64 *)&_pte);
+
 	*pte = _pte;
 }
 
@@ -425,12 +460,13 @@ arch_aspace_map_page(
 {
 	xpte_t *pte;
 
-	printk("Mapping Page (vaddr=%p) (paddr=%p) (pagesz=%d)\n", (void *)start, (void *)paddr, pagesz);
+	//printk("Mapping Page [aspace=%d] (vaddr=%p) (paddr=%p) (pagesz=%d)\n", aspace->id, (void *)start, (void *)paddr, pagesz);
 
 	/* Locate page table entry that needs to be updated to map the page */
 	pte = find_or_create_pte(aspace, start, pagesz);
 	if (!pte)
 		return -ENOMEM;
+
 
 	/* Update the page table entry */
 	write_pte(pte, paddr, flags, pagesz);
@@ -537,17 +573,31 @@ arch_aspace_virt_to_phys(struct aspace *aspace, vaddr_t vaddr, paddr_t *paddr)
 
 	struct tcr_el1 tcr = {mrs(TCR_EL1)};
 
-	if (tcr.t0sz >= 25 && tcr.t0sz <= 33) {
-		// Start at level 1
-		// TODO Brian
-		if (vaddr < 0xffffff8000000000ul)
-			pud = aspace->arch.pgd;
-		else
-			pud = __phys_to_virt(get_ttbr1_el1());
-	} else {
-		printk("Unable to handle this starting level\n");
-		goto out;
+	if ((tcr.t0sz < 25) || (tcr.t0sz > 33)) {
+		panic("Unable to handle this starting level\n");
 	}
+
+	if (aspace->id == BOOTSTRAP_ASPACE_ID) {
+		u64 msb_mask = ~(0xffffffffffffffff >> tcr.t1sz);
+
+		if ((vaddr & msb_mask) != msb_mask) {
+			panic("Invalid Bootstrap Address [vaddr=%p] [msb_mask=%p]\n", vaddr, msb_mask);
+		}
+
+		pud = aspace->arch.pgd;
+
+	} else {
+		u64 msb_mask = ~(0xffffffffffffffff >> tcr.t0sz);
+
+		if ((vaddr & msb_mask) == msb_mask) {
+			pud = bootstrap_aspace.arch.pgd;
+		} else if ((vaddr & msb_mask) == 0) {
+			pud = aspace->arch.pgd;
+		} else {
+			panic("Invalid Kernel/User Address [vaddr=%p]\n", vaddr);
+		}
+	}
+
 
 	if (tcr.tg0 == 0 && tcr.tg1 == 2) {
 		// 4k granule

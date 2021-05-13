@@ -61,11 +61,6 @@ static inline int num_booting_cpus(void)
 
 #define raw_smp_processor_id() read_pda(cpunumber)
 
-static inline int hard_smp_processor_id(void)
-{
-	/* we don't want to mark this access volatile - bad code generation */
-	return GET_APIC_ID(*(unsigned int *)(APIC_BASE+APIC_ID));
-}
 
 extern int safe_smp_processor_id(void);
 extern int __cpu_disable(void);
@@ -79,47 +74,10 @@ extern unsigned disabled_cpus;
 #define NO_PROC_ID		0xFF		/* No processor magic marker */
 
 
-#ifndef ASSEMBLY
-/*
- * Some lowlevel functions might want to know about
- * the real APIC ID <-> CPU # mapping.
- */
-extern u8 x86_cpu_to_apicid[NR_CPUS];	/* physical ID */
-extern u8 x86_cpu_to_log_apicid[NR_CPUS];
-extern u8 bios_cpu_apicid[];
-
-static inline unsigned int cpu_mask_to_apicid(cpumask_t cpumask)
-{
-	return cpus_addr(cpumask)[0];
-}
-
-static inline int cpu_present_to_apicid(int mps_cpu)
-{
-	if (mps_cpu < NR_CPUS)
-		return (int)bios_cpu_apicid[mps_cpu];
-	else
-		return BAD_APICID;
-}
-
-#endif /* !ASSEMBLY */
-
 #include <lwk/task.h>
-#define stack_smp_processor_id() \
-({ 									\
-	struct task_struct *task;						\
-	__asm__("andq %%rsp,%0; ":"=r" (task) : "0" (CURRENT_MASK));	\
-	task->arch.cpu;							\
-})
 
-#ifndef __ASSEMBLY__
-static __inline int logical_smp_processor_id(void)
-{
-	/* we don't want to mark this access volatile - bad code generation */
-	return GET_APIC_LOGICAL_ID(*(unsigned long *)(APIC_BASE+APIC_LDR));
-}
-#endif
 
-#define cpu_physical_id(cpu)		x86_cpu_to_apicid[cpu]
+#define cpu_physical_id(cpu) panic("cpu_physical_id() not implemented\n");
 
 #endif
 

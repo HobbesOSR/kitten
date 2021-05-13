@@ -56,6 +56,9 @@ param(init_task_size, ulong);
 
 
 
+
+
+
 void __init early_init_dt_setup_initrd_arch(unsigned long start,
 					    unsigned long end)
 {
@@ -65,7 +68,7 @@ void __init early_init_dt_setup_initrd_arch(unsigned long start,
 
 
 static void __init 
-setup_machine_fdt(phys_addr_t dt_phys)
+early_fdt_setup(phys_addr_t dt_phys)
 {
 	struct boot_param_header *devtree;
 	unsigned long dt_root;
@@ -412,7 +415,7 @@ setup_arch(void)
 	 * which regions are in use.  This eliminates the possibility of
 	 * conflicts... e.g., two devices trying to use the same iomem region.
 	 */
-	//init_resources();
+	init_resources();
 
 	/*
  	 * Initialize per-CPU areas, one per CPU.
@@ -430,10 +433,12 @@ setup_arch(void)
 
 	setup_per_cpu_areas();
 
+
+	unflatten_device_tree();
+
 	/*
 	 * Initialize the IDT table and interrupt handlers.
 	 */
-	printk("Interrupt NOT initialized\n");
 	//interrupts_init();
 
 	/*
@@ -450,6 +455,7 @@ setup_arch(void)
 	 */
 	//lapic_map();
 	//ioapic_map();
+	gic_global_init();
 
 	/*
 	 * Initialize the virtual system call code/data page.
@@ -465,8 +471,10 @@ setup_arch(void)
 
 	//ioapic_init();
 
-	//lapic_set_timer_freq(sched_hz);
-    
+
+	
+	//timer_set_freq(sched_hz);
+
     //mcheck_init();
 }
 
@@ -503,8 +511,9 @@ arm64_start_kernel( void ) {
 
 
 	early_printk("FDT Located At %p\n", fdt_start);
+	early_printk("memstart_addr: %p\n", memstart_addr);
 
-	setup_machine_fdt(fdt_start);
+	early_fdt_setup(fdt_start);
 
 
 	start_kernel();

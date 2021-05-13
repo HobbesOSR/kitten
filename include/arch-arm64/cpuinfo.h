@@ -56,12 +56,9 @@ struct arch_cpuinfo {
     uint8_t  arm64_phys_bits;       /* Bits of phys address space */
     uint8_t  x86_pkg_cores;         /* Number of cores in this CPU's package */
     uint32_t arm64_power;           /* Power management features */
-    uint32_t cur_cpu_khz;           /* Current CPU freq. in KHz */
-    uint32_t max_cpu_khz;           /* Maximum CPU freq. in KHz */
-    uint32_t min_cpu_khz;           /* Minimum CPU freq. in KHz */
-    uint32_t tsc_khz;               /* Time stamp counter freq. in KHz */
-
-
+    uint32_t cur_cpu_khz;           /* Current CPU freq. in KHz (need to calibrate) */
+    uint32_t tsc_khz;
+    uint32_t timer_hz; 		    /* Timer frequency in Hz */
     uint32_t cpu_phys_id;           /* linear cpu id */
     uint8_t  cpu_core_id;
     uint8_t  cpu_cluster_id;

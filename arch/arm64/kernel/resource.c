@@ -5,32 +5,6 @@
 #include <arch/io.h>
 #include <arch/sections.h>
 
-/**
- * Standard PC resources.
- */
-struct resource standard_io_resources[] = {
-	{ .name = "dma1", .start = 0x00, .end = 0x1f,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "pic1", .start = 0x20, .end = 0x21,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "timer0", .start = 0x40, .end = 0x43,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "timer1", .start = 0x50, .end = 0x53,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "keyboard", .start = 0x60, .end = 0x6f,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "dma page reg", .start = 0x80, .end = 0x8f,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "pic2", .start = 0xa0, .end = 0xa1,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "dma2", .start = 0xc0, .end = 0xdf,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO },
-	{ .name = "fpu", .start = 0xf0, .end = 0xff,
-		.flags = IORESOURCE_BUSY | IORESOURCE_IO }
-};
-
-#define STANDARD_IO_RESOURCES \
-	(sizeof standard_io_resources / sizeof standard_io_resources[0])
 
 #define IORESOURCE_RAM (IORESOURCE_BUSY | IORESOURCE_MEM)
 
@@ -47,65 +21,14 @@ struct resource code_resource = {
 	.flags = IORESOURCE_RAM,
 };
 
+
 #define IORESOURCE_ROM (IORESOURCE_BUSY | IORESOURCE_READONLY | IORESOURCE_MEM)
 
-static struct resource system_rom_resource = {
-	.name = "System ROM",
-	.start = 0xf0000,
-	.end = 0xfffff,
-	.flags = IORESOURCE_ROM,
-};
 
-static struct resource extension_rom_resource = {
-	.name = "Extension ROM",
-	.start = 0xe0000,
-	.end = 0xeffff,
-	.flags = IORESOURCE_ROM,
-};
 
-static struct resource adapter_rom_resources[] = {
-	{ .name = "Adapter ROM", .start = 0xc8000, .end = 0,
-		.flags = IORESOURCE_ROM },
-	{ .name = "Adapter ROM", .start = 0, .end = 0,
-		.flags = IORESOURCE_ROM },
-	{ .name = "Adapter ROM", .start = 0, .end = 0,
-		.flags = IORESOURCE_ROM },
-	{ .name = "Adapter ROM", .start = 0, .end = 0,
-		.flags = IORESOURCE_ROM },
-	{ .name = "Adapter ROM", .start = 0, .end = 0,
-		.flags = IORESOURCE_ROM },
-	{ .name = "Adapter ROM", .start = 0, .end = 0,
-		.flags = IORESOURCE_ROM }
-};
+extern paddr_t __initdata fdt_start;
+extern paddr_t __initdata fdt_end;
 
-#define ADAPTER_ROM_RESOURCES \
-	(sizeof adapter_rom_resources / sizeof adapter_rom_resources[0])
-
-static struct resource video_rom_resource = {
-	.name = "Video ROM",
-	.start = 0xc0000,
-	.end = 0xc7fff,
-	.flags = IORESOURCE_ROM,
-};
-
-static struct resource video_ram_resource = {
-	.name = "Video RAM area",
-	.start = 0xa0000,
-	.end = 0xbffff,
-	.flags = IORESOURCE_RAM,
-};
-
-#define romsignature(x) (*(unsigned short *)(x) == 0xaa55)
-
-static int __init
-romchecksum(unsigned char *rom, unsigned long length)
-{
-	unsigned char *p, sum = 0;
-
-	for (p = rom; p < rom + length; p++)
-		sum += *p;
-	return sum == 0;
-}
 
 static void __init
 probe_roms(void)
@@ -176,27 +99,35 @@ probe_roms(void)
 #endif
 }
 
+static void __init
+probe_fdt()
+{
+	printk("Probing FDT at %p\n", fdt_start);
+
+
+}
+
+
+
 void __init
 init_resources(void)
 {
 	unsigned int i;
 
 	code_resource.start = virt_to_phys(&_text);
-	code_resource.end   = virt_to_phys(&_etext)-1;
+	code_resource.end   = virt_to_phys(&_etext) - 1;
 	data_resource.start = virt_to_phys(&_etext);
-	data_resource.end   = virt_to_phys(&_edata)-1;
+	data_resource.end   = virt_to_phys(&_edata) - 1;
 
-	/*
-	 * Request address space for all standard RAM and ROM resources
-	 * and also for regions reported as reserved by the e820.
-	 */
-	probe_roms();
-	//e820_reserve_resources();
 
-	request_resource(&iomem_resource, &video_ram_resource);
+	probe_fdt();
+
+
+
+//	request_resource(&iomem_resource, &video_ram_resource);
 
 	/* request I/O space for devices used on all i[345]86 PCs */
-	for (i = 0; i < STANDARD_IO_RESOURCES; i++)
-		request_resource(&ioport_resource, &standard_io_resources[i]);
+//	for (i = 0; i < STANDARD_IO_RESOURCES; i++)
+//		request_resource(&ioport_resource, &standard_io_resources[i]);
 }
 

@@ -56,11 +56,13 @@ do_mem_abort(unsigned long    addr,
 {
 	u64 mair_el1 = get_mair_el1();
 	u64 spsr_el1 = get_spsr_el1();
-
+	u64 tpidr_el0 = __mrs(tpidr_el0);
 
 	printk("do_mem_abort: addr=%p, esr=%x\n", (void *)addr, esr);
 	printk("MAIR_EL1: %p\n", (void *)mair_el1);
 	printk("SPSR_EL1: %p\n", (void *)spsr_el1);
+	printk("TPIDR_EL0: %p\n", (void *)tpidr_el0);
+
 
 	print_pgtable_arm64((void *)addr);
 
@@ -80,6 +82,18 @@ do_mem_abort(unsigned long    addr,
 
 
 void
+handle_irq(struct pt_regs * regs)
+{
+	printk(">> Hardware IRQ!!!!\n");
+	show_registers(regs);
+
+	panic("Page faults are a no-no\n");
+
+}
+
+
+
+void
 set_idtvec_handler(
 	unsigned int		vector,	//!< Interrupt vector number
 	idtvec_handler_t	handler //!< Callback function
@@ -89,12 +103,16 @@ set_idtvec_handler(
 }
 
 
+
 /**
  * Initialize high level exception handling 
  */
 void __init
 interrupts_init(void)
 {
+	printk("TODO: Initialize interrupts....\n");
+
+
 
 }
 
