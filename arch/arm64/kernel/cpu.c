@@ -6,9 +6,8 @@
 #include <lwk/string.h>
 #include <lwk/delay.h>
 #include <arch/processor.h>
-//#include <arch/desc.h>
 #include <arch/proto.h>
-//#include <arch/i387.h>
+#include <arch/intc.h>
 #include <arch/tsc.h>
 
 /**
@@ -111,9 +110,9 @@ cpu_init(void)
 	//idt_init();		/* interrupt descriptor table */
 	//dbg_init();		/* debug registers */
 	//fpu_init();		/* floating point unit */
-	//lapic_init();		/* local advanced prog. interrupt controller */
-	//time_init();		/* detects CPU frequency, udelay(), etc. */
-	//barrier();		/* compiler memory barrier, avoids reordering */
+	gic_local_init();       /* Interrupt Controller */
+	time_init();		/* detects CPU frequency, udelay(), etc. */
+	barrier();		/* compiler memory barrier, avoids reordering */
 
 }
 

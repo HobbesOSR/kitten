@@ -455,7 +455,7 @@ setup_arch(void)
 	 */
 	//lapic_map();
 	//ioapic_map();
-	gic_global_init();
+	intc_global_init();
 
 	/*
 	 * Initialize the virtual system call code/data page.
@@ -473,7 +473,7 @@ setup_arch(void)
 
 
 	
-	//timer_set_freq(sched_hz);
+	timer_set_freq(sched_hz);
 
     //mcheck_init();
 }

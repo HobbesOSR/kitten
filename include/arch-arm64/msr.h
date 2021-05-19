@@ -26,7 +26,20 @@
 
 
 
-#define ICC_SRE_EL1 s3_0_c12_c12_5
+#define ICC_SRE_EL1     s3_0_c12_c12_5
+#define ICC_PMR_EL1     s3_0_c4_c6_0
+#define ICC_IAR0_EL1    s3_0_c12_c8_0
+#define ICC_EOIR0_EL1   s3_0_c12_c8_1
+#define ICC_HPPIR0_EL1  s3_0_c12_c8_2
+#define ICC_BPR0_EL1    s3_0_c12_c8_3
+#define ICC_RPR_EL1     s3_0_c12_c11_3
+#define ICC_IAR1_EL1    s3_0_c12_c12_0
+#define ICC_EOIR1_EL1   s3_0_c12_c12_1
+#define ICC_HPPIR1_EL1  s3_0_c12_c12_2
+#define ICC_BPR1_EL1    s3_0_c12_c12_3
+#define ICC_CTLR_EL1    s3_0_c12_c12_4
+#define ICC_IGRPEN0_EL1 s3_0_c12_c12_6
+#define ICC_IGRPEN1_EL1 s3_0_c12_c12_7
 
 #define mrs(reg)      __mrs(reg)
 #define msr(reg, val) __msr(reg, val)

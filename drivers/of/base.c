@@ -237,11 +237,13 @@ int of_device_is_compatible(const struct device_node *device,
 	int cplen, l;
 
 	cp = of_get_property(device, "compatible", &cplen);
+
 	if (cp == NULL)
 		return 0;
 	while (cplen > 0) {
-		if (of_compat_cmp(cp, compat, strlen(compat)) == 0)
+		if (of_compat_cmp(cp, compat, strlen(compat)) == 0) {
 			return 1;
+		}
 		l = strlen(cp) + 1;
 		cp += l;
 		cplen -= l;

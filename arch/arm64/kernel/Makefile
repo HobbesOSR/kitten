@@ -5,8 +5,9 @@ obj-y		:= setup.o memblock.o cpuinfo.o resource.o \
 		   trampoline.o interrupts.o mpboot.o \
 		   time.o sys_arch_prctl.o xcall.o \
 		   task.o sched.o maccess.o tlbflush.o signal.o acpi.o \
-		    bitops.o traps.o ptrace.o \
-		   entry-fpsimd.o gic.o
+		   bitops.o traps.o ptrace.o \
+		   entry-fpsimd.o \
+		   intc.o gic2.o gic3.o
 		   
 		   # compat.o
 

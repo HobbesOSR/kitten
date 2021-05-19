@@ -7,6 +7,7 @@
 #include <arch/io.h>
 #include <arch/pda.h>
 
+#include <arch/intc.h>
 
 void __init
 time_init(void)
@@ -61,23 +62,58 @@ struct cntp_ctl_el0 {
 void
 timer_set_freq(unsigned int hz)
 {
-	struct cntp_ctl_el0 cntp_ctl_el0 = {0};
+	struct cntp_ctl_el0 cntp_ctl_el0 = {mrs(CNTP_CTL_EL0)};
 
 	uint32_t cpu_hz    = (u32)mrs(CNTFRQ_EL0);
-	uint32_t reset_val = cpu_hz / hz;
+	uint64_t reset_val = cpu_hz / (hz);
 	printk("Setting timer frequency to %d HZ\n", hz);
 	printk("Setting Timer countdown value to %d\n", reset_val);
 
-	msr(CNTV_TVAL_EL0, reset_val);
+	printk("CTL initial value=%x\n", cntp_ctl_el0.val);
+
+	cntp_ctl_el0.irq_mask = 0;
+	cntp_ctl_el0.enabled  = 0;
+	msr(CNTP_CTL_EL0, cntp_ctl_el0.val);
+
+	enable_irq(30, IRQ_EDGE_TRIGGERED);
+
+	msr(CNTP_TVAL_EL0, reset_val);
 
 	write_pda(timer_reload_value, reset_val);
 
-	cntp_ctl_el0.irq_mask = 0;
-	cntp_ctl_el0.enabled  = 1;
 
+	{
+		uint64_t cur_val = mrs(CNTPCT_EL0);
+		uint64_t tval    = mrs(CNTP_TVAL_EL0);
+		uint64_t cval    = mrs(CNTP_CVAL_EL0);
+
+		printk("cur_val = %lld, tval=%lld, cval=%lld\n", cur_val, tval, cval);
+	}
+
+	cntp_ctl_el0.enabled = 1;
 	msr(CNTP_CTL_EL0, cntp_ctl_el0.val);
 
 	printk("Timer Enabled and running\n");
+
+	local_irq_enable();
+
+	while (1) {
+		static uint64_t x = 0;
+
+		if ((x % 200000000) == 0) {
+			uint64_t cur_val = mrs(CNTPCT_EL0);
+			uint64_t tval    = mrs(CNTP_TVAL_EL0);
+			uint64_t cval    = mrs(CNTP_CVAL_EL0);
+			uint64_t ctl     = mrs(CNTP_CTL_EL0);
+
+			printk("cur_val = %lld, tval=%lld, cval=%lld ctl=%x\n", cur_val, tval, cval, ctl);
+			probe_pending_irqs();
+
+		}
+
+		x++;
+	}
+
 
 	return;
 }
