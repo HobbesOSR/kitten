@@ -439,7 +439,7 @@ setup_arch(void)
 	/*
 	 * Initialize the IDT table and interrupt handlers.
 	 */
-	//interrupts_init();
+	interrupts_init();
 
 	/*
 	 * Map the APICs into the kernel page tables.
@@ -471,9 +471,6 @@ setup_arch(void)
 
 	//ioapic_init();
 
-
-	
-	timer_set_freq(sched_hz);
 
     //mcheck_init();
 }

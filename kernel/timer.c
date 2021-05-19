@@ -25,6 +25,7 @@ static void
 interrupt_timer_init(void) {
 /* Oneshot timer is started by the scheduler. */
 #if defined(CONFIG_TIMER_PERIODIC)
+	arch_core_timer_init();
         arch_set_timer_freq(sched_hz);
 #endif
 }

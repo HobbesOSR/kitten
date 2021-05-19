@@ -3,7 +3,7 @@
 #include <lwk/xcall.h>
 #include <lwk/task.h>
 #include <lwk/smp.h>
-#include <arch/idt_vectors.h>
+#include <arch/irq_vectors.h>
 #include <arch/processor.h>
 
 /**

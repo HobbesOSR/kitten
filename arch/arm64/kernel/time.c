@@ -4,10 +4,14 @@
 #include <lwk/cpuinfo.h>
 #include <lwk/smp.h>
 #include <lwk/time.h>
+#include <lwk/interrupt.h>
 #include <arch/io.h>
 #include <arch/pda.h>
 
 #include <arch/intc.h>
+
+
+
 
 void __init
 time_init(void)
@@ -42,6 +46,8 @@ time_init(void)
 }
 
 
+
+
 struct cntp_ctl_el0 {
     union {
 	uint64_t val;
@@ -54,65 +60,79 @@ struct cntp_ctl_el0 {
     };
 } __attribute__((packed));
 
+
+static void 
+__reload_timer()
+{
+	uint64_t curr_cnt  = mrs(CNTPCT_EL0);
+	uint64_t reset_val = 0;
+
+	reset_val = read_pda(timer_reload_value);
+
+	printk("Reloading Timer with %lld at %lld\n", reset_val, curr_cnt);
+	msr(CNTP_TVAL_EL0, reset_val);
+}
+
+static irqreturn_t 
+__timer_tick(int irq, void * dev_id)
+{
+
+	printk("Tick!\n");
+
+	msr(CNTP_CTL_EL0, 0);
+
+	expire_timers();
+
+	// This causes schedule() to be called right before
+	// the next return to user-space
+	set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);
+
+	__reload_timer();
+
+	msr(CNTP_CTL_EL0, 1);
+
+	return IRQ_HANDLED;
+
+}
+
+
+void
+arch_core_timer_init()
+{
+	irq_request(30, __timer_tick, 0, "timer", NULL);
+	enable_irq(30, IRQ_EDGE_TRIGGERED);
+}
+
 //CNTPCT_EL0
 //CNTP_CVAL_EL0
 //CNTP_TVAL_EL0
 //CNTP_CTL_EL0
 //Poll CTP_CTL_EL0
 void
-timer_set_freq(unsigned int hz)
+arch_set_timer_freq(unsigned int hz)
 {
 	struct cntp_ctl_el0 cntp_ctl_el0 = {mrs(CNTP_CTL_EL0)};
 
 	uint32_t cpu_hz    = (u32)mrs(CNTFRQ_EL0);
 	uint64_t reset_val = cpu_hz / (hz);
+
 	printk("Setting timer frequency to %d HZ\n", hz);
 	printk("Setting Timer countdown value to %d\n", reset_val);
-
 	printk("CTL initial value=%x\n", cntp_ctl_el0.val);
 
 	cntp_ctl_el0.irq_mask = 0;
 	cntp_ctl_el0.enabled  = 0;
 	msr(CNTP_CTL_EL0, cntp_ctl_el0.val);
 
-	enable_irq(30, IRQ_EDGE_TRIGGERED);
 
 	msr(CNTP_TVAL_EL0, reset_val);
-
 	write_pda(timer_reload_value, reset_val);
-
-
-	{
-		uint64_t cur_val = mrs(CNTPCT_EL0);
-		uint64_t tval    = mrs(CNTP_TVAL_EL0);
-		uint64_t cval    = mrs(CNTP_CVAL_EL0);
-
-		printk("cur_val = %lld, tval=%lld, cval=%lld\n", cur_val, tval, cval);
-	}
 
 	cntp_ctl_el0.enabled = 1;
 	msr(CNTP_CTL_EL0, cntp_ctl_el0.val);
 
 	printk("Timer Enabled and running\n");
 
-	local_irq_enable();
-
-	while (1) {
-		static uint64_t x = 0;
-
-		if ((x % 200000000) == 0) {
-			uint64_t cur_val = mrs(CNTPCT_EL0);
-			uint64_t tval    = mrs(CNTP_TVAL_EL0);
-			uint64_t cval    = mrs(CNTP_CVAL_EL0);
-			uint64_t ctl     = mrs(CNTP_CTL_EL0);
-
-			printk("cur_val = %lld, tval=%lld, cval=%lld ctl=%x\n", cur_val, tval, cval, ctl);
-			probe_pending_irqs();
-
-		}
-
-		x++;
-	}
 
 
 	return;

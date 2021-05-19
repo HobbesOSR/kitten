@@ -6,6 +6,8 @@
 
 #define ARCH_NUM_IRQS	NUM_IDT_ENTRIES
 
+#define set_irq_handler set_idtvec_handler
+
 static inline bool
 arch_in_interrupt(void)
 {

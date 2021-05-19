@@ -29,6 +29,7 @@
 #include <asm/errno.h>
 #endif
 
+#include <arch/msr.h>
 #include <arch/thread_info.h>
 #include <arch/unistd.h>
 #include <arch/unistd32.h>
@@ -144,9 +145,9 @@ tsk	.req	x28		// current thread_info
  * Interrupt handling.
  */
 	.macro	irq_handler
-	ldr	x1, handle_irq
 	mov	x0, sp
-	blr	x1
+	mrs	x1 , ICC_IAR1_EL1
+	bl	handle_irq
 	.endm
 
 	.text

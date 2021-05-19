@@ -1,10 +1,10 @@
-#ifndef _ARCH_X86_64_INTERRUPT_H
-#define _ARCH_X86_64_INTERRUPT_H
+#ifndef _ARM64_INTERRUPT_H
+#define _ARM64_INTERRUPT_H
 
 #include <arch/pda.h>
-#include <arch/idt_vectors.h>
+#include <arch/irq_vectors.h>
 
-#define ARCH_NUM_IRQS	NUM_IDT_ENTRIES
+#define ARCH_NUM_IRQS	NUM_IRQ_ENTRIES
 
 static inline bool
 arch_in_interrupt(void)

@@ -106,7 +106,7 @@ irq_request_free_vector(
 		return -1;
 	}
 
-	set_idtvec_handler(irq, irq_dispatch);
+	set_irq_handler(irq, irq_dispatch);
 
 	return irq;
 }
@@ -127,7 +127,7 @@ irq_request(
 	if (irq >= NUM_IRQS)
 		return -1;
 
-	set_idtvec_handler(irq, irq_dispatch);
+	set_irq_handler(irq, irq_dispatch);
 
 	handler_desc = kmem_alloc(sizeof(struct handler_desc));
 	if (!handler_desc)

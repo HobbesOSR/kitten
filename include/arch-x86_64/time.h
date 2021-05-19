@@ -5,4 +5,6 @@
 
 void arch_set_timer_freq(unsigned int hz);
 void arch_set_timer_oneshot(unsigned int nsec);
+
+extern void arch_core_timer_init();
 #endif

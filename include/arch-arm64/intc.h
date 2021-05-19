@@ -9,9 +9,9 @@
 
 
 
-extern void __init intc_global_init(void);
+extern void intc_global_init(void);
 
-extern void __init intc_local_init(void);
+extern void  intc_local_init(void);
 
 void probe_pending_irqs(void);
 

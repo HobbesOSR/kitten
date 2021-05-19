@@ -221,7 +221,7 @@ __icc_setup()
 		
 		printk("Clearing IRQ %d\n", hppir.intid);
 
-		msr(ICC_IAR0_EL1, hppir.val);
+		mrs(ICC_IAR0_EL1);
 		msr(ICC_EOIR0_EL1, hppir.val);
 	}
 
@@ -235,7 +235,7 @@ __icc_setup()
 		
 		printk("Clearing IRQ %d\n", hppir.intid);
 
-		msr(ICC_IAR1_EL1, hppir.val);
+		mrs(ICC_IAR1_EL1);
 		msr(ICC_EOIR1_EL1, hppir.val);
 	}
 

@@ -131,8 +131,11 @@ static inline unsigned long arch_local_irq_save(void)
 	} while (0)
 
 /* used in the idle loop; sti takes one instruction cycle to complete */
-// #define safe_halt()
-//__asm__ __volatile__("sti; hlt": : :"memory")
+ #define safe_halt()						\
+__asm__ __volatile__("msr daifclr, #2; wfi": : :"memory")
+
+
+#include <arch/intc.h>
 
 /* used when interrupts are already enabled or to shutdown the processor */
 #define halt() 							\

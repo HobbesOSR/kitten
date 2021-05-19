@@ -203,6 +203,12 @@ arch_set_timer_oneshot(unsigned int nsec){
 	lapic_set_timer_oneshot(nsec);
 }
 
+void
+arch_core_timer_init()
+{
+
+}
+
 void __init
 time_init(void)
 {

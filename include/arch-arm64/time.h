@@ -3,7 +3,9 @@
 
 #include <arch/tsc.h>
 
-extern void
-timer_set_freq(unsigned int hz);
+void arch_set_timer_freq(unsigned int hz);
+void arch_set_timer_oneshot(unsigned int nsec);
+
+void arch_core_timer_init();
 
 #endif

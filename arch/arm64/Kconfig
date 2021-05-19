@@ -41,6 +41,11 @@ config ARCH_QEMU
     help
         Support for Qemu ARM V8 platform
 
+
+config ARCH_RASPI3
+	bool "Raspberry Pi 3"
+ 	help
+		Support for Raspberry Pi 3
 endchoice
 
 choice
@@ -59,6 +64,27 @@ config ARM_V8_3_A
 
 
 endchoice
+
+choice
+	prompt "Timer Interrupt Strategy"
+	default TIMER_PERIODIC
+
+config TIMER_PERIODIC
+	bool "Periodic timer interrupts"
+	help
+	  Use a periodic interrupt at SCHED_HZ to drive timer
+	  expiration and scheduling in Kitten.
+
+config TIMER_ONESHOT
+	bool "One-shot timer interrupts"
+	help
+	  Uses one-shot timers to drive scheduling in kitten. Results
+	  in more accurate scheduling, particularly with EDF scheduling,
+	  but can result in higher overheads if fine-grained scheduling
+	  or timers are requested.
+
+endchoice
+
 
 config BLK_DEV_INITRD
        bool "INITRD support"
@@ -90,6 +116,8 @@ config SERIAL_PHYS
 		default "0x1C021000" if ARCH_XGENE
 		default "0x1C020000" if ARCH_STORM_SIM
         default "0x09000000" if ARCH_QEMU
+	default "0x3f201000" if ARCH_RASPI3
+
 
 config NR_CPUS
         int "Maximum number of CPUs (2-256)"
