@@ -33,6 +33,17 @@
 typedef u32 phandle;
 typedef u32 ihandle;
 
+
+/*
+ * Struct used for matching a device
+ */
+struct of_device_id {
+	char	name[32];
+	char	type[32];
+	char	compatible[128];
+	const void *data;
+};
+
 struct property {
 	char	*name;
 	int	length;
@@ -178,6 +189,11 @@ extern struct device_node *of_find_matching_node(struct device_node *from,
 #define for_each_matching_node(dn, matches) \
 	for (dn = of_find_matching_node(NULL, matches); dn; \
 	     dn = of_find_matching_node(dn, matches))
+#define for_each_of_allnodes_from(from, dn) \
+	for (dn = of_find_all_nodes(from); dn; dn = of_find_all_nodes(dn))
+extern struct device_node *of_find_matching_node_and_match(struct device_node *from,
+					const struct of_device_id *matches,
+					const struct of_device_id **match);
 extern struct device_node *of_find_node_by_path(const char *path);
 extern struct device_node *of_find_node_by_phandle(phandle handle);
 extern struct device_node *of_get_parent(const struct device_node *node);

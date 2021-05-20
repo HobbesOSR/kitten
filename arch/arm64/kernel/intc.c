@@ -14,89 +14,74 @@
 #include <arch/io.h>
 
 
-typedef enum { GIC3,
-	       GIC2,
-	       INVALID_INTC } intc_type_t;
 
+struct irqchip * irq_controller = NULL;
 
-intc_type_t intc_type = INVALID_INTC;
-
-void __init
-gic_map(void)
+int __init 
+intc_local_init(void)
 {
-
-	return;
-#if 0
-	gic_resource.start = 0;
-	gic_resource.end   = 0;
-	request_resource(&iomem_resource, &gic_resource);
-
-	set_fixmap(FIX_GICD_BASE, gic_phys_addr);
-#endif
-}
-
-
-void __init 
-gic_local_init(void)
-{
-
+	irq_controller->core_init(irq_controller->dt_node);
 
 
 }
 
 
-extern void gic3_global_init(struct device_node * dt_node);
-extern void gic2_global_init(struct device_node * dt_node);
+extern int gic3_global_init(struct device_node * dt_node);
+extern int gic2_global_init(struct device_node * dt_node);
+
+static const struct of_device_id intr_ctrlr_of_match[]  = {
+	{ .compatible = "arm,gic-v3",		.data = gic3_global_init},
+	{ .compatible = "arm,cortex-a15-gic",	.data = gic2_global_init},
+	{},
+};
 
 
 
-void __init
+int 
+register_irqchip(struct irqchip * chip)
+{
+	if (irq_controller) {
+		panic("Failed to register irq controller. Already registered.\n");
+	}
+
+
+	printk("Registering IRQ Controller [%s]\n", chip->name);
+	irq_controller = chip;	
+
+	return 0;
+}
+
+
+int __init
 intc_global_init(void)
 {	
 
-	struct device_node * dt_node = NULL;
+	struct device_node  * dt_node    = NULL;
+	struct of_device_id * matched_np = NULL;
+	irqchip_init_fn init_fn;
 
+	dt_node = of_find_matching_node_and_match(NULL, intr_ctrlr_of_match, &matched_np);
 
-	printk("GIC init:\n");
-
-	dt_node = of_find_node_with_property(NULL, "interrupt-controller");
-
-	if (of_device_is_compatible(dt_node, "arm,gic-v3")) {
-		intc_type = GIC3;
-		gic3_global_init(dt_node);
-	} else if (of_device_is_compatible(dt_node, "arm,cortex-a15-gic")) {
-		intc_type = GIC2;
-		gic2_global_init(dt_node);
-	} else {
-		panic("Unsupported Interrupt controller\n");
+	if (!dt_node || !of_device_is_available(dt_node)) {
+		panic("Could not find interrupt controller\n");
+	//	return -ENODEV;
 	}
 
-	return;
+	init_fn = (irqchip_init_fn)(matched_np->data);
 
+	return init_fn(dt_node);
 }
 
 extern void gic3_probe(void);
 extern void gic2_probe(void);
 
 void probe_pending_irqs(void) {
-	if (intc_type == GIC3) {
-		gic3_probe();
-	} else if (intc_type == GIC2) {
-		gic2_probe();
-	} else {
-		panic("Invalid INTC type\n");
-	}
+	irq_controller->print_pending_irqs();
 }
 
 void
 enable_irq(uint32_t           irq_num, 
 	   irq_trigger_mode_t trigger_mode)
 {
-	if (intc_type == GIC3) {
-		gic3_enable_irq(irq_num, trigger_mode);
-	} else if (intc_type == GIC2) {
-		gic2_enable_irq(irq_num, trigger_mode);
-	} else {
-		panic("Invalid INTC type\n");
-	}
+	irq_controller->enable_irq(irq_num, trigger_mode);
 }

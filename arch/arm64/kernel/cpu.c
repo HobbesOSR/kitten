@@ -110,7 +110,7 @@ cpu_init(void)
 	//idt_init();		/* interrupt descriptor table */
 	//dbg_init();		/* debug registers */
 	//fpu_init();		/* floating point unit */
-	gic_local_init();       /* Interrupt Controller */
+	intc_local_init();       /* Interrupt Controller */
 	time_init();		/* detects CPU frequency, udelay(), etc. */
 	barrier();		/* compiler memory barrier, avoids reordering */
 

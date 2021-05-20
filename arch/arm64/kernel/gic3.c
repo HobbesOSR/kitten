@@ -62,6 +62,101 @@ __gicr_write32(uintptr_t offset,
 
 
 
+
+
+static void 
+__gic3_print_pending_irqs(void)
+{
+	uint32_t pending = 0;
+	uint32_t enabled = 0;
+	struct gicr_ipriorityr ipriority = {0};
+	uint64_t icc_rpr = mrs(ICC_RPR_EL1);
+	uint64_t icc_pmr = mrs(ICC_PMR_EL1);
+
+
+	pending = __gicr_read32(GICR_ISPENDR_0_OFFSET);
+	enabled = __gicr_read32(GICR_ISENABLER_0_OFFSET);
+	printk("GICR_pending = %x, enabled=%x\n", pending, enabled);
+
+	ipriority.val = __gicr_read32(GICR_IPRIORITYR_OFFSET(7));
+	printk("GICR_IPRIORITY(7) = %x, icc_rpr = %p, icc_pmr = %p\n", ipriority.val, (void *)icc_rpr, (void *)icc_pmr);
+
+	
+}
+
+static void 
+__gic3_dump_state(void)
+{
+	printk("Dumping GIC3 state not implemented\n");
+}
+
+
+
+static void
+__gic3_enable_irq(uint32_t           irq_num, 
+		  irq_trigger_mode_t trigger_mode)
+{
+	struct gicr_icfgr      icfgr     = {0};
+	struct gicd_ipriorityr ipriority = {0};
+
+	uint32_t icfgr_index    = 0; // depends on the irq_num
+	uint32_t icfgr_shift    = 0; // depends on the irq_num
+	uint32_t icfgr_mode     = 0;
+	uint32_t icfgr_mask     = 0;
+
+	uint32_t priority_maj_index = irq_num / 4;
+	uint32_t priority_min_index = irq_num % 4;
+	uint8_t  priority           = 0;
+
+	uint32_t pending_index      = irq_num / 32;
+	uint32_t pending_shift      = irq_num % 32;
+
+	uint32_t enable_index       = irq_num / 32;
+	uint32_t enable_shift       = irq_num % 32;
+
+	printk("Enabling IRQ %d\n", irq_num);
+
+	if (trigger_mode == IRQ_LEVEL_TRIGGERED) {
+		icfgr_mode = 0x0;
+	} else if (trigger_mode == IRQ_EDGE_TRIGGERED) {
+		icfgr_mode = 0x1;
+	}
+
+	if (irq_num < 32) {
+		icfgr_index = (irq_num / 16);
+		icfgr_shift = (irq_num % 16) * 2;
+		icfgr_mask  = 0x3;
+	} else {
+		icfgr_index = (irq_num / 32) + 1;
+		icfgr_shift = (irq_num % 32);
+		icfgr_mask  = 0x1;
+	}
+
+	// set trigger mode 
+	icfgr.val = __gicr_read32(GICR_ICFGR_OFFSET(icfgr_index));
+	icfgr.bits &= ~(icfgr_mask << icfgr_shift);
+	icfgr.bits |=  (icfgr_mode << icfgr_shift);
+	__gicr_write32(GICR_ICFGR_OFFSET(icfgr_index), icfgr.val);
+
+	// set priority to highest
+	ipriority.val = __gicr_read32(GICR_IPRIORITYR_OFFSET(priority_maj_index));
+	ipriority.bits[priority_min_index] = priority;
+	__gicr_write32(GICR_IPRIORITYR_OFFSET(priority_maj_index), ipriority.val);
+
+	// clear pending
+	__gicr_write32(GICR_ICPENDR_OFFSET(pending_index), 0x1U << pending_shift);
+
+	// enable irq
+	__gicr_write32(GICR_ISENABLER_OFFSET(enable_index), 0x1U << enable_shift);
+}
+
+
+static void
+__gic3_disable_irq(uint32_t vector)
+{
+	panic("Disabling IRQs not supported\n");
+}
+
 static int
 __gicd_setup()
 {
@@ -249,6 +344,26 @@ __icc_setup()
 }
 
 
+static void
+__gic3_core_init( void )
+{
+	__gicr_setup();
+	__icc_enable();
+	__icc_setup();
+}
+
+static struct irqchip gic3_chip = {
+	.name               = "GIC3",
+	.dt_node            = NULL,
+	.core_init          = __gic3_core_init,
+	.enable_irq         = __gic3_enable_irq,
+	.disable_irq        = __gic3_disable_irq,
+	.dump_state         = __gic3_dump_state, 
+	.print_pending_irqs = __gic3_print_pending_irqs
+};
+
+
+
 void 
 gic3_global_init(struct device_node * dt_node)
 {
@@ -268,7 +383,6 @@ gic3_global_init(struct device_node * dt_node)
 	}
 
 
-
 	gic.gicd_phys_start = (regs[0] << 32) | regs[1]; 
 	gic.gicd_phys_size  = (regs[2] << 32) | regs[3]; 
 	gic.gicr_phys_start = (regs[4] << 32) | regs[5]; 
@@ -285,92 +399,8 @@ gic3_global_init(struct device_node * dt_node)
 	printk("\tGICR Virt Addr: %p\n", gic.gicr_virt_start);
 
 	__gicd_setup();
-	__gicr_setup();
-	__icc_enable();
-	__icc_setup();
 
-
+	gic3_chip.dt_node = dt_node;
+	register_irqchip(&gic3_chip);
 }
 
-
-void gic3_probe(void)
-{
-	uint32_t pending = 0;
-	uint32_t enabled = 0;
-	struct gicr_ipriorityr ipriority = {0};
-	uint64_t icc_rpr = mrs(ICC_RPR_EL1);
-	uint64_t icc_pmr = mrs(ICC_PMR_EL1);
-
-
-	pending = __gicr_read32(GICR_ISPENDR_0_OFFSET);
-	enabled = __gicr_read32(GICR_ISENABLER_0_OFFSET);
-	printk("GICR_pending = %x, enabled=%x\n", pending, enabled);
-
-	ipriority.val = __gicr_read32(GICR_IPRIORITYR_OFFSET(7));
-	printk("GICR_IPRIORITY(7) = %x, icc_rpr = %p, icc_pmr = %p\n", ipriority.val, (void *)icc_rpr, (void *)icc_pmr);
-
-	
-
-
-
-}
-
-
-
-void
-gic3_enable_irq(uint32_t           irq_num, 
-		irq_trigger_mode_t trigger_mode)
-{
-	struct gicr_icfgr      icfgr     = {0};
-	struct gicd_ipriorityr ipriority = {0};
-
-	uint32_t icfgr_index    = 0; // depends on the irq_num
-	uint32_t icfgr_shift    = 0; // depends on the irq_num
-	uint32_t icfgr_mode     = 0;
-	uint32_t icfgr_mask     = 0;
-
-	uint32_t priority_maj_index = irq_num / 4;
-	uint32_t priority_min_index = irq_num % 4;
-	uint8_t  priority           = 0;
-
-	uint32_t pending_index      = irq_num / 32;
-	uint32_t pending_shift      = irq_num % 32;
-
-	uint32_t enable_index       = irq_num / 32;
-	uint32_t enable_shift       = irq_num % 32;
-
-	printk("Enabling IRQ %d\n", irq_num);
-
-	if (trigger_mode == IRQ_LEVEL_TRIGGERED) {
-		icfgr_mode = 0x0;
-	} else if (trigger_mode == IRQ_EDGE_TRIGGERED) {
-		icfgr_mode = 0x1;
-	}
-
-	if (irq_num < 32) {
-		icfgr_index = (irq_num / 16);
-		icfgr_shift = (irq_num % 16) * 2;
-		icfgr_mask  = 0x3;
-	} else {
-		icfgr_index = (irq_num / 32) + 1;
-		icfgr_shift = (irq_num % 32);
-		icfgr_mask  = 0x1;
-	}
-
-	// set trigger mode 
-	icfgr.val = __gicr_read32(GICR_ICFGR_OFFSET(icfgr_index));
-	icfgr.bits &= ~(icfgr_mask << icfgr_shift);
-	icfgr.bits |=  (icfgr_mode << icfgr_shift);
-	__gicr_write32(GICR_ICFGR_OFFSET(icfgr_index), icfgr.val);
-
-	// set priority to highest
-	ipriority.val = __gicr_read32(GICR_IPRIORITYR_OFFSET(priority_maj_index));
-	ipriority.bits[priority_min_index] = priority;
-	__gicr_write32(GICR_IPRIORITYR_OFFSET(priority_maj_index), ipriority.val);
-
-	// clear pending
-	__gicr_write32(GICR_ICPENDR_OFFSET(pending_index), 0x1U << pending_shift);
-
-	// enable irq
-	__gicr_write32(GICR_ISENABLER_OFFSET(enable_index), 0x1U << enable_shift);
-}

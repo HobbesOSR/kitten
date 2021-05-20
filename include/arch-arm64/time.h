@@ -3,6 +3,9 @@
 
 #include <arch/tsc.h>
 
+
+typedef void (*timer_init_fn)(struct device_tree *);
+
 void arch_set_timer_freq(unsigned int hz);
 void arch_set_timer_oneshot(unsigned int nsec);
 

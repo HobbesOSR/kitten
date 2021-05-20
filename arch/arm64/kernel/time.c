@@ -9,41 +9,9 @@
 #include <arch/pda.h>
 
 #include <arch/intc.h>
+#include <arch/time.h>
+#include <arch/of.h>
 
-
-
-
-void __init
-time_init(void)
-{
-	uint32_t cpu_khz = (u32)mrs(CNTFRQ_EL0) / 1000;
-	/*
-	 * Cache the CPU frequency
-	 */
-
-	struct arch_cpuinfo * const arch_info = &cpu_info[this_cpu].arch;
-	
-	printk("TODO: Check if the CPU clock rate has been passed in via Device Tree\n");
-	
-	/* 
-	if (of_property_read_u32(np, "clock-frequency", &arch_timer_rate))
-		arch_timer_rate = rate;
-	*/
-
-
-	arch_info->cur_cpu_khz = cpu_khz;
-	arch_info->tsc_khz     = cpu_khz;
-
-
-
-	init_cycles2ns(cpu_khz);
-
-
-	printk(KERN_DEBUG "CPU %u: %u.%03u MHz\n",
-		this_cpu,
-		cpu_khz / 1000, cpu_khz % 1000
-	);
-}
 
 
 
@@ -136,4 +104,65 @@ arch_set_timer_freq(unsigned int hz)
 
 
 	return;
+}
+
+
+static void
+__arm_timer_init( struct device_tree * dt_node )
+{
+	uint32_t cpu_khz = (u32)mrs(CNTFRQ_EL0) / 1000;
+	/*
+	 * Cache the CPU frequency
+	 */
+
+	struct arch_cpuinfo * const arch_info = &cpu_info[this_cpu].arch;
+	
+	printk("TODO: Check if the CPU clock rate has been passed in via Device Tree\n");
+	
+	/* 
+	if (of_property_read_u32(np, "clock-frequency", &arch_timer_rate))
+		arch_timer_rate = rate;
+	*/
+
+
+	arch_info->cur_cpu_khz = cpu_khz;
+	arch_info->tsc_khz     = cpu_khz;
+
+
+
+	init_cycles2ns(cpu_khz);
+
+
+	printk(KERN_DEBUG "CPU %u: %u.%03u MHz\n",
+		this_cpu,
+		cpu_khz / 1000, cpu_khz % 1000
+	);
+}
+
+
+
+
+static const struct of_device_id timer_of_match[]  = {
+	{ .compatible = "arm,armv8-timer",	.data = __arm_timer_init},
+	{ .compatible = "arm,armv7-timer",	.data = __arm_timer_init},
+	{},
+};
+
+
+
+void __init
+time_init(void)
+{
+	struct device_node  * dt_node    = NULL;
+	struct of_device_id * matched_np = NULL;
+	timer_init_fn init_fn;
+
+	dt_node = of_find_matching_node_and_match(NULL, timer_of_match, &matched_np);
+
+	if (!dt_node || !of_device_is_available(dt_node))
+		panic("Could not find timer\n");
+
+	init_fn = (timer_init_fn)(matched_np->data);
+
+	return init_fn(dt_node);
 }

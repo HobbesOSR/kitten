@@ -134,52 +134,16 @@ __gicc_setup()
 	__gicc_write32(GICC_CTLR_OFFSET, ctlr.val);
 }
 
-
-
-void 
-gic2_global_init(struct device_node * dt_node)
+static void 
+__gic2_core_init( void )
 {
-	u32    regs[8] = {0};
-	size_t reg_cnt = 0; 
-	int    ret     = 0;
-	
-	if ( (of_n_addr_cells(dt_node) != 2) ||
-	     (of_n_size_cells(dt_node) != 2) ) {
-		panic("Only 64 bit reg values are supported\n");
-	}
-
-	ret = of_property_read_u32_array(dt_node, "reg", (u32 *)regs, 8);
-
-	if (ret != 0) {
-		panic("Could not read GIC registers from device tree (ret=%d)\n", ret);
-	}
-
-
-
-	gic.gicd_phys_start = (regs[0] << 32) | regs[1]; 
-	gic.gicd_phys_size  = (regs[2] << 32) | regs[3]; 
-	gic.gicc_phys_start = (regs[4] << 32) | regs[5]; 
-	gic.gicc_phys_size  = (regs[6] << 32) | regs[7]; 
-
-	printk("\tGICD at: %p [%d bytes]\n", gic.gicd_phys_start, gic.gicd_phys_size);
-	printk("\tGICC at: %p [%d bytes]\n", gic.gicc_phys_start, gic.gicc_phys_size);
-
-	gic.gicd_virt_start = ioremap(gic.gicd_phys_start, gic.gicd_phys_size);
-	gic.gicc_virt_start = ioremap(gic.gicc_phys_start, gic.gicc_phys_size);
-
-
-	printk("\tGICD Virt Addr: %p\n", gic.gicd_virt_start);
-	printk("\tGICR Virt Addr: %p\n", gic.gicc_virt_start);
-
-
-	__gicd_setup();
 	__gicc_setup();
-
 }
 
-void
-gic2_enable_irq(uint32_t           irq_num,
-		irq_trigger_mode_t trigger_mode)
+
+static void
+__gic2_enable_irq(uint32_t           irq_num,
+		  irq_trigger_mode_t trigger_mode)
 {
 	struct gicd_icfgr      icfgr     = {0};
 	struct gicd_ipriorityr ipriority = {0};
@@ -234,9 +198,75 @@ gic2_enable_irq(uint32_t           irq_num,
 
 }
 
-void 
-gic2_probe()
+static void 
+__gic2_disable_irq(uint32_t vector)
+{
+	panic("GIC2: Disabling IRQs not implemented\n");
+}
+
+static void 
+__gic2_dump_state(void)
+{
+	printk("GIC2: Dumping state not implemented\n");
+}
+
+static void 
+__gic2_print_pending_irqs(void)
 {
 
-	printk("GIC2 Probe...\n");
+	printk("GIC2: print_pending_irqs not implemented\n");
+}
+
+static struct irqchip gic2_chip = {
+	.name               = "GIC2",
+	.dt_node            = NULL,
+	.core_init          = __gic2_core_init,
+	.enable_irq         = __gic2_enable_irq,
+	.disable_irq        = __gic2_disable_irq,
+	.dump_state         = __gic2_dump_state, 
+	.print_pending_irqs = __gic2_print_pending_irqs
+};
+
+void 
+gic2_global_init(struct device_node * dt_node)
+{
+	u32    regs[8] = {0};
+	size_t reg_cnt = 0; 
+	int    ret     = 0;
+	
+	if ( (of_n_addr_cells(dt_node) != 2) ||
+	     (of_n_size_cells(dt_node) != 2) ) {
+		panic("Only 64 bit reg values are supported\n");
+	}
+
+	ret = of_property_read_u32_array(dt_node, "reg", (u32 *)regs, 8);
+
+	if (ret != 0) {
+		panic("Could not read GIC registers from device tree (ret=%d)\n", ret);
+	}
+
+
+
+	gic.gicd_phys_start = (regs[0] << 32) | regs[1]; 
+	gic.gicd_phys_size  = (regs[2] << 32) | regs[3]; 
+	gic.gicc_phys_start = (regs[4] << 32) | regs[5]; 
+	gic.gicc_phys_size  = (regs[6] << 32) | regs[7]; 
+
+	printk("\tGICD at: %p [%d bytes]\n", gic.gicd_phys_start, gic.gicd_phys_size);
+	printk("\tGICC at: %p [%d bytes]\n", gic.gicc_phys_start, gic.gicc_phys_size);
+
+	gic.gicd_virt_start = ioremap(gic.gicd_phys_start, gic.gicd_phys_size);
+	gic.gicc_virt_start = ioremap(gic.gicc_phys_start, gic.gicc_phys_size);
+
+
+	printk("\tGICD Virt Addr: %p\n", gic.gicd_virt_start);
+	printk("\tGICR Virt Addr: %p\n", gic.gicc_virt_start);
+
+
+	__gicd_setup();
+
+
+	gic2_chip.dt_node = dt_node;
+	register_irqchip(&gic2_chip);
+
 }
