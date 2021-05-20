@@ -16,6 +16,8 @@ struct irqchip {
 	int  (*core_init)(struct device_node * dt_node);
 	void (*enable_irq)(int vector, irq_trigger_mode_t mode);
 	void (*disable_irq)(int vector); 
+	void (*do_eoi)(int vector);
+	int  (*parse_devtree_irqs)(struct device_node * dt_node, uint32_t num_irqs, struct irq_def * irqs);
 	void (*dump_state)(void);
 	void (*print_pending_irqs)(void);
 };
@@ -29,6 +31,8 @@ int register_irqchip(struct irqchip * chip);
 
 int intc_global_init(void);
 int intc_local_init(void);
+
+void do_eoi(int vector);
 
 void probe_pending_irqs(void);
 

@@ -109,8 +109,8 @@ handle_irq(struct pt_regs * regs,
 	
 	irqvec_table[vector](regs, vector);
 
+	do_eoi(vector);
 
-	msr(ICC_EOIR1_EL1, vector);
 
 
 }

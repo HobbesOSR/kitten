@@ -12,6 +12,7 @@
 #include <arch/gicdef.h>
 #include <arch/of.h>
 #include <arch/io.h>
+#include <arch/irq_vectors.h>
 
 #define GIC2_SPURIOUS_IRQ 1023
 
@@ -29,6 +30,11 @@ struct gic2 {
 static struct gic2 gic;
 
 
+
+static int
+__gic2_parse_irqs(struct device_node *  dt_node, 
+	          uint32_t              num_irqs, 
+	          struct irq_def     *  irqs);
 
 
 static inline uint32_t 
@@ -204,6 +210,16 @@ __gic2_disable_irq(uint32_t vector)
 	panic("GIC2: Disabling IRQs not implemented\n");
 }
 
+
+static void
+__gic2_do_eoi(int vector)
+{
+	ASSERT((vector & 0xff000000) == 0);
+	__gicc_write32(GICC_EOIR_OFFSET, vector);
+}
+
+
+
 static void 
 __gic2_dump_state(void)
 {
@@ -223,6 +239,8 @@ static struct irqchip gic2_chip = {
 	.core_init          = __gic2_core_init,
 	.enable_irq         = __gic2_enable_irq,
 	.disable_irq        = __gic2_disable_irq,
+	.do_eoi             = __gic2_do_eoi,
+	.parse_devtree_irqs = __gic2_parse_irqs,
 	.dump_state         = __gic2_dump_state, 
 	.print_pending_irqs = __gic2_print_pending_irqs
 };
@@ -269,4 +287,67 @@ gic2_global_init(struct device_node * dt_node)
 	gic2_chip.dt_node = dt_node;
 	register_irqchip(&gic2_chip);
 
+}
+
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+static int
+__gic2_parse_irqs(struct device_node *  dt_node, 
+	          uint32_t              num_irqs, 
+	          struct irq_def     *  irqs)
+{
+	const __be32 * ip;
+	uint32_t       irq_cells = 0;
+
+	int i   = 0;
+	int ret = 0;
+
+	ip = of_get_property(gic2_chip.dt_node, "#interrupt-cells", NULL);
+
+	if (!ip) {
+		printk("Could not find #interrupt_cells property\n");
+		goto err;
+	}
+
+	irq_cells = be32_to_cpup(ip);
+
+	if (irq_cells != 3) {
+		printk("Interrupt Cell size of (%d) is not supported\n", irq_cells);
+		goto err;
+	}
+	
+
+	for (i = 0; i < num_irqs; i++) {
+		uint32_t type   = 0;
+		uint32_t vector = 0;
+		uint32_t mode   = 0;
+		
+		ret |= of_property_read_u32_index(dt_node, "interrupts", &type,   (i * 3));
+		ret |= of_property_read_u32_index(dt_node, "interrupts", &vector, (i * 3) + 1);
+		ret |= of_property_read_u32_index(dt_node, "interrupts", &mode,   (i * 3) + 2);
+
+		if (ret != 0) {
+			printk("Failed to fetch interrupt cell\n");
+			goto err;
+		}
+
+		if (mode & IRQ_TYPE_EDGE_BOTH) {
+			irqs[i].mode = IRQ_EDGE_TRIGGERED;
+		} else {
+			irqs[i].mode = IRQ_LEVEL_TRIGGERED; 
+		}
+
+		if (type == GIC_PPI) {
+			irqs[i].vector = vector + PPI_VECTOR_START;
+		} else if (type == GIC_SPI) {
+			irqs[i].vector = vector + SPI_VECTOR_START;
+		} else {
+			panic("Invalid IRQ Type\n");
+		}
+	}
+
+	return 0;
+
+err:
+	return -1;	
 }
