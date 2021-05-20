@@ -11,10 +11,17 @@
 #include <arch/intc.h>
 #include <arch/time.h>
 #include <arch/of.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
 
 
-
-
+#define IRQ_IDX_SECURE     0
+#define IRQ_IDX_NONSECURE  1
+#define IRQ_IDX_VIRTUAL    2
+#define IRQ_IDX_HYPERVISOR 3
+/* 
+ - interrupts : Interrupt list for secure, non-secure, virtual and hypervisor timers, in that order.
+  */
+struct irq_def timer_irqs[4];
 
 struct cntp_ctl_el0 {
     union {
@@ -67,8 +74,8 @@ __timer_tick(int irq, void * dev_id)
 void
 arch_core_timer_init()
 {
-	irq_request(30, __timer_tick, 0, "timer", NULL);
-	enable_irq(30, IRQ_EDGE_TRIGGERED);
+	irq_request(timer_irqs[IRQ_IDX_NONSECURE].vector, __timer_tick, 0, "timer", NULL);
+	enable_irq(timer_irqs[IRQ_IDX_NONSECURE].vector, timer_irqs[IRQ_IDX_NONSECURE].mode);
 }
 
 //CNTPCT_EL0
@@ -107,24 +114,28 @@ arch_set_timer_freq(unsigned int hz)
 }
 
 
+
 static void
 __arm_timer_init( struct device_tree * dt_node )
 {
-	uint32_t cpu_khz = (u32)mrs(CNTFRQ_EL0) / 1000;
+	uint32_t cpu_khz  = (u32)mrs(CNTFRQ_EL0) / 1000;
+
+	int i   = 0;
+	int ret = 0;
+
+
+	struct arch_cpuinfo * const arch_info = &cpu_info[this_cpu].arch;
+
+	ret = parse_fdt_irqs(dt_node, 4, timer_irqs);
+
+	if (ret != 0) {
+		panic("Could not parse Timer IRQ info\n");
+	}
+
+	
 	/*
 	 * Cache the CPU frequency
 	 */
-
-	struct arch_cpuinfo * const arch_info = &cpu_info[this_cpu].arch;
-	
-	printk("TODO: Check if the CPU clock rate has been passed in via Device Tree\n");
-	
-	/* 
-	if (of_property_read_u32(np, "clock-frequency", &arch_timer_rate))
-		arch_timer_rate = rate;
-	*/
-
-
 	arch_info->cur_cpu_khz = cpu_khz;
 	arch_info->tsc_khz     = cpu_khz;
 

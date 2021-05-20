@@ -367,7 +367,7 @@ static struct irqchip gic3_chip = {
 void 
 gic3_global_init(struct device_node * dt_node)
 {
-	u32    regs[8] = {0};
+	u32    regs[8] = {[0 ... 7] = 0};
 	size_t reg_cnt = 0; 
 	int    ret     = 0;
 	

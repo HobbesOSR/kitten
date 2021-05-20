@@ -9,6 +9,7 @@
 
 #include <arch/msr.h>
 #include <arch/intc.h>
+#include <arch/irq_vectors.h>
 
 #include <arch/of.h>
 #include <arch/io.h>
@@ -84,4 +85,67 @@ enable_irq(uint32_t           irq_num,
 	   irq_trigger_mode_t trigger_mode)
 {
 	irq_controller->enable_irq(irq_num, trigger_mode);
+}
+
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+int 
+parse_fdt_irqs(struct device_node *  dt_node, 
+	       uint32_t              num_irqs, 
+	       struct irq_def     *  irqs)
+{
+	const __be32 * ip;
+	uint32_t       irq_cells = 0;
+
+	int i   = 0;
+	int ret = 0;
+
+	ip = of_get_property(irq_controller->dt_node, "#interrupt-cells", NULL);
+
+	if (!ip) {
+		printk("Could not find #interrupt_cells property\n");
+		goto err;
+	}
+
+	irq_cells = be32_to_cpup(ip);
+
+	if (irq_cells != 3) {
+		printk("Interrupt Cell size of (%d) is not supported\n", irq_cells);
+		goto err;
+	}
+	
+
+	for (i = 0; i < num_irqs; i++) {
+		uint32_t type   = 0;
+		uint32_t vector = 0;
+		uint32_t mode   = 0;
+		
+		ret |= of_property_read_u32_index(dt_node, "interrupts", &type,   (i * 3));
+		ret |= of_property_read_u32_index(dt_node, "interrupts", &vector, (i * 3) + 1);
+		ret |= of_property_read_u32_index(dt_node, "interrupts", &mode,   (i * 3) + 2);
+
+		if (ret != 0) {
+			printk("Failed to fetch interrupt cell\n");
+			goto err;
+		}
+
+		if (mode & IRQ_TYPE_EDGE_BOTH) {
+			irqs[i].mode = IRQ_EDGE_TRIGGERED;
+		} else {
+			irqs[i].mode = IRQ_LEVEL_TRIGGERED; 
+		}
+
+		if (type == GIC_PPI) {
+			irqs[i].vector = vector + PPI_VECTOR_START;
+		} else if (type == GIC_SPI) {
+			irqs[i].vector = vector + SPI_VECTOR_START;
+		} else {
+			panic("Invalid IRQ Type\n");
+		}
+	}
+
+	return 0;
+
+err:
+	return -1;
 }

@@ -22,6 +22,9 @@ struct irqchip {
 
 typedef int (*irqchip_init_fn)(struct device_node *); 
 
+
+
+
 int register_irqchip(struct irqchip * chip);
 
 int intc_global_init(void);
@@ -29,6 +32,16 @@ int intc_local_init(void);
 
 void probe_pending_irqs(void);
 
+
+
+struct irq_def {
+	uint32_t           vector;
+	irq_trigger_mode_t mode;
+};
+
+int parse_fdt_irqs(struct device_node * dt_node, 
+		   uint32_t             num_irqs, 
+		   struct irq_def     * irqs);
 
 
 
