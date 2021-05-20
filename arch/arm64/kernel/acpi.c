@@ -32,13 +32,11 @@
 #include <arch/io.h>
 #include <arch/mpspec.h>
 #include <arch/smp.h>
+#include <arch/psci.h>
 
 u32 acpi_rsdt_forced;
 int acpi_disabled;
 
-#ifdef	CONFIG_X86_64
-# include <arch/proto.h>
-#endif				/* X86 */
 
 #define BAD_MADT_ENTRY(entry, end) (					    \
 		(!entry) || (unsigned long)entry + sizeof(*entry) > end ||  \
@@ -49,8 +47,6 @@ int acpi_disabled;
 int acpi_noirq;				/* skip ACPI IRQ initialization */
 int acpi_pci_disabled;		/* skip ACPI PCI scan and IRQ initialization */
 
-int acpi_lapic;
-int acpi_ioapic;
 int acpi_strict;
 
 u8 acpi_sci_flags __initdata;
@@ -59,13 +55,197 @@ int acpi_skip_timer_override __initdata;
 int acpi_use_timer_override __initdata;
 int acpi_fix_pin2_polarity __initdata;
 
-#ifdef CONFIG_X86_LOCAL_APIC
-static u64 acpi_lapic_addr __initdata = APIC_DEFAULT_PHYS_BASE;
+
+
+
+
+static int __init dt_scan_depth1_nodes(unsigned long node,
+				       const char *uname, int depth,
+				       void *data)
+{
+	/*
+	 * Ignore anything not directly under the root node; we'll
+	 * catch its parent instead.
+	 */
+	if (depth != 1)
+		return 0;
+
+	if (strcmp(uname, "chosen") == 0)
+		return 0;
+
+	if (strcmp(uname, "hypervisor") == 0 &&
+	    of_flat_dt_is_compatible(node, "xen,xen"))
+		return 0;
+
+	/*
+	 * This node at depth 1 is neither a chosen node nor a xen node,
+	 * which we do not expect.
+	 */
+	return 1;
+}
+
+/*
+ * __acpi_map_table() will be called before page_init(), so early_ioremap()
+ * or early_memremap() should be called here to for ACPI table mapping.
+ */
+void __init __iomem *__acpi_map_table(unsigned long phys, unsigned long size)
+{
+	if (!size)
+		return NULL;
+
+	return ioremap(phys, size);
+}
+
+void __init __acpi_unmap_table(void __iomem *map, unsigned long size)
+{
+	if (!map || !size)
+		return;
+
+	iounmap(map);
+}
+
+
+#if defined(CONFIG_ARM_PSCI_FW) && defined(CONFIG_ACPI)
+bool __init acpi_psci_present(void)
+{
+	return acpi_gbl_FADT.arm_boot_flags & ACPI_FADT_PSCI_COMPLIANT;
+}
+
+/* Whether HVC must be used instead of SMC as the PSCI conduit */
+bool __init acpi_psci_use_hvc(void)
+{
+	return acpi_gbl_FADT.arm_boot_flags & ACPI_FADT_PSCI_USE_HVC;
+}
 #endif
 
-#ifndef __HAVE_ARCH_CMPXCHG
-#warning ACPI uses CMPXCHG, i486 and later hardware
+
+/*
+ * acpi_fadt_sanity_check() - Check FADT presence and carry out sanity
+ *			      checks on it
+ *
+ * Return 0 on success,  <0 on failure
+ */
+static int __init acpi_fadt_sanity_check(void)
+{
+	return 0;
+
+#if 0
+
+	struct acpi_table_header *table;
+	struct acpi_table_fadt *fadt;
+	acpi_status status;
+	int ret = 0;
+
+	/*
+	 * FADT is required on arm64; retrieve it to check its presence
+	 * and carry out revision and ACPI HW reduced compliancy tests
+	 */
+	status = acpi_get_table(ACPI_SIG_FADT, 0, &table);
+	if (ACPI_FAILURE(status)) {
+		const char *msg = acpi_format_exception(status);
+
+		pr_err("Failed to get FADT table, %s\n", msg);
+		return -ENODEV;
+	}
+
+	fadt = (struct acpi_table_fadt *)table;
+
+	/*
+	 * Revision in table header is the FADT Major revision, and there
+	 * is a minor revision of FADT which was introduced by ACPI 5.1,
+	 * we only deal with ACPI 5.1 or newer revision to get GIC and SMP
+	 * boot protocol configuration data.
+	 */
+	if (table->revision < 5 ||
+	   (table->revision == 5 && fadt->minor_revision < 1)) {
+		pr_err("Unsupported FADT revision %d.%d, should be 5.1+\n",
+		       table->revision, fadt->minor_revision);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (!(fadt->flags & ACPI_FADT_HW_REDUCED)) {
+		pr_err("FADT not ACPI hardware reduced compliant\n");
+		ret = -EINVAL;
+	}
+
+out:
+	/*
+	 * acpi_get_table() creates FADT table mapping that
+	 * should be released after parsing and before resuming boot
+	 */
+	acpi_put_table(table);
+	return ret;
 #endif
+}
+
+/*
+ * acpi_boot_table_init() called from setup_arch(), always.
+ *	1. find RSDP and get its address, and then find XSDT
+ *	2. extract all tables and checksums them all
+ *	3. check ACPI FADT revision
+ *	4. check ACPI FADT HW reduced flag
+ *
+ * We can parse ACPI boot-time tables such as MADT after
+ * this function is called.
+ *
+ * On return ACPI is enabled if either:
+ *
+ * - ACPI tables are initialized and sanity checks passed
+ * - acpi=force was passed in the command line and ACPI was not disabled
+ *   explicitly through acpi=off command line parameter
+ *
+ * ACPI is disabled on function return otherwise
+ */
+#if 0
+void __init acpi_boot_table_init(void)
+{
+	/*
+	 * Enable ACPI instead of device tree unless
+	 * - ACPI has been disabled explicitly (acpi=off), or
+	 * - the device tree is not empty (it has more than just a /chosen node,
+	 *   and a /hypervisor node when running on Xen)
+	 *   and ACPI has not been [force] enabled (acpi=on|force)
+	 */
+	if (param_acpi_off ||
+	    (!param_acpi_on && !param_acpi_force &&
+	     of_scan_flat_dt(dt_scan_depth1_nodes, NULL)))
+		goto done;
+
+	/*
+	 * ACPI is disabled at this point. Enable it in order to parse
+	 * the ACPI tables and carry out sanity checks
+	 */
+	enable_acpi();
+
+	/*
+	 * If ACPI tables are initialized and FADT sanity checks passed,
+	 * leave ACPI enabled and carry on booting; otherwise disable ACPI
+	 * on initialization error.
+	 * If acpi=force was passed on the command line it forces ACPI
+	 * to be enabled even if its initialization failed.
+	 */
+	if (acpi_table_init() || acpi_fadt_sanity_check()) {
+		pr_err("Failed to init ACPI tables\n");
+		if (!param_acpi_force)
+			disable_acpi();
+	}
+
+done:
+	if (acpi_disabled) {
+		if (earlycon_init_is_deferred)
+			early_init_dt_scan_chosen_stdout();
+	} else {
+		parse_spcr(earlycon_init_is_deferred);
+		if (IS_ENABLED(CONFIG_ACPI_BGRT))
+			acpi_table_parse(ACPI_SIG_BGRT, acpi_parse_bgrt);
+	}
+}
+#endif
+
+
+
+
 
 /* --------------------------------------------------------------------------
                               Boot-time Configuration
@@ -92,31 +272,47 @@ static u64 acpi_lapic_addr __initdata = APIC_DEFAULT_PHYS_BASE;
 
 void __init acpi_init(void)
 {
+	/*
+	 * Enable ACPI instead of device tree unless
+	 * - ACPI has been disabled explicitly (acpi=off), or
+	 * - the device tree is not empty (it has more than just a /chosen node,
+	 *   and a /hypervisor node when running on Xen)
+	 *   and ACPI has not been [force] enabled (acpi=on|force)
+	 */
 	if (acpi_disabled) {
-		printk(KERN_WARNING PREFIX "ACPI is disabled, cannot initialize.\n");
-		return; 
+		return;
 	}
 
-	/* Initialize the ACPI boot-time table parser. */
-/*	if (acpi_table_init()) {
-		printk(KERN_WARNING PREFIX "ACPI initialization failed, disabling ACPI.\n");
+	if (of_scan_flat_dt(dt_scan_depth1_nodes, NULL)) {
+		return;
+	}
+	
+	/*
+	 * ACPI is disabled at this point. Enable it in order to parse
+	 * the ACPI tables and carry out sanity checks
+	 */
+	enable_acpi();
+
+	/*
+	 * If ACPI tables are initialized and FADT sanity checks passed,
+	 * leave ACPI enabled and carry on booting; otherwise disable ACPI
+	 * on initialization error.
+	 * If acpi=force was passed on the command line it forces ACPI
+	 * to be enabled even if its initialization failed.
+	 */
+	if (acpi_table_init() || acpi_fadt_sanity_check()) {
+		panic("failed to init ACPI tables\n");
 		disable_acpi();
 		return;
-	}*/
-
-	/* Parse the SRAT/SLIT NUMA-related tables */
-/*	acpi_numa_init();
-	*/
-}
-
 #if 0
-int __init acpi_boot_init(void)
-{
-	if (acpi_disabled)
-		return 1;
-
-	//acpi_dmar_init();
-
-	return 0;
-}
+		pr_err("Failed to init ACPI tables\n");
+		if (!param_acpi_force)
+			disable_acpi();
 #endif
+	}
+
+	/* Parse the MADT table to get available CPUs */
+	//acpi_parse_madt();
+
+}
+

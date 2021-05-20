@@ -15,6 +15,17 @@
 #define __read_mostly
 #endif
 
+
+/*
+ * __ro_after_init is used to mark things that are read-only after init (i.e.
+ * after mark_rodata_ro() has been called). These are effectively read-only,
+ * but may get written to during init, so can't live in .rodata (via "const").
+ */
+#ifndef __ro_after_init
+//#define __ro_after_init __attribute__((__section__(".data..ro_after_init")))
+#define __ro_after_init
+#endif
+
 #ifndef ____cacheline_aligned
 #define ____cacheline_aligned __attribute__((__aligned__(SMP_CACHE_BYTES)))
 #endif

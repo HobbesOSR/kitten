@@ -12,6 +12,7 @@
 */
 
 #include <arch/page.h>
+#include <lwk/sizes.h>
 
 #define ARM_EXIT_KEEP(x)
 #define ARM_EXIT_DISCARD(x)	x
@@ -211,6 +212,24 @@ __initdata_begin = .;
 	}
 */
 
+
+	/*
+	 * Data written with the MMU off but read with the MMU on requires
+	 * cache lines to be invalidated, discarding up to a Cache Writeback
+	 * Granule (CWG) of data from the cache. Keep the section that
+	 * requires this type of maintenance to be in its own Cache Writeback
+	 * Granule (CWG) area so the cache maintenance operations don't
+	 * interfere with adjacent data.
+	 */
+	.mmuoff.data.write : ALIGN(SZ_2K) {
+		__mmuoff_data_start = .;
+		*(.mmuoff.data.write)
+	}
+	. = ALIGN(SZ_2K);
+	.mmuoff.data.read : {
+		*(.mmuoff.data.read)
+		__mmuoff_data_end = .;
+	}
 
 
   . = ALIGN(4096);

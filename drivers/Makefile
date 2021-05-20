@@ -13,3 +13,5 @@ obj-$(CONFIG_SERIAL_MM_CONSOLE) += mm_console/
 obj-$(CONFIG_OF) += of/
  
 obj-$(CONFIG_RCR) += rcr/
+
+obj-$(CONFIG_ARM64) += firmware/

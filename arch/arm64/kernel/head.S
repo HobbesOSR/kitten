@@ -23,11 +23,13 @@
 #include <lwk/init.h>
 #include <lwk/const.h>
 
+
 #include <arch/assembler.h>
 #include <arch/ptrace.h>
 #include <arch/memory.h>
 #include <arch/pgtable.h>
 #include <arch/page.h>
+#include <arch/cputype.h>
 
 
 // TODO Brian Needs to have a better location
@@ -368,34 +370,82 @@ ENDPROC(el2_setup)
 1:	.quad	.
 	.quad	0//secondary_holding_pen_release
 
+
+
+#define BOOT_CPU_MODE_EL1	(0xe11)
+#define BOOT_CPU_MODE_EL2	(0xe12)
+
+/*
+ * Sets the __boot_cpu_mode flag depending on the CPU boot mode passed
+ * in w0. See arch/arm64/include/asm/virt.h for more info.
+ */
+set_cpu_boot_mode_flag:
+	adr_l	x1, __boot_cpu_mode
+	cmp	w0, #BOOT_CPU_MODE_EL2
+	b.ne	1f
+	add	x1, x1, #4
+1:	str	w0, [x1]			// This CPU has booted in EL1
+	dmb	sy
+	dc	ivac, x1			// Invalidate potentially stale cache line
+	ret
+ENDPROC(set_cpu_boot_mode_flag)
+
+
+	/*
+/*
+ * These values are written with the MMU off, but read with the MMU on.
+ * Writers will invalidate the corresponding address, discarding up to a
+ * 'Cache Writeback Granule' (CWG) worth of data. The linker script ensures
+ * sufficient alignment that the CWG doesn't overlap another section.
+ */
+	.pushsection ".mmuoff.data.write", "aw"
+/*
+ * We need to find out the CPU boot mode long after boot, so we need to
+ * store it in a writable variable.
+ *
+ * This is not in .bss, because we set it sufficiently early that the boot-time
+ * zeroing of .bss would clobber it.
+ */
+ENTRY(__boot_cpu_mode)
+	.long	BOOT_CPU_MODE_EL2
+	.long	BOOT_CPU_MODE_EL1
+/*
+ * The booting CPU updates the failed status @__early_cpu_boot_status,
+ * with MMU turned off.
+ */
+ENTRY(__early_cpu_boot_status)
+	.long 	0
+
+	.popsection
+
 	/*
 	 * This provides a "holding pen" for platforms to hold all secondary
 	 * cores are held until we're ready for them to initialise.
 	 */
 ENTRY(secondary_holding_pen)
-	bl	el2_setup			// Drop to EL1
+	bl	el2_setup			// Drop to EL1, w0=cpu_boot_mode
+	bl	set_cpu_boot_mode_flag
 	mrs	x0, mpidr_el1
-#if defined(CONFIG_ARCH_POTENZA)
-        and     x0, x0, #0xffff                 // CPU number
-	mov     x1, x0
-	and     x1, x1, #0x1
-	and     x0, x0, #0xff00
-	ror     x0, x0, #7
-	orr     x0, x0, x1
-#else
-	and	x0, x0, #15			// CPU number
-#endif
-	adr	x1, 1b
-	ldp	x2, x3, [x1]
-	sub	x1, x1, x2
-	add	x3, x3, x1
+	mov_q	x1, MPIDR_HWID_BITMASK
+	and	x0, x0, x1
+	adr_l	x3, secondary_holding_pen_release
 pen:	ldr	x4, [x3]
 	cmp	x4, x0
 	b.eq	secondary_startup
 	wfe
 	b	pen
 ENDPROC(secondary_holding_pen)
-	.popsection
+
+	/*
+	 * Secondary entry point that jumps straight into the kernel. Only to
+	 * be used where CPUs are brought online dynamically by the kernel.
+	 */
+ENTRY(secondary_entry)
+	bl	el2_setup			// Drop to EL1
+	bl	set_cpu_boot_mode_flag
+	b	secondary_startup
+ENDPROC(secondary_entry)
+
 
 ENTRY(secondary_startup)
 	/*

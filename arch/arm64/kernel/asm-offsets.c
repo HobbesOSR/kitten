@@ -27,6 +27,7 @@
 //#include <arch/cputable.h>
 //#include <arch/vdso_datapage.h>
 #include <arch/kbuild.h>
+#include <arch/smccc.h>
 
 #define __NO_STUBS 1
 #undef __SYSCALL
@@ -168,6 +169,12 @@ int main(void)
   DEFINE(KVM_VTTBR,		offsetof(struct kvm, arch.vttbr));
   DEFINE(KVM_VGIC_VCTRL,	offsetof(struct kvm, arch.vgic.vctrl_base));
 #endif
+
+  DEFINE(ARM_SMCCC_RES_X0_OFFS,		offsetof(struct arm_smccc_res, a0));
+  DEFINE(ARM_SMCCC_RES_X2_OFFS,		offsetof(struct arm_smccc_res, a2));
+  DEFINE(ARM_SMCCC_QUIRK_ID_OFFS,	offsetof(struct arm_smccc_quirk, id));
+  DEFINE(ARM_SMCCC_QUIRK_STATE_OFFS,	offsetof(struct arm_smccc_quirk, state));
+
   DEFINE(__NR_syscall_max, sizeof(syscalls) - 1);
   return 0;
 }

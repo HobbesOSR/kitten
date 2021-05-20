@@ -81,8 +81,8 @@ typedef int (*acpi_table_entry_handler) (struct acpi_subtable_header *header, co
 		(!entry) || (unsigned long)entry + sizeof(*entry) > end ||  \
 		((struct acpi_subtable_header *)entry)->length < sizeof(*entry))
 
-char * __acpi_map_table (unsigned long phys_addr, unsigned long size);
-void __acpi_unmap_table(char *map, unsigned long size);
+void * __acpi_map_table (unsigned long phys_addr, unsigned long size);
+void __acpi_unmap_table(void *map, unsigned long size);
 int early_acpi_boot_init(void);
 int acpi_boot_init (void);
 void acpi_init (void);

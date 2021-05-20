@@ -150,4 +150,7 @@ void cpu_idle_wait(void);
 extern unsigned long arch_align_stack(unsigned long sp);
 extern void free_init_pages(char *what, unsigned long begin, unsigned long end);
 
+#include <lwk/reboot.h>
+extern void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+
 #endif

@@ -17,6 +17,7 @@
 #include <arch/of_fdt.h>
 #include <arch/memory.h>
 #include <arch/memblock.h>
+#include <arch/cputype.h>
 
 
 /**
@@ -320,6 +321,9 @@ static inline int get_family(int cpuid)
                         
         return (0xf == base) ? base + extended : base;
 }
+
+
+u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
 
 /**
  * Architecture specific initialization.

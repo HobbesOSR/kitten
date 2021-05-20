@@ -1,5 +1,5 @@
-#ifndef _ARCH_X86_64_ACPI_H
-#define _ARCH_X86_64_ACPI_H
+#ifndef _ARM64_ACPI_H
+#define _ARM64_ACPI_H
 
 /*
  *  Copyright (C) 2001 Paul Diefenbaugh <paul.s.diefenbaugh@intel.com>
@@ -26,6 +26,7 @@
 #include <arch/processor.h>
 #include <arch/mmu.h>
 #include <arch/mpspec.h>
+#include <arch/psci.h>
 
 #define COMPILER_DEPENDENT_INT64   long long
 #define COMPILER_DEPENDENT_UINT64  unsigned long long
@@ -84,7 +85,38 @@ static inline void disable_acpi(void)
 	acpi_noirq = 1;
 }
 
+static inline void enable_acpi(void)
+{
+	acpi_disabled = 0;
+	acpi_pci_disabled = 0;
+	acpi_noirq = 0;
+}
+
 extern int acpi_numa;
 extern int x86_acpi_numa_init(void);
+
+
+#ifdef CONFIG_ARM64_ACPI_PARKING_PROTOCOL
+bool acpi_parking_protocol_valid(int cpu);
+void __init
+acpi_set_mailbox_entry(int cpu, struct acpi_madt_generic_interrupt *processor);
+#else
+static inline bool acpi_parking_protocol_valid(int cpu) { return false; }
+static inline void
+acpi_set_mailbox_entry(int cpu, struct acpi_madt_generic_interrupt *processor)
+{}
+#endif
+
+static inline const char *acpi_get_enable_method(int cpu)
+{
+	if (acpi_psci_present())
+		return "psci";
+
+	if (acpi_parking_protocol_valid(cpu))
+		return "parking-protocol";
+
+	return NULL;
+}
+
 
 #endif /* _ARCH_X86_64_ACPI_H */

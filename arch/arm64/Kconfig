@@ -158,6 +158,10 @@ config ACPI
 	bool
 	default "y"
 
+config ARM_PSCI_FW
+	bool
+	default "y"
+
 source "arch/arm64/boot/Kconfig"
 source "arch/arm64/Kconfig.debug"
 

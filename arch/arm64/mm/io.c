@@ -42,10 +42,47 @@ ioremap_nocache(unsigned long offset, unsigned long size)
 }
 
 void  *
+ioremap_cache(unsigned long offset, unsigned long size)
+{
+       paddr_t paddr;
+        int ret=0;
+
+        for (paddr = offset; paddr < offset + size; paddr += VM_PAGE_4KB) {
+                if (arch_aspace_virt_to_phys(&bootstrap_aspace, (vaddr_t)__va(paddr), NULL) == -ENOENT) {
+                        ret = arch_aspace_map_page(
+                                  &bootstrap_aspace,
+                                  (vaddr_t)__va(paddr),
+                                  paddr,
+                                  __pgprot(PROT_NORMAL),
+                                  VM_PAGE_4KB
+                        );
+
+                        if (ret) {
+                                printk(KERN_ERR "Error: could not map kernel memory for MMIO paddr=0x%016lx.\n", paddr);
+                                break;
+                        }
+                }
+        }
+
+        if (ret) {
+                printk(KERN_ERR "Error: ioremap_nocache failed at %lx, size %lu\n", offset, size);
+                return (void *) NULL;
+        }
+
+
+	return phys_to_virt(offset);
+}
+
+
+void  *
 ioremap(unsigned long offset, unsigned long size)
 {
-	return ioremap_nocache(offset, size);
+	return ioremap_cache(offset, size);
 }
+
+
+
+
 
 void
 iounmap(volatile void  *addr)

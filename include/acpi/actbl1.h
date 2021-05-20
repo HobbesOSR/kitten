@@ -752,6 +752,28 @@ struct acpi_madt_local_x2apic_nmi {
 	u8 reserved[3];
 };
 
+/* 11: Generic Interrupt (ACPI 5.0 + ACPI 6.0 changes) */
+
+struct acpi_madt_generic_interrupt {
+	struct acpi_subtable_header header;
+	u16 reserved;		/* reserved - must be zero */
+	u32 cpu_interface_number;
+	u32 uid;
+	u32 flags;
+	u32 parking_version;
+	u32 performance_interrupt;
+	u64 parked_address;
+	u64 base_address;
+	u64 gicv_base_address;
+	u64 gich_base_address;
+	u32 vgic_interrupt;
+	u64 gicr_base_address;
+	u64 arm_mpidr;
+	u8 efficiency_class;
+	u8 reserved2[3];
+};
+
+
 /*
  * Common flags fields for MADT subtables
  */

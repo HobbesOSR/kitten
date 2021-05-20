@@ -44,6 +44,8 @@
 #define __meminit	__init
 #define __cpuinit	__init
 #define __initdata	__attribute__ ((__section__ (".init.data")))
+//#define __initconst	__attribute__ ((__section(".init.rodata")))
+#define __initconst	__attribute__ ((__section(".init.data")))
 #define __exitdata	__attribute__ ((__section__(".exit.data")))
 #define __exit_call	__used __attribute__ ((__section__ (".exitcall.exit")))
 #define __exit		__used __attribute__ ((__section__(".exit.text")))
