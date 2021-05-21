@@ -277,6 +277,7 @@ struct icc_ {
 #define GICD_IROUTER_E_OFFSET(n)     (0x8000 + (n * 4))
 #define GICD_PIDR2_OFFSET            (0xffe8)
 
+#define GICR_CPU_OFFSET(cpu)         (0x20000 * cpu)
 
 /* GIC physical LPI Redistributor register map */
 #define GICR_CTLR_OFFSET             (0x0000)

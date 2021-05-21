@@ -50,6 +50,8 @@ void pda_init(unsigned int cpu, struct task_struct *task);
 
 #define cpu_pda(i) (_cpu_pda[i])
 
+
+
 /* 
  * There is no fast way to get the base address of the PDA, all the accesses
  * have to mention %fs/%gs.  So it needs to be done this Torvaldian way.
@@ -64,7 +66,7 @@ extern void __bad_pda_field(void);
 
 #define pda_to_op(op,field,val)															\
 do {																		\
-	typedef typeof_field(struct ARM64_pda, field) T__;												\
+	typedef typeof_field(struct ARM64_pda, field) T__;											\
 	u64 tpidr_el1 = get_tpidr_el1();													\
 	switch (sizeof_field(struct ARM64_pda, field)) {											\
 		case 1:																\
@@ -74,7 +76,7 @@ do {																		\
 		case 4:																\
 			asm volatile(op "  %w0, [%1, %2]" :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; 	\
 		case 8:																\
-			asm volatile(op "   %0, [%1, %2]" :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; 	\
+			asm volatile(op "  %0,  [%1, %2]" :: "ri" ((T__)val), "r"(tpidr_el1),  "i"(pda_offset(field)) : "memory"); break; 	\
 		default: __bad_pda_field();													\
        }																	\
 } while (0)
@@ -91,7 +93,7 @@ do {																		\
 		case 4: 															\
 			asm volatile(op "  %w0, [%1, %2]" : "=r" (ret__) : "r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;		\
 		case 8: 															\
-			asm volatile(op "   %0, [%1, %2]" : "=r" (ret__) : "r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;		\
+			asm volatile(op "  %0,  [%1, %2]" : "=r" (ret__) : "r"(tpidr_el1), "i"(pda_offset(field)):"memory"); break;		\
 		default: __bad_pda_field(); 													\
        } 																	\
        ret__; })
@@ -102,6 +104,40 @@ do {																		\
 #define add_pda(field,val)   pda_to_op("add",field,val)
 #define sub_pda(field,val)   pda_to_op("sub",field,val)
 #define or_pda(field,val)    pda_to_op("or",field,val)
+
+
+
+#define early_write_pda(cpu, field, val) do { 													\
+	typedef typeof_field(struct ARM64_pda, field) T__;											\
+	switch (sizeof_field(struct ARM64_pda, field)) {											\
+		case 1:																\
+			asm volatile("strb %w0, [%1, %2]" :: "ri" ((T__)val), "r"(cpu_pda(cpu)),  "i"(pda_offset(field)) : "memory"); break; 	\
+		case 2:																\
+			asm volatile("strh %w0, [%1, %2]" :: "ri" ((T__)val), "r"(cpu_pda(cpu)),  "i"(pda_offset(field)) : "memory"); break; 	\
+		case 4:																\
+			asm volatile("str  %w0, [%1, %2]" :: "ri" ((T__)val), "r"(cpu_pda(cpu)),  "i"(pda_offset(field)) : "memory"); break; 	\
+		case 8:																\
+			asm volatile("str  %0,  [%1, %2]" :: "ri" ((T__)val), "r"(cpu_pda(cpu)),  "i"(pda_offset(field)) : "memory"); break; 	\
+		default: __bad_pda_field();													\
+       }																	\
+} while (0);
+
+
+#define early_read_pda(cpu, field, val) do { 													\
+	typedef typeof_field(struct ARM64_pda, field) T__;											\
+	switch (sizeof_field(struct ARM64_pda, field)) {											\
+		case 1: 															\
+			asm volatile("ldrb %w0, [%1, %2]" : "=r" (ret__) : "r"(cpu_pda(cpu)), "i"(pda_offset(field)):"memory"); break;		\
+		case 2: 															\
+			asm volatile("ldrh %w0, [%1, %2]" : "=r" (ret__) : "r"(cpu_pda(cpu)), "i"(pda_offset(field)):"memory"); break;		\
+		case 4: 															\
+			asm volatile("ldr  %w0, [%1, %2]" : "=r" (ret__) : "r"(cpu_pda(cpu)), "i"(pda_offset(field)):"memory"); break;		\
+		case 8: 															\
+			asm volatile("ldr  %0,  [%1, %2]" : "=r" (ret__) : "r"(cpu_pda(cpu)), "i"(pda_offset(field)):"memory"); break;		\
+		default: __bad_pda_field(); 													\
+       }																	\
+} while (0);
+
 
 #endif
 

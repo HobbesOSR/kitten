@@ -20,9 +20,7 @@
 /* #include <linux/threads.h>s */
 #include <lwk/cpumask.h>
 #include <lwk/bitops.h>
-#endif
 
-#ifndef __ASSEMBLY__
 #include <arch/fixmap.h>
 //#include <asm/mpspec.h>
 //#include <asm/io_apic.h>
@@ -31,6 +29,7 @@
 
 struct pt_regs;
 
+DECLARE_PER_CPU_READ_MOSTLY(int, cpu_number);
 
 /*
  * Called from C code, this handles an IPI.

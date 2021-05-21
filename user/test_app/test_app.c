@@ -51,8 +51,12 @@ int main(int argc, char *argv[], char *envp[]) {
 #include <pthread.h>
 
 void * thread_fn(void * arg) {
+   uint32_t cpu_id  = 0xffffffff;
 
-	printf("New thread running (tid = %ld)\n", syscall(SYS_gettid));
+   syscall(SYS_getcpu, &cpu_id);
+   
+
+	printf("New thread running (tid = %ld) on CPU %d\n", syscall(SYS_gettid), cpu_id);
 
 	return 0xffffeeaa;
 }
@@ -63,8 +67,13 @@ int threadTest()
 {
 	pthread_t thread;
 	void * retval = NULL;
+   uint32_t cpu_id  = 0xffffffff;
 
-	pthread_create(&thread, NULL, thread_fn, NULL);
+   syscall(SYS_getcpu, &cpu_id);
+
+   printf("Creating a new thread from CPU %d\n", cpu_id);
+	
+   pthread_create(&thread, NULL, thread_fn, NULL);
 
 	pthread_join(thread, &retval);
 

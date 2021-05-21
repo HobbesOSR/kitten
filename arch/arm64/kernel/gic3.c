@@ -56,19 +56,35 @@ __gicd_write32(uintptr_t offset,
 
 
 static inline uint32_t 
-__gicr_read32(uintptr_t offset)
+__gicr_read32(uint32_t  cpu,
+	      uintptr_t offset)
 {
-	return readl(gic.gicr_virt_start + offset);
+	return readl(gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
 }
 
 static inline void
-__gicr_write32(uintptr_t offset, 
+__gicr_write32(uint32_t  cpu,
+	       uintptr_t offset, 
 	       uint32_t  value)
 {
-	writel(value, gic.gicr_virt_start + offset);
+	writel(value, gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
 }
 
 
+static inline uint32_t 
+__gicr_read64(uint32_t  cpu,
+	      uintptr_t offset)
+{
+	return readq(gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
+}
+
+static inline void
+__gicr_write64(uint32_t  cpu,
+	       uintptr_t offset, 
+	       uint64_t  value)
+{
+	writeq(value, gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
+}
 
 
 
@@ -80,16 +96,26 @@ __gic3_print_pending_irqs(void)
 	struct gicr_ipriorityr ipriority = {0};
 	uint64_t icc_rpr = mrs(ICC_RPR_EL1);
 	uint64_t icc_pmr = mrs(ICC_PMR_EL1);
+	uint64_t hppir0   = mrs(ICC_HPPIR0_EL1);
+	uint64_t hppir1   = mrs(ICC_HPPIR1_EL1);
+	uint32_t gicd_ctlr = 0;
+	uint64_t gicr_typer = 0;
 
+	pending = __gicr_read32(this_cpu, GICR_ISPENDR_0_OFFSET);
+	enabled = __gicr_read32(this_cpu, GICR_ISENABLER_0_OFFSET);
+	printk("GICR_pending_0 = %x, enabled_0=%x\n", pending, enabled);
 
-	pending = __gicr_read32(GICR_ISPENDR_0_OFFSET);
-	enabled = __gicr_read32(GICR_ISENABLER_0_OFFSET);
-	printk("GICR_pending = %x, enabled=%x\n", pending, enabled);
-
-	ipriority.val = __gicr_read32(GICR_IPRIORITYR_OFFSET(7));
+	ipriority.val = __gicr_read32(this_cpu, GICR_IPRIORITYR_OFFSET(7));
 	printk("GICR_IPRIORITY(7) = %x, icc_rpr = %p, icc_pmr = %p\n", ipriority.val, (void *)icc_rpr, (void *)icc_pmr);
+	printk("ICC_HPPIR0_EL1 = %ld, ICC_HPPIR1_EL1 = %ld\n", hppir0, hppir1);
 
-	
+	gicd_ctlr = __gicd_read32(GICD_CTLR_OFFSET);
+	printk("GICD_CTLR Value = %x\n", gicd_ctlr);
+
+	gicr_typer = __gicr_read64(this_cpu, GICR_TYPER_OFFSET);
+	printk("GICR_TYPER = 0x%lx\n", gicr_typer);
+
+
 }
 
 static void 
@@ -141,21 +167,21 @@ __gic3_enable_irq(uint32_t           irq_num,
 	}
 
 	// set trigger mode 
-	icfgr.val = __gicr_read32(GICR_ICFGR_OFFSET(icfgr_index));
+	icfgr.val = __gicr_read32(this_cpu, GICR_ICFGR_OFFSET(icfgr_index));
 	icfgr.bits &= ~(icfgr_mask << icfgr_shift);
 	icfgr.bits |=  (icfgr_mode << icfgr_shift);
-	__gicr_write32(GICR_ICFGR_OFFSET(icfgr_index), icfgr.val);
+	__gicr_write32(this_cpu, GICR_ICFGR_OFFSET(icfgr_index), icfgr.val);
 
 	// set priority to highest
-	ipriority.val = __gicr_read32(GICR_IPRIORITYR_OFFSET(priority_maj_index));
+	ipriority.val = __gicr_read32(this_cpu, GICR_IPRIORITYR_OFFSET(priority_maj_index));
 	ipriority.bits[priority_min_index] = priority;
-	__gicr_write32(GICR_IPRIORITYR_OFFSET(priority_maj_index), ipriority.val);
+	__gicr_write32(this_cpu, GICR_IPRIORITYR_OFFSET(priority_maj_index), ipriority.val);
 
 	// clear pending
-	__gicr_write32(GICR_ICPENDR_OFFSET(pending_index), 0x1U << pending_shift);
+	__gicr_write32(this_cpu, GICR_ICPENDR_OFFSET(pending_index), 0x1U << pending_shift);
 
 	// enable irq
-	__gicr_write32(GICR_ISENABLER_OFFSET(enable_index), 0x1U << enable_shift);
+	__gicr_write32(this_cpu, GICR_ISENABLER_OFFSET(enable_index), 0x1U << enable_shift);
 }
 
 
@@ -233,57 +259,57 @@ __gicr_setup()
 	struct gicr_pidr2 pidr2 = {0};
 	int i = 0;
 
-	pidr2.val = __gicr_read32(GICR_PIDR2_OFFSET);
+	pidr2.val = __gicr_read32(this_cpu, GICR_PIDR2_OFFSET);
 
-	waker.val = __gicr_read32(GICR_WAKER_OFFSET);
+	waker.val = __gicr_read32(this_cpu, GICR_WAKER_OFFSET);
 
 	printk("Waker = %x\n", waker.val);
 
 	waker.processor_sleep = 0;
-	__gicr_write32(GICR_WAKER_OFFSET, waker.val);
+	__gicr_write32(this_cpu, GICR_WAKER_OFFSET, waker.val);
 
 
 	while (1) {
 		printk("Polling children Asleep\n");
-		waker.val = __gicr_read32(GICR_WAKER_OFFSET);
+		waker.val = __gicr_read32(this_cpu, GICR_WAKER_OFFSET);
 		if (waker.children_asleep == 0) break;
 	}
 
 	printk("Waker = %x\n", waker.val);
 
 	// Zero out CTLR reg
-	__gicr_write32(GICR_CTLR_OFFSET, 0x0);
+	__gicr_write32(this_cpu, GICR_CTLR_OFFSET, 0x0);
 
 	// disable all SGIs and PPIs
 	for (i = 0; i < 3; i++) {
-		__gicr_write32(GICR_ICENABLER_OFFSET(i), 0xffffffff);
+		__gicr_write32(this_cpu, GICR_ICENABLER_OFFSET(i), 0xffffffff);
 	}
 
 	// clear all pending irqs
 	for (i = 1; i < 3; i++) {
-		__gicr_write32(GICR_ICPENDR_OFFSET(i),   0xffffffff);
-		__gicr_write32(GICR_ICACTIVER_OFFSET(i), 0xffffffff);
+		__gicr_write32(this_cpu, GICR_ICPENDR_OFFSET(i),   0xffffffff);
+		__gicr_write32(this_cpu, GICR_ICACTIVER_OFFSET(i), 0xffffffff);
 	}
 
 	// set all SGIs and PPIs to lowest priority
 	for (i = 0; i < 24; i++) {
-		__gicr_write32(GICR_IPRIORITYR_OFFSET(i), 0xffffffff);
+		__gicr_write32(this_cpu, GICR_IPRIORITYR_OFFSET(i), 0xffffffff);
 	}
 
 	// set all SGIs and PPIs to edge triggered
 	for (i = 0; i < 2; i++) {
-		__gicr_write32(GICR_ICFGR_OFFSET(i), 0x55555555);
+		__gicr_write32(this_cpu, GICR_ICFGR_OFFSET(i), 0x55555555);
 	}
 
 	for (i = 2; i < 6; i++) {
-		__gicr_write32(GICR_ICFGR_OFFSET(i), 0xffffffff);
+		__gicr_write32(this_cpu, GICR_ICFGR_OFFSET(i), 0xffffffff);
 	}
 
 
 	// Set all IRQs to Non-secure Group 1
 	for (i = 0; i < 3; i++) {
-		__gicr_write32(GICR_IGRPMODR_OFFSET(i), 0x00000000);
-		__gicr_write32(GICR_IGROUPR_OFFSET(i),  0xffffffff);
+		__gicr_write32(this_cpu, GICR_IGRPMODR_OFFSET(i), 0x00000000);
+		__gicr_write32(this_cpu, GICR_IGROUPR_OFFSET(i),  0xffffffff);
 	}
 
 }
@@ -363,6 +389,8 @@ __icc_setup()
 static void
 __gic3_core_init( void )
 {
+	printk("GIC3 Core init\n");
+
 	__gicr_setup();
 	__icc_enable();
 	__icc_setup();

@@ -14,6 +14,9 @@
 #define get_cpu_var(var) __get_cpu_var(var)
 #define put_cpu_var(var) 
 
+#define this_cpu_read(var)       raw_cpu_read(var)
+#define this_cpu_write(var, val) raw_cpu_write(var, val)
+
 struct percpu_data {
 	void *ptrs[NR_CPUS];
 };

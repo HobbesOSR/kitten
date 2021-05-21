@@ -676,8 +676,7 @@ __SYSCALL(__NR_umask, syscall_not_implemented)
 //__SYSCALL(__NR_prctl, sys_prctl)
 __SYSCALL(__NR_prctl, syscall_not_implemented)
 #define __NR_getcpu 168
-//__SYSCALL(__NR_getcpu, sys_getcpu)
-__SYSCALL(__NR_getcpu, syscall_not_implemented)
+__SYSCALL(__NR_getcpu, sys_getcpu)
 
 /* kernel/time.c */
 #if defined(__ARCH_WANT_TIME32_SYSCALLS) || __BITS_PER_LONG != 32

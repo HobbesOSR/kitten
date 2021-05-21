@@ -130,9 +130,12 @@ static inline unsigned long arch_local_irq_save(void)
 		flags = arch_local_irq_save();		\
 	} while (0)
 
+#include <lwk/delay.h>
 /* used in the idle loop; sti takes one instruction cycle to complete */
- #define safe_halt()						\
-__asm__ __volatile__("msr daifclr, #2; wfi": : :"memory")
+ #define safe_halt() 							\
+do {									\
+	__asm__ __volatile__("msr daifclr, #2; wfi": : :"memory"); 	\
+} while (0);
 
 
 #include <arch/intc.h>

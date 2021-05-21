@@ -28,6 +28,7 @@
 #include <asm/errno.h>
 */
 #include <lwk/spinlock.h>
+#include <lwk/topology.h>
 #include <arch/kref.h>
 
 typedef u32 phandle;

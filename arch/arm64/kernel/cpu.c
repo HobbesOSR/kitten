@@ -10,6 +10,16 @@
 #include <arch/intc.h>
 #include <arch/tsc.h>
 
+#include <lwk/smp.h>
+#include <lwk/init.h>
+#include <lwk/bootmem.h>
+#include <lwk/cpuinfo.h>
+#include <lwk/params.h>
+#include <arch/io.h>
+#include <arch/mpspec.h>
+#include <arch/proto.h>
+
+
 /**
  * Bitmap of CPUs that have been initialized.
  */
@@ -99,10 +109,11 @@ cpu_init(void)
 	unsigned int       cpu = me->cpu_id; /* logical ID */
 
 
+
 	if (cpu_test_and_set(cpu, cpu_initialized_map))
 		panic("CPU#%u already initialized!\n", cpu);
 
-	printk(KERN_DEBUG "Initializing CPU#%u\n", cpu);
+	early_printk(KERN_DEBUG "Initializing CPU#%u\n", cpu);
 
 	pda_init(cpu, me);	/* per-cpu data area */
 

@@ -17,15 +17,17 @@
 
 void __delay(unsigned long cycles)
 {
-	unsigned bclock, now;
-	
-	rdtscl(bclock);
+	uint64_t bclock, now;
+
+	// rdtscl(bclock);
+	bclock = mrs(CNTPCT_EL0);
 	do
 	{
 		rep_nop(); 
-		rdtscl(now);
+		now = mrs(CNTPCT_EL0);
+		//rdtscl(now);
 	}
-	while((now-bclock) < cycles);
+	while((now - bclock) < cycles);
 }
 
 inline void __const_udelay(unsigned long xsecs)

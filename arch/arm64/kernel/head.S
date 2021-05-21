@@ -452,19 +452,30 @@ ENTRY(secondary_startup)
 	 * Common entry point for secondary CPUs.
 	 */
 	mrs	x22, midr_el1			// x22=cpuid
+
+#if 0
 	mov	x0, x22
 	bl	lookup_processor_type
 	mov	x23, x0				// x23=current cpu_table
 	cbz	x23, __error_p			// invalid processor (x23=0)?
+#endif
+
 
 	bl	__calc_phys_offset		// x24=phys offset
-	//pgtbl	x25, x26, x24			// x25=TTBR0, x26=TTBR1
-	//ldr	x12, [x23, #CPU_INFO_SETUP]
-	add	x12, x12, x28			// __virt_to_phys
-	blr	x12				// initialise processor
 
-	//ldr	x21, =secondary_data
+	pgtbl	x25, x26, x24			// x25=TTBR0, x26=TTBR1
+	//ldr	x12, [x23, #CPU_INFO_SETUP]
+	//add	x12, x12, x28			// __virt_to_phys
+	//blr	x12				// initialise processor
+
+	adr 	lr, __enable_mmu		// return (PIC) address (lr = x30)
+	adr 	x12, __cpu_setup
+
+	ldr	x21, =secondary_data
 	ldr	x27, =__secondary_switched	// address to jump to after enabling the MMU
+
+	br	x12				// initialise processor
+
 	b	__enable_mmu
 ENDPROC(secondary_startup)
 
@@ -472,7 +483,8 @@ ENTRY(__secondary_switched)
 	ldr	x0, [x21]			// get secondary_data.stack
 	mov	sp, x0
 	mov	x29, #0
-	#b	secondary_start_kernel
+
+	b	secondary_start_kernel
 ENDPROC(__secondary_switched)
 #endif	/* CONFIG_SMP */
 
@@ -822,6 +834,11 @@ ENTRY(__cpu_setup)
 	mov	lr, x28
 	ic	iallu				// I+BTB cache invalidate
 	dsb	sy
+
+	mov	x0, #1
+	msr	pmcr_el0, x0			// Enable performance counters
+	mov	x0, #1 << 31
+	msr 	pmcntenset_el0, x0		// Enable Performance monitor cycle counter
 
 	mov	x0, #3 << 20
 	msr	cpacr_el1, x0			// Enable FP/ASIMD

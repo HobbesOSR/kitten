@@ -469,7 +469,7 @@ extern cpumask_t cpu_online_map;
 extern cpumask_t cpu_present_map;
 
 #define num_online_cpus()	cpus_weight(cpu_online_map)
-#define num_possible_cpus()	cpus_weight(cpu_present_map) /* FIXME cpus_weight(cpu_possible_map) */
+#define num_possible_cpus()	cpus_weight(cpu_possible_map) 
 #define num_present_cpus()	cpus_weight(cpu_present_map)
 #define cpu_online(cpu)		cpu_isset((cpu), cpu_online_map)
 #define cpu_possible(cpu)	cpu_isset((cpu), cpu_possible_map)
@@ -483,6 +483,40 @@ int __any_online_cpu(const cpumask_t *mask);
 #define for_each_possible_cpu(cpu)  for_each_cpu_mask((cpu), cpu_possible_map)
 #define for_each_online_cpu(cpu)  for_each_cpu_mask((cpu), cpu_online_map)
 #define for_each_present_cpu(cpu) for_each_cpu_mask((cpu), cpu_present_map)
+
+
+
+#define cpumask_set_cpu(cpu, mask_ptr) cpu_set(cpu, *mask_ptr)
+#define cpumask_clear(mask_ptr) cpus_clear(*mask_ptr)
+
+static inline void
+set_cpu_possible(unsigned int cpu, bool possible)
+{
+	if (possible)
+		cpu_set(cpu, cpu_possible_map);
+	else
+		cpum_clear(cpu, cpu_possible_map);
+}
+
+static inline void
+set_cpu_present(unsigned int cpu, bool present)
+{
+	if (present)
+		cpu_set(cpu, cpu_present_map);
+	else
+		cpum_clear(cpu, cpu_present_map);
+}
+
+static inline void
+set_cpu_online(unsigned int cpu, bool online)
+{
+	if (online)
+		cpu_set(cpu, cpu_online_map);
+	else
+		cpu_clear(cpu, cpu_online_map);
+}
+
+
 
 #endif
 #endif /* _LWK_CPUMASK_H */
