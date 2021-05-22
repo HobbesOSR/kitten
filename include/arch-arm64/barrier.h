@@ -25,25 +25,24 @@
 #define wfi()		asm volatile("wfi" : : : "memory")
 
 #define isb()		asm volatile("isb" : : : "memory")
-#define dsb()		asm volatile("dsb sy" : : : "memory")
+//#define dsb()		asm volatile("dsb sy" : : : "memory")
 
-#define mb()		dsb()
+#define dmb(opt)	asm volatile("dmb " #opt : : : "memory")
+#define dsb(opt)	asm volatile("dsb " #opt : : : "memory")
+
+#define mb()		dsb(sy)
 #define rmb()		asm volatile("dsb ld" : : : "memory")
 #define wmb()		asm volatile("dsb st" : : : "memory")
 
-#ifndef CONFIG_SMP
-#define smp_mb()	barrier()
-#define smp_rmb()	barrier()
-#define smp_wmb()	barrier()
-#else
+
 #define smp_mb()	asm volatile("dmb ish" : : : "memory")
 #define smp_rmb()	asm volatile("dmb ishld" : : : "memory")
 #define smp_wmb()	asm volatile("dmb ishst" : : : "memory")
-#endif
 
 #define read_barrier_depends()		do { } while(0)
 #define smp_read_barrier_depends()	do { } while(0)
 
+#define set_wmb(var, value)     do { var = value; wmb(); } while (0)
 #define set_mb(var, value)	do { var = value; smp_mb(); } while (0)
 #define nop()		asm volatile("nop");
 

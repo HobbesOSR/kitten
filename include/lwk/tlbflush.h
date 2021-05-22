@@ -1,6 +1,8 @@
 #ifndef _LWK_TLBFLUSH_H
 #define _LWK_TLBFLUSH_H
 
+#include <arch/tlbflush.h>
+
 /**
  * TLB flush API. Affects all TLBs in the system.
  * @{

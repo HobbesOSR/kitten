@@ -271,16 +271,20 @@
 	.quad	0				// reserved
 
 ENTRY(stext)
-	serial_write_byte_fuck_the_stack 'a'
 
-    // JRL: START debugging loop
-30:
-        ldr x0, =4
-    b 30b
-    // JRL: END debuggng 
+	serial_write_str 'H', 'E', 'A', 'D'
+    serial_write_reg x0
+    ldr x1, [x0]
+    serial_write_reg x1
 
 	mov	x21, x0				// x21=FDT
 	bl	el2_setup			// Drop to EL1
+
+    serial_write_str 'E', 'L', '1'
+
+    serial_write_reg x21
+
+
 
 	/* The following code looks up the cpu_info structure related to the
 	   compiled system. This is used to locate the setup function. I have

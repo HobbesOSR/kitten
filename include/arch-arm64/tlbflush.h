@@ -27,12 +27,46 @@
 #include <arch/cputype.h>
 #include <arch/mmu.h>
 #include <arch/barrier.h>
+#include <arch/alternative.h>
 
 
 extern void __cpu_flush_user_tlb_range(unsigned long, unsigned long, struct vm_area_struct *);
 extern void __cpu_flush_kern_tlb_range(unsigned long, unsigned long);
 
 extern struct cpu_tlb_fns cpu_tlb;
+
+/*
+ * Raw TLBI operations.
+ *
+ * Where necessary, use the __tlbi() macro to avoid asm()
+ * boilerplate. Drivers and most kernel code should use the TLB
+ * management routines in preference to the macro below.
+ *
+ * The macro can be used as __tlbi(op) or __tlbi(op, arg), depending
+ * on whether a particular TLBI operation takes an argument or
+ * not. The macros handles invoking the asm with or without the
+ * register argument as appropriate.
+ */
+#define __TLBI_0(op, arg) asm ("tlbi " #op "\n"				       \
+		   ALTERNATIVE("nop\n			nop",		       \
+			       "dsb ish\n		tlbi " #op,	       \
+			       ARM64_WORKAROUND_REPEAT_TLBI,		       \
+			       CONFIG_QCOM_FALKOR_ERRATUM_1009)		       \
+			    : : )
+
+#define __TLBI_1(op, arg) asm ("tlbi " #op ", %0\n"			       \
+		   ALTERNATIVE("nop\n			nop",		       \
+			       "dsb ish\n		tlbi " #op ", %0",     \
+			       ARM64_WORKAROUND_REPEAT_TLBI,		       \
+			       CONFIG_QCOM_FALKOR_ERRATUM_1009)		       \
+			    : : "r" (arg))
+
+#define __TLBI_N(op, arg, n, ...) __TLBI_##n(op, arg)
+
+#define __tlbi(op, ...)		__TLBI_N(op, ##__VA_ARGS__, 1, 0)
+
+
+
 
 /*
  *	TLB Management
@@ -75,21 +109,31 @@ extern struct cpu_tlb_fns cpu_tlb;
  *		only require the D-TLB to be invalidated.
  *		- kaddr - Kernel virtual memory address
  */
-static inline void flush_tlb_all(void)
+
+static inline void local_flush_tlb_all(void)
 {
-	dsb();
-	asm("tlbi	vmalle1is");
-	dsb();
+	dsb(nshst);
+	__tlbi(vmalle1);
+	dsb(nsh);
 	isb();
 }
+
+static inline void flush_tlb_all(void)
+{
+	dsb(ishst);
+	__tlbi(vmalle1is);
+	dsb(ish);
+	isb();
+}
+
 
 static inline void flush_tlb_mm(struct aspace *mm)
 {
 	unsigned long asid = (unsigned long)ASID(mm) << 48;
 
-	dsb();
-	asm("tlbi	aside1is, %0" : : "r" (asid));
-	dsb();
+	dsb(ishst);
+	__tlbi(aside1is, asid);
+	dsb(ish);
 }
 
 static inline void flush_tlb_page(struct vm_area_struct *vma,
@@ -97,11 +141,38 @@ static inline void flush_tlb_page(struct vm_area_struct *vma,
 {
 	unsigned long addr; /* = uaddr >> 12 |
 			((unsigned long)ASID(vma->vm_mm) << 48);*/
+
+/*** *** ***/
+	panic("flush_tlb_page() not implemented....\n");
 	asm volatile("b . \n");
-	dsb();
-	asm("tlbi	vae1is, %0" : : "r" (addr));
-	dsb();
+/*** *** ***/
+
+
+	dsb(ishst);
+	__tlbi(vae1is, addr);
+	dsb(ish);
 }
+
+
+
+/**
+ * Flush all entries in the calling CPU's TLB, including global entries.
+ *
+ * This function must be used if the kernel page tables are updated,
+ * since the kernel identity map pages are marked global.
+ *
+ * Use __flush_tlb() if only non-global entries need to be flushed.
+ */
+static inline void
+__flush_tlb_kernel(void)
+{
+	dsb(ishst);
+//	__tlbi(vaae1is, addr);
+	__tlbi(alle1is); // or vmalle1is ??
+	dsb(ish);
+	isb();
+}
+
 
 /*
  * Convert calls to our calling convention.
@@ -119,7 +190,7 @@ static inline void update_mmu_cache(struct vm_area_struct *vma,
 	 * set_pte() does not have a DSB, so make sure that the page table
 	 * write is visible.
 	 */
-	dsb();
+	dsb(ishst);
 }
 
 #endif
