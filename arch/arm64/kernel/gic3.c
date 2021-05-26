@@ -5,7 +5,7 @@
 #include <lwk/kernel.h>
 #include <lwk/init.h>
 #include <lwk/resource.h>
-
+#include <lwk/cpuinfo.h>
 
 #include <arch/irqchip.h>
 #include <arch/msr.h>
@@ -211,10 +211,9 @@ __gic3_do_eoi(int vector)
 static void
 __gic3_send_ipi(int target_cpu, uint32_t vector)
 {
+	struct arch_cpuinfo * const arch_info = &cpu_info[target_cpu].arch;
 	struct icc_sgir   sgir = {0};
 	struct icc_ctlr   ctlr = {mrs(ICC_CTLR_EL1)};
-
-	uint8_t aff[4] = {0, 0, 0, 0};
 
 	int ret = 0;
 
@@ -223,25 +222,16 @@ __gic3_send_ipi(int target_cpu, uint32_t vector)
 		panic("GIC Configuration error! GIC does not support this many CPUs\n");
 	}
 
-	ret = get_cpu_affinity(target_cpu, &aff[0], &aff[1], &aff[2], &aff[3]);
+	sgir.rs       =         arch_info->cpu_core_id / 16;
+	sgir.tgt_list = 0x1 << (arch_info->cpu_core_id % 16);
 
-	if (ret != 0) {
-		panic("Unable to determine CPU affinity for logical CPU %d\n", target_cpu);
-	}
-
-	printk("CPU affinity for CPU %d [%d, %d, %d, %d]\n", target_cpu, aff[0], aff[1], aff[2], aff[3]);
-
-	sgir.rs       =         aff[0] / 16;
-	sgir.tgt_list = 0x1 << (aff[0] % 16);
-
-	sgir.aff1 = aff[1];
-	sgir.aff2 = aff[2];
-	sgir.aff3 = aff[3];
+	sgir.aff1 = arch_info->cpu_cluster_id;
+	sgir.aff2 = arch_info->cpu_affinity_2;
+	sgir.aff3 = arch_info->cpu_affinity_3;
 	sgir.irm  = 0;
 
 	sgir.intid = vector;
 
-	printk("Writing [0x%x] to SGI0R_EL1\n", sgir.val);
 	dsb(ishst);
 	msr(ICC_SGI1R_EL1, sgir.val);
 	isb();
