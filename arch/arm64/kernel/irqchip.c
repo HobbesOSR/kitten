@@ -25,7 +25,7 @@ irqchip_local_init(void)
 
 
 	/* Enable SGI interrupt vectors */
-	irqchip_enable_irq(LWK_XCALL_FUNCTION_VECTOR, IRQ_EDGE_TRIGGERED);
+	irqchip_enable_irq(LWK_XCALL_FUNCTION_VECTOR,   IRQ_EDGE_TRIGGERED);
 	irqchip_enable_irq(LWK_XCALL_RESCHEDULE_VECTOR, IRQ_EDGE_TRIGGERED);
 
 

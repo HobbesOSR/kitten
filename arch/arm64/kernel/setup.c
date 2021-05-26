@@ -264,16 +264,6 @@ setup_arch(void)
 	paging_init();
 
 
-
-
-
-	/*
-	 * Figure out which memory regions are usable and which are reserved.
-	 * This builds the "e820" map of memory from info provided by the
-	 * BIOS.
-	 */
-	//setup_memory_region();
-
 	/*
  	 * Get the bare minimum info about the bootstrap CPU... the
  	 * one we're executing on right now.  Latter on, the full
@@ -284,26 +274,15 @@ setup_arch(void)
 	boot_cpu_data.logical_id = 0;
 	early_identify_cpu(&boot_cpu_data);
 
-	/*
-	 * Initialize the kernel page tables.
-	 * The kernel page tables map an "identity" map of all physical memory
-	 * starting at virtual address PAGE_OFFSET.  When the kernel executes,
-	 * it runs inside of the identity map... memory below PAGE_OFFSET is
-	 * from whatever task was running when the kernel got invoked.
-	 */
-	//check_for_nx_bit();
-	//init_kernel_pgtables(0, (end_pfn_map << PAGE_SHIFT));
 
 	/*
  	 * Initialize the bootstrap dynamic memory allocator.
  	 * alloc_bootmem() will work after this.
  	 */
-	//setup_bootmem_allocator(0, end_pfn);
-	// memblock to bootmem
 	start = memblock_start_of_DRAM();
 	end   = memblock_end_of_DRAM();
-
 	setup_bootmem_allocator(start >> PAGE_SHIFT, end >> PAGE_SHIFT);
+
 	printk("BOOT_MEM start: %p\n",  start);
 	printk("BOOT_MEM   end: %p\n",  end);
  
@@ -326,13 +305,6 @@ setup_arch(void)
 	 */
 	init_resources();
 
-	/*
- 	 * Initialize per-CPU areas, one per CPU.
- 	 * Variables defined with DEFINE_PER_CPU() end up in the per-CPU area.
- 	 * This provides a mechanism for different CPUs to refer to their
- 	 * private copy of the variable using the same name
- 	 * (e.g., get_cpu_var(foo)).
- 	 */
 
 
 
@@ -356,28 +328,25 @@ setup_arch(void)
 	smp_prepare_boot_cpu();
 	smp_prepare_cpus(num_possible_cpus());
 
+	/*
+ 	 * Initialize per-CPU areas, one per CPU.
+ 	 * Variables defined with DEFINE_PER_CPU() end up in the per-CPU area.
+ 	 * This provides a mechanism for different CPUs to refer to their
+ 	 * private copy of the variable using the same name
+ 	 * (e.g., get_cpu_var(foo)).
+ 	 */
+
 	printk("Per cpu areas\n");
 	setup_per_cpu_areas();
 
 	/*
-	 * Initialize the IDT table and interrupt handlers.
+	 * Initialize the IRQ table and interrupt handlers.
 	 */
 	interrupts_init();
 
 	/*
-	 * Map the APICs into the kernel page tables.
-	 *
-	 * Each CPU has its own Local APIC. All Local APICs are memory mapped
-	 * to the same virtual address region. A CPU accesses its Local APIC by
-	 * accessing the region. A CPU cannot access another CPU's Local APIC.
-	 *
-	 * Each Local APIC is connected to all IO APICs in the system. Each IO
-	 * APIC is mapped to a different virtual address region. A CPU accesses
-	 * a given IO APIC by accessing the appropriate region. All CPUs can
-	 * access all IO APICs.
+	 * Initialize the platform provided Interrupt controller
 	 */
-	//lapic_map();
-	//ioapic_map();
 	irqchip_global_init();
 
 	/*
@@ -392,10 +361,6 @@ setup_arch(void)
 
 	cpu_init();
 
-	//ioapic_init();
-
-
-    //mcheck_init();
 }
 
 void disable_APIC_timer(void)

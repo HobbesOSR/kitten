@@ -120,7 +120,6 @@ cpu_init(void)
 	identify_cpu();		 /* determine cpu features via CPUID */
 	store_cpu_topology(cpu); /* Update topology map with CPU info */
 
-	//idt_init();		 /* interrupt descriptor table */
 	//dbg_init();		 /* debug registers */
 	//fpu_init();		 /* floating point unit */
 	irqchip_local_init();    /* Interrupt Controller */
