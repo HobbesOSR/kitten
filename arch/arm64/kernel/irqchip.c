@@ -9,7 +9,7 @@
 
 #include <arch/msr.h>
 #include <arch/irqchip.h>
-
+#include <arch/irq_vectors.h>
 
 #include <arch/of.h>
 #include <arch/io.h>
@@ -22,6 +22,11 @@ int __init
 irqchip_local_init(void)
 {
 	irq_controller->core_init(irq_controller->dt_node);
+
+
+	/* Enable SGI interrupt vectors */
+	irqchip_enable_irq(LWK_XCALL_FUNCTION_VECTOR, IRQ_EDGE_TRIGGERED);
+	irqchip_enable_irq(LWK_XCALL_RESCHEDULE_VECTOR, IRQ_EDGE_TRIGGERED);
 
 
 }
@@ -101,6 +106,15 @@ uint32_t
 irqchip_ack_irq(void) {
 	ASSERT(irq_controller->ack_irq);
 	return irq_controller->ack_irq();
+}
+
+void 
+irqchip_send_ipi(int target_cpu, 
+		 uint32_t vector)
+{
+	ASSERT(irq_controller->send_ipi);
+	return irq_controller->send_ipi(target_cpu, vector);
+
 }
 
 

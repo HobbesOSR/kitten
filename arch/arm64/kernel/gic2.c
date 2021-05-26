@@ -226,6 +226,24 @@ __gic2_do_eoi(int vector)
 
 
 
+static void
+__gic2_send_ipi(int target_cpu, uint32_t vector)
+{
+	struct gicd_sgir sgir = {0};
+
+	ASSERT(target_cpu <  8);
+	ASSERT(target_cpu >= 0); // we can't just cast target_cpu to a u32, because GCC sucks
+
+	sgir.list_filter = 0;
+	sgir.target_list = 0x1 << target_cpu;
+	sgir.nsatt       = 1; // SGI is configured as Group 1 on that interface 
+	sgir.intid       = vector;
+
+	__gicd_write32(GICD_SGIR_OFFSET, sgir.val);
+}
+
+
+
 static void 
 __gic2_dump_state(void)
 {
@@ -247,6 +265,7 @@ static struct irqchip gic2_chip = {
 	.disable_irq        = __gic2_disable_irq,
 	.do_eoi             = __gic2_do_eoi,
 	.ack_irq            = __gic2_ack_irq,
+	.send_ipi           = __gic2_send_ipi,
 	.parse_devtree_irqs = __gic2_parse_irqs,
 	.dump_state         = __gic2_dump_state, 
 	.print_pending_irqs = __gic2_print_pending_irqs

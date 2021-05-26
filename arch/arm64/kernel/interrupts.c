@@ -104,7 +104,7 @@ handle_irq(struct pt_regs * regs)
 	irqreturn_t ret = IRQ_NONE;
 	uint64_t eoi_val = vector;
 
-	//	printk(">> Hardware IRQ!!!!\n");
+	printk(">> Hardware IRQ!!!! [%d]\n", vector);
 
 	
 	irqvec_table[vector](regs, vector);
@@ -157,8 +157,8 @@ interrupts_init(void)
 	}
 
 
-
+	set_irq_handler(LWK_XCALL_FUNCTION_VECTOR,   &arch_xcall_function_interrupt);
+	set_irq_handler(LWK_XCALL_RESCHEDULE_VECTOR, &arch_xcall_reschedule_interrupt);
 
 }
-
 

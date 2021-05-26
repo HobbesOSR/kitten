@@ -3,6 +3,7 @@
 #define __ARM64_TOPOLOGY_H
 
 #include <lwk/cpumask.h>
+#include <lwk/types.h>
 
 struct cpu_topology {
 	int thread_id;
@@ -10,6 +11,8 @@ struct cpu_topology {
 	int cluster_id;
 	cpumask_t thread_sibling;
 	cpumask_t core_sibling;
+
+	uint8_t affinities[4];
 };
 
 extern struct cpu_topology cpu_topology[NR_CPUS];
@@ -22,6 +25,13 @@ extern struct cpu_topology cpu_topology[NR_CPUS];
 void init_cpu_topology(void);
 void store_cpu_topology(unsigned int cpuid);
 const struct cpumask *cpu_coregroup_mask(int cpu);
+
+
+int get_cpu_affinity(int       cpuid, 
+		     uint8_t * aff_0, 
+		     uint8_t * aff_1, 
+		     uint8_t * aff_2,
+		     uint8_t * aff_3);
 
 
 #if 0

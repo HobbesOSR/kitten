@@ -8,6 +8,8 @@
 #define ICC_HPPIR0_EL1  s3_0_c12_c8_2
 #define ICC_BPR0_EL1    s3_0_c12_c8_3
 #define ICC_RPR_EL1     s3_0_c12_c11_3
+#define ICC_SGI1R_EL1	s3_0_c12_c11_5
+#define ICC_SGI0R_EL1	s3_0_c12_c11_7
 #define ICC_IAR1_EL1    s3_0_c12_c12_0
 #define ICC_EOIR1_EL1   s3_0_c12_c12_1
 #define ICC_HPPIR1_EL1  s3_0_c12_c12_2
@@ -15,6 +17,7 @@
 #define ICC_CTLR_EL1    s3_0_c12_c12_4
 #define ICC_IGRPEN0_EL1 s3_0_c12_c12_6
 #define ICC_IGRPEN1_EL1 s3_0_c12_c12_7
+		
 
 
 #ifndef __ASSEMBLY__
@@ -46,7 +49,7 @@
 #define mrs(reg)      __mrs(reg)
 #define msr(reg, val) __msr(reg, val)
 
-
+#include <lwk/print.h>
 static inline u64
 rdtsc( void )
 {

@@ -233,10 +233,12 @@ void store_cpu_topology(unsigned int cpuid)
 	struct cpu_topology *cpuid_topo = &cpu_topology[cpuid];
 	u64 mpidr;
 
+	printk("Store CPU Topology [cpu=%d]\n", cpuid);
+
 	if (cpuid_topo->cluster_id != -1)
 		goto topology_populated;
 
-	mpidr = mrs(MIDR_EL1);
+	mpidr = mrs(MPIDR_EL1);
 
 	/* Uniprocessor systems can rely on default topology values */
 	if (mpidr & MPIDR_UP_BITMASK)
@@ -257,6 +259,12 @@ void store_cpu_topology(unsigned int cpuid)
 					 MPIDR_AFFINITY_LEVEL(mpidr, 2) << 8 |
 					 MPIDR_AFFINITY_LEVEL(mpidr, 3) << 16;
 	}
+
+	cpuid_topo->affinities[0] = MPIDR_AFFINITY_LEVEL(mpidr, 0);
+	cpuid_topo->affinities[1] = MPIDR_AFFINITY_LEVEL(mpidr, 1);
+	cpuid_topo->affinities[2] = MPIDR_AFFINITY_LEVEL(mpidr, 2);
+	cpuid_topo->affinities[3] = MPIDR_AFFINITY_LEVEL(mpidr, 3);
+
 
 	printk("CPU%u: cluster %d core %d thread %d mpidr %#016llx\n",
 		 cpuid, cpuid_topo->cluster_id, cpuid_topo->core_id,
@@ -282,6 +290,23 @@ static void __init reset_cpu_topology(void)
 		cpumask_clear(&cpu_topo->thread_sibling);
 		cpumask_set_cpu(cpu, &cpu_topo->thread_sibling);
 	}
+}
+
+
+int get_cpu_affinity(int       cpuid, 
+		     uint8_t * aff_0, 
+		     uint8_t * aff_1, 
+		     uint8_t * aff_2,
+		     uint8_t * aff_3)
+{
+	struct cpu_topology *cpuid_topo = &cpu_topology[cpuid];
+
+	if (aff_0) *aff_0 = cpuid_topo->affinities[0];
+	if (aff_1) *aff_1 = cpuid_topo->affinities[1];
+	if (aff_2) *aff_2 = cpuid_topo->affinities[2];
+	if (aff_3) *aff_3 = cpuid_topo->affinities[3];
+
+	return 0;
 }
 
 void __init init_cpu_topology(void)

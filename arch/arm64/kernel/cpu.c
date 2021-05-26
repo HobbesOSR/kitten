@@ -115,15 +115,17 @@ cpu_init(void)
 
 	early_printk(KERN_DEBUG "Initializing CPU#%u\n", cpu);
 
-	pda_init(cpu, me);	/* per-cpu data area */
+	pda_init(cpu, me);	 /* per-cpu data area */
 
-	identify_cpu();		/* determine cpu features via CPUID */
-	//idt_init();		/* interrupt descriptor table */
-	//dbg_init();		/* debug registers */
-	//fpu_init();		/* floating point unit */
-	irqchip_local_init();       /* Interrupt Controller */
-	time_init();		/* detects CPU frequency, udelay(), etc. */
-	barrier();		/* compiler memory barrier, avoids reordering */
+	identify_cpu();		 /* determine cpu features via CPUID */
+	store_cpu_topology(cpu); /* Update topology map with CPU info */
+
+	//idt_init();		 /* interrupt descriptor table */
+	//dbg_init();		 /* debug registers */
+	//fpu_init();		 /* floating point unit */
+	irqchip_local_init();    /* Interrupt Controller */
+	time_init();		 /* detects CPU frequency, udelay(), etc. */
+	barrier();		 /* compiler memory barrier, avoids reordering */
 
 }
 

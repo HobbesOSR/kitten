@@ -18,6 +18,7 @@
 
 //#include <asm/proc-fns.h>
 
+
 #include <arch/pgtable-hwdef.h>
 #include <arch/pgtable-nopud.h>
 #include <arch/memory.h>
@@ -179,6 +180,8 @@ static inline pte_t pte_wrprotect(pte_t pte)
 	set_pte(&pte, __pte(pte_val(pte) /*& ~_PAGE_RW*/));
 	return pte;
 }
+
+extern void panic(const char * fmt, ...);
 
 // TODO Brian: Not happy with this fix
 #define mm_struct aspace

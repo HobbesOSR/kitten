@@ -5,6 +5,7 @@
 #include <lwk/smp.h>
 #include <arch/irq_vectors.h>
 #include <arch/processor.h>
+#include <arch/irqchip.h>
 
 /**
  * Used to pass data to and synchronize the CPUs targeted by a cross-call.
@@ -69,31 +70,30 @@ arch_xcall_function(
 
 	/* Set the global xcall data pointer */
 	xcall_data = &data;
-	wmb();
+	smp_wmb();
 
 
 
 	/* Send inter-processor interrupts to the target CPUs */
 	for_each_cpu_mask(cpu, cpu_mask) {
-		//	lapic_send_ipi(cpu, XCALL_FUNCTION_VECTOR);
-		printk("TODO: Actually send the Hardware IPI, and don't just return....\n");
+		irqchip_send_ipi(cpu, LWK_XCALL_FUNCTION_VECTOR);
+		isb();
 	}
 
-
-/** ** **/
-	printk("Early return from arch_xcall_function\n");
-	goto out;
-	return 0;
-/** ** **/
+	smp_rmb();
 
 	/* Wait for initiation responses */
 	while (atomic_read(&data.started) != num_cpus)
 		cpu_relax();
 
+	smp_rmb();
+
 	/* If requested, wait for completion responses */
 	if (wait) {
-		while (atomic_read(&data.finished) != num_cpus)
+		while (atomic_read(&data.finished) != num_cpus) {
 			cpu_relax();
+			smp_rmb();
+		}
 	}
 out:
 	spin_unlock_irq(&xcall_data_lock);
@@ -135,8 +135,7 @@ arch_xcall_reschedule(id_t cpu)
 	if (cpu == this_cpu)
 		set_bit(TF_NEED_RESCHED_BIT, &current->arch.flags);
 	else {
-//		lapic_send_ipi(cpu, XCALL_RESCHEDULE_VECTOR);
-		printk("TODO: Actually send the resechedule Hardware IPI\n");
+		irqchip_send_ipi(cpu, LWK_XCALL_RESCHEDULE_VECTOR);
 	}
 }
 

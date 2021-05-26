@@ -13,6 +13,7 @@
 #include <arch/of.h>
 #include <arch/io.h>
 #include <arch/irq_vectors.h>
+#include <arch/topology.h>
 
 
 #define GIC3_SPURIOUS_IRQ 1023
@@ -125,11 +126,7 @@ __gic3_dump_state(void)
 }
 
 
-static uint32_t 
-__gic3_ack_irq(void)
-{
-	return mrs(ICC_IAR1_EL1);
-}
+
 
 
 static void
@@ -197,10 +194,57 @@ __gic3_disable_irq(uint32_t vector)
 	panic("Disabling IRQs not supported\n");
 }
 
+static uint32_t 
+__gic3_ack_irq(void)
+{
+	return mrs(ICC_IAR1_EL1);
+}
+
 static void
 __gic3_do_eoi(int vector)
 {
 	msr(ICC_EOIR1_EL1, vector);
+}
+
+
+
+static void
+__gic3_send_ipi(int target_cpu, uint32_t vector)
+{
+	struct icc_sgir   sgir = {0};
+	struct icc_ctlr   ctlr = {mrs(ICC_CTLR_EL1)};
+
+	uint8_t aff[4] = {0, 0, 0, 0};
+
+	int ret = 0;
+
+	if ((ctlr.rss   == 0) && 
+	    (target_cpu >= 16)) {
+		panic("GIC Configuration error! GIC does not support this many CPUs\n");
+	}
+
+	ret = get_cpu_affinity(target_cpu, &aff[0], &aff[1], &aff[2], &aff[3]);
+
+	if (ret != 0) {
+		panic("Unable to determine CPU affinity for logical CPU %d\n", target_cpu);
+	}
+
+	printk("CPU affinity for CPU %d [%d, %d, %d, %d]\n", target_cpu, aff[0], aff[1], aff[2], aff[3]);
+
+	sgir.rs       =         aff[0] / 16;
+	sgir.tgt_list = 0x1 << (aff[0] % 16);
+
+	sgir.aff1 = aff[1];
+	sgir.aff2 = aff[2];
+	sgir.aff3 = aff[3];
+	sgir.irm  = 0;
+
+	sgir.intid = vector;
+
+	printk("Writing [0x%x] to SGI0R_EL1\n", sgir.val);
+	dsb(ishst);
+	msr(ICC_SGI1R_EL1, sgir.val);
+	isb();
 }
 
 
@@ -210,6 +254,7 @@ __gicd_setup()
 {
 	struct gicd_ctlr_ns  ctlr  = {0};
 	struct gicd_pidr2    pidr2 = {0};
+	struct gicd_typer    typer = {0};
 
 	int i = 0;
 
@@ -341,6 +386,13 @@ __icc_setup()
 
 
 
+	/* JRL: Is this necessary ?? */
+	if (icc_ctlr.rss == 1) {
+		struct gicd_typer typer = {__gicd_read32(GICD_TYPER_OFFSET)};
+		typer.rss = 1;
+		__gicd_write32(GICD_TYPER_OFFSET, typer.val);
+	}
+
 	// clear ICC_CTLR
 	msr(ICC_CTLR_EL1, 0x00000000);
 
@@ -410,6 +462,7 @@ static struct irqchip gic3_chip = {
 	.disable_irq        = __gic3_disable_irq,
 	.do_eoi             = __gic3_do_eoi,
 	.ack_irq            = __gic3_ack_irq,
+	.send_ipi	    = __gic3_send_ipi,
 	.parse_devtree_irqs = __gic3_parse_irqs,
 	.dump_state         = __gic3_dump_state, 
 	.print_pending_irqs = __gic3_print_pending_irqs
