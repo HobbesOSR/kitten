@@ -7,7 +7,7 @@ obj-y		:= setup.o memblock.o cpuinfo.o resource.o \
 		   task.o sched.o maccess.o tlbflush.o signal.o acpi.o \
 		   bitops.o traps.o ptrace.o \
 		   entry-fpsimd.o \
-		   intc.o gic2.o gic3.o \
+		   irqchip.o gic2.o gic3.o \
 		   smccc-call.o cpu_ops.o smp.o \
 		   smp_spin_table.o psci.o reboot.o \
 		   topology.o

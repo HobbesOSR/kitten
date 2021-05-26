@@ -7,7 +7,7 @@
 #include <lwk/resource.h>
 
 
-#include <arch/intc.h>
+#include <arch/irqchip.h>
 #include <arch/msr.h>
 #include <arch/gicdef.h>
 #include <arch/of.h>

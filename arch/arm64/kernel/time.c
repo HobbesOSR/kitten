@@ -8,7 +8,7 @@
 #include <arch/io.h>
 #include <arch/pda.h>
 
-#include <arch/intc.h>
+#include <arch/irqchip.h>
 #include <arch/time.h>
 #include <arch/of.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>

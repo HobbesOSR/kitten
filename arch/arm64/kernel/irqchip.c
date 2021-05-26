@@ -8,7 +8,7 @@
 
 
 #include <arch/msr.h>
-#include <arch/intc.h>
+#include <arch/irqchip.h>
 
 
 #include <arch/of.h>
