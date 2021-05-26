@@ -147,6 +147,12 @@ __gic2_core_init( void )
 }
 
 
+static uint32_t 
+__gic2_ack_irq(void)
+{
+	return __gicc_read32(GICC_IAR_OFFSET);
+}
+
 static void
 __gic2_enable_irq(uint32_t           irq_num,
 		  irq_trigger_mode_t trigger_mode)
@@ -240,6 +246,7 @@ static struct irqchip gic2_chip = {
 	.enable_irq         = __gic2_enable_irq,
 	.disable_irq        = __gic2_disable_irq,
 	.do_eoi             = __gic2_do_eoi,
+	.ack_irq            = __gic2_ack_irq,
 	.parse_devtree_irqs = __gic2_parse_irqs,
 	.dump_state         = __gic2_dump_state, 
 	.print_pending_irqs = __gic2_print_pending_irqs

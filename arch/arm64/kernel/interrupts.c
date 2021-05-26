@@ -97,9 +97,9 @@ do_mem_abort(unsigned long    addr,
 
 
 void
-handle_irq(struct pt_regs * regs,
-	   unsigned int	    vector)
+handle_irq(struct pt_regs * regs)
 {
+	uint32_t vector = irqchip_ack_irq();
 
 	irqreturn_t ret = IRQ_NONE;
 	uint64_t eoi_val = vector;
@@ -109,7 +109,7 @@ handle_irq(struct pt_regs * regs,
 	
 	irqvec_table[vector](regs, vector);
 
-	do_eoi(vector);
+	irqchip_do_eoi(vector);
 
 
 

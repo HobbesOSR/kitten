@@ -146,7 +146,6 @@ tsk	.req	x28		// current thread_info
  */
 	.macro	irq_handler
 	mov	x0, sp
-	mrs	x1 , ICC_IAR1_EL1
 	bl	handle_irq
 	.endm
 

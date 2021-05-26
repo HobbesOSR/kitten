@@ -125,6 +125,12 @@ __gic3_dump_state(void)
 }
 
 
+static uint32_t 
+__gic3_ack_irq(void)
+{
+	return mrs(ICC_IAR1_EL1);
+}
+
 
 static void
 __gic3_enable_irq(uint32_t           irq_num, 
@@ -403,6 +409,7 @@ static struct irqchip gic3_chip = {
 	.enable_irq         = __gic3_enable_irq,
 	.disable_irq        = __gic3_disable_irq,
 	.do_eoi             = __gic3_do_eoi,
+	.ack_irq            = __gic3_ack_irq,
 	.parse_devtree_irqs = __gic3_parse_irqs,
 	.dump_state         = __gic3_dump_state, 
 	.print_pending_irqs = __gic3_print_pending_irqs

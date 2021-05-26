@@ -75,7 +75,7 @@ void
 arch_core_timer_init()
 {
 	irq_request(timer_irqs[IRQ_IDX_NONSECURE].vector, __timer_tick, 0, "timer", NULL);
-	enable_irq(timer_irqs[IRQ_IDX_NONSECURE].vector, timer_irqs[IRQ_IDX_NONSECURE].mode);
+	irqchip_enable_irq(timer_irqs[IRQ_IDX_NONSECURE].vector, timer_irqs[IRQ_IDX_NONSECURE].mode);
 }
 
 //CNTPCT_EL0

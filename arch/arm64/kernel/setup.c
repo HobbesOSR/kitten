@@ -378,7 +378,7 @@ setup_arch(void)
 	 */
 	//lapic_map();
 	//ioapic_map();
-	intc_global_init();
+	irqchip_global_init();
 
 	/*
 	 * Initialize the virtual system call code/data page.

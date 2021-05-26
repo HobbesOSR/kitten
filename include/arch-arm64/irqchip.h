@@ -14,27 +14,37 @@ struct irqchip {
 	char * name;
 	struct device_node * dt_node;
 	int  (*core_init)(struct device_node * dt_node);
-	void (*enable_irq)(int vector, irq_trigger_mode_t mode);
-	void (*disable_irq)(int vector); 
-	void (*do_eoi)(int vector);
+	void (*enable_irq)(uint32_t vector, irq_trigger_mode_t mode);
+	void (*disable_irq)(uint32_t vector); 
+	void (*do_eoi)(uint32_t vector);
+	int  (*ack_irq)();
+
+	void (*send_ipi)(int target_cpu, uint32_t vector);
+
 	int  (*parse_devtree_irqs)(struct device_node * dt_node, uint32_t num_irqs, struct irq_def * irqs);
+
 	void (*dump_state)(void);
 	void (*print_pending_irqs)(void);
 };
 
 typedef int (*irqchip_init_fn)(struct device_node *); 
 
+int irqchip_register(struct irqchip * chip);
 
 
 
-int register_irqchip(struct irqchip * chip);
+int irqchip_global_init(void);
+int irqchip_local_init(void);
 
-int intc_global_init(void);
-int intc_local_init(void);
 
-void do_eoi(int vector);
 
-void probe_pending_irqs(void);
+
+void irqchip_enable_irq(uint32_t vector, irq_trigger_mode_t mode);
+void irqchip_disable_irq(uint32_t vector);
+
+void      irqchip_do_eoi(uint32_t vector);
+uint32_t  irqchip_ack_irq(void);
+void      irqchip_send_ipi(int target_cpu, uint32_t vector);
 
 
 
@@ -47,7 +57,7 @@ int parse_fdt_irqs(struct device_node * dt_node,
 		   uint32_t             num_irqs, 
 		   struct irq_def     * irqs);
 
-
+void probe_pending_irqs(void);
 
 
 #endif

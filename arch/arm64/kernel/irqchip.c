@@ -19,7 +19,7 @@
 struct irqchip * irq_controller = NULL;
 
 int __init 
-intc_local_init(void)
+irqchip_local_init(void)
 {
 	irq_controller->core_init(irq_controller->dt_node);
 
@@ -54,7 +54,7 @@ register_irqchip(struct irqchip * chip)
 
 
 int __init
-intc_global_init(void)
+irqchip_global_init(void)
 {	
 
 	struct device_node  * dt_node    = NULL;
@@ -77,21 +77,30 @@ extern void gic3_probe(void);
 extern void gic2_probe(void);
 
 void probe_pending_irqs(void) {
+	ASSERT(irq_controller->print_pending_irqs);
 	irq_controller->print_pending_irqs();
 }
 
 void
-enable_irq(uint32_t           irq_num, 
-	   irq_trigger_mode_t trigger_mode)
+irqchip_enable_irq(uint32_t           irq_num, 
+	   	   irq_trigger_mode_t trigger_mode)
 {
+	ASSERT(irq_controller->enable_irq);
 	irq_controller->enable_irq(irq_num, trigger_mode);
 }
 
 
 void 
-do_eoi(int vector)
+irqchip_do_eoi(uint32_t vector)
 {
+	ASSERT(irq_controller->do_eoi);
 	irq_controller->do_eoi(vector);
+}
+
+uint32_t 
+irqchip_ack_irq(void) {
+	ASSERT(irq_controller->ack_irq);
+	return irq_controller->ack_irq();
 }
 
 
@@ -100,5 +109,6 @@ parse_fdt_irqs(struct device_node *  dt_node,
 	       uint32_t              num_irqs, 
 	       struct irq_def     *  irqs)
 {
+	ASSERT(irq_controller->parse_devtree_irqs);
 	return irq_controller->parse_devtree_irqs(dt_node, num_irqs, irqs);
 }
