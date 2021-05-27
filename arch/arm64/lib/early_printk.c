@@ -193,7 +193,7 @@ __lltoa(long long      value,
 
 static int
 __putc(char ch) {
-	*(volatile uint8_t *)EARLYCON_IOBASE = ch;
+	*(volatile uint8_t *)(EARLYCON_IOBASE + (CONFIG_SERIAL_PHYS & ((1u << PMD_SHIFT) - 1))) = ch;
         asm ("":::"memory");
 	return (int)ch;
 }
