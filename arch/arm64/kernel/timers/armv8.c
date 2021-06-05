@@ -110,18 +110,6 @@ __armv8_timer_set_timer_freq(unsigned int hz)
 	printk("Timer Enabled and running\n");
 
 
-
-	while (1) {
-		printk("Timer Loop Check\n");
-		printk("Current Val : %ld\n", mrs(CNTPCT_EL0));
-		printk("Remaining   : %ld\n", mrs(CNTP_TVAL_EL0));
-
-		irqchip_dump_state();
-
-		mdelay(1000);
-	}
-
-
 	return;
 }
 
