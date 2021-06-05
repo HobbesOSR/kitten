@@ -109,12 +109,16 @@ kmem_create_zone(unsigned long base_addr, size_t size)
 void
 kmem_add_memory(unsigned long base_addr, size_t size)
 {
+	unsigned long flags;
+
 	/*
 	 * kmem buddy allocator is initially empty.
 	 * Memory is added to it via buddy_free().
 	 * buddy_free() will panic if there are any problems with the args.
 	 */
+	spin_lock_irqsave(&kmem_lock, flags);
 	buddy_free(kmem, (void *)base_addr, ilog2(size));
+	spin_unlock_irqrestore(&kmem_lock, flags);
 
 	/* Update statistics */
 	kmem_bytes_managed += size;
