@@ -427,13 +427,13 @@ free_all_bootmem_core(struct bootmem_data *bdata)
 	rgn.type_is_set = true;
 	rgn.allocated_is_set = true;
 	rgn.numa_node_is_set = true;
-	for (i = 0; i < ((bdata->node_low_pfn-(bdata->node_boot_start >> PAGE_SHIFT))/8 + PAGE_SIZE-1)/PAGE_SIZE; i++,vaddr+=PAGE_SIZE) {
+	for (i = 0; i < ((bdata->node_low_pfn - (bdata->node_boot_start >> PAGE_SHIFT)) / 8 + PAGE_SIZE - 1) / PAGE_SIZE; i++, vaddr += PAGE_SIZE) {
 		count++;
 
 		rgn.start = __pa(vaddr);
 		rgn.end   = rgn.start + PAGE_SIZE;
 
-		if (i < kmem_max_idx) {
+		if ((vaddr >> PAGE_SHIFT) < kmem_max_idx) {
 			kmem_add_memory(vaddr, PAGE_SIZE);
 			rgn.type = PMEM_TYPE_KMEM;
 			rgn.allocated = true;
