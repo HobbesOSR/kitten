@@ -1,0 +1,15 @@
+Instructions for configuring Rasperry Pi 3
+
+1. Create a Rasperry Pi 3 micro-SD card from a standard image
+2. Get a copy of u-boot compiled for raspbery pi 3
+3. Mount the sd card so you can access the boot/ directory
+4. Backup the files: kernel8.img, config.txt, cmdfline.txt inside boot/
+5. Copy u-boot.bin to boot/kernel8.img
+6. Copy ./config.txt and ./cmdline.txt to boot/
+7. Make sure bcm2710-rpi-3-b-plus.dtb is present in boot/, otherwise copy local version to boot/
+7. Make u-boot image via mkimage and local rpi3_bootscript.txt
+    > mkimage -A arm64 -O linux -T script -C none -n "kitten" -d rpi3_bootscript.txt boot.scr.uimg
+8. Copy boot.scr.uimg and vmlwk.bin to boot/
+9. Copy init_task binary to boot/initrd
+10. unmount sd card, plug it into the pi3 board, and power it up
+11. Output should appear on the mini-uart accessible via the GPIO header

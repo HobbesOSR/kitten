@@ -1,0 +1,11 @@
+setenv fdtfile bcm2710-rpi-3-b-plus.dtb
+setenv kernel_addr_r 0x01000000
+setenv ramdisk_addr_r 0x02800000
+mmc dev 0
+load mmc 0:1 ${kernel_addr_r} vmlwk.bin
+load mmc 0:1 ${ramdisk_addr_r} initrd
+setenv initrdsize $filesize
+load mmc 0:1 ${fdt_addr_r} ${fdtfile}
+setenv bootargs console=serial kmem_size=100663296
+booti ${kernel_addr_r} ${ramdisk_addr_r}:${initrdsize} ${fdt_addr_r}
+
