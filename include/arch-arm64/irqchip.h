@@ -2,13 +2,22 @@
  * 2021, Jack Lange <jacklange@cs.pitt.edu>
  */
 
-#ifndef _ARM64_INTC_H
-#define _ARM64_INTC_H
+#ifndef _ARM64_IRQCHIP_H
+#define _ARM64_IRQCHIP_H
 
 typedef enum {
 	IRQ_LEVEL_TRIGGERED,
 	IRQ_EDGE_TRIGGERED
 } irq_trigger_mode_t;
+
+
+
+struct arch_irq {
+	enum {ARCH_IRQ_IPI,
+	      ARCH_IRQ_EXT} type;
+
+	uint32_t vector;
+};
 
 struct irqchip {
 	char * name;
@@ -16,8 +25,8 @@ struct irqchip {
 	int  (*core_init)(struct device_node * dt_node);
 	void (*enable_irq)(uint32_t vector, irq_trigger_mode_t mode);
 	void (*disable_irq)(uint32_t vector); 
-	void (*do_eoi)(uint32_t vector);
-	int  (*ack_irq)();
+	void (*do_eoi)(struct arch_irq irq);
+	struct arch_irq (*ack_irq)();
 
 	void (*send_ipi)(int target_cpu, uint32_t vector);
 
@@ -42,9 +51,9 @@ int irqchip_local_init(void);
 void irqchip_enable_irq(uint32_t vector, irq_trigger_mode_t mode);
 void irqchip_disable_irq(uint32_t vector);
 
-void      irqchip_do_eoi(uint32_t vector);
-uint32_t  irqchip_ack_irq(void);
-void      irqchip_send_ipi(int target_cpu, uint32_t vector);
+void             irqchip_do_eoi(struct arch_irq irq);
+struct arch_irq  irqchip_ack_irq(void);
+void             irqchip_send_ipi(int target_cpu, uint32_t vector);
 
 
 
@@ -58,6 +67,7 @@ int parse_fdt_irqs(struct device_node * dt_node,
 		   struct irq_def     * irqs);
 
 void probe_pending_irqs(void);
+void irqchip_dump_state(void);
 
 
 #endif

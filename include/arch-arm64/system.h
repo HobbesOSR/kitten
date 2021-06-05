@@ -74,10 +74,10 @@ static inline void local_irq_enable(void)
 }
 
 #define irqs_disabled()			\
-({					\
+({								\
 	unsigned long flags;		\
 	local_save_flags(flags);	\
-	!(flags & (1<<9));		\
+	!!(flags & (0x1 << 7));		\
 })
 
 #define irqs_enabled() !irqs_disabled()

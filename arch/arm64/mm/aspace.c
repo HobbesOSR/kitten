@@ -414,6 +414,14 @@ write_pte(
 		_pte.XN  = 1;
 	}
 
+	if (flags & VM_NOCACHE) {
+		// I'm not really sure this is what we want here....
+//		_pte.attrIndx = MT_NORMAL_NC;
+		_pte.attrIndx = MT_DEVICE_nGnRnE;
+	} else {
+		_pte.attrIndx = MT_NORMAL;
+	}
+
 	if (pagesz == VM_PAGE_4KB) {
 		xpte_4KB_t * _pte_4kb = &_pte;
 		_pte_4kb->base_paddr  = paddr >> PAGE_SHIFT_4KB;
@@ -474,6 +482,7 @@ arch_aspace_map_page(
 	// TODO: Need to narrow down the page the entries that are being updated
 	flush_cache_all();
 	flush_tlb_all();
+	local_flush_tlb_all();
 	return 0;
 }
 

@@ -7,10 +7,11 @@ obj-y		:= setup.o memblock.o cpuinfo.o resource.o \
 		   task.o sched.o maccess.o tlbflush.o signal.o acpi.o \
 		   bitops.o traps.o ptrace.o \
 		   entry-fpsimd.o \
-		   irqchip.o gic2.o gic3.o \
+		   irqchip.o \
 		   smccc-call.o cpu_ops.o smp.o \
 		   smp_spin_table.o psci.o reboot.o \
 		   topology.o
+
 
 
 obj-$(CONFIG_ARM64_ACPI_PARKING_PROTOCOL) += acpi_parking_protocol.o
@@ -20,5 +21,7 @@ obj-$(CONFIG_ARM64_ACPI_PARKING_PROTOCOL) += acpi_parking_protocol.o
 		   # i387.o lapic.o ioapic.o
 
 obj-$(CONFIG_KGDB) += kgdb.o
-
+obj-$(CONFIG_EFI)  += efi-header.o
 obj-y += pci/
+obj-y += irqchips/
+obj-y += timers/

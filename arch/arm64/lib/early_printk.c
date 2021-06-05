@@ -193,6 +193,24 @@ __lltoa(long long      value,
 
 static int
 __putc(char ch) {
+
+	while (1) {
+		uint8_t ready = *(volatile uint8_t *)(EARLYCON_IOBASE + (CONFIG_SERIAL_PHYS & ((1u << PMD_SHIFT) - 1)) + 20);
+		if ((ready & 0x20) != 0) break;
+		asm("":::"memory");
+	}
+
+	if (ch == '\n') {
+		*(volatile uint8_t *)(EARLYCON_IOBASE + (CONFIG_SERIAL_PHYS & ((1u << PMD_SHIFT) - 1))) = '\r';
+        	asm ("":::"memory");	
+	}
+
+
+	while (1) {
+		uint8_t ready = *(volatile uint8_t *)(EARLYCON_IOBASE + (CONFIG_SERIAL_PHYS & ((1u << PMD_SHIFT) - 1)) + 20);
+		if ((ready & 0x20) != 0) break;
+		asm("":::"memory");
+	}
 	*(volatile uint8_t *)(EARLYCON_IOBASE + (CONFIG_SERIAL_PHYS & ((1u << PMD_SHIFT) - 1))) = ch;
         asm ("":::"memory");
 	return (int)ch;

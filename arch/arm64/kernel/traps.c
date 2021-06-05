@@ -103,7 +103,6 @@ static void dump_instr(const char *lvl, struct pt_regs *regs)
 	unsigned long addr = instruction_pointer(regs);
 	unsigned int exception = 0;
 
-	//mm_segment_t fs;
 #if 0
 	char str[sizeof("00000000 ") * 5 + 2 + 1], *p = str;
 	int i;
@@ -300,7 +299,7 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	info.si_code  = ILL_ILLOPC;
 	info.si_addr  = pc;
 
-	printk("Undefined Instruction\n");
+	printk("Undefined Instruction at %p [instr : %x]\n", pc, *(uint32_t *)pc);
 
 	show_registers(regs);
 	panic("Oops - undefined instruction");

@@ -9,10 +9,11 @@
 
 #include <arch/irqchip.h>
 #include <arch/msr.h>
-#include <arch/gicdef.h>
 #include <arch/of.h>
 #include <arch/io.h>
 #include <arch/irq_vectors.h>
+
+#include "gic.h"
 
 #define GIC2_SPURIOUS_IRQ 1023
 
@@ -76,6 +77,9 @@ __gicd_setup()
 	// disable all irqs (only 64 of them apparently)
 	__gicd_write32(GICD_ICENABLER_OFFSET(0), 0xffffffff);
 	__gicd_write32(GICD_ICENABLER_OFFSET(1), 0xffffffff);
+
+	// Enable all SGIs
+	__gicd_write32(GICD_ISENABLER_OFFSET(0), 0x0000ffff);
 
 	// clear all pending irqs
 	__gicd_write32(GICD_ICPENDR_OFFSET(0), 0xffffffff);
@@ -147,11 +151,6 @@ __gic2_core_init( void )
 }
 
 
-static uint32_t 
-__gic2_ack_irq(void)
-{
-	return __gicc_read32(GICC_IAR_OFFSET);
-}
 
 static void
 __gic2_enable_irq(uint32_t           irq_num,
@@ -217,11 +216,25 @@ __gic2_disable_irq(uint32_t vector)
 }
 
 
-static void
-__gic2_do_eoi(int vector)
+static struct arch_irq 
+__gic2_ack_irq(void)
 {
-	ASSERT((vector & 0xff000000) == 0);
-	__gicc_write32(GICC_EOIR_OFFSET, vector);
+	struct arch_irq irq = {.vector = __gicc_read32(GICC_IAR_OFFSET)};
+
+	if (irq.vector < 16) {
+		irq.type = ARCH_IRQ_IPI;
+	} else {
+		irq.type = ARCH_IRQ_EXT;
+	}
+
+	return irq;
+}
+
+static void
+__gic2_do_eoi(struct arch_irq irq)
+{
+	ASSERT((irq.vector & 0xff000000) == 0);
+	__gicc_write32(GICC_EOIR_OFFSET, irq.vector);
 }
 
 
@@ -299,8 +312,8 @@ gic2_global_init(struct device_node * dt_node)
 	printk("\tGICD at: %p [%d bytes]\n", gic.gicd_phys_start, gic.gicd_phys_size);
 	printk("\tGICC at: %p [%d bytes]\n", gic.gicc_phys_start, gic.gicc_phys_size);
 
-	gic.gicd_virt_start = ioremap(gic.gicd_phys_start, gic.gicd_phys_size);
-	gic.gicc_virt_start = ioremap(gic.gicc_phys_start, gic.gicc_phys_size);
+	gic.gicd_virt_start = ioremap_nocache(gic.gicd_phys_start, gic.gicd_phys_size);
+	gic.gicc_virt_start = ioremap_nocache(gic.gicc_phys_start, gic.gicc_phys_size);
 
 
 	printk("\tGICD Virt Addr: %p\n", gic.gicd_virt_start);
@@ -311,7 +324,7 @@ gic2_global_init(struct device_node * dt_node)
 
 
 	gic2_chip.dt_node = dt_node;
-	register_irqchip(&gic2_chip);
+	irqchip_register(&gic2_chip);
 
 }
 

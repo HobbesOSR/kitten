@@ -112,11 +112,12 @@ config ARM64_INTERNODE_CACHE_SHIFT
 #
 
 config SERIAL_PHYS
-		hex
-		default "0x1C021000" if ARCH_XGENE
-		default "0x1C020000" if ARCH_STORM_SIM
+	hex
+	default "0x1C021000" if ARCH_XGENE
+	default "0x1C020000" if ARCH_STORM_SIM
         default "0x09000000" if ARCH_QEMU
-	default "0x3f201000" if ARCH_RASPI3
+	default "0x3f215040" if ARCH_RASPI3
+#	default "0x3f201000" if ARCH_RASPI3
 
 
 config NR_CPUS

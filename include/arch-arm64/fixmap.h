@@ -12,7 +12,6 @@
 #define _ASM_FIXMAP_H
 
 #include <lwk/kernel.h>
-#include <arch/gicdef.h>
 #include <arch/page.h>
 #include <arch/vsyscall.h>
 

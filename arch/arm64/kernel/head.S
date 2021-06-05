@@ -35,6 +35,7 @@
 // TODO Brian Needs to have a better location
 #define UART_PHYS_ADDR _AC(CONFIG_SERIAL_PHYS,u)
 //#define UART_PHYS_ADDR _AC(0x1C021000,u)
+#define UART_VIRT_ADDR _AC(0xffffffbffbc15040,ull)
 
 //---------------------
 //	1:
@@ -94,8 +95,19 @@
 	// num / 16 (2^4) right shift by 4
 .endm
 
+.macro wait_for_xmit, port
+1001:
+    ldrb w17, [\port, #0x14]
+    and w17, w17, #0x20
+    cmp w17, #0
+    beq 1001b
+.endm
+
 .macro _serial_write_bytes port, val, more:vararg
     ldr x14, =\port
+
+    wait_for_xmit x14
+
 
     ldr x15, =\val
     str x15, [x14]
@@ -113,7 +125,7 @@
 .endm
 
 .macro vserial_write_bytes, byte, args:vararg
-    _serial_write_bytes EARLYCON_IOBASE, \byte, \args
+    _serial_write_bytes UART_VIRT_ADDR, \byte, \args
 .endm
 
 
@@ -122,9 +134,11 @@
 
     ldr x14, =\port
 
+    wait_for_xmit x14
     ldr x15, =0x0d
     str x15, [x14]
 
+    wait_for_xmit x14
     ldr x15, =0x0a
     str x15, [x14]
 
@@ -136,7 +150,7 @@
 .endm
 
 .macro vserial_write_str, byte, args:vararg  
-    _serial_write_str EARLYCON_IOBASE, \byte, \args
+    _serial_write_str UART_VIRT_ADDR, \byte, \args
 .endm
 
 .macro _serial_write_reg, port, reg
@@ -161,14 +175,17 @@
     add x15, x15,  #55
 3000:
 
+    wait_for_xmit x14
     str x15, [x14]
 
     cmp x11, #0
     bne 1000b
 
+    wait_for_xmit x14
     ldr x15, =0x0d
     str x15, [x14]
 
+    wait_for_xmit x14
     ldr x15, =0x0a
     str x15, [x14]
 
@@ -179,7 +196,7 @@
 .endm
 
 .macro vserial_write_reg reg
-    _serial_write_reg EARLYCON_IOBASE, \reg
+    _serial_write_reg UART_VIRT_ADDR, \reg
 .endm
 
 .macro HALT
@@ -264,12 +281,32 @@
 	/*
 	 * DO NOT MODIFY. Image header expected by Linux boot-loaders.
 	 */
+#ifdef CONFIG_EFI
+	/*
+	 * This add instruction has no meaningful effect except that
+	 * its opcode forms the magic "MZ" signature required by UEFI.
+	 */
+	add	x13, x18, #0x16
+	b	stext
+#else
 	b	stext				// branch to kernel start, magic
 	.long	0				// reserved
+#endif
 	.quad	TEXT_OFFSET			// Image load offset from start of RAM
+	.quad	0				// Effective size of kernel image, little-endian
+	.quad	0				// Informative flags, little-endian
 	.quad	0				// reserved
 	.quad	0				// reserved
+	.quad	0				// reserved
+	.ascii	"ARM\x64"			// Magic number
+#ifdef CONFIG_EFI
+	.long	pe_header - _head		// Offset to the PE header.
 
+pe_header:
+	__EFI_PE_HEADER
+#else
+	.long	0				// reserved
+#endif
 ENTRY(stext)
 
 	serial_write_str 'H', 'E', 'A', 'D'
@@ -280,9 +317,10 @@ ENTRY(stext)
 	mov	x21, x0				// x21=FDT
 	bl	el2_setup			// Drop to EL1
 
+/* ****  */
     serial_write_str 'E', 'L', '1'
-
     serial_write_reg x21
+/* ****  */
 
 
 

@@ -19,8 +19,8 @@ struct bug_frame {
    the disassembler. Thanks to Jan Beulich & Suresh Siddha
    for nice instruction selection.
    The magic numbers generate mov $64bitimm,%eax ; ret $offset. */
-#define BUG() ;//								\
-		//printk("Bug %d %s\n",__LINE__,__FILE__)
+#define BUG() 								\
+		panic("Bug %d %s\n",__LINE__,__FILE__)
 
 
 #if 0

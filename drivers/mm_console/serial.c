@@ -131,7 +131,7 @@ static void serial_putc(struct console *con, unsigned char c)
 {
 // Wait until the TX buffer is empty
 	// TODO Brian temporarily commented out next line while to solve slow serial issue.
-//	wait_for_xmitr(BOTH_EMPTY);
+	wait_for_xmitr(LSR_THREMPT);
 	// Slam the 8 bits down the 1 bit pipe... meeeooowwwy!
 	outb(c, port);
 }

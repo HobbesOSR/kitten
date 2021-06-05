@@ -9,11 +9,12 @@
 
 #include <arch/irqchip.h>
 #include <arch/msr.h>
-#include <arch/gicdef.h>
 #include <arch/of.h>
 #include <arch/io.h>
 #include <arch/irq_vectors.h>
 #include <arch/topology.h>
+
+#include "gic.h"
 
 
 #define GIC3_SPURIOUS_IRQ 1023
@@ -94,12 +95,14 @@ __gic3_print_pending_irqs(void)
 {
 	uint32_t pending = 0;
 	uint32_t enabled = 0;
+	
 	struct gicr_ipriorityr ipriority = {0};
-	uint64_t icc_rpr = mrs(ICC_RPR_EL1);
-	uint64_t icc_pmr = mrs(ICC_PMR_EL1);
-	uint64_t hppir0   = mrs(ICC_HPPIR0_EL1);
-	uint64_t hppir1   = mrs(ICC_HPPIR1_EL1);
-	uint32_t gicd_ctlr = 0;
+
+	uint64_t icc_rpr    = mrs(ICC_RPR_EL1);
+	uint64_t icc_pmr    = mrs(ICC_PMR_EL1);
+	uint64_t hppir0     = mrs(ICC_HPPIR0_EL1);
+	uint64_t hppir1     = mrs(ICC_HPPIR1_EL1);
+	uint32_t gicd_ctlr  = 0;
 	uint64_t gicr_typer = 0;
 
 	pending = __gicr_read32(this_cpu, GICR_ISPENDR_0_OFFSET);
@@ -194,16 +197,24 @@ __gic3_disable_irq(uint32_t vector)
 	panic("Disabling IRQs not supported\n");
 }
 
-static uint32_t 
+static struct arch_irq 
 __gic3_ack_irq(void)
 {
-	return mrs(ICC_IAR1_EL1);
+	struct arch_irq irq = {.vector = mrs(ICC_IAR1_EL1)};
+
+	if (irq.vector < 16) {
+		irq.type = ARCH_IRQ_IPI;
+	} else {
+		irq.type = ARCH_IRQ_EXT;
+	}
+
+	return irq;
 }
 
 static void
-__gic3_do_eoi(int vector)
+__gic3_do_eoi(struct arch_irq irq)
 {
-	msr(ICC_EOIR1_EL1, vector);
+	msr(ICC_EOIR1_EL1, irq.vector);
 }
 
 
@@ -321,10 +332,16 @@ __gicr_setup()
 	// Zero out CTLR reg
 	__gicr_write32(this_cpu, GICR_CTLR_OFFSET, 0x0);
 
-	// disable all SGIs and PPIs
+
+
+	// disable all PPIs
 	for (i = 0; i < 3; i++) {
 		__gicr_write32(this_cpu, GICR_ICENABLER_OFFSET(i), 0xffffffff);
 	}
+
+	// Enable all SGIs
+	__gicr_write32(this_cpu, GICR_ICENABLER_OFFSET(0), 0x0000ffff);
+
 
 	// clear all pending irqs
 	for (i = 1; i < 3; i++) {
@@ -487,8 +504,8 @@ gic3_global_init(struct device_node * dt_node)
 	printk("\tGICD at: %p [%d bytes]\n", gic.gicd_phys_start, gic.gicd_phys_size);
 	printk("\tGICR at: %p [%d bytes]\n", gic.gicr_phys_start, gic.gicr_phys_size);
 
-	gic.gicd_virt_start = ioremap(gic.gicd_phys_start, gic.gicd_phys_size);
-	gic.gicr_virt_start = ioremap(gic.gicr_phys_start, gic.gicr_phys_size);
+	gic.gicd_virt_start = ioremap_nocache(gic.gicd_phys_start, gic.gicd_phys_size);
+	gic.gicr_virt_start = ioremap_nocache(gic.gicr_phys_start, gic.gicr_phys_size);
 
 
 	printk("\tGICD Virt Addr: %p\n", gic.gicd_virt_start);
@@ -497,7 +514,7 @@ gic3_global_init(struct device_node * dt_node)
 	__gicd_setup();
 
 	gic3_chip.dt_node = dt_node;
-	register_irqchip(&gic3_chip);
+	irqchip_register(&gic3_chip);
 }
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
