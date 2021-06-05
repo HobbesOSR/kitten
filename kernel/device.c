@@ -145,7 +145,7 @@ init_devices(void)
 	devices_kobj = kobject_create_and_add("devices", NULL);
 
 	if (!devices_kobj) {
-		return -ENOMEM;
+		goto class_kobj_err;
 	}
 
 	/* Create /sys/dev */
@@ -182,7 +182,9 @@ init_devices(void)
 	kobject_put(dev_kobj);
  dev_kobj_err:
 	kobject_put(devices_kobj);
-	
+ class_kobj_err:
+	kobject_put(class_kobj);
+
 	return -ENOMEM;
 }
 
