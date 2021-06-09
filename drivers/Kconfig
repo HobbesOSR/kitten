@@ -15,17 +15,17 @@ config SERIAL_CONSOLE
 
 config SERIAL_MM_CONSOLE
 	bool "Memory mapped Serial console support"
-	depends on ARCH_STORM_SIM || ARCH_XGENE || ARCH_QEMU || ARCH_RASPI3
+	depends on ARM64
 	default y
 
 config OF
 		bool
-		depends on ARCH_STORM_SIM || ARCH_XGENE || ARCH_QEMU || ARCH_RASPI3
+		depends on ARM64
 		default y
 
 config OF_EARLY_FLATTREE
 		bool
-		depends on ARCH_STORM_SIM || ARCH_XGENE || ARCH_QEMU || ARCH_RASPI3
+		depends on ARM64
 		default y
 
 config VM_CONSOLE

@@ -1410,8 +1410,6 @@ static int isdigit(int c)
  * @dt_alloc:	An allocator that provides a virtual address to memory
  *		for the resulting tree
  */
-// BRIAN - this should be in a header file somewhere.
-extern int kstrtoint(const char *s, unsigned int base, int *res);
 void of_alias_scan(void * (*dt_alloc)(u64 size, u64 align))
 {
 	struct property *pp;
@@ -1447,7 +1445,7 @@ void of_alias_scan(void * (*dt_alloc)(u64 size, u64 align))
 		len = end - start;
 
 		//if (kstrtoint(end, 10, &id) < 0)
-		if (simple_strtol(end, 10, &id) < 0)
+		if ((id = simple_strtol(end, NULL, 10)) < 0)
 			continue;
 
 		/* Allocate an alias_prop with enough space for the stem */

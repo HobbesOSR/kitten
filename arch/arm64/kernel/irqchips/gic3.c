@@ -14,7 +14,7 @@
 #include <arch/irq_vectors.h>
 #include <arch/topology.h>
 
-#include "gic.h"
+#include "gic3.h"
 
 
 #define GIC3_SPURIOUS_IRQ 1023
@@ -254,12 +254,9 @@ static int
 __gicd_setup()
 {
 	struct gicd_ctlr_ns  ctlr  = {0};
-	struct gicd_pidr2    pidr2 = {0};
 	struct gicd_typer    typer = {0};
 
 	int i = 0;
-
-	pidr2.val = __gicd_read32(GICD_PIDR2_OFFSET);
 
 	// disable GICD
 	__gicd_write32(GICD_CTLR_OFFSET, ctlr.val); 
@@ -308,10 +305,7 @@ static int
 __gicr_setup()
 {
 	struct gicr_waker waker    = {0};
-	struct gicr_pidr2 pidr2 = {0};
 	int i = 0;
-
-	pidr2.val = __gicr_read32(this_cpu, GICR_PIDR2_OFFSET);
 
 	waker.val = __gicr_read32(this_cpu, GICR_WAKER_OFFSET);
 

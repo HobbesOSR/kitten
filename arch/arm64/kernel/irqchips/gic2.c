@@ -13,7 +13,7 @@
 #include <arch/io.h>
 #include <arch/irq_vectors.h>
 
-#include "gic.h"
+#include "gic2.h"
 
 #define GIC2_SPURIOUS_IRQ 1023
 
@@ -291,23 +291,38 @@ gic2_global_init(struct device_node * dt_node)
 	size_t reg_cnt = 0; 
 	int    ret     = 0;
 	
-	if ( (of_n_addr_cells(dt_node) != 2) ||
-	     (of_n_size_cells(dt_node) != 2) ) {
-		panic("Only 64 bit reg values are supported\n");
+	if ( (of_n_addr_cells(dt_node) == 2) &&
+	     (of_n_size_cells(dt_node) == 2) ) {
+
+
+		ret = of_property_read_u32_array(dt_node, "reg", (u32 *)regs, 8);
+
+		if (ret != 0) {
+			panic("Could not read GIC registers from device tree (ret=%d)\n", ret);
+		}
+
+
+
+		gic.gicd_phys_start = (regs[0] << 32) | regs[1]; 
+		gic.gicd_phys_size  = (regs[2] << 32) | regs[3]; 
+		gic.gicc_phys_start = (regs[4] << 32) | regs[5]; 
+		gic.gicc_phys_size  = (regs[6] << 32) | regs[7]; 
+
+	} else if ( (of_n_addr_cells(dt_node) == 1) &&
+	    		(of_n_size_cells(dt_node) == 1) ) {
+
+		ret = of_property_read_u32_array(dt_node, "reg", (u32 *)regs, 4);
+
+		if (ret != 0) {
+			panic("Could not read GIC registers from device tree (ret=%d)\n", ret);
+		}
+
+		gic.gicd_phys_start = regs[0]; 
+		gic.gicd_phys_size  = regs[1]; 
+		gic.gicc_phys_start = regs[2]; 
+		gic.gicc_phys_size  = regs[3]; 					
+
 	}
-
-	ret = of_property_read_u32_array(dt_node, "reg", (u32 *)regs, 8);
-
-	if (ret != 0) {
-		panic("Could not read GIC registers from device tree (ret=%d)\n", ret);
-	}
-
-
-
-	gic.gicd_phys_start = (regs[0] << 32) | regs[1]; 
-	gic.gicd_phys_size  = (regs[2] << 32) | regs[3]; 
-	gic.gicc_phys_start = (regs[4] << 32) | regs[5]; 
-	gic.gicc_phys_size  = (regs[6] << 32) | regs[7]; 
 
 	printk("\tGICD at: %p [%d bytes]\n", gic.gicd_phys_start, gic.gicd_phys_size);
 	printk("\tGICC at: %p [%d bytes]\n", gic.gicc_phys_start, gic.gicc_phys_size);
