@@ -334,7 +334,7 @@ __gicr_setup()
 	}
 
 	// Enable all SGIs
-	__gicr_write32(this_cpu, GICR_ICENABLER_OFFSET(0), 0x0000ffff);
+	__gicr_write32(this_cpu, GICR_ISENABLER_OFFSET(0), 0x0000ffff);
 
 
 	// clear all pending irqs
@@ -343,10 +343,17 @@ __gicr_setup()
 		__gicr_write32(this_cpu, GICR_ICACTIVER_OFFSET(i), 0xffffffff);
 	}
 
-	// set all SGIs and PPIs to lowest priority
-	for (i = 0; i < 24; i++) {
+
+	// Set All SGIx to highest priority
+	for (i = 0; i < 4; i++) {
+		__gicr_write32(this_cpu, GICR_IPRIORITYR_OFFSET(i), 0x00000000);
+	}
+
+	// set all PPIs to lowest priority
+	for (i = 4; i < 24; i++) {
 		__gicr_write32(this_cpu, GICR_IPRIORITYR_OFFSET(i), 0xffffffff);
 	}
+
 
 	// set all SGIs and PPIs to edge triggered
 	for (i = 0; i < 2; i++) {
