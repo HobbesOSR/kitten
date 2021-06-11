@@ -34,8 +34,8 @@ static struct gic2 gic;
 
 static int
 __gic2_parse_irqs(struct device_node *  dt_node, 
-	          uint32_t              num_irqs, 
-	          struct irq_def     *  irqs);
+                  uint32_t              num_irqs, 
+                  struct irq_def     *  irqs);
 
 
 static inline uint32_t 
@@ -46,7 +46,7 @@ __gicd_read32(uintptr_t offset)
 
 static inline void
 __gicd_write32(uintptr_t offset, 
-	       uint32_t  value)
+               uint32_t  value)
 {
 	writel(value, gic.gicd_virt_start + offset);
 }
@@ -60,7 +60,7 @@ __gicc_read32(uintptr_t offset)
 
 static inline void
 __gicc_write32(uintptr_t offset, 
-	       uint32_t  value)
+               uint32_t  value)
 {
 	writel(value, gic.gicc_virt_start + offset);
 }
@@ -154,7 +154,7 @@ __gic2_core_init( void )
 
 static void
 __gic2_enable_irq(uint32_t           irq_num,
-		  irq_trigger_mode_t trigger_mode)
+                  irq_trigger_mode_t trigger_mode)
 {
 	struct gicd_icfgr      icfgr     = {0};
 	struct gicd_ipriorityr ipriority = {0};
@@ -162,7 +162,7 @@ __gic2_enable_irq(uint32_t           irq_num,
 
 	uint32_t icfgr_index        = (irq_num / 16);
 	uint32_t icfgr_shift        = (irq_num % 16) * 2;
-	uint32_t icfgr_mode        = 0;
+	uint32_t icfgr_mode         = 0;
 
 	uint32_t priority_maj_index = irq_num / 4;
 	uint32_t priority_min_index = irq_num % 4;
@@ -317,10 +317,10 @@ gic2_global_init(struct device_node * dt_node)
 			panic("Could not read GIC registers from device tree (ret=%d)\n", ret);
 		}
 
-		gic.gicd_phys_start = regs[0]; 
-		gic.gicd_phys_size  = regs[1]; 
-		gic.gicc_phys_start = regs[2]; 
-		gic.gicc_phys_size  = regs[3]; 					
+		gic.gicd_phys_start = regs[0];
+		gic.gicd_phys_size  = regs[1];
+		gic.gicc_phys_start = regs[2];
+		gic.gicc_phys_size  = regs[3];
 
 	}
 
@@ -347,8 +347,8 @@ gic2_global_init(struct device_node * dt_node)
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 static int
 __gic2_parse_irqs(struct device_node *  dt_node, 
-	          uint32_t              num_irqs, 
-	          struct irq_def     *  irqs)
+                  uint32_t              num_irqs, 
+                  struct irq_def     *  irqs)
 {
 	const __be32 * ip;
 	uint32_t       irq_cells = 0;
