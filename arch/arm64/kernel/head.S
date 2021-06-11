@@ -96,11 +96,13 @@
 .endm
 
 .macro wait_for_xmit, port
+#ifndef CONFIG_ARCH_QEMU
 1001:
     ldrb w17, [\port, #0x14]
     and w17, w17, #0x20
     cmp w17, #0
     beq 1001b
+#endif
 .endm
 
 .macro _serial_write_bytes port, val, more:vararg

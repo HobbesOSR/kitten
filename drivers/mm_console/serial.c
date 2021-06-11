@@ -131,7 +131,9 @@ static void serial_putc(struct console *con, unsigned char c)
 {
 // Wait until the TX buffer is empty
 	// TODO Brian temporarily commented out next line while to solve slow serial issue.
+#ifndef CONFIG_ARCH_QEMU
 	wait_for_xmitr(LSR_THREMPT);
+#endif
 	// Slam the 8 bits down the 1 bit pipe... meeeooowwwy!
 	outb(c, port);
 }
