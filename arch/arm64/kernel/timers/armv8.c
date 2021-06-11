@@ -90,7 +90,7 @@ __armv8_timer_set_timer_freq(unsigned int hz)
 	struct cntp_ctl_el0 cntp_ctl_el0 = {mrs(CNTP_CTL_EL0)};
 
 	uint32_t cpu_hz    = (u32)mrs(CNTFRQ_EL0);
-	uint64_t reset_val = cpu_hz / (hz * 100);
+	uint64_t reset_val = cpu_hz / (hz);
 
 	printk("Setting timer frequency to %d HZ\n", hz);
 	printk("Setting Timer countdown value to %d\n", reset_val);
