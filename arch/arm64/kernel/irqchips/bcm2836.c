@@ -260,9 +260,9 @@ static struct irqchip bcm2836_chip = {
 	.disable_irq        = __bcm2836_disable_irq,
 	.do_eoi             = __bcm2836_do_eoi,
 	.ack_irq            = __bcm2836_ack_irq,
-	.send_ipi	    = __bcm2836_send_ipi,
+	.send_ipi           = __bcm2836_send_ipi,
 	.parse_devtree_irqs = __bcm2836_parse_irqs,
-	.dump_state         = __bcm2836_dump_state, 
+	.dump_state         = __bcm2836_dump_state,
 	.print_pending_irqs = __bcm2836_print_pending_irqs
 };
 

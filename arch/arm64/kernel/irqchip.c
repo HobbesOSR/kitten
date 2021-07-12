@@ -46,7 +46,6 @@ irqchip_register(struct irqchip * chip)
 		panic("Failed to register irq controller. Already registered.\n");
 	}
 
-
 	printk("Registering IRQ Controller [%s]\n", chip->name);
 	irq_controller = chip;	
 

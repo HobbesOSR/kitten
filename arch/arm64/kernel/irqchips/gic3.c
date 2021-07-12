@@ -37,8 +37,8 @@ static struct gic3 gic;
 
 static int
 __gic3_parse_irqs(struct device_node *  dt_node, 
-	          uint32_t              num_irqs, 
-	          struct irq_def     *  irqs);
+                  uint32_t              num_irqs, 
+                  struct irq_def     *  irqs);
 
 
 static inline uint32_t 
@@ -49,7 +49,7 @@ __gicd_read32(uintptr_t offset)
 
 static inline void
 __gicd_write32(uintptr_t offset, 
-	       uint32_t  value)
+               uint32_t  value)
 {
 	writel(value, gic.gicd_virt_start + offset);
 }
@@ -59,15 +59,15 @@ __gicd_write32(uintptr_t offset,
 
 static inline uint32_t 
 __gicr_read32(uint32_t  cpu,
-	      uintptr_t offset)
+              uintptr_t offset)
 {
 	return readl(gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
 }
 
 static inline void
 __gicr_write32(uint32_t  cpu,
-	       uintptr_t offset, 
-	       uint32_t  value)
+               uintptr_t offset, 
+               uint32_t  value)
 {
 	writel(value, gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
 }
@@ -75,15 +75,15 @@ __gicr_write32(uint32_t  cpu,
 
 static inline uint32_t 
 __gicr_read64(uint32_t  cpu,
-	      uintptr_t offset)
+              uintptr_t offset)
 {
 	return readq(gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
 }
 
 static inline void
 __gicr_write64(uint32_t  cpu,
-	       uintptr_t offset, 
-	       uint64_t  value)
+               uintptr_t offset, 
+               uint64_t  value)
 {
 	writeq(value, gic.gicr_virt_start + GICR_CPU_OFFSET(cpu) + offset);
 }
@@ -134,7 +134,7 @@ __gic3_dump_state(void)
 
 static void
 __gic3_enable_irq(uint32_t           irq_num, 
-		  irq_trigger_mode_t trigger_mode)
+                  irq_trigger_mode_t trigger_mode)
 {
 	struct gicr_icfgr      icfgr     = {0};
 	struct gicd_ipriorityr ipriority = {0};
@@ -470,7 +470,7 @@ static struct irqchip gic3_chip = {
 	.disable_irq        = __gic3_disable_irq,
 	.do_eoi             = __gic3_do_eoi,
 	.ack_irq            = __gic3_ack_irq,
-	.send_ipi	    = __gic3_send_ipi,
+	.send_ipi           = __gic3_send_ipi,
 	.parse_devtree_irqs = __gic3_parse_irqs,
 	.dump_state         = __gic3_dump_state, 
 	.print_pending_irqs = __gic3_print_pending_irqs
@@ -521,8 +521,8 @@ gic3_global_init(struct device_node * dt_node)
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 static int
 __gic3_parse_irqs(struct device_node *  dt_node, 
-	          uint32_t              num_irqs, 
-	          struct irq_def     *  irqs)
+                  uint32_t              num_irqs, 
+                  struct irq_def     *  irqs)
 {
 	const __be32 * ip;
 	uint32_t       irq_cells = 0;

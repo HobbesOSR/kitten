@@ -161,6 +161,7 @@ static char serial_getc(struct console *con)
 	unsigned char lsr = inb(port + LSR);
 	while (!(lsr & LSR_RXRDY))
 		lsr = inb(port + LSR);
+
 	return inb(port + RXB);
 }
 

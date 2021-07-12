@@ -267,8 +267,8 @@ void store_cpu_topology(unsigned int cpuid)
 
 
 	printk("CPU%u: cluster %d core %d thread %d mpidr %#016llx\n",
-		 cpuid, cpuid_topo->cluster_id, cpuid_topo->core_id,
-		 cpuid_topo->thread_id, mpidr);
+           cpuid, cpuid_topo->cluster_id, cpuid_topo->core_id,
+           cpuid_topo->thread_id, mpidr);
 
 topology_populated:
 	update_siblings_masks(cpuid);
@@ -294,10 +294,10 @@ static void __init reset_cpu_topology(void)
 
 
 int get_cpu_affinity(int       cpuid, 
-		     uint8_t * aff_0, 
-		     uint8_t * aff_1, 
-		     uint8_t * aff_2,
-		     uint8_t * aff_3)
+                     uint8_t * aff_0, 
+                     uint8_t * aff_1, 
+                     uint8_t * aff_2,
+                     uint8_t * aff_3)
 {
 	struct cpu_topology *cpuid_topo = &cpu_topology[cpuid];
 
