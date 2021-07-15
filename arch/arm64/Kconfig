@@ -92,6 +92,7 @@ config TIMER_ONESHOT
 endchoice
 
 
+
 config BLK_DEV_INITRD
        bool "INITRD support"
        help
@@ -146,8 +147,6 @@ config PHYSICAL_START
 	hex
 	default "0x200000"
 
-endmenu
-
 # source user/iofwd/Kconfig
 
 config HAS_IOMEM
@@ -170,6 +169,21 @@ config ARM_PSCI_FW
 	bool
 	default "y"
 
+endmenu
+
+
+
+menu Virtualization
+
+config HAFNIUM
+  bool "Hafnium Hypervisor"
+  depends on ARM64
+  default n
+  help
+    Enables the Hafnium Hypervisor extensions
+
+endmenu
+
 source "arch/arm64/boot/Kconfig"
 source "arch/arm64/Kconfig.debug"
 
@@ -178,3 +192,4 @@ source "drivers/Kconfig"
 
 # TODO This might be painful later
 #source "linux/arch/arm64/Kconfig"
+
