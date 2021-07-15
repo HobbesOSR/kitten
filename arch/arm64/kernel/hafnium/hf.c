@@ -14,8 +14,10 @@
 #define CONFIG_HAFNIUM_MAX_VCPUS (32)
 
 #define HF_VM_ID_BASE            (0)
-#define PRIMARY_VM_ID            (HF_VM_ID_OFFSET)
-#define FIRST_SECONDARY_VM_ID    (HF_VM_ID_OFFSET + 1)
+#define PRIMARY_VM_ID            (HF_VM_ID_OFFSET + 0)
+#define PRIMARY2_VM_ID   		 (HF_VM_ID_OFFSET + 1)
+#define FIRST_SECONDARY_VM_ID    (HF_VM_ID_OFFSET + 2)
+
 
 struct hf_vcpu {
 	struct hf_vm       * vm;
@@ -346,14 +348,13 @@ hf_free_resources(void)
 
 static char * options;
 
-void
+static int
 hafnium_init(void)
 {
 	struct ffa_value ffa_ret;
 	ffa_vm_count_t   secondary_vm_count;
 	uint32_t         total_vcpu_count;
 
-	ffa_vm_id_t      i;
 	ffa_vcpu_index_t j;
 
 	int64_t          ret;
@@ -396,15 +397,79 @@ hafnium_init(void)
 		goto fail_with_cleanup;
 	}
 
-	/* Get information about secondary VMs. */
-	secondary_vm_count = hf_vm_get_count() - 1;
 
-	return;
+	/* Only track the secondary VMs. */
+	hf_vms = kmem_alloc(CONFIG_HAFNIUM_MAX_VMS * sizeof(struct hf_vm));
+
+	if (hf_vms == NULL) {
+		ret = -ENOMEM;
+		goto fail_with_cleanup;
+	}
+
+
+    if (hf_vm_get_count() < 2) {
+        pr_err("Primary2 VM missing from manifest\n");
+        ret = -EINVAL;
+        goto fail_with_cleanup;
+    }
+
+	/* Start the Admin VM */
+	{
+		struct hf_vm      * vm = &hf_vms[PRIMARY2_VM_ID];
+		ffa_vcpu_count_t    vcpu_count;
+
+		/* Adjust the index as only the secondaries are tracked. */
+		vm->id         = PRIMARY2_VM_ID;
+		vm->vcpu_count = hf_vcpu_get_count(vm->id);
+		vm->vcpu       = kmem_alloc(vm->vcpu_count * sizeof(struct hf_vcpu));
+
+		if (vm->vcpu == NULL) {
+			ret = -ENOMEM;
+			goto fail_with_cleanup;
+		}
+
+
+		total_vcpu_count += vm->vcpu_count;
+
+		for (j = 0; j < vm->vcpu_count; j++) {
+			struct hf_vcpu * vcpu = &vm->vcpu[j];
+
+			vcpu->task = kthread_create(hf_vcpu_thread, 
+                                        vcpu,
+                                        "vcpu_thread_%u_%u", 
+                                        vm->id, 
+                                        j);
+
+			if (vcpu->task == NULL) {
+				pr_err("Error creating task (vm = %u, vcpu = %u): %lu\n",
+					vm->id, j, vcpu->task);
+
+				vm->vcpu_count = j;
+				ret            = vcpu->task;
+				goto fail_with_cleanup;
+			}
+
+			vcpu->vm         = vm;
+			vcpu->vcpu_index = j;
+
+			atomic_set(&vcpu->abort_sleep,         0);
+			atomic_set(&vcpu->waiting_for_message, 0);
+		}
+
+        for (j = 0; j < vm->vcpu_count; j++) {
+			sched_wakeup_task(vm->vcpu[j].task, TASK_STOPPED);
+		}
+
+        printk("hafnium initialized\n");
+
+	}
+
+	return 0;
 
 
 fail_with_cleanup:
 	hf_free_resources();
-	return;
+	return ret;
 
 #if 0
 
@@ -420,13 +485,7 @@ fail_with_cleanup:
 		goto fail_with_cleanup;
 	}
 
-	/* Only track the secondary VMs. */
-	hf_vms = kmem_alloc(secondary_vm_count * sizeof(struct hf_vm));
 
-	if (hf_vms == NULL) {
-		ret = -ENOMEM;
-		goto fail_with_cleanup;
-	}
 
 	/* Cache the VM id for later usage. */
 	current_vm_id = hf_vm_get_id();
