@@ -71,13 +71,24 @@ __timer_tick(int irq, void * dev_id)
 
 }
 
+static irqreturn_t
+__virtual_tick(int irq, void * dev_id)
+{
+	return IRQ_HANDLED;
+}
+
 
 static void
 __armv7_timer_core_init()
 {
 	printk("ARM7 Core timer init\n");
+
 	irq_request(timer_irqs[IRQ_IDX_SECURE_PL1].vector, __timer_tick, 0, "timer", NULL);
 	irqchip_enable_irq(timer_irqs[IRQ_IDX_SECURE_PL1].vector, timer_irqs[IRQ_IDX_SECURE_PL1].mode);
+
+	irq_request(timer_irqs[IRQ_IDX_VIRTUAL].vector, __virtual_tick, 0, "hypervisor-timer", NULL);
+	irqchip_enable_irq(timer_irqs[IRQ_IDX_VIRTUAL].vector, timer_irqs[IRQ_IDX_VIRTUAL].mode);
+
 }
 
 //CNTPCT_EL0
