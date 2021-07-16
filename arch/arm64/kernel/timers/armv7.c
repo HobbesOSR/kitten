@@ -74,6 +74,7 @@ __timer_tick(int irq, void * dev_id)
 static irqreturn_t
 __virtual_tick(int irq, void * dev_id)
 {
+	printk("Virtual Tick\n");
 	return IRQ_HANDLED;
 }
 

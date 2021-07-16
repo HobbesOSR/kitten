@@ -73,8 +73,9 @@ __timer_tick(int irq, void * dev_id)
 
 
 static irqreturn_t
-__virtual_tick(int irq, void * dev_id)
+__hypervisor_tick(int irq, void * dev_id)
 {
+	printk("Virtual Tick\n");
 	return IRQ_HANDLED;
 }
 
@@ -84,8 +85,8 @@ __armv8_timer_core_init()
 	irq_request(timer_irqs[IRQ_IDX_NONSECURE].vector, __timer_tick, 0, "timer", NULL);
 	irqchip_enable_irq(timer_irqs[IRQ_IDX_NONSECURE].vector, timer_irqs[IRQ_IDX_NONSECURE].mode);
 
-	irq_request(timer_irqs[IRQ_IDX_VIRTUAL].vector, __virtual_tick, 0, "hypervisor-timer", NULL);
-	irqchip_enable_irq(timer_irqs[IRQ_IDX_VIRTUAL].vector, timer_irqs[IRQ_IDX_VIRTUAL].mode);
+	irq_request(timer_irqs[IRQ_IDX_HYPERVISOR].vector, __hypervisor_tick, 0, "hypervisor-timer", NULL);
+	irqchip_enable_irq(timer_irqs[IRQ_IDX_HYPERVISOR].vector, timer_irqs[IRQ_IDX_HYPERVISOR].mode);
 
 	
 }
