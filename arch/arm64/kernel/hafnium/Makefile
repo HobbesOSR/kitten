@@ -1,1 +1,1 @@
-obj-y += hf.o
+obj-y += hf.o ctrl.o

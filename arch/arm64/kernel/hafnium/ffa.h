@@ -570,3 +570,15 @@ ffa_memory_fragment_init(struct ffa_memory_region_constituent       * fragment,
                          const struct ffa_memory_region_constituent   constituents[],
                          uint32_t                                     constituent_count,
                          uint32_t                                   * fragment_length);
+
+
+
+static inline void 
+print_ffa_error(struct ffa_value ffa_ret)
+{
+	if (ffa_ret.func == FFA_ERROR_32) {
+		pr_err("FF-A error code %d\n", ffa_ret.arg2);
+	} else {
+		pr_err("Unexpected FF-A function %#x\n", ffa_ret.func);
+	}
+}

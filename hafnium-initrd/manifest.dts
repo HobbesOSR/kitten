@@ -1,0 +1,20 @@
+/dts-v1/;
+
+/ {
+	hypervisor {
+		compatible = "hafnium,hafnium";
+		vm1 {
+			debug_name = "Kitten VM";
+			kernel_filename = "vmlwk.bin";
+			ramdisk_filename = "initrd";
+
+            device {
+                compatible = "arm,ffa-manifest-device-regions";
+                description = "Serial Port";
+                reg = <0x0 0x09000000  0x1>;
+                attributes = <0x3>;
+                interrupts  = <0x0 0x0>;
+            };
+		};
+	};
+};
